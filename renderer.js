@@ -212,13 +212,34 @@ function createAgentCard(agent) {
     }
   };
 
-  // 서브에이전트 배지
+  // 카드 타입 구분 (배지 및 테두리)
+  let typeLabel = 'Main';
+  let typeClass = 'type-main';
   if (agent.isSubagent) {
-    const badge = document.createElement('div');
-    badge.className = 'agent-sub-badge';
-    badge.textContent = 'Sub';
-    card.appendChild(badge);
+    typeLabel = 'Sub';
+    typeClass = 'type-sub';
+  } else if (agent.isTeammate) {
+    typeLabel = 'Team';
+    typeClass = 'type-team';
   }
+  card.classList.add(typeClass);
+
+  // 상단 배지 (프로젝트명 + 타입)
+  const header = document.createElement('div');
+  header.className = 'agent-header';
+
+  const projectTag = document.createElement('span');
+  projectTag.className = 'project-tag';
+  projectTag.textContent = agent.projectPath ? agent.projectPath.split(/[\\/]/).pop() : 'Default';
+  projectTag.title = agent.projectPath; // 전체 경로는 툴팁으로
+
+  const typeTag = document.createElement('span');
+  typeTag.className = `type-tag ${typeClass}`;
+  typeTag.textContent = typeLabel;
+
+  header.appendChild(projectTag);
+  header.appendChild(typeTag);
+  card.appendChild(header);
 
   // Assemble card
   card.appendChild(bubble);
@@ -271,6 +292,10 @@ function addAgent(agent) {
 
   const card = createAgentCard(agent);
   agentGrid.appendChild(card);
+
+  // 전역 데이터 캐시 업데이트 (정렬용)
+  if (!window.lastAgents) window.lastAgents = [];
+  window.lastAgents.push(agent);
 
   // Set initial state
   updateAgentState(agent.id, card, agent.state || 'Waiting');
@@ -334,20 +359,36 @@ function drawFrameOn(el, frameIndex) {
 }
 
 function updateGridLayout() {
-  const agentCount = document.querySelectorAll('.agent-card').length;
-
-  if (agentCount >= 1) {
-    // 에이전트 있음: 카드 모드, 빈 컨테이너 숨김
-    agentGrid.classList.add('has-multiple');
-    if (idleContainer) idleContainer.style.display = 'none';
-  } else {
-    // 에이전트 없음: 빈 컨테이너 대기 상태로 표시
-    agentGrid.classList.remove('has-multiple');
-    if (idleContainer) {
-      idleContainer.style.display = 'flex';
-      startIdleAnimation();
-    }
+  const cards = Array.from(agentGrid.querySelectorAll('.agent-card'));
+  if (cards.length === 0) {
+    agentGrid.classList.remove('multi-mode');
+    if (idleContainer) idleContainer.style.display = 'flex';
+    return;
   }
+
+  if (idleContainer) idleContainer.style.display = 'none';
+  agentGrid.classList.add('multi-mode');
+
+  // 같은 프로젝트끼리, 그 안에서 Main -> Sub -> Team 순으로 정렬
+  cards.sort((a, b) => {
+    const agentA = [...agentStates.keys()].find(id => id.startsWith(a.dataset.agentId)) || a.dataset.agentId; // 실제 ID 매칭
+    const dataA = window.lastAgents?.find(ag => ag.id === a.dataset.agentId);
+    const dataB = window.lastAgents?.find(ag => ag.id === b.dataset.agentId);
+
+    if (!dataA || !dataB) return 0;
+
+    // 1. 프로젝트명 정렬
+    const projA = dataA.projectPath || '';
+    const projB = dataB.projectPath || '';
+    if (projA !== projB) return projA.localeCompare(projB);
+
+    // 2. 타입 정렬 (Main < Sub < Team)
+    const score = (d) => d.isSubagent ? 1 : (d.isTeammate ? 2 : 0);
+    return score(dataA) - score(dataB);
+  });
+
+  // DOM 순서 재배치
+  cards.forEach(card => agentGrid.appendChild(card));
 }
 
 // --- 이벤트 리스너 등록 ---
@@ -373,11 +414,12 @@ async function init() {
   // Load existing agents
   try {
     const agents = await window.electronAPI.getAllAgents();
+    window.lastAgents = agents; // 정렬용 전역 보관
     console.log(`[Renderer] Loaded ${agents.length} existing agents`);
     for (const agent of agents) {
       addAgent(agent);
     }
-    updateGridLayout(); // 에이전트 수에 따라 컨테이너/카드 전환
+    updateGridLayout();
   } catch (err) {
     console.error('[Renderer] Failed to load agents:', err);
   }

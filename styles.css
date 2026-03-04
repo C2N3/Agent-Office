@@ -127,7 +127,60 @@ body {
   pointer-events: auto;
   /* 카드 영역 클릭 감지 */
   transition: transform 0.15s ease;
+  width: 90px;
+  pointer-events: auto;
+  transition: transform 0.2s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+  padding-bottom: 5px;
+  border: 1px solid transparent;
+  border-radius: 8px;
 }
+
+/* ════════════════════════════════════════
+   New: Agent Header & Tags
+   ════════════════════════════════════════ */
+.agent-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+  margin-bottom: 4px;
+}
+
+.project-tag {
+  font-family: 'Pretendard Variable', sans-serif;
+  font-size: 8px;
+  font-weight: 800;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 1px 5px;
+  border-radius: 4px;
+  max-width: 85px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  letter-spacing: -0.02em;
+}
+
+.type-tag {
+  font-family: 'Pretendard Variable', sans-serif;
+  font-size: 7px;
+  font-weight: 900;
+  text-transform: uppercase;
+  padding: 0px 4px;
+  border-radius: 3px;
+  letter-spacing: 0.05em;
+}
+
+/* 타입별 스타일 */
+.type-main .type-tag { background: #E91E63; color: white; }
+.type-sub .type-tag { background: #9C27B0; color: white; }
+.type-team .type-tag { background: #2196F3; color: white; }
+
+/* 타입별 카드 하이라이트 (선택사항: 외곽선으로 구분) */
+.agent-card.type-main { border-color: rgba(233, 30, 99, 0.2); }
+.agent-card.type-sub { border-color: rgba(156, 39, 176, 0.2); }
+.agent-card.type-team { border-color: rgba(33, 150, 243, 0.2); }
 
 .agent-grid.has-multiple .agent-card {
   display: flex;

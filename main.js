@@ -289,7 +289,8 @@ function startHookServer() {
             // 에이전트 팀 멤버가 작업을 멈추고 기다리는 중 -> Waiting
             if (agentManager) {
               const agent = agentManager.getAgent(sessionId);
-              if (agent) agentManager.updateAgent({ ...agent, state: 'Waiting' }, 'hook');
+              if (agent) agentManager.updateAgent({ ...agent, state: 'Waiting', isTeammate: true }, 'hook');
+              else handleSessionStart(sessionId, data.cwd || '', 0, true); // 신규 팀원 감지 시
             }
             break;
           }
@@ -463,18 +464,20 @@ function startLivenessChecker() {
 }
 
 
-function handleSessionStart(sessionId, cwd) {
+function handleSessionStart(sessionId, cwd, pid = 0, isTeammate = false) {
   if (!agentManager) {
-    pendingSessionStarts.push({ sessionId, cwd, ts: Date.now() });
+    pendingSessionStarts.push({ sessionId, cwd, ts: Date.now(), isTeammate });
     debugLog(`[Hook] SessionStart queued: ${sessionId.slice(0, 8)}`);
     return;
   }
   const displayName = cwd ? path.basename(cwd) : 'Agent';
-  agentManager.updateAgent({ sessionId, projectPath: cwd, displayName, state: 'Waiting', jsonlPath: null }, 'http');
-  debugLog(`[Hook] SessionStart → agent: ${sessionId.slice(0, 8)} (${displayName})`);
+  agentManager.updateAgent({ sessionId, projectPath: cwd, displayName, state: 'Waiting', jsonlPath: null, isTeammate }, 'http');
+  debugLog(`[Hook] SessionStart → agent: ${sessionId.slice(0, 8)} (${displayName}) ${isTeammate ? '[Team]' : ''}`);
 
-  // 신규 세션: WMI로 미등록 claude PID 중 가장 최신 것을 할당
-  const { execFile } = require('child_process');
+  if (pid > 0) {
+    sessionPids.set(sessionId, pid);
+    return;
+  }
   const psCmd = `Get-CimInstance Win32_Process -Filter "Name='node.exe'" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like '*claude*cli.js*' } | Select-Object -ExpandProperty ProcessId`;
   execFile('powershell.exe', ['-NoProfile', '-Command', psCmd], { timeout: 6000 }, (err, stdout) => {
     if (err || !stdout) return;
@@ -526,10 +529,12 @@ app.whenReady().then(() => {
   // 3. 앱 재시작 시 기존 활성 세션 복구 시작
   recoverExistingSessions();
 
-  // 4. 테스트용 서브 에이전트 (개발 중 상시 확인용)
+  // 4. 테스트용 에이전트 (Main, Sub, Team 골고루)
   const testSubagents = [
-    { sessionId: 'test-backend', projectPath: 'E:/test/backend', displayName: 'Backend Helper', state: 'Working', isSubagent: true },
-    { sessionId: 'test-qa', projectPath: 'E:/test/qa', displayName: 'QA Bot', state: 'Done', isSubagent: true }
+    { sessionId: 'test-main-1', projectPath: 'E:/projects/core-engine', displayName: 'Main Service', state: 'Working', isSubagent: false, isTeammate: false },
+    { sessionId: 'test-sub-1', projectPath: 'E:/projects/core-engine', displayName: 'Refactor Helper', state: 'Working', isSubagent: true, isTeammate: false },
+    { sessionId: 'test-team-1', projectPath: 'E:/projects/web-ui', displayName: 'UI Architect', state: 'Waiting', isSubagent: false, isTeammate: true },
+    { sessionId: 'test-team-2', projectPath: 'E:/projects/web-ui', displayName: 'CSS Specialist', state: 'Working', isSubagent: false, isTeammate: true }
   ];
   testSubagents.forEach(agent => agentManager.updateAgent(agent, 'test'));
 
