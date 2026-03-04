@@ -207,7 +207,7 @@ function startHookServer() {
 
         switch (event) {
           case 'SessionStart':
-            handleSessionStart(sessionId, data.cwd || '');
+            handleSessionStart(sessionId, data.cwd || '', data._pid || 0);
             break;
 
           case 'SessionEnd':
@@ -364,66 +364,63 @@ function recoverExistingSessions() {
 }
 
 // =====================================================
-// 생사 확인: claude 프로세스 수 vs 에이전트 수 비교
-// 죽은 에이전트 감지 및 제거 (15초 간격)
+// 생사 확인: sessionId → pid 매핑, process.kill(pid, 0)으로 직접 확인
 // =====================================================
-function startLivenessChecker() {
-  const { execFile } = require('child_process');
-  const INTERVAL = 15000;
-  const GRACE_MS = 20000; // 등록 후 20초는 제외
-  const MAX_MISS = 2;     // 2회 연속 초과 → DEAD
-  const missCount = new Map();
+const sessionPids = new Map(); // sessionId → pid
 
-  const psCmd = `Get-CimInstance Win32_Process -Filter "Name='node.exe'" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like '*claude*cli.js*' } | Measure-Object | Select-Object -ExpandProperty Count`;
+function startLivenessChecker() {
+  const INTERVAL = 5000;   // 5초마다 확인
+  const GRACE_MS = 15000;  // 등록 훅 15초는 제외
+  const MAX_MISS = 3;      // 3회 연속 실패 → DEAD
+  const missCount = new Map();
 
   setInterval(() => {
     if (!agentManager) return;
-    const agents = agentManager.getAllAgents();
-    if (agents.length === 0) { missCount.clear(); return; }
+    for (const agent of agentManager.getAllAgents()) {
+      const pid = sessionPids.get(agent.id);
 
-    execFile('powershell.exe', ['-NoProfile', '-Command', psCmd], { timeout: 8000 }, (err, stdout) => {
-      if (err) return;
-      const liveCount = parseInt(stdout.trim(), 10) || 0;
-
-      const checkable = agents.filter(a =>
-        !a.firstSeen || Date.now() - a.firstSeen >= GRACE_MS
-      );
-      if (checkable.length === 0) return;
-
-      if (liveCount >= checkable.length) {
-        for (const a of checkable) missCount.delete(a.id);
-        return;
+      // PID 없음 (recover 등록 등): Grace 안이면 스킵
+      if (!pid) {
+        if (agent.firstSeen && Date.now() - agent.firstSeen < GRACE_MS) continue;
+        // PID 없는 에이전트는 일단 skip (훅으로 주시면 자동 등록됨)
+        continue;
       }
 
-      // 초과분 — lastActivity 오름차순(오래된 것 먼저 suspect)
-      const excess = checkable.length - liveCount;
-      const sorted = [...checkable].sort((a, b) =>
-        (a.lastActivity || 0) - (b.lastActivity || 0)
-      );
-      for (const a of sorted.slice(excess)) missCount.delete(a.id);
-      for (const a of sorted.slice(0, excess)) {
-        const n = (missCount.get(a.id) || 0) + 1;
-        missCount.set(a.id, n);
+      // Grace 기간 제외
+      if (agent.firstSeen && Date.now() - agent.firstSeen < GRACE_MS) {
+        missCount.delete(agent.id);
+        continue;
+      }
+
+      let alive = false;
+      try { process.kill(pid, 0); alive = true; } catch (e) { }
+
+      if (alive) {
+        missCount.delete(agent.id);
+      } else {
+        const n = (missCount.get(agent.id) || 0) + 1;
+        missCount.set(agent.id, n);
         if (n < MAX_MISS) {
-          debugLog(`[Live] ${a.id.slice(0, 8)} suspect ${n}/${MAX_MISS}`);
+          debugLog(`[Live] ${agent.id.slice(0, 8)} pid=${pid} miss ${n}/${MAX_MISS}`);
         } else {
-          debugLog(`[Live] ${a.id.slice(0, 8)} DEAD — removing`);
-          missCount.delete(a.id);
-          agentManager.removeAgent(a.id);
+          debugLog(`[Live] ${agent.id.slice(0, 8)} pid=${pid} DEAD → removing`);
+          missCount.delete(agent.id);
+          sessionPids.delete(agent.id);
+          agentManager.removeAgent(agent.id);
         }
       }
-    });
+    }
   }, INTERVAL);
 }
 
 
-function handleSessionStart(sessionId, cwd) {
+function handleSessionStart(sessionId, cwd, pid) {
   if (!agentManager) {
-    // agentManager가 아직 준비 안 됐으면 대기열에 보관
-    pendingSessionStarts.push({ sessionId, cwd, ts: Date.now() });
-    debugLog(`[Hook] SessionStart queued (agentManager not ready): ${sessionId.slice(0, 8)}`);
+    pendingSessionStarts.push({ sessionId, cwd, pid, ts: Date.now() });
+    debugLog(`[Hook] SessionStart queued: ${sessionId.slice(0, 8)}`);
     return;
   }
+  if (pid) sessionPids.set(sessionId, pid);
   const displayName = cwd ? require('path').basename(cwd) : 'Agent';
   agentManager.updateAgent({
     sessionId,
@@ -432,11 +429,12 @@ function handleSessionStart(sessionId, cwd) {
     state: 'Waiting',
     jsonlPath: null
   }, 'http');
-  debugLog(`[Hook] SessionStart → agent registered: ${sessionId.slice(0, 8)} (${displayName})`);
+  debugLog(`[Hook] SessionStart → agent: ${sessionId.slice(0, 8)} pid=${pid} (${displayName})`);
 }
 
 function handleSessionEnd(sessionId) {
-  firstPreToolUseDone.delete(sessionId); // 플래그 정리
+  sessionPids.delete(sessionId);           // PID 제거
+  firstPreToolUseDone.delete(sessionId);   // 플래그 정리
   if (!agentManager) return;
   const agent = agentManager.getAgent(sessionId);
   if (agent) {
@@ -475,8 +473,8 @@ app.whenReady().then(() => {
 
     // agentManager 준비 전에 도착한 SessionStart 처리
     while (pendingSessionStarts.length > 0) {
-      const { sessionId, cwd } = pendingSessionStarts.shift();
-      handleSessionStart(sessionId, cwd);
+      const { sessionId, cwd, pid } = pendingSessionStarts.shift();
+      handleSessionStart(sessionId, cwd, pid);
     }
 
     // 에이전트 이벤트 → renderer IPC 전달 + 동적 리사이징
