@@ -380,19 +380,21 @@ html {
 .agent-timer {
   font-family: var(--font-body);
   font-size: 11px;
-  color: #666;
+  color: #fff;
   margin-top: 2px;
-  font-weight: 600;
-  text-shadow: none;
+  font-weight: 700;
+  text-shadow:
+    -1px -1px 0 #000,
+     1px -1px 0 #000,
+    -1px  1px 0 #000,
+     1px  1px 0 #000,
+     0   -1px 0 #000,
+     0    1px 0 #000,
+    -1px  0   0 #000,
+     1px  0   0 #000;
   visibility: hidden;
   min-height: 14px;
 }
-
-/* 상태별 타이머 색상 */
-.agent-card[data-state="working"] .agent-timer { color: #c2410c; }
-.agent-card[data-state="done"] .agent-timer { color: #15803d; }
-.agent-card[data-state="thinking"] .agent-timer { color: #6d28d9; }
-.agent-card[data-state="help"] .agent-timer { color: #b91c1c; }
 
 /* ═══ 통합 상태 색상 (3개 뷰 공통) ═══
    working:  #f97316  (orange)
