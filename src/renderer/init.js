@@ -40,7 +40,6 @@ async function init() {
   // Dashboard button
   const dashboardBtn = createWebDashboardButton();
   document.body.appendChild(dashboardBtn);
-  console.log('[Renderer] Mission Control button added');
 
   // Register event listeners
   window.electronAPI.onAgentAdded(addAgent);
@@ -56,7 +55,6 @@ async function init() {
   try {
     const agents = await window.electronAPI.getAllAgents();
     window.lastAgents = [...agents];
-    console.log(`[Renderer] Loaded ${agents.length} existing agents`);
     for (const agent of agents) {
       addAgent(agent);
     }
@@ -66,7 +64,6 @@ async function init() {
   }
 
   window.electronAPI.rendererReady();
-  console.log('[Renderer] Initialized');
 }
 
 // --- Visibility handling ---

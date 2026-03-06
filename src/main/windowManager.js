@@ -6,7 +6,7 @@
 const { BrowserWindow, screen } = require('electron');
 const path = require('path');
 
-function createWindowManager({ agentManager, sessionScanner, debugLog, adaptAgentToDashboard, errorHandler, getWindowSizeForAgents }) {
+function createWindowManager({ agentManager, sessionScanner, heatmapScanner, debugLog, adaptAgentToDashboard, errorHandler, getWindowSizeForAgents }) {
   let mainWindow = null;
   let dashboardWindow = null;
   let dashboardAuthToken = null;
@@ -21,7 +21,7 @@ function createWindowManager({ agentManager, sessionScanner, debugLog, adaptAgen
       mainWindow.setBounds({ ...bounds, width: width });
     }
     const info = Array.isArray(agentsOrCount) ? agentsOrCount.length : agentsOrCount;
-    console.log(`[Main] Window width → ${width} (${info} agents based layout)`);
+    debugLog(`[Main] Window width → ${width} (${info} agents based layout)`);
   }
 
   function createWindow() {
@@ -39,7 +39,7 @@ function createWindowManager({ agentManager, sessionScanner, debugLog, adaptAgen
       backgroundColor: '#00000000',
       alwaysOnTop: true,
       skipTaskbar: true,
-      resizable: true,
+      resizable: false,
       movable: true,
       focusable: false,
       show: false,
@@ -57,7 +57,10 @@ function createWindowManager({ agentManager, sessionScanner, debugLog, adaptAgen
     mainWindow.once('ready-to-show', () => {
       mainWindow.show();
       mainWindow.setAlwaysOnTop(true, 'screen-saver');
-      mainWindow.webContents.openDevTools({ mode: 'detach' });
+      // DevTools: --dev 인자 또는 npm run dev 일 때만
+      if (process.argv.includes('--dev')) {
+        mainWindow.webContents.openDevTools({ mode: 'detach' });
+      }
     });
 
     startKeepAlive();
@@ -69,7 +72,7 @@ function createWindowManager({ agentManager, sessionScanner, debugLog, adaptAgen
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.setAlwaysOnTop(true, 'screen-saver');
       }
-    }, 250);
+    }, 5000);
     debugLog('[Main] Keep-alive interval started');
   }
 
@@ -91,11 +94,17 @@ function createWindowManager({ agentManager, sessionScanner, debugLog, adaptAgen
     try {
       const { width, height } = screen.getPrimaryDisplay().workAreaSize;
 
+      // 맵(864) + 사이드바(280) + 패딩(56) = 1200, 높이: 맵(800) + 헤더(60) + 패딩(40) = 900
+      const minDashW = 1200;
+      const minDashH = 900;
+      const dashW = Math.min(Math.max(minDashW, Math.floor(width * 0.7)), width - 40);
+      const dashH = Math.min(Math.max(minDashH, Math.floor(height * 0.8)), height - 40);
+
       dashboardWindow = new BrowserWindow({
-        width: Math.floor(width * 0.8),
-        height: Math.floor(height * 0.8),
-        x: Math.floor(width * 0.1),
-        y: Math.floor(height * 0.1),
+        width: dashW,
+        height: dashH,
+        x: Math.floor((width - dashW) / 2),
+        y: Math.floor((height - dashH) / 2),
         title: '픽셀 에이전트 데스크',
         backgroundColor: '#ffffff',
         webPreferences: {
@@ -170,12 +179,13 @@ function createWindowManager({ agentManager, sessionScanner, debugLog, adaptAgen
       if (sessionScanner) {
         serverModule.setSessionScanner(sessionScanner);
       }
+      if (heatmapScanner) {
+        serverModule.setHeatmapScanner(heatmapScanner);
+      }
 
       dashboardServer = serverModule.startServer();
 
-      debugLog('[Dashboard] ✅ 서버 시작 완료 (port 3000)');
-      console.log('\n✅ 대시보드 서버가 시작되었습니다.');
-      console.log('📊 http://localhost:3000 에서 접속 가능합니다.\n');
+      debugLog('[Dashboard] 서버 시작 완료 (port 3000)');
     } catch (error) {
       debugLog(`[Dashboard] ❌ 시작 실패: ${error.message}`);
     }

@@ -1,4 +1,11 @@
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Press+Start+2P&display=swap');
+
+:root {
+  --font-display: 'Press Start 2P', monospace;
+  --font-body: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  --font-ui: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+}
 
 * {
   margin: 0;
@@ -76,14 +83,15 @@ html {
   /* 아바타 영역은 클릭 감지 */
 }
 
-/* 캐릭터 스프라이트 */
+/* 캐릭터 스프라이트 (싱글 에이전트: 1.5배 확대 히어로 모드) */
 .character {
-  width: 48px;
-  height: 64px;
+  width: 72px;
+  height: 96px;
   display: block;
   overflow: hidden;
   background-image: url('./public/characters/avatar_0.webp');
-  background-size: 432px 256px;
+  background-size: 648px 384px;
+  /* 1.5배: 432*1.5=648, 256*1.5=384 */
   background-repeat: no-repeat;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
@@ -96,17 +104,18 @@ html {
 /* 말풍선 (싱글) */
 .speech-bubble {
   position: absolute;
-  bottom: calc(50% + 40px);
+  bottom: calc(50% + 56px);
   left: 50%;
   transform: translateX(-50%);
   background: rgba(255, 255, 255, 0.97);
   border: 2px solid #333;
   border-radius: 4px;
   padding: 4px 10px;
-  font-family: 'Pretendard Variable', sans-serif;
+  font-family: var(--font-ui);
   font-weight: 700;
   font-size: 12px;
   color: #333;
+  min-width: 120px;
   max-width: 180px;
   text-align: center;
   white-space: nowrap;
@@ -125,7 +134,7 @@ html {
   height: 0;
   border-left: 6px solid transparent;
   border-right: 6px solid transparent;
-  border-top: 8px solid #333;
+  border-top: 7px solid #333;
 }
 
 .speech-bubble::after {
@@ -138,7 +147,7 @@ html {
   height: 0;
   border-left: 6px solid transparent;
   border-right: 6px solid transparent;
-  border-top: 8px solid rgba(255, 255, 255, 0.97);
+  border-top: 7px solid rgba(255, 255, 255, 0.97);
 }
 
 /* ════════════════════════════════════════
@@ -182,21 +191,21 @@ html {
    ════════════════════════════════════════ */
 .focus-terminal-btn {
   position: absolute;
-  top: 2px;
-  right: 2px;
-  width: 18px;
-  height: 18px;
+  bottom: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
   border: none;
-  border-radius: 3px;
-  background: rgba(0, 0, 0, 0.35);
-  color: #4fc3f7;
-  font-family: 'Consolas', 'Courier New', monospace;
-  font-size: 11px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.5);
+  color: #81d4fa;
+  font-family: var(--font-body);
+  font-size: 14px;
   font-weight: 900;
-  line-height: 18px;
+  line-height: 24px;
   text-align: center;
   cursor: pointer;
-  opacity: 0.5;
+  opacity: 0.7;
   transition: opacity 0.15s, background 0.15s, transform 0.1s;
   z-index: 10;
   -webkit-app-region: no-drag;
@@ -206,7 +215,7 @@ html {
 
 .focus-terminal-btn:hover {
   opacity: 1;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.75);
   transform: scale(1.1);
 }
 
@@ -215,9 +224,17 @@ html {
 }
 
 .focus-terminal-btn.clicked {
-  background: #4fc3f7;
+  background: #81d4fa;
   color: #000;
   opacity: 1;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-3px); }
+  40% { transform: translateX(3px); }
+  60% { transform: translateX(-2px); }
+  80% { transform: translateX(2px); }
 }
 
 /* ════════════════════════════════════════
@@ -225,7 +242,7 @@ html {
    ════════════════════════════════════════ */
 .type-tag {
   display: inline-block;
-  font-family: 'Pretendard Variable', sans-serif;
+  font-family: var(--font-ui);
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
@@ -294,12 +311,12 @@ html {
 
 /* 상태 말풍선 (컬러 테두리) */
 .agent-bubble {
-  font-family: 'Pretendard Variable', Pretendard, sans-serif;
+  font-family: var(--font-ui);
   font-size: 11px;
   font-weight: 700;
   background: rgba(255, 255, 255, 0.97);
-  border: 2px solid #9e9e9e;
-  /* 기본: gray (Idle) */
+  border: 2px solid #94a3b8;
+  /* 기본: slate (Waiting) — 통합 팔레트 */
   border-radius: 6px;
   padding: 3px 8px;
   text-align: center;
@@ -309,84 +326,100 @@ html {
   word-break: keep-all;
   /* 단어 단위 끊기 */
   line-height: 1.3;
-  min-width: 60px;
+  width: 76px;
+  min-width: 76px;
+  max-width: 76px;
+  overflow: hidden;
+  text-overflow: ellipsis;
   position: relative;
   -webkit-app-region: drag;
   /* 이제 말풍선을 잡고 창을 옮길 수 있습니다 */
   pointer-events: auto;
   /* 드래그 및 클릭 감지 필수 */
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  /* 상태 전환 시 부드러운 색상 변화 */
 }
 
 /* 타이머 표시용 요소 */
 .agent-timer {
+  font-family: var(--font-body);
   font-size: 11px;
   color: #666;
   margin-top: 2px;
   font-weight: 600;
 }
 
+/* ═══ 통합 상태 색상 (3개 뷰 공통) ═══
+   working:  #f97316  (orange)
+   thinking: #8b5cf6  (violet)
+   waiting:  #94a3b8  (slate)
+   done:     #22c55e  (green)
+   help:     #ef4444  (red)
+   error:    #ef4444  (red)
+   offline:  #475569  (slate-600)
+*/
+
 /* 상태별 색상 */
 .agent-bubble.is-working,
 .agent-card.state-working .agent-bubble {
-  border-color: #ff9800;
+  border-color: #f97316;
 }
 
 .agent-bubble.is-waiting,
 .agent-card.state-waiting .agent-bubble {
-  border-color: #9e9e9e;
+  border-color: #94a3b8;
 }
 
 .agent-bubble.is-complete,
 .agent-card.state-complete .agent-bubble {
-  border-color: #4caf50;
+  border-color: #22c55e;
 }
 
 .agent-bubble.is-alert,
 .agent-card.state-alert .agent-bubble {
-  border-color: #f44336;
-  color: #b71c1c;
-  /* 더 진한 빨간색으로 대비비 개선 */
+  border-color: #ef4444;
+  color: #b91c1c;
 }
 
 .agent-bubble.is-offline,
 .agent-card.state-offline .agent-bubble {
-  border-color: #616161;
-  color: #9e9e9e;
+  border-color: #475569;
+  color: #94a3b8;
   opacity: 0.8;
 }
 
-/* 말풍선 꼬리 */
+/* 말풍선 꼬리 (6px 반폭, 7px 높이 — 오피스 뷰와 통일) */
 .agent-bubble::after {
   content: '';
   position: absolute;
-  bottom: -6px;
+  bottom: -7px;
   left: 50%;
   transform: translateX(-50%);
   width: 0;
   height: 0;
-  border-left: 5px solid transparent;
-  border-right: 5px solid transparent;
-  border-top: 6px solid #9e9e9e;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 7px solid #94a3b8;
 }
 
 .agent-bubble.is-working::after {
-  border-top-color: #ff9800;
+  border-top-color: #f97316;
 }
 
 .agent-bubble.is-waiting::after {
-  border-top-color: #9e9e9e;
+  border-top-color: #94a3b8;
 }
 
 .agent-bubble.is-complete::after {
-  border-top-color: #4caf50;
+  border-top-color: #22c55e;
 }
 
 .agent-bubble.is-alert::after {
-  border-top-color: #f44336;
+  border-top-color: #ef4444;
 }
 
 .agent-bubble.is-offline::after {
-  border-top-color: #616161;
+  border-top-color: #475569;
 }
 
 
@@ -412,7 +445,7 @@ html {
 
 /* 이름 뱃지 (캐릭터 아래쪽) */
 .agent-name {
-  font-family: 'Pretendard Variable', Pretendard, sans-serif;
+  font-family: var(--font-ui);
   font-size: 11px;
   font-weight: 700;
   color: #fff;
@@ -446,14 +479,14 @@ html {
   border-top-color: #bdbdbd;
 }
 
-/* Thinking (blue, pulsing + dots animation) */
+/* Thinking (violet, pulsing + dots animation) */
 .agent-card[data-state="thinking"] .agent-bubble {
-  border-color: #2196f3;
-  animation: bubble-pulse-blue 1s ease-in-out infinite;
+  border-color: #8b5cf6;
+  animation: bubble-pulse-violet 1s ease-in-out infinite;
 }
 
 .agent-card[data-state="thinking"] .agent-bubble::after {
-  border-top-color: #2196f3;
+  border-top-color: #8b5cf6;
 }
 
 /* Thinking dots (생각 중 ... 깜빡임) */
@@ -461,7 +494,7 @@ html {
   animation: dot-blink 1.4s infinite;
   font-size: 14px;
   letter-spacing: 2px;
-  color: #2196f3;
+  color: #8b5cf6;
 }
 
 .thinking-dots span:nth-child(2) {
@@ -487,31 +520,31 @@ html {
 
 /* Working (orange, faster pulse) */
 .agent-card[data-state="working"] .agent-bubble {
-  border-color: #ff9800;
+  border-color: #f97316;
   animation: bubble-pulse-orange 0.6s ease-in-out infinite;
 }
 
 .agent-card[data-state="working"] .agent-bubble::after {
-  border-top-color: #ff9800;
+  border-top-color: #f97316;
 }
 
 /* Reporting (green) */
 .agent-card[data-state="reporting"] .agent-bubble {
-  border-color: #43a047;
+  border-color: #22c55e;
 }
 
 .agent-card[data-state="reporting"] .agent-bubble::after {
-  border-top-color: #43a047;
+  border-top-color: #22c55e;
 }
 
-/* Offline (red, dimmed character) */
+/* Offline (slate, dimmed character) */
 .agent-card[data-state="offline"] .agent-bubble {
-  border-color: #ef5350;
-  color: #999;
+  border-color: #475569;
+  color: #94a3b8;
 }
 
 .agent-card[data-state="offline"] .agent-bubble::after {
-  border-top-color: #ef5350;
+  border-top-color: #475569;
 }
 
 .agent-card[data-state="offline"] .agent-character {
@@ -519,15 +552,15 @@ html {
 }
 
 /* Pulse animations */
-@keyframes bubble-pulse-blue {
+@keyframes bubble-pulse-violet {
 
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(33, 150, 243, 0.5);
+    box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.5);
   }
 
   50% {
-    box-shadow: 0 0 0 4px rgba(33, 150, 243, 0);
+    box-shadow: 0 0 0 4px rgba(139, 92, 246, 0);
   }
 }
 
@@ -535,11 +568,11 @@ html {
 
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(255, 152, 0, 0.6);
+    box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.6);
   }
 
   50% {
-    box-shadow: 0 0 0 4px rgba(255, 152, 0, 0);
+    box-shadow: 0 0 0 4px rgba(249, 115, 22, 0);
   }
 }
 
@@ -569,7 +602,6 @@ html {
 .agent-card.is-subagent .agent-character {
   transform: scale(0.8);
   transform-origin: bottom center;
-  filter: hue-rotate(200deg) saturate(0.9);
 }
 
 .agent-card.is-subagent .agent-bubble {
@@ -599,7 +631,7 @@ html {
   left: -4px;
   background: #9c27b0;
   color: #fff;
-  font-family: 'Pretendard Variable', Pretendard, sans-serif;
+  font-family: var(--font-ui);
   font-size: 10px;
   font-weight: 800;
   padding: 2px 5px;
@@ -614,8 +646,8 @@ html {
 ════════════════════════════════════════ */
 /* 파티(메인+서브/팀) 그룹단위 래퍼 (배경용 격자 박스) */
 .agent-party-bg {
-  background-color: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: rgba(153, 111, 184, 0.08);
+  border: 1px solid rgba(153, 111, 184, 0.2);
   border-bottom: none;
   /* 하단 선 생김 방지 */
   border-radius: 12px;
@@ -642,7 +674,7 @@ html {
   border-radius: 20px;
   /* 더 둥글게 */
   padding: 5px 15px;
-  font-family: 'Pretendard Variable', sans-serif;
+  font-family: var(--font-ui);
   font-size: 10px;
   font-weight: 600;
   cursor: pointer;
@@ -681,7 +713,7 @@ html {
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 20px;
   padding: 5px 15px;
-  font-family: 'Pretendard Variable', sans-serif;
+  font-family: var(--font-ui);
   font-size: 10px;
   font-weight: 600;
   cursor: pointer;
@@ -725,7 +757,7 @@ html {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   z-index: 100000;
   animation: slideIn 0.3s ease-out;
-  font-family: 'Pretendard Variable', sans-serif;
+  font-family: var(--font-ui);
   pointer-events: auto;
   overflow: hidden;
 }
@@ -843,7 +875,7 @@ html {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
-  font-family: 'Pretendard Variable', sans-serif;
+  font-family: var(--font-ui);
   background: #2196f3;
   color: white;
 }
@@ -962,14 +994,14 @@ html {
 
 .menu-label {
   flex: 1;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: var(--font-ui);
   font-weight: 500;
 }
 
 .menu-shortcut {
   font-size: 12px;
   color: #888;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: var(--font-ui);
   background: rgba(255, 255, 255, 0.08);
   padding: 2px 6px;
   border-radius: 4px;
@@ -998,4 +1030,38 @@ html {
   outline: 2px solid #6200ea;
   outline-offset: 2px;
   border-radius: 8px;
+}
+
+/* ════════════════════════════════════════
+   Agent Enter/Exit Animations
+════════════════════════════════════════ */
+.agent-card {
+  animation: agent-enter 0.3s ease-out;
+}
+
+@keyframes agent-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.agent-card.removing {
+  animation: agent-exit 0.25s ease-in forwards;
+  pointer-events: none;
+}
+
+@keyframes agent-exit {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.8) translateY(8px);
+  }
 }

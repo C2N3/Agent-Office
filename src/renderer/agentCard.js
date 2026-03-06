@@ -26,8 +26,9 @@ function updateAgentState(agentId, container, agentOrState) {
   const agentDisplayName = container.querySelector('.agent-name')?.textContent || 'Agent';
   container.setAttribute('aria-label', `${agentDisplayName} - ${config.label}`);
 
-  // Update container class
+  // Update container class + data-state for CSS selector targeting
   container.className = `agent-card ${config.class}`;
+  container.setAttribute('data-state', state ? state.toLowerCase() : 'waiting');
   if (isAggregated) container.classList.add('is-aggregated');
 
   if (isAgentObj) {
@@ -55,6 +56,9 @@ function updateAgentState(agentId, container, agentOrState) {
     agentStates.set(agentId, agentState);
   }
 
+  // Timer element (createAgentCard에서 사전 생성됨)
+  const timerEl = container.querySelector('.agent-timer');
+
   // Timer logic
   if (config.anim === 'working') {
     if (!agentState.startTime) {
@@ -64,16 +68,16 @@ function updateAgentState(agentId, container, agentOrState) {
       agentState.timerInterval = setInterval(() => {
         const elapsed = Date.now() - agentState.startTime;
         agentState.lastFormattedTime = window.electronAPI.formatTime(elapsed);
-        if (bubble) {
-          bubble.textContent = `${config.label}\n${agentState.lastFormattedTime}`;
-        }
+        if (timerEl) timerEl.textContent = agentState.lastFormattedTime;
       }, 1000);
     }
 
     const elapsed = Date.now() - agentState.startTime;
     agentState.lastFormattedTime = window.electronAPI.formatTime(elapsed);
-    if (bubble) {
-      bubble.textContent = `${config.label}\n${agentState.lastFormattedTime}`;
+    if (bubble) bubble.textContent = config.label;
+    if (timerEl) {
+      timerEl.textContent = agentState.lastFormattedTime;
+      timerEl.style.display = '';
     }
 
   } else if (config.anim === 'complete') {
@@ -81,9 +85,10 @@ function updateAgentState(agentId, container, agentOrState) {
       clearInterval(agentState.timerInterval);
       agentState.timerInterval = null;
     }
-    if (bubble) {
-      const finalTime = agentState.lastFormattedTime || '00:00';
-      bubble.textContent = `${config.label}\n${finalTime}`;
+    if (bubble) bubble.textContent = config.label;
+    if (timerEl) {
+      timerEl.textContent = agentState.lastFormattedTime || '00:00';
+      timerEl.style.display = '';
     }
 
   } else {
@@ -93,13 +98,18 @@ function updateAgentState(agentId, container, agentOrState) {
     }
     agentState.startTime = null;
     agentState.lastFormattedTime = '';
+    if (timerEl) timerEl.style.display = 'none';
     if (bubble) {
-      bubble.textContent = config.label;
+      // Thinking 상태: animated dots 표시
+      if (state === 'Thinking' && !isAggregated) {
+        bubble.innerHTML = '<span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span>';
+      } else {
+        bubble.textContent = config.label;
+      }
     }
   }
 
   agentStates.set(agentId, agentState);
-  console.log(`[Renderer] ${agentId.slice(0, 8)}: ${state} -> ${config.label}`);
 }
 
 function createAgentCard(agent) {
@@ -127,10 +137,14 @@ function createAgentCard(agent) {
   const character = document.createElement('div');
   character.className = 'agent-character';
 
-  // 에이전트별 결정적 아바타 배정 (오피스 뷰와 동기화)
+  // 에이전트별 아바타 배정 — 서버 할당 avatarIndex 우선, 폴백: 해시 계산
   let assignedAvatar = agentAvatars.get(agent.id);
   if (!assignedAvatar) {
-    assignedAvatar = avatarFromAgentId(agent.id);
+    if (agent.avatarIndex !== undefined && agent.avatarIndex !== null && AVATAR_FILES[agent.avatarIndex]) {
+      assignedAvatar = AVATAR_FILES[agent.avatarIndex];
+    } else {
+      assignedAvatar = avatarFromAgentId(agent.id);
+    }
     agentAvatars.set(agent.id, assignedAvatar);
   }
 
@@ -168,24 +182,40 @@ function createAgentCard(agent) {
     nameBadge.style.display = 'none';
   }
 
+  // Timer element (사전 생성 — updateAgentState에서 동적 DOM 삽입 방지)
+  const timerEl = document.createElement('div');
+  timerEl.className = 'agent-timer';
+  timerEl.style.display = 'none';
+
   // Assemble card
   card.appendChild(bubble);
+  card.appendChild(timerEl);
   card.appendChild(character);
   card.appendChild(nameBadge);
 
   // 터미널 포커스 버튼
   const focusBtn = document.createElement('button');
   focusBtn.className = 'focus-terminal-btn';
-  focusBtn.textContent = '>';
-  focusBtn.title = 'Focus terminal';
+  focusBtn.textContent = '\u2318';
+  focusBtn.title = '터미널 포커스';
   focusBtn.setAttribute('aria-label', `Focus terminal for ${agent.displayName || 'Agent'}`);
-  focusBtn.onclick = (e) => {
+  focusBtn.onclick = async (e) => {
     e.stopPropagation();
     if (window.electronAPI && window.electronAPI.focusTerminal) {
-      window.electronAPI.focusTerminal(agent.id);
+      const result = await window.electronAPI.focusTerminal(agent.id);
+      if (result && result.success) {
+        focusBtn.classList.add('clicked');
+        setTimeout(() => focusBtn.classList.remove('clicked'), 300);
+      } else {
+        // 실패 시 shake 애니메이션
+        focusBtn.style.animation = 'shake 0.3s ease';
+        focusBtn.title = 'PID를 찾을 수 없습니다';
+        setTimeout(() => {
+          focusBtn.style.animation = '';
+          focusBtn.title = '터미널 포커스';
+        }, 1500);
+      }
     }
-    focusBtn.classList.add('clicked');
-    setTimeout(() => focusBtn.classList.remove('clicked'), 300);
   };
   card.appendChild(focusBtn);
 

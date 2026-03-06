@@ -47,14 +47,10 @@ contextBridge.exposeInMainWorld('dashboardAPI', {
 
   // Send commands to Pixel Agent Desk
   focusAgent: (agentId) => {
-    console.log('[DashboardAPI] Focusing agent:', agentId);
     ipcRenderer.send('dashboard-focus-agent', agentId);
   },
 
   dismissAgent: (agentId) => {
-    console.log('[DashboardAPI] Dismissing agent:', agentId);
     ipcRenderer.send('dashboard-dismiss-agent', agentId);
   }
 });
-
-console.log('[DashboardPreload] Initialized');

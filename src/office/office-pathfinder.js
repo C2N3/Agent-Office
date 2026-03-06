@@ -38,7 +38,6 @@ var officePathfinder = {
         this.grid[gy][gx] = data[idx + 3] < 128; // transparent = walkable
       }
     }
-    console.log('[OfficePathfinder] Grid: ' + this.gridW + 'x' + this.gridH);
   },
 
   isWalkable(gx, gy) {

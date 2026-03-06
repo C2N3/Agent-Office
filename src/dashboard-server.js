@@ -27,6 +27,7 @@ const MIME_TYPES = {
 // Global references
 let agentManager = null;
 let sessionScanner = null;  // Task 3B-2
+let heatmapScanner = null;
 let missionControlWindow = null;
 const wsClients = new Set();
 const sseClients = new Set();  // Task 3B-1: SSE 클라이언트
@@ -61,6 +62,13 @@ function setAgentManager(manager) {
  */
 function setSessionScanner(scanner) {
   sessionScanner = scanner;
+}
+
+/**
+ * Set the heatmap scanner reference
+ */
+function setHeatmapScanner(scanner) {
+  heatmapScanner = scanner;
 }
 
 /**
@@ -110,16 +118,8 @@ function calculateStats() {
       stats.active++;
     } else if (agent.state === 'Done') {
       stats.completed++;
-      stats.done++;
-    } else if (agent.state === 'Waiting') {
-      stats.waiting++;
     } else if (agent.state === 'Help') {
-      stats.help++;
       stats.active++;
-    } else if (agent.state === 'Error') {
-      stats.error++;
-    } else if (agent.state === 'Offline') {
-      stats.offline++;
     }
 
     // Project grouping
@@ -201,8 +201,6 @@ function handleRequest(req, res) {
   const url = new URL(req.url, `http://${req.headers.host}`);
   const pathname = url.pathname;
 
-  console.log(`[Dashboard Server] ${req.method} ${pathname}`);
-
   // API routes
   if (pathname.startsWith('/api/')) {
     handleAPIRequest(req, res, url);
@@ -235,12 +233,21 @@ function handleRequest(req, res) {
 
   // Static file serving: /public/* and /src/office/*
   if (pathname.startsWith('/public/') || pathname.startsWith('/src/office/')) {
-    const safePath = pathname.replace(/\.\./g, '');
-    const filePath = path.join(__dirname, '..', safePath);
-    const ext = path.extname(filePath);
+    const baseDir = path.resolve(__dirname, '..');
+    const decoded = decodeURIComponent(pathname);
+    const resolved = path.resolve(baseDir, decoded.slice(1)); // pathname 앞 '/' 제거
+
+    // 경로 트래버설 방지: resolve 후 baseDir 밖이면 차단
+    if (!resolved.startsWith(baseDir + path.sep) && resolved !== baseDir) {
+      res.writeHead(403, { 'Content-Type': 'text/plain' });
+      res.end('Forbidden');
+      return;
+    }
+
+    const ext = path.extname(resolved);
     const mime = MIME_TYPES[ext] || 'application/octet-stream';
 
-    fs.readFile(filePath, (err, data) => {
+    fs.readFile(resolved, (err, data) => {
       if (err) {
         res.writeHead(404, { 'Content-Type': 'text/plain' });
         res.end('Not Found');
@@ -360,6 +367,25 @@ function handleAPIRequest(req, res, url) {
     return;
   }
 
+  // ─── GET /api/heatmap ───
+  if (pathname === '/api/heatmap' && req.method === 'GET') {
+    if (!heatmapScanner) {
+      res.writeHead(503, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Heatmap scanner not available' }));
+      return;
+    }
+    const days = parseInt(url.searchParams.get('days') || '365', 10);
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(endDate.getDate() - days);
+    const startStr = startDate.toISOString().slice(0, 10);
+    const endStr = endDate.toISOString().slice(0, 10);
+    const range = heatmapScanner.getRange(startStr, endStr);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ days: range, lastScan: heatmapScanner.lastScan }));
+    return;
+  }
+
   // ─── GET /api/health ───
   if (pathname === '/api/health' && req.method === 'GET') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -445,15 +471,12 @@ server.on('upgrade', (req, socket, head) => {
 
     socket.on('close', () => {
       wsClients.delete(client);
-      console.log('[Dashboard] WebSocket client disconnected');
     });
 
     socket.on('error', (err) => {
       console.error('[Dashboard] WebSocket error:', err.message);
       wsClients.delete(client);
     });
-
-    console.log('[Dashboard] WebSocket client connected');
   } else {
     socket.destroy();
   }
@@ -464,9 +487,7 @@ server.on('upgrade', (req, socket, head) => {
  */
 function startServer() {
   server.listen(PORT, () => {
-    console.log(`[Dashboard Server] 🚀 Server running at http://localhost:${PORT}`);
-    console.log(`[Dashboard Server] 📊 Serving dashboard.html`);
-    console.log(`[Dashboard Server] 🔌 WebSocket endpoint: ws://localhost:${PORT}/ws`);
+    // Server started silently — debugLog handles startup logging
   });
 
   // 에러 처리
@@ -484,9 +505,6 @@ function startServer() {
 
 // Graceful shutdown
 process.on('SIGINT', () => {
-  console.log('\n[Dashboard Server] 🛑 Server shutting down...');
-
-  // Close all WebSocket connections
   wsClients.forEach(client => {
     try {
       client.close();
@@ -497,7 +515,6 @@ process.on('SIGINT', () => {
   wsClients.clear();
 
   server.close(() => {
-    console.log('[Dashboard Server] ✅ Server closed');
     process.exit(0);
   });
 });
@@ -506,6 +523,7 @@ process.on('SIGINT', () => {
 module.exports = {
   setAgentManager,
   setSessionScanner,
+  setHeatmapScanner,
   setDashboardWindow,
   broadcastUpdate,
   broadcastSSE,
@@ -517,5 +535,4 @@ module.exports = {
 // If this file is run directly (not required), start the server
 if (require.main === module) {
   startServer();
-  console.log('[Dashboard Server] Press Ctrl+C to stop');
 }

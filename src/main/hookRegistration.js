@@ -103,9 +103,7 @@ function registerClaudeHooks(debugLog) {
   }
 
   if (writeClaudeConfig(config, debugLog)) {
-    debugLog('[Hook] ✅ Claude CLI 훅 등록 완료!');
-    console.log('\n✅ Claude CLI 훅이 자동 등록되었습니다.');
-    console.log('이제 Claude Code를 사용하면 자동으로 연결됩니다.\n');
+    debugLog('[Hook] Claude CLI 훅 등록 완료');
     return true;
   }
 

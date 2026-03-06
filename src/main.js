@@ -9,6 +9,7 @@ const fs = require('fs');
 
 const AgentManager = require('./agentManager');
 const SessionScanner = require('./sessionScanner');
+const HeatmapScanner = require('./heatmapScanner');
 const { adaptAgentToDashboard } = require('./dashboardAdapter');
 const errorHandler = require('./errorHandler');
 const { getWindowSizeForAgents } = require('./utils');
@@ -66,20 +67,18 @@ const debugLog = (msg) => {
 // =====================================================
 // 앱 설정
 // =====================================================
-app.disableHardwareAcceleration();
 app.commandLine.appendSwitch('high-dpi-support', '1');
 app.commandLine.appendSwitch('force-device-scale-factor', '1');
 app.commandLine.appendSwitch('disable-logging');
 app.commandLine.appendSwitch('log-level', '3');
 process.env.ELECTRON_DISABLE_LOGGING = '1';
-app.commandLine.appendSwitch('disable-gpu');
-app.commandLine.appendSwitch('disable-software-rasterizer');
 
 // =====================================================
 // 앱 인스턴스
 // =====================================================
 let agentManager = null;
 let sessionScanner = null;
+let heatmapScanner = null;
 let windowManager = null;
 let hookProcessor = null;
 
@@ -97,6 +96,10 @@ app.whenReady().then(() => {
   sessionScanner = new SessionScanner(agentManager, debugLog);
   sessionScanner.start(60_000);
 
+  // 2.5. 히트맵 스캐너 시작
+  heatmapScanner = new HeatmapScanner(debugLog);
+  heatmapScanner.start(300_000);
+
   // 3. 훅 프로세서 생성
   hookProcessor = createHookProcessor({
     agentManager,
@@ -109,6 +112,7 @@ app.whenReady().then(() => {
   windowManager = createWindowManager({
     agentManager,
     sessionScanner,
+    heatmapScanner,
     debugLog,
     adaptAgentToDashboard,
     errorHandler,
@@ -167,7 +171,6 @@ app.whenReady().then(() => {
       const mw = windowManager.mainWindow;
       if (mw && !mw.isDestroyed()) {
         mw.webContents.send('agent-added', agent);
-        windowManager.resizeWindowForAgents(agentManager.getAllAgents());
       }
       const dw = windowManager.dashboardWindow;
       if (dw && !dw.isDestroyed()) {
@@ -181,7 +184,6 @@ app.whenReady().then(() => {
       const mw = windowManager.mainWindow;
       if (mw && !mw.isDestroyed()) {
         mw.webContents.send('agent-updated', agent);
-        windowManager.resizeWindowForAgents(agentManager.getAllAgents());
       }
       const dw = windowManager.dashboardWindow;
       if (dw && !dw.isDestroyed()) {
@@ -195,26 +197,32 @@ app.whenReady().then(() => {
       const mw = windowManager.mainWindow;
       if (mw && !mw.isDestroyed()) {
         mw.webContents.send('agent-removed', data);
-        windowManager.resizeWindowForAgents(agentManager.getAllAgents());
       }
       const dw = windowManager.dashboardWindow;
       if (dw && !dw.isDestroyed()) {
         dw.webContents.send('dashboard-agent-removed', data);
       }
       savePersistedState({ agentManager, sessionPids });
+      // 모든 에이전트가 사라지면 대시보드도 닫기
+      if (agentManager.getAllAgents().length === 0) {
+        windowManager.closeDashboardWindow();
+      }
     });
 
     agentManager.on('agents-cleaned', (data) => {
       const mw = windowManager.mainWindow;
       if (mw && !mw.isDestroyed()) {
         mw.webContents.send('agents-cleaned', data);
-        windowManager.resizeWindowForAgents(agentManager.getAllAgents());
       }
       const dw = windowManager.dashboardWindow;
       if (dw && !dw.isDestroyed()) {
         dw.webContents.send('dashboard-agent-removed', { type: 'batch', ...data });
       }
       savePersistedState({ agentManager, sessionPids });
+      // 모든 에이전트가 사라지면 대시보드도 닫기
+      if (agentManager.getAllAgents().length === 0) {
+        windowManager.closeDashboardWindow();
+      }
     });
 
     // 준비 전에 도착했던 세션 및 복구된 데이터 전송
@@ -247,7 +255,12 @@ app.on('before-quit', () => {
     sessionScanner.stop();
     debugLog('[Main] SessionScanner stopped');
   }
+  if (heatmapScanner) {
+    heatmapScanner.stop();
+    debugLog('[Main] HeatmapScanner stopped');
+  }
   if (windowManager) {
+    windowManager.closeDashboardWindow();
     windowManager.stopDashboardServer();
     windowManager.stopKeepAlive();
   }

@@ -18,8 +18,6 @@ function addAgent(agent) {
   updateAgentState(agent.id, card, agent);
   updateGridLayout();
   requestDynamicResize();
-
-  console.log(`[Renderer] Agent added: ${agent.displayName} (${agent.id.slice(0, 8)})`);
 }
 
 function updateAgent(agent) {
@@ -44,6 +42,9 @@ function removeAgent(data) {
   const card = document.querySelector(`[data-agent-id="${data.id}"]`);
   if (!card) return;
 
+  // 애니메이션 메모리 정리
+  animationManager.stop(data.id);
+
   const state = agentStates.get(data.id);
   if (state) {
     if (state.interval) {
@@ -56,20 +57,19 @@ function removeAgent(data) {
     }
   }
   agentStates.delete(data.id);
+  agentAvatars.delete(data.id);
 
-  console.log(`[Renderer] Cleaned up agent ${data.id.slice(0, 8)} (intervals cleared)`);
-
-  card.remove();
-
-  updateGridLayout();
-  requestDynamicResize();
-
-  console.log(`[Renderer] Agent removed: ${data.displayName} (${data.id.slice(0, 8)})`);
+  // 퇴장 애니메이션 후 DOM 제거
+  card.classList.add('removing');
+  setTimeout(() => {
+    card.remove();
+    updateGridLayout();
+    requestDynamicResize();
+  }, 250);
 }
 
 function cleanupAgents(data) {
   updateGridLayout();
-  console.log(`[Renderer] Cleaned up ${data.count} agents`);
 }
 
 // --- 빈 상태(에이전트 0개) 대기 아바타 ---
@@ -88,7 +88,10 @@ function drawFrameOn(el, frameIndex) {
   if (!el) return;
   const col = frameIndex % SHEET.cols;
   const row = Math.floor(frameIndex / SHEET.cols);
-  el.style.backgroundPosition = `${col * -SHEET.width}px ${row * -SHEET.height}px`;
+  // 싱글 캐릭터는 1.5배 확대 (72x96, bg 648x384)
+  const fw = 72;
+  const fh = 96;
+  el.style.backgroundPosition = `${col * -fw}px ${row * -fh}px`;
 }
 
 function updateGridLayout() {
@@ -199,26 +202,29 @@ function updateGridLayout() {
     col++;
   });
 
-  setTimeout(() => requestDynamicResize(), 50);
 }
 
-// 윈도우 높이 오토 조절 로직
+// 윈도우 높이 오토 조절 로직 (500ms 쓰로틀)
 let resizeObserver = null;
+let _resizeTimer = null;
 function requestDynamicResize() {
   if (!window.electronAPI || !window.electronAPI.resizeWindow) return;
-  const grid = document.getElementById('agent-grid');
-  if (!grid) return;
+  if (_resizeTimer) return; // 쓰로틀 중
+  _resizeTimer = setTimeout(() => {
+    _resizeTimer = null;
+    const grid = document.getElementById('agent-grid');
+    if (!grid) return;
 
-  const width = grid.scrollWidth;
-  const height = grid.scrollHeight;
+    const width = grid.scrollWidth;
+    const height = grid.scrollHeight;
 
-  if (width < 100 || height < 100) return;
+    if (width < 100 || height < 100) return;
 
-  window.electronAPI.resizeWindow({ width, height });
+    window.electronAPI.resizeWindow({ width, height });
+  }, 500);
 }
 
 if (window.ResizeObserver) {
   resizeObserver = new ResizeObserver(() => requestDynamicResize());
   if (agentGrid) resizeObserver.observe(agentGrid);
-  resizeObserver.observe(document.body);
 }

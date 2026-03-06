@@ -78,7 +78,6 @@ async function parseMapCoordinates(bgW, bgH) {
     officeCoords.idle.push({ x: p.x, y: p.y, id: globalId++, type: 'idle' });
   });
 
-  console.log('[OfficeCoords] Desks: ' + officeCoords.desk.length + ', Idle: ' + officeCoords.idle.length);
   return officeCoords;
 }
 
@@ -130,7 +129,6 @@ async function parseObjectCoordinates(bgW, bgH) {
     }
   }
 
-  console.log('[OfficeCoords] Laptops: ' + spots.length);
   officeCoords.laptopSpots = spots;
   return spots;
 }

@@ -12,6 +12,8 @@
 - ✅ **리팩토링:** src/ 폴더 구조 정리, main.js→7개 모듈 분할, renderer.js→7개 모듈 분할
 - ✅ **Virtual Office:** 대시보드에 2D 픽셀 아트 가상 오피스 탭 추가 (9개 JS 모듈, A* 패스파인딩, 상태→존 매핑)
 - ✅ **레거시 코드 정리:** dead code 제거, MODEL_PRICING 통합(pricing.js), install.js 중복 제거, hooks.jsonl 레거시 코드 제거, office 모듈 var→const/let 전환
+- ✅ **활동 히트맵:** GitHub 잔디 스타일 일별 활동 히트맵 (heatmapScanner.js — JSONL 증분 스캔, 일별 집계, 영속화, REST API, 대시보드 탭 UI, 메트릭 전환, 툴팁, 요약 카드)
+- ✅ **아바타 깜빡임 수정:** keep-alive 5초 주기, 이중 리사이즈 제거(renderer 단일 경로), GPU 가속 재활성화, ResizeObserver 중복 제거, DOM 배칭(timerEl 사전 생성)
 
 ## TODO
 - **회사 홈페이지 링크 추가:** About 다이얼로그, 트레이 메뉴, 대시보드 푸터 등에 회사 홈페이지 링크 삽입 (광고 아님, 제작자 정보 수준)
@@ -119,6 +121,7 @@ public/characters/
 |------|------|----------------|
 | `src/agentManager.js` | 에이전트 상태 관리 (SSoT) | 이벤트명 변경 금지: `agent-added`, `agent-updated`, `agent-removed` |
 | `src/sessionScanner.js` | JSONL 파싱 → 토큰/비용 보완 (60초 주기) | 비동기 I/O 필수, 메인 스레드 차단 금지 |
+| `src/heatmapScanner.js` | JSONL 일별 통계 집계 → 히트맵 데이터 (5분 주기) | 증분 스캔, ~/.pixel-agent-desk/heatmap.json에 영속화 |
 | `src/errorHandler.js` | 에러 캡처 & 분류 | 에러 코드 E001~E010 체계 사용 |
 | `src/dashboardAdapter.js` | AgentManager → Dashboard 포맷 변환 | STATE_MAP 변경 시 dashboard.html과 동기화 |
 | `src/dashboard-server.js` | REST API + WebSocket 대시보드 서버 | 포트 3000 |

@@ -88,6 +88,7 @@ function adaptAgentToDashboard(pixelAgent) {
     tokenUsage: pixelAgent.tokenUsage || { inputTokens: 0, outputTokens: 0, estimatedCost: 0 },
     currentTool: pixelAgent.currentTool || null,
     lastMessage: pixelAgent.lastMessage || null,
+    avatarIndex: pixelAgent.avatarIndex !== undefined ? pixelAgent.avatarIndex : null,
     metadata: {
       isSubagent: pixelAgent.isSubagent || false,
       isTeammate: pixelAgent.isTeammate || false,

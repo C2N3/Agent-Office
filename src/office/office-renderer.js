@@ -58,7 +58,6 @@ var officeRenderer = {
 
     this.lastTime = performance.now();
     this.loop(this.lastTime);
-    console.log('[OfficeRenderer] Initialized');
   },
 
   stop: function () {
@@ -104,11 +103,13 @@ var officeRenderer = {
       const spot = laptopSpots[i];
       const seatId = LAPTOP_ID_MAP[i] !== undefined ? LAPTOP_ID_MAP[i] : i;
 
-      const isWorking = chars.some(function (a) {
-        return a.deskIndex === seatId && a.agentState === 'working';
+      var isAtDesk = chars.some(function (a) {
+        return a.deskIndex === seatId &&
+          (a.agentState === 'working' || a.agentState === 'thinking' ||
+           a.agentState === 'error' || a.agentState === 'help');
       });
 
-      const img = isWorking ? this.laptopOpenImages[spot.dir] : this.laptopImages[spot.dir];
+      var img = isAtDesk ? this.laptopOpenImages[spot.dir] : this.laptopImages[spot.dir];
       if (img) ctx.drawImage(img, spot.x, spot.y);
     }
 
@@ -121,20 +122,26 @@ var officeRenderer = {
       let scaleY = 1.0;
       let floatY = 0;
 
+      // 에이전트별 위상 오프셋 (같은 방향 동시 흔들림 방지)
+      var phaseOffset = (agent.id ? agent.id.charCodeAt(0) : 0) * 0.7;
+
       if (agent.agentState === 'working') {
-        floatY = Math.sin(time * 0.01) * 3;
-        scaleY = 0.98 + Math.sin(time * 0.01) * 0.02;
+        floatY = Math.sin(time * 0.01 + phaseOffset) * 3;
+        scaleY = 0.98 + Math.sin(time * 0.01 + phaseOffset) * 0.02;
       } else if (agent.agentState === 'error') {
         floatY = (Math.random() - 0.5) * 4;
         if (Math.random() < 0.1) this.spawnEffect('warning', agent.x, agent.y - 65);
       } else {
-        floatY = Math.sin(time * 0.005) * 3;
-        scaleY = 0.98 + Math.sin(time * 0.005) * 0.02;
+        floatY = Math.sin(time * 0.005 + phaseOffset) * 3;
+        scaleY = 0.98 + Math.sin(time * 0.005 + phaseOffset) * 0.02;
       }
+
+      var isSubType = agent.metadata && agent.metadata.type === 'sub';
+      var baseScale = isSubType ? 0.85 : 1.0;
 
       ctx.save();
       ctx.translate(agent.x, agent.y);
-      ctx.scale(1.0, scaleY);
+      ctx.scale(baseScale, scaleY * baseScale);
       ctx.translate(-agent.x, -agent.y);
       drawOfficeSprite(ctx, agent);
       ctx.restore();
@@ -187,6 +194,13 @@ var officeRenderer = {
         startTime: now, duration: 1000 + Math.random() * 500,
         alpha: 1, scale: 0.8 + Math.random() * 0.4,
         color: Math.random() > 0.5 ? '#00f2ff' : '#00ffaa',
+      });
+    } else if (type === 'stateChange') {
+      this.effects.push({
+        id: id, type: type, x: x, y: y,
+        vx: 0, vy: 0, rotation: 0, vRotation: 0,
+        startTime: now, duration: 600, alpha: 1, scale: 0.3,
+        color: arguments[3] || '#f97316', // 4th argument = color
       });
     }
   },
@@ -250,6 +264,16 @@ var officeRenderer = {
         ctx.shadowBlur = 4;
         ctx.shadowColor = fx.color || '#fff';
         ctx.fillText(chars[charIdx], 0, 0);
+      } else if (fx.type === 'stateChange') {
+        // 확장되는 원형 링 이펙트
+        var elapsed = performance.now() - fx.startTime;
+        var t = elapsed / fx.duration;
+        var radius = 8 + t * 20;
+        ctx.strokeStyle = fx.color || '#f97316';
+        ctx.lineWidth = 2 * (1 - t);
+        ctx.beginPath();
+        ctx.arc(0, 0, radius, 0, Math.PI * 2);
+        ctx.stroke();
       }
 
       ctx.restore();

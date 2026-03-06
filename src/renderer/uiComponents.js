@@ -141,7 +141,6 @@ function setupKeyboardShortcuts() {
     }
   });
 
-  console.log('[Renderer] Keyboard shortcuts registered');
 }
 
 function setupContextMenu() {
@@ -195,10 +194,8 @@ function setupContextMenu() {
             }
             break;
           case 'logs':
-            console.log('[ContextMenu] View logs for agent:', agentId);
             break;
           case 'timeline':
-            console.log('[ContextMenu] View timeline for agent:', agentId);
             break;
           case 'close':
             if (window.electronAPI && window.electronAPI.dismissAgent) {
@@ -223,5 +220,4 @@ function setupContextMenu() {
     }, 0);
   });
 
-  console.log('[Renderer] Context menu registered');
 }

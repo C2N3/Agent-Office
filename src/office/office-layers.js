@@ -37,6 +37,5 @@ async function buildOfficeLayers() {
   officeLayers.width = bgImg.naturalWidth || 800;
   officeLayers.height = bgImg.naturalHeight || 800;
 
-  console.log('[OfficeLayers] bg: ' + officeLayers.width + 'x' + officeLayers.height);
   return officeLayers;
 }

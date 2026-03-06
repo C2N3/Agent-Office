@@ -5,22 +5,56 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Pixel Agent Desk Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Press+Start+2P&display=swap" rel="stylesheet">
   <style>
     :root {
-      --color-bg: #0f172a;
-      --color-card: #1e293b;
-      --color-card-hover: #334155;
-      --color-border: #334155;
-      --color-text: #f1f5f9;
-      --color-text-muted: #94a3b8;
-      --color-primary: #3b82f6;
-      --color-success: #22c55e;
-      --color-warning: #f59e0b;
-      --color-error: #ef4444;
-      --color-info: #8b5cf6;
-      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-      --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
-      --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
+      /* ── 폰트 시스템 ── */
+      --font-display: 'Press Start 2P', monospace;
+      --font-body: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+      --font-ui: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+
+      /* ── 배경 계층 (깊이감) ── */
+      --color-bg-deep: #080c16;
+      --color-bg: #0d1117;
+      --color-card: #161b22;
+      --color-card-hover: #1c2333;
+      --color-border: #30363d;
+      --color-border-active: #58a6ff;
+
+      /* ── 텍스트 ── */
+      --color-text: #e6edf3;
+      --color-text-muted: #7d8590;
+      --color-text-accent: #58a6ff;
+
+      /* ── 시맨틱 ── */
+      --color-primary: #58a6ff;
+      --color-success: #3fb950;
+      --color-warning: #d29922;
+      --color-error: #f85149;
+      --color-info: #a371f7;
+
+      /* ── 통합 상태 색상 (styles.css, office-config.js와 동기화) ── */
+      --color-state-working: #f97316;
+      --color-state-thinking: #8b5cf6;
+      --color-state-waiting: #7d8590;
+      --color-state-done: #3fb950;
+      --color-state-help: #f85149;
+      --color-state-error: #f85149;
+      --color-state-offline: #30363d;
+
+      /* ── 글로우 시스템 ── */
+      --glow-working: 0 0 20px rgba(249, 115, 22, 0.25), 0 0 4px rgba(249, 115, 22, 0.4);
+      --glow-thinking: 0 0 20px rgba(139, 92, 246, 0.25), 0 0 4px rgba(139, 92, 246, 0.4);
+      --glow-done: 0 0 20px rgba(63, 185, 80, 0.2), 0 0 4px rgba(63, 185, 80, 0.3);
+      --glow-error: 0 0 20px rgba(248, 81, 73, 0.25), 0 0 4px rgba(248, 81, 73, 0.4);
+      --glow-primary: 0 0 20px rgba(88, 166, 255, 0.2), 0 0 4px rgba(88, 166, 255, 0.3);
+
+      /* ── 그림자 ── */
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+      --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.5);
+      --shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.6);
       --radius: 12px;
       --radius-sm: 8px;
     }
@@ -32,7 +66,7 @@
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      font-family: var(--font-ui);
       background: var(--color-bg);
       color: var(--color-text);
       line-height: 1.5;
@@ -68,13 +102,17 @@
     }
 
     .header-title {
-      font-size: 1.25rem;
-      font-weight: 600;
+      font-family: var(--font-display);
+      font-size: 0.8rem;
+      font-weight: 400;
       color: var(--color-text);
+      letter-spacing: 0.02em;
+      line-height: 1.8;
     }
 
     .header-subtitle {
-      font-size: 0.875rem;
+      font-family: var(--font-body);
+      font-size: 0.75rem;
       color: var(--color-text-muted);
     }
 
@@ -89,9 +127,11 @@
       align-items: center;
       gap: 8px;
       padding: 6px 12px;
-      background: var(--color-bg);
+      background: var(--color-bg-deep);
+      border: 1px solid var(--color-border);
       border-radius: var(--radius-sm);
-      font-size: 0.875rem;
+      font-family: var(--font-body);
+      font-size: 0.75rem;
     }
 
     .status-indicator {
@@ -111,6 +151,18 @@
       background: var(--color-error);
     }
 
+    /* 연결 끊김 배너 */
+    .disconnect-banner {
+      background: var(--color-error);
+      color: #fff;
+      text-align: center;
+      padding: 6px 16px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      z-index: 100;
+      grid-column: 1 / -1;
+    }
+
     /* Sidebar */
     .sidebar {
       background: var(--color-card);
@@ -118,6 +170,7 @@
       padding: 20px 0;
       display: flex;
       flex-direction: column;
+      overflow: hidden;
     }
 
     .nav-section {
@@ -126,22 +179,25 @@
 
     .nav-title {
       padding: 0 20px 8px;
-      font-size: 0.75rem;
+      font-family: var(--font-body);
+      font-size: 0.65rem;
       font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.1em;
       color: var(--color-text-muted);
     }
 
     .nav-item {
       padding: 10px 20px;
       cursor: pointer;
-      transition: background 0.2s ease;
+      transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
       display: flex;
       align-items: center;
       gap: 10px;
-      font-size: 0.9rem;
+      font-family: var(--font-body);
+      font-size: 0.8rem;
       color: var(--color-text-muted);
+      border-left: 3px solid transparent;
     }
 
     .nav-item:hover {
@@ -150,9 +206,10 @@
     }
 
     .nav-item.active {
-      background: rgba(59, 130, 246, 0.1);
+      background: rgba(88, 166, 255, 0.08);
       color: var(--color-primary);
-      border-right: 2px solid var(--color-primary);
+      border-left: 3px solid var(--color-primary);
+      border-right: none;
     }
 
     .live-feed {
@@ -160,21 +217,40 @@
       overflow: hidden;
       display: flex;
       flex-direction: column;
+      min-height: 0;
+      /* flex 컨테이너 오버플로 방지 */
     }
 
     .live-feed-title {
       padding: 0 20px 12px;
-      font-size: 0.75rem;
+      font-family: var(--font-body);
+      font-size: 0.65rem;
       font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.1em;
       color: var(--color-text-muted);
     }
 
     .live-feed-list {
       flex: 1;
       overflow-y: auto;
+      overflow-x: hidden;
       padding: 0 10px;
+      min-height: 0;
+      /* flex 자식 오버플로 방지 */
+    }
+
+    .live-feed-list::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .live-feed-list::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .live-feed-list::-webkit-scrollbar-thumb {
+      background: var(--color-border);
+      border-radius: 2px;
     }
 
     .live-feed-item {
@@ -199,8 +275,9 @@
     }
 
     .live-feed-item .time {
+      font-family: var(--font-body);
       color: var(--color-text-muted);
-      font-size: 0.7rem;
+      font-size: 0.65rem;
     }
 
     .live-feed-item .message {
@@ -233,8 +310,8 @@
     }
 
     .stat-card:hover {
-      border-color: var(--color-primary);
-      box-shadow: var(--shadow-md);
+      border-color: var(--color-border-active);
+      box-shadow: var(--glow-primary);
     }
 
     .stat-header {
@@ -254,9 +331,11 @@
     }
 
     .stat-value {
-      font-size: 2rem;
-      font-weight: 700;
+      font-family: var(--font-display);
+      font-size: 1.25rem;
+      font-weight: 400;
       color: var(--color-text);
+      letter-spacing: 0.02em;
     }
 
     .stat-change {
@@ -278,7 +357,8 @@
     }
 
     .section-title {
-      font-size: 1.125rem;
+      font-family: var(--font-body);
+      font-size: 1rem;
       font-weight: 600;
       color: var(--color-text);
     }
@@ -312,33 +392,55 @@
     }
 
     .agent-card.state-working::before {
-      background: var(--color-primary);
+      background: var(--color-state-working);
     }
 
     .agent-card.state-thinking::before {
-      background: var(--color-info);
+      background: var(--color-state-thinking);
     }
 
     .agent-card.state-waiting::before {
-      background: var(--color-warning);
+      background: var(--color-state-waiting);
     }
 
     .agent-card.state-done::before {
-      background: var(--color-success);
+      background: var(--color-state-done);
     }
 
     .agent-card.state-help::before {
-      background: var(--color-error);
+      background: var(--color-state-help);
     }
 
     .agent-card.state-error::before {
-      background: var(--color-error);
+      background: var(--color-state-error);
     }
 
     .agent-card:hover {
-      border-color: var(--color-primary);
+      border-color: var(--color-border-active);
       box-shadow: var(--shadow-md);
       transform: translateY(-2px);
+    }
+
+    /* ── A3: 상태별 글로우 효과 ── */
+    .agent-card.working {
+      box-shadow: var(--glow-working);
+      border-color: rgba(249, 115, 22, 0.4);
+    }
+
+    .agent-card.thinking {
+      box-shadow: var(--glow-thinking);
+      border-color: rgba(139, 92, 246, 0.4);
+    }
+
+    .agent-card.done {
+      box-shadow: var(--glow-done);
+      border-color: rgba(63, 185, 80, 0.3);
+    }
+
+    .agent-card.help,
+    .agent-card.error {
+      box-shadow: var(--glow-error);
+      border-color: rgba(248, 81, 73, 0.4);
     }
 
     .agent-header {
@@ -349,7 +451,8 @@
     }
 
     .agent-name {
-      font-size: 1rem;
+      font-family: var(--font-body);
+      font-size: 0.9rem;
       font-weight: 600;
       color: var(--color-text);
       display: flex;
@@ -360,46 +463,75 @@
     .agent-id {
       font-size: 0.75rem;
       color: var(--color-text-muted);
-      font-family: monospace;
+      font-family: var(--font-body);
     }
 
     .agent-status {
       padding: 4px 10px;
       border-radius: 20px;
-      font-size: 0.75rem;
-      font-weight: 600;
+      font-family: var(--font-body);
+      font-size: 0.65rem;
+      font-weight: 700;
       text-transform: uppercase;
+      letter-spacing: 0.05em;
     }
 
     .agent-status.working {
-      background: rgba(59, 130, 246, 0.2);
-      color: var(--color-primary);
+      background: rgba(249, 115, 22, 0.2);
+      color: var(--color-state-working);
     }
 
     .agent-status.thinking {
       background: rgba(139, 92, 246, 0.2);
-      color: var(--color-info);
+      color: var(--color-state-thinking);
     }
 
     .agent-status.waiting {
-      background: rgba(245, 158, 11, 0.2);
-      color: var(--color-warning);
+      background: rgba(148, 163, 184, 0.2);
+      color: var(--color-state-waiting);
     }
 
     .agent-status.done,
     .agent-status.completed {
       background: rgba(34, 197, 94, 0.2);
-      color: var(--color-success);
+      color: var(--color-state-done);
     }
 
     .agent-status.help {
       background: rgba(239, 68, 68, 0.2);
-      color: var(--color-error);
+      color: var(--color-state-help);
     }
 
     .agent-status.error {
       background: rgba(239, 68, 68, 0.2);
-      color: var(--color-error);
+      color: var(--color-state-error);
+    }
+
+    /* 활성 맥동 dot */
+    .active-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--color-state-working);
+      box-shadow: 0 0 6px var(--color-state-working);
+      animation: active-pulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes active-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* 현재 활동 표시 */
+    .current-activity {
+      font-family: var(--font-body);
+      font-size: 0.8rem;
+    }
+
+    .current-activity.is-active {
+      color: var(--color-state-working);
+      font-weight: 600;
     }
 
     .agent-body {
@@ -447,12 +579,14 @@
     }
 
     .token-value {
+      font-family: var(--font-body);
       font-weight: 600;
       color: var(--color-text);
     }
 
     .agent-time {
-      font-size: 0.875rem;
+      font-family: var(--font-body);
+      font-size: 0.8rem;
       color: var(--color-text-muted);
     }
 
@@ -494,10 +628,13 @@
     }
 
     .empty-state-title {
-      font-size: 1.5rem;
-      font-weight: 600;
+      font-family: var(--font-display);
+      font-size: 0.75rem;
+      font-weight: 400;
       color: var(--color-text);
-      margin-bottom: 8px;
+      margin-bottom: 12px;
+      letter-spacing: 0.02em;
+      line-height: 1.8;
     }
 
     .empty-state-text {
@@ -552,7 +689,7 @@
     .office-view {
       grid-column: 2;
       grid-row: 2;
-      background: #0f172a;
+      background: var(--color-bg-deep);
       overflow: auto;
       display: flex;
       align-items: center;
@@ -613,7 +750,8 @@
     }
 
     .chart-title {
-      font-size: 1rem;
+      font-family: var(--font-body);
+      font-size: 0.9rem;
       font-weight: 600;
       color: var(--color-text);
       margin-bottom: 16px;
@@ -633,7 +771,8 @@
 
     .bar-label {
       min-width: 120px;
-      font-size: 0.875rem;
+      font-family: var(--font-body);
+      font-size: 0.8rem;
       color: var(--color-text-muted);
     }
 
@@ -667,10 +806,171 @@
 
     .bar-total {
       min-width: 80px;
-      font-size: 0.875rem;
+      font-family: var(--font-body);
+      font-size: 0.8rem;
       font-weight: 600;
       color: var(--color-text);
       text-align: right;
+    }
+
+    /* ─── Heatmap (Activity History) ─── */
+    .heatmap-container {
+      animation: fadeIn 0.3s ease;
+    }
+
+    .heatmap-summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .heatmap-summary .stat-card {
+      text-align: center;
+    }
+
+    .heatmap-summary .stat-value {
+      font-size: 1rem;
+    }
+
+    .heatmap-metrics {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .heatmap-metric-btn {
+      padding: 6px 16px;
+      border: 1px solid var(--color-border);
+      border-radius: 20px;
+      background: transparent;
+      color: var(--color-text-muted);
+      font-family: var(--font-body);
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .heatmap-metric-btn:hover {
+      border-color: var(--color-primary);
+      color: var(--color-text);
+    }
+
+    .heatmap-metric-btn.active {
+      background: var(--color-primary);
+      border-color: var(--color-primary);
+      color: #fff;
+    }
+
+    .heatmap-card {
+      background: var(--color-card);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 24px;
+    }
+
+    .heatmap-scroll {
+      overflow-x: auto;
+      padding-bottom: 8px;
+    }
+
+    .heatmap-grid {
+      display: grid;
+      grid-template-rows: auto repeat(7, 14px);
+      grid-auto-columns: 14px;
+      grid-auto-flow: column;
+      gap: 3px;
+      width: max-content;
+    }
+
+    .heatmap-month-label {
+      font-size: 0.7rem;
+      color: var(--color-text-muted);
+      grid-row: 1;
+      line-height: 14px;
+      white-space: nowrap;
+    }
+
+    .heatmap-day-label {
+      font-size: 0.65rem;
+      color: var(--color-text-muted);
+      grid-row: auto;
+      text-align: right;
+      padding-right: 4px;
+      line-height: 14px;
+      width: 28px;
+    }
+
+    .heatmap-cell {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: outline 0.1s ease;
+    }
+
+    .heatmap-cell:hover {
+      outline: 2px solid var(--color-text-muted);
+      outline-offset: -1px;
+    }
+
+    .heatmap-cell.level-0 { background: #1e293b; }
+    .heatmap-cell.level-1 { background: #1e3a5f; }
+    .heatmap-cell.level-2 { background: #1d4ed8; }
+    .heatmap-cell.level-3 { background: #3b82f6; }
+    .heatmap-cell.level-4 { background: #60a5fa; }
+
+    .heatmap-legend {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 12px;
+      justify-content: flex-end;
+      font-size: 0.75rem;
+      color: var(--color-text-muted);
+    }
+
+    .heatmap-legend-cell {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+    }
+
+    .heatmap-tooltip {
+      position: fixed;
+      background: #1e293b;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      font-size: 0.8rem;
+      color: var(--color-text);
+      pointer-events: none;
+      z-index: 1000;
+      box-shadow: var(--shadow-lg);
+      display: none;
+      max-width: 260px;
+    }
+
+    .heatmap-tooltip .tt-date {
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: var(--color-primary);
+    }
+
+    .heatmap-tooltip .tt-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 2px;
+    }
+
+    .heatmap-tooltip .tt-label {
+      color: var(--color-text-muted);
+    }
+
+    .heatmap-tooltip .tt-value {
+      font-weight: 600;
     }
   </style>
 </head>
@@ -693,6 +993,11 @@
       </div>
     </header>
 
+    <!-- 연결 끊김 배너 -->
+    <div id="disconnectBanner" class="disconnect-banner" style="display:none;">
+      연결 끊김 — 서버에 재연결 시도 중...
+    </div>
+
     <!-- Sidebar -->
     <aside class="sidebar">
       <div class="nav-section">
@@ -713,6 +1018,10 @@
           <span>💰</span>
           <span>토큰</span>
         </div>
+        <div class="nav-item" data-view="heatmap">
+          <span>📅</span>
+          <span>활동 기록</span>
+        </div>
       </div>
 
       <div class="live-feed">
@@ -728,7 +1037,7 @@
       <canvas id="office-canvas"></canvas>
     </div>
 
-    <!-- Main Content (Dashboard/Agents/Tokens) -->
+    <!-- Main Content (Dashboard/Agents/Tokens/Heatmap) -->
     <main class="main-content" id="mainContent" style="display:none">
       <div class="loading">
         <div class="loading-spinner"></div>
@@ -736,6 +1045,9 @@
       </div>
     </main>
   </div>
+
+  <!-- Heatmap Tooltip (global, position: fixed) -->
+  <div class="heatmap-tooltip" id="heatmapTooltip"></div>
 
   <!-- Office modules (v2: avatar sync) -->
   <script src="/src/office/office-config.js?v=2"></script>
@@ -777,28 +1089,43 @@
     };
 
     /**
-     * SSE 연결 시작
+     * SSE 연결 시작 (지수 백오프 재연결)
      */
+    let _sseReconnectDelay = 1000;
+    let _sseEventSource = null;
+
     function connectSSE() {
+      // 기존 연결 정리
+      if (_sseEventSource) {
+        _sseEventSource.close();
+        _sseEventSource = null;
+      }
+
       const eventSource = new EventSource('http://localhost:3000/api/events');
+      _sseEventSource = eventSource;
 
       eventSource.onopen = () => {
-        console.log('[Dashboard] SSE 연결 성공');
+        _sseReconnectDelay = 1000; // 재연결 성공 시 딜레이 초기화
         state.connected = true;
         updateConnectionStatus(true);
         addLiveFeed('시스템', '대시보드에 연결되었습니다');
       };
 
-      eventSource.onerror = (error) => {
-        console.error('[Dashboard] SSE 연결 오류:', error);
+      eventSource.onerror = () => {
         state.connected = false;
         updateConnectionStatus(false);
         addLiveFeed('시스템', '연결이 끊어졌습니다. 재연결 중...');
+
+        // EventSource 닫고 수동 재연결 (지수 백오프)
+        eventSource.close();
+        _sseEventSource = null;
+        const delay = _sseReconnectDelay;
+        _sseReconnectDelay = Math.min(_sseReconnectDelay * 2, 30000);
+        setTimeout(connectSSE, delay);
       };
 
       // 이벤트 리스너
       eventSource.addEventListener('connected', (event) => {
-        console.log('[Dashboard] 서버 연결 확인');
         // 초기 데이터 로드
         fetchInitialData();
       });
@@ -825,8 +1152,6 @@
         officeOnAgentRemoved(data);
         addLiveFeed('제거', `에이전트가 제거되었습니다 (${data.id?.slice(0, 8)}...)`);
       });
-
-      return eventSource;
     }
 
     /**
@@ -836,8 +1161,6 @@
       try {
         const response = await fetch('http://localhost:3000/api/agents');
         const agents = await response.json();
-
-        console.log('[Dashboard] 초기 에이전트 데이터:', agents.length);
 
         for (const agent of agents) {
           state.agents.set(agent.id, agent);
@@ -857,7 +1180,17 @@
     function updateAgent(agent) {
       state.agents.set(agent.id, agent);
       updateStats();
-      render();
+
+      // in-place DOM 업데이트: 기존 카드가 있으면 교체, 없으면 전체 렌더
+      const existingCard = document.querySelector(`[data-card-id="${agent.id}"]`);
+      if (existingCard && (state.currentView === 'overview' || state.currentView === 'agents')) {
+        const temp = document.createElement('div');
+        temp.innerHTML = renderAgentCard(agent);
+        const newCard = temp.firstElementChild;
+        existingCard.replaceWith(newCard);
+      } else {
+        render();
+      }
     }
 
     /**
@@ -866,7 +1199,17 @@
     function removeAgent(sessionId) {
       state.agents.delete(sessionId);
       updateStats();
-      render();
+
+      // in-place DOM 제거
+      const existingCard = document.querySelector(`[data-card-id="${sessionId}"]`);
+      if (existingCard) {
+        existingCard.remove();
+      }
+
+      // 에이전트가 0개면 빈 상태 렌더
+      if (state.agents.size === 0) {
+        render();
+      }
     }
 
     /**
@@ -894,14 +1237,17 @@
      * 연결 상태 업데이트
      */
     function updateConnectionStatus(connected) {
+      const banner = document.getElementById('disconnectBanner');
       if (connected) {
         elements.statusIndicator.classList.add('connected');
         elements.statusIndicator.classList.remove('disconnected');
         elements.connectionStatus.textContent = '연결됨';
+        if (banner) banner.style.display = 'none';
       } else {
         elements.statusIndicator.classList.remove('connected');
         elements.statusIndicator.classList.add('disconnected');
         elements.connectionStatus.textContent = '연결 안됨';
+        if (banner) banner.style.display = '';
       }
     }
 
@@ -925,8 +1271,8 @@
 
       elements.liveFeedList.insertBefore(item, elements.liveFeedList.firstChild);
 
-      // 최대 50개만 유지
-      while (elements.liveFeedList.children.length > 50) {
+      // 최대 30개만 유지
+      while (elements.liveFeedList.children.length > 30) {
         elements.liveFeedList.removeChild(elements.liveFeedList.lastChild);
       }
     }
@@ -935,8 +1281,8 @@
      * 렌더링
      */
     function render() {
-      var officeView = document.getElementById('officeView');
-      var mainContent = elements.mainContent;
+      const officeView = document.getElementById('officeView');
+      const mainContent = elements.mainContent;
 
       if (state.currentView === 'office') {
         officeView.style.display = 'flex';
@@ -953,6 +1299,8 @@
         renderAgents();
       } else if (state.currentView === 'tokens') {
         renderTokens();
+      } else if (state.currentView === 'heatmap') {
+        renderHeatmap();
       }
     }
 
@@ -1149,11 +1497,15 @@
       const cost = agent.tokenUsage?.estimatedCost || 0;
       const project = agent.projectPath?.split('/').pop() || 'Default';
       const model = agent.model || 'Unknown';
+      const isActive = agent.status === 'working' || agent.status === 'thinking';
+      const activeDot = isActive ? '<span class="active-dot"></span>' : '';
+      const currentActivity = agent.currentTool || (isActive ? statusText : '-');
 
       return `
-        <div class="agent-card ${statusClass}">
+        <div class="agent-card ${statusClass}" data-card-id="${agent.id}">
           <div class="agent-header">
             <div class="agent-name">
+              ${activeDot}
               <span>${agent.name || 'Agent'}</span>
               ${typeBadge}
             </div>
@@ -1171,6 +1523,10 @@
             <div class="agent-row">
               <span class="agent-label">모델:</span>
               <span>${model}</span>
+            </div>
+            <div class="agent-row">
+              <span class="agent-label">현재 활동:</span>
+              <span class="current-activity ${isActive ? 'is-active' : ''}">${currentActivity}</span>
             </div>
           </div>
           <div class="agent-footer">
@@ -1285,14 +1641,354 @@
       return num.toString();
     }
 
+    // ─── Heatmap (Activity History) ───
+
+    /** 히트맵 상태 */
+    const heatmapState = {
+      data: null,       // { days: { "YYYY-MM-DD": {...} }, lastScan }
+      metric: 'sessions', // sessions | tokens | cost | toolUses
+      loading: false,
+    };
+
+    /**
+     * 히트맵 데이터 fetch
+     */
+    async function fetchHeatmapData() {
+      heatmapState.loading = true;
+      try {
+        const res = await fetch('http://localhost:3000/api/heatmap?days=365');
+        heatmapState.data = await res.json();
+      } catch (e) {
+        console.error('[Heatmap] fetch 실패:', e);
+        heatmapState.data = { days: {}, lastScan: 0 };
+      }
+      heatmapState.loading = false;
+    }
+
+    /**
+     * 히트맵 뷰 렌더링
+     */
+    async function renderHeatmap() {
+      if (!heatmapState.data) {
+        elements.mainContent.innerHTML = `
+          <div class="loading">
+            <div class="loading-spinner"></div>
+            <span>활동 기록을 불러오는 중...</span>
+          </div>`;
+        await fetchHeatmapData();
+      }
+
+      const days = heatmapState.data.days || {};
+      const metric = heatmapState.metric;
+
+      // 요약 통계 계산
+      const summary = calculateHeatmapSummary(days);
+
+      // 메트릭 버튼
+      const metrics = [
+        { key: 'sessions', label: '세션 수' },
+        { key: 'tokens', label: '토큰' },
+        { key: 'cost', label: '비용' },
+        { key: 'toolUses', label: '도구 사용' },
+      ];
+
+      elements.mainContent.innerHTML = `
+        <div class="heatmap-container">
+          <div class="heatmap-summary">
+            <div class="stat-card">
+              <div class="stat-header"><span class="stat-icon">📊</span><span class="stat-label">총 세션</span></div>
+              <div class="stat-value">${summary.totalSessions}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-header"><span class="stat-icon">📆</span><span class="stat-label">활성 일수</span></div>
+              <div class="stat-value">${summary.activeDays}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-header"><span class="stat-icon">🔥</span><span class="stat-label">연속 일수</span></div>
+              <div class="stat-value">${summary.currentStreak}</div>
+              <div class="stat-change">최장: ${summary.longestStreak}일</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-header"><span class="stat-icon">💰</span><span class="stat-label">총 비용</span></div>
+              <div class="stat-value">$${summary.totalCost.toFixed(2)}</div>
+            </div>
+          </div>
+
+          <div class="heatmap-metrics">
+            ${metrics.map(m => `
+              <button class="heatmap-metric-btn ${metric === m.key ? 'active' : ''}"
+                      onclick="changeHeatmapMetric('${m.key}')">${m.label}</button>
+            `).join('')}
+          </div>
+
+          <div class="heatmap-card">
+            <div class="heatmap-scroll">
+              <div class="heatmap-grid" id="heatmapGrid"></div>
+            </div>
+            <div class="heatmap-legend">
+              <span>적음</span>
+              <div class="heatmap-legend-cell level-0" style="background:#1e293b"></div>
+              <div class="heatmap-legend-cell level-1" style="background:#1e3a5f"></div>
+              <div class="heatmap-legend-cell level-2" style="background:#1d4ed8"></div>
+              <div class="heatmap-legend-cell level-3" style="background:#3b82f6"></div>
+              <div class="heatmap-legend-cell level-4" style="background:#60a5fa"></div>
+              <span>많음</span>
+            </div>
+          </div>
+        </div>`;
+
+      buildHeatmapGrid(days, metric);
+      attachHeatmapTooltips(days);
+    }
+
+    /**
+     * 히트맵 그리드 구성 (53주 x 7일)
+     */
+    function buildHeatmapGrid(days, metric) {
+      const grid = document.getElementById('heatmapGrid');
+      if (!grid) return;
+
+      // 오늘 기준 53주(371일)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const dayOfWeek = today.getDay(); // 0=Sun
+
+      // 시작일: 52주 전 일요일
+      const startDate = new Date(today);
+      startDate.setDate(today.getDate() - (52 * 7 + dayOfWeek));
+
+      // 메트릭별 값 추출 함수
+      const getValue = (dayData) => {
+        if (!dayData) return 0;
+        switch (metric) {
+          case 'sessions': return dayData.sessions || 0;
+          case 'tokens': return (dayData.inputTokens || 0) + (dayData.outputTokens || 0);
+          case 'cost': return dayData.estimatedCost || 0;
+          case 'toolUses': return dayData.toolUses || 0;
+          default: return 0;
+        }
+      };
+
+      // 모든 날짜의 값 수집 (레벨 계산용)
+      const allValues = [];
+      const cellData = [];
+      const d = new Date(startDate);
+      while (d <= today) {
+        const dateStr = d.toISOString().slice(0, 10);
+        const val = getValue(days[dateStr]);
+        allValues.push(val);
+        cellData.push({ date: dateStr, value: val, dayOfWeek: d.getDay() });
+        d.setDate(d.getDate() + 1);
+      }
+
+      // 비제로 값만으로 퍼센타일 기반 레벨 계산
+      const nonZero = allValues.filter(v => v > 0).sort((a, b) => a - b);
+      const getLevel = (val) => {
+        if (val === 0) return 0;
+        if (nonZero.length === 0) return 0;
+        const p25 = nonZero[Math.floor(nonZero.length * 0.25)] || 1;
+        const p50 = nonZero[Math.floor(nonZero.length * 0.50)] || 1;
+        const p75 = nonZero[Math.floor(nonZero.length * 0.75)] || 1;
+        if (val <= p25) return 1;
+        if (val <= p50) return 2;
+        if (val <= p75) return 3;
+        return 4;
+      };
+
+      // 요일 라벨 (첫 열)
+      const dayLabels = ['', 'Mon', '', 'Wed', '', 'Fri', ''];
+      grid.innerHTML = '';
+
+      // 월 라벨을 위한 배열 (week index → month name)
+      const weekMonths = new Map();
+      let cellIdx = 0;
+
+      // 첫 열: 요일 라벨
+      // 월 라벨 자리 (빈칸)
+      const monthSpacer = document.createElement('div');
+      monthSpacer.className = 'heatmap-month-label';
+      monthSpacer.textContent = '';
+      grid.appendChild(monthSpacer);
+
+      for (let row = 0; row < 7; row++) {
+        const label = document.createElement('div');
+        label.className = 'heatmap-day-label';
+        label.textContent = dayLabels[row];
+        grid.appendChild(label);
+      }
+
+      // 주별 열 생성
+      let currentWeek = -1;
+      let lastMonth = -1;
+
+      for (let i = 0; i < cellData.length; i++) {
+        const cell = cellData[i];
+        const cellDate = new Date(cell.date + 'T00:00:00');
+        // 주가 바뀌면 월 라벨 추가
+        if (cell.dayOfWeek === 0 || i === 0) {
+          currentWeek++;
+          const monthIdx = cellDate.getMonth();
+          const monthLabel = document.createElement('div');
+          monthLabel.className = 'heatmap-month-label';
+
+          // 월이 바뀌는 첫 주에만 라벨 표시
+          if (monthIdx !== lastMonth) {
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                                'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            monthLabel.textContent = monthNames[monthIdx];
+            lastMonth = monthIdx;
+          }
+          grid.appendChild(monthLabel);
+        }
+
+        // 셀 생성
+        const level = getLevel(cell.value);
+        const div = document.createElement('div');
+        div.className = `heatmap-cell level-${level}`;
+        div.dataset.date = cell.date;
+        grid.appendChild(div);
+      }
+    }
+
+    /**
+     * 히트맵 툴팁 이벤트
+     */
+    function attachHeatmapTooltips(days) {
+      const tooltip = document.getElementById('heatmapTooltip');
+      if (!tooltip) return;
+
+      const grid = document.getElementById('heatmapGrid');
+      if (!grid) return;
+
+      grid.addEventListener('mouseover', (e) => {
+        const cell = e.target.closest('.heatmap-cell');
+        if (!cell) return;
+
+        const dateStr = cell.dataset.date;
+        const dayData = days[dateStr];
+        const dateObj = new Date(dateStr + 'T00:00:00');
+        const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+        const formatted = `${dateStr} (${dayNames[dateObj.getDay()]}요일)`;
+
+        let html = `<div class="tt-date">${formatted}</div>`;
+        if (dayData) {
+          html += `
+            <div class="tt-row"><span class="tt-label">세션</span><span class="tt-value">${dayData.sessions || 0}개</span></div>
+            <div class="tt-row"><span class="tt-label">사용자 메시지</span><span class="tt-value">${dayData.userMessages || 0}</span></div>
+            <div class="tt-row"><span class="tt-label">어시스턴트 메시지</span><span class="tt-value">${dayData.assistantMessages || 0}</span></div>
+            <div class="tt-row"><span class="tt-label">도구 사용</span><span class="tt-value">${dayData.toolUses || 0}회</span></div>
+            <div class="tt-row"><span class="tt-label">입력 토큰</span><span class="tt-value">${formatNumber(dayData.inputTokens || 0)}</span></div>
+            <div class="tt-row"><span class="tt-label">출력 토큰</span><span class="tt-value">${formatNumber(dayData.outputTokens || 0)}</span></div>
+            <div class="tt-row"><span class="tt-label">예상 비용</span><span class="tt-value">$${(dayData.estimatedCost || 0).toFixed(4)}</span></div>`;
+          if (dayData.projects && dayData.projects.length > 0) {
+            html += `<div class="tt-row"><span class="tt-label">프로젝트</span><span class="tt-value">${dayData.projects.join(', ')}</span></div>`;
+          }
+        } else {
+          html += '<div class="tt-row"><span class="tt-label">활동 없음</span></div>';
+        }
+
+        tooltip.innerHTML = html;
+        tooltip.style.display = 'block';
+
+        const rect = cell.getBoundingClientRect();
+        tooltip.style.left = (rect.left + rect.width / 2) + 'px';
+        tooltip.style.top = (rect.top - tooltip.offsetHeight - 8) + 'px';
+
+        // 화면 밖으로 나가면 보정
+        const ttRect = tooltip.getBoundingClientRect();
+        if (ttRect.left < 0) tooltip.style.left = '8px';
+        if (ttRect.right > window.innerWidth) tooltip.style.left = (window.innerWidth - ttRect.width - 8) + 'px';
+        if (ttRect.top < 0) tooltip.style.top = (rect.bottom + 8) + 'px';
+      });
+
+      grid.addEventListener('mouseout', (e) => {
+        const cell = e.target.closest('.heatmap-cell');
+        if (!cell) return;
+        tooltip.style.display = 'none';
+      });
+    }
+
+    /**
+     * 히트맵 요약 통계 계산
+     */
+    function calculateHeatmapSummary(days) {
+      let totalSessions = 0;
+      let activeDays = 0;
+      let totalCost = 0;
+      const dates = Object.keys(days).sort();
+
+      for (const date of dates) {
+        const d = days[date];
+        totalSessions += d.sessions || 0;
+        totalCost += d.estimatedCost || 0;
+        if ((d.sessions || 0) > 0) activeDays++;
+      }
+
+      // 연속 일수(streak) 계산 — 오늘부터 과거로
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      let currentStreak = 0;
+      const check = new Date(today);
+      while (true) {
+        const dateStr = check.toISOString().slice(0, 10);
+        const d = days[dateStr];
+        if (d && (d.sessions || 0) > 0) {
+          currentStreak++;
+          check.setDate(check.getDate() - 1);
+        } else {
+          break;
+        }
+      }
+
+      // 최장 연속 일수 (날짜 연속성 검증)
+      let longestStreak = 0;
+      let streak = 0;
+      if (dates.length > 0) {
+        const start = new Date(dates[0] + 'T00:00:00');
+        const end = new Date(dates[dates.length - 1] + 'T00:00:00');
+        const d2 = new Date(start);
+        while (d2 <= end) {
+          const ds = d2.toISOString().slice(0, 10);
+          if (days[ds] && (days[ds].sessions || 0) > 0) {
+            streak++;
+            if (streak > longestStreak) longestStreak = streak;
+          } else {
+            streak = 0;
+          }
+          d2.setDate(d2.getDate() + 1);
+        }
+      }
+
+      return { totalSessions, activeDays, currentStreak, longestStreak, totalCost };
+    }
+
+    /**
+     * 히트맵 메트릭 전환
+     */
+    function changeHeatmapMetric(metric) {
+      heatmapState.metric = metric;
+      renderHeatmap();
+    }
+    // 전역 접근 (onclick에서 호출)
+    window.changeHeatmapMetric = changeHeatmapMetric;
+
     /**
      * 네비게이션 초기화
      */
+    // 탭별 스크롤 위치 저장소
+    const _tabScrollPositions = {};
+
     function initNavigation() {
       const navItems = document.querySelectorAll('.nav-item');
       navItems.forEach(item => {
         item.addEventListener('click', () => {
-          var prevView = state.currentView;
+          const prevView = state.currentView;
+
+          // 이전 탭의 스크롤 위치 저장
+          if (elements.mainContent) {
+            _tabScrollPositions[prevView] = elements.mainContent.scrollTop;
+          }
+
           navItems.forEach(i => i.classList.remove('active'));
           item.classList.add('active');
           state.currentView = item.dataset.view;
@@ -1304,7 +2000,17 @@
             stopOffice();
           }
 
+          // 히트맵 탭 진입 시 데이터 갱신
+          if (state.currentView === 'heatmap') {
+            heatmapState.data = null; // 강제 re-fetch
+          }
+
           render();
+
+          // 새 탭의 스크롤 위치 복원
+          if (elements.mainContent && _tabScrollPositions[state.currentView]) {
+            elements.mainContent.scrollTop = _tabScrollPositions[state.currentView];
+          }
         });
       });
     }
@@ -1313,8 +2019,6 @@
      * 초기화
      */
     function init() {
-      console.log('[Dashboard] 초기화 시작...');
-
       // 네비게이션 초기화
       initNavigation();
 

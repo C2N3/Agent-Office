@@ -8,12 +8,18 @@ const EventEmitter = require('events');
 const path = require('path');
 const { formatSlugToDisplayName } = require('./utils');
 
+// AVATAR_FILES 개수 (renderer/config.js, office/office-config.js와 동기화)
+const AVATAR_COUNT = 24;
+
 class AgentManager extends EventEmitter {
   constructor() {
     super();
     this.agents = new Map();
+    this._pendingEmit = new Map(); // agentId → { timer, state } — UI emit 디바운스
+    this._usedAvatarIndices = new Set(); // 현재 사용 중인 아바타 인덱스
     this.config = {
       softLimitWarning: 50,  // 소프트 워닝 (차단하지 않음, 로그만)
+      stateDebounceMs: 500,  // Working→Thinking 전환 디바운스 (ms)
     };
   }
 
@@ -23,6 +29,11 @@ class AgentManager extends EventEmitter {
   }
 
   stop() {
+    for (const pending of this._pendingEmit.values()) {
+      clearTimeout(pending.timer);
+    }
+    this._pendingEmit.clear();
+    this._usedAvatarIndices.clear();
     this.agents.clear();
     console.log('[AgentManager] Stopped');
   }
@@ -84,6 +95,7 @@ class AgentManager extends EventEmitter {
       teamName: entry.teamName !== undefined ? entry.teamName : (existingAgent ? existingAgent.teamName : null),
       // Task 3A-3: 토큰 사용량 (훅에서 누적, 스캐너에서 보완)
       tokenUsage: entry.tokenUsage !== undefined ? entry.tokenUsage : (existingAgent ? existingAgent.tokenUsage : { inputTokens: 0, outputTokens: 0, estimatedCost: 0 }),
+      avatarIndex: existingAgent ? existingAgent.avatarIndex : this._assignAvatarIndex(agentId),
       isSubagent: entry.isSubagent || (existingAgent ? existingAgent.isSubagent : false),
       isTeammate: entry.isTeammate || (existingAgent ? existingAgent.isTeammate : false),
       parentId: entry.parentId || (existingAgent ? existingAgent.parentId : null),
@@ -104,19 +116,54 @@ class AgentManager extends EventEmitter {
     }
 
     if (!existingAgent) {
+      this._cancelPendingEmit(agentId);
       this.emit('agent-added', this.getAgentWithEffectiveState(agentId));
       console.log(`[AgentManager] Agent added: ${agentData.displayName} (${newState})`);
     } else if (newState !== prevState) {
-      this.emit('agent-updated', this.getAgentWithEffectiveState(agentId));
-      console.log(`[AgentManager] ${agentData.displayName}: ${prevState} → ${newState}`);
+      this._emitWithDebounce(agentId, prevState, newState, agentData.displayName);
     }
 
     return agentData;
   }
 
+  /**
+   * 상태 전환 디바운스 — Working→Thinking 전환 시 500ms 지연하여 깜빡임 방지
+   * Thinking→Working (승격)은 즉시 적용, 기존 pending 취소
+   */
+  _emitWithDebounce(agentId, prevState, newState, displayName) {
+    const isDowngrade = (prevState === 'Working' && newState === 'Thinking');
+
+    if (isDowngrade) {
+      // Working→Thinking: 지연 emit (500ms 내 Working 재진입 시 취소됨)
+      this._cancelPendingEmit(agentId);
+      const timer = setTimeout(() => {
+        this._pendingEmit.delete(agentId);
+        const current = this.agents.get(agentId);
+        if (current && current.state === newState) {
+          this.emit('agent-updated', this.getAgentWithEffectiveState(agentId));
+        }
+      }, this.config.stateDebounceMs);
+      this._pendingEmit.set(agentId, { timer, state: newState });
+    } else {
+      // 즉시 emit — pending이 있으면 취소
+      this._cancelPendingEmit(agentId);
+      this.emit('agent-updated', this.getAgentWithEffectiveState(agentId));
+    }
+  }
+
+  _cancelPendingEmit(agentId) {
+    const pending = this._pendingEmit.get(agentId);
+    if (pending) {
+      clearTimeout(pending.timer);
+      this._pendingEmit.delete(agentId);
+    }
+  }
+
   removeAgent(agentId) {
     const agent = this.agents.get(agentId);
     if (!agent) return false;
+    this._cancelPendingEmit(agentId);
+    this._releaseAvatarIndex(agent.avatarIndex);
     this.agents.delete(agentId);
 
     // 서브에이전트 삭제 시 부모 상태 리프레시
@@ -194,9 +241,47 @@ class AgentManager extends EventEmitter {
     return 'Agent';
   }
 
+  /**
+   * 아바타 인덱스 할당 — 해시 충돌 시 미사용 아바타 우선
+   */
+  _assignAvatarIndex(agentId) {
+    let hash = 0;
+    const str = agentId || '';
+    for (let i = 0; i < str.length; i++) {
+      hash = ((hash << 5) - hash) + str.charCodeAt(i);
+      hash |= 0;
+    }
+    const hashIdx = Math.abs(hash) % AVATAR_COUNT;
+
+    if (!this._usedAvatarIndices.has(hashIdx)) {
+      this._usedAvatarIndices.add(hashIdx);
+      return hashIdx;
+    }
+
+    // 해시 충돌: 미사용 아바타 순회
+    for (let i = 0; i < AVATAR_COUNT; i++) {
+      if (!this._usedAvatarIndices.has(i)) {
+        this._usedAvatarIndices.add(i);
+        return i;
+      }
+    }
+
+    // 모든 아바타 사용 중이면 해시 폴백
+    return hashIdx;
+  }
+
+  /**
+   * 아바타 인덱스 해제
+   */
+  _releaseAvatarIndex(avatarIndex) {
+    if (avatarIndex !== undefined && avatarIndex !== null) {
+      this._usedAvatarIndices.delete(avatarIndex);
+    }
+  }
+
   getStats() {
     const agents = this.getAllAgents();
-    const counts = { Done: 0, Thinking: 0, Working: 0, Waiting: 0, Help: 0 };
+    const counts = { Done: 0, Thinking: 0, Working: 0, Waiting: 0, Help: 0, Error: 0 };
     for (const agent of agents) {
       if (counts.hasOwnProperty(agent.state)) {
         counts[agent.state]++;

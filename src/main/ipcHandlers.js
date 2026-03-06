@@ -37,26 +37,55 @@ if ($hwnd -ne [IntPtr]::Zero) {
 }
 
 function registerIpcHandlers({ agentManager, sessionPids, windowManager, debugLog, adaptAgentToDashboard, errorHandler }) {
+  // 리사이즈 애니메이션 상태
+  let _resizeAnimTimer = null;
+
   ipcMain.on('resize-window', (e, size) => {
     const mw = windowManager.mainWindow;
     if (mw && !mw.isDestroyed()) {
-      const { width, height, y } = mw.getBounds();
+      const { width, height, x, y } = mw.getBounds();
 
       const newWidth = Math.max(220, Math.ceil(size.width ? size.width + 30 : width));
       const newHeight = Math.max(300, Math.ceil(size.height ? size.height + 40 : height));
 
       if (newWidth === width && newHeight === height) return;
 
+      // 이전 애니메이션 취소
+      if (_resizeAnimTimer) {
+        clearInterval(_resizeAnimTimer);
+        _resizeAnimTimer = null;
+      }
+
+      // 4단계(50ms 간격) 애니메이션으로 부드럽게 전환
+      const steps = 4;
+      const stepInterval = 50;
+      const dw = newWidth - width;
+      const dh = newHeight - height;
       const diffHeight = newHeight - height;
-      const newY = Math.max(0, y - diffHeight);
+      const finalY = Math.max(0, y - diffHeight);
+      const dy = finalY - y;
+      let step = 0;
 
-      mw.setBounds({
-        width: newWidth,
-        height: newHeight,
-        y: newY
-      });
+      _resizeAnimTimer = setInterval(() => {
+        step++;
+        const t = step / steps;
+        // ease-out quad
+        const ease = t * (2 - t);
+        const curW = Math.round(width + dw * ease);
+        const curH = Math.round(height + dh * ease);
+        const curY = Math.round(y + dy * ease);
 
-      debugLog(`[Main] IPC Resize → ${newWidth}x${newHeight} (y: ${newY})`);
+        if (mw && !mw.isDestroyed()) {
+          mw.setBounds({ x, width: curW, height: curH, y: curY });
+        }
+
+        if (step >= steps) {
+          clearInterval(_resizeAnimTimer);
+          _resizeAnimTimer = null;
+        }
+      }, stepInterval);
+
+      debugLog(`[Main] IPC Resize → ${newWidth}x${newHeight} (animated)`);
     }
   });
 
@@ -99,17 +128,20 @@ function registerIpcHandlers({ agentManager, sessionPids, windowManager, debugLo
   ipcMain.on('get-agent-stats', (event) => event.reply('agent-stats-response', agentManager?.getStats() ?? {}));
 
   ipcMain.on('dismiss-agent', (event, agentId) => {
-    if (agentManager) agentManager.dismissAgent(agentId);
+    if (agentManager) {
+      agentManager.dismissAgent(agentId);
+    }
   });
 
-  ipcMain.on('focus-terminal', (event, agentId) => {
+  ipcMain.handle('focus-terminal', async (event, agentId) => {
     const pid = sessionPids.get(agentId);
     if (!pid) {
       debugLog(`[Main] Focus: no PID for agent=${agentId.slice(0, 8)}`);
-      return;
+      return { success: false, reason: 'no-pid' };
     }
     debugLog(`[Main] Focus requested for agent=${agentId.slice(0, 8)} pid=${pid}`);
     focusTerminalByPid(pid, 'Main', debugLog);
+    return { success: true };
   });
 
   // Dashboard IPC Handlers

@@ -19,9 +19,10 @@ var officeCharacters = {
     // Map dashboard status to office state
     const officeState = this._mapStatus(agentData.status);
 
-    // Deterministic avatar from agentId (synced with taskbar renderer)
-    const avatarIdx = avatarIndexFromId(agentData.id);
-    const avatarFile = AVATAR_FILES[avatarIdx];
+    // 서버 할당 avatarIndex 우선, 폴백: 해시 계산
+    var avatarIdx = (agentData.avatarIndex !== undefined && agentData.avatarIndex !== null)
+      ? agentData.avatarIndex : avatarIndexFromId(agentData.id);
+    var avatarFile = AVATAR_FILES[avatarIdx] || AVATAR_FILES[0];
 
     const char = {
       id: agentData.id,
@@ -60,7 +61,6 @@ var officeCharacters = {
     this._updateTarget(char);
     this._setBubble(char, agentData);
 
-    console.log('[OfficeChar] Added:', agentData.id, officeState, 'avatar:', avatarFile);
   },
 
   updateCharacter: function (agentData) {
@@ -93,10 +93,14 @@ var officeCharacters = {
       }
 
       // Trigger effect on state change
-      if (newState === 'done' && typeof officeRenderer !== 'undefined') {
-        officeRenderer.spawnEffect('confetti', char.x, char.y - 45);
-      } else if (newState === 'error' && typeof officeRenderer !== 'undefined') {
-        officeRenderer.spawnEffect('warning', char.x, char.y - 65);
+      if (typeof officeRenderer !== 'undefined') {
+        var stateColor = STATE_COLORS[newState] || '#94a3b8';
+        officeRenderer.spawnEffect('stateChange', char.x, char.y - 32, stateColor);
+        if (newState === 'done') {
+          officeRenderer.spawnEffect('confetti', char.x, char.y - 45);
+        } else if (newState === 'error') {
+          officeRenderer.spawnEffect('warning', char.x, char.y - 65);
+        }
       }
     }
 
@@ -106,31 +110,41 @@ var officeCharacters = {
   removeCharacter: function (agentId) {
     this.releaseDesk(agentId);
     this.characters.delete(agentId);
-    console.log('[OfficeChar] Removed:', agentId);
   },
 
   assignDesk: function (agentId) {
     const char = this.characters.get(agentId);
     if (!char || char.deskIndex !== undefined) return;
 
-    // Find unoccupied desk
+    // 빈 좌석 수집
     const usedDesks = new Set(this.seatAssignments.keys());
     const deskCoords = officeCoords.desk || [];
+    var available = [];
     for (let i = 0; i < deskCoords.length; i++) {
-      if (!usedDesks.has(i)) {
-        char.deskIndex = i;
-        this.seatAssignments.set(i, agentId);
-        return;
-      }
+      if (!usedDesks.has(i)) available.push(i);
     }
+
+    if (available.length === 0) {
+      // D6: 좌석 초과 — 오버플로 처리
+      char.deskOverflow = true;
+      return;
+    }
+
+    // 에이전트 ID 기반 결정론적 랜덤 (같은 에이전트는 같은 선호)
+    var hash = avatarIndexFromId(agentId);
+    var idx = available[hash % available.length];
+    char.deskIndex = idx;
+    this.seatAssignments.set(idx, agentId);
   },
 
   releaseDesk: function (agentId) {
     const char = this.characters.get(agentId);
-    if (char && char.deskIndex !== undefined) {
+    if (!char) return;
+    if (char.deskIndex !== undefined) {
       this.seatAssignments.delete(char.deskIndex);
       char.deskIndex = undefined;
     }
+    char.deskOverflow = false;
   },
 
   updateAll: function (deltaSec, deltaMs) {
@@ -157,6 +171,20 @@ var officeCharacters = {
     if (char.agentState === 'working' || char.agentState === 'thinking' ||
         char.agentState === 'error' || char.agentState === 'help') {
       char.restTimer = 0;
+
+      // D6: 좌석 초과 에이전트 — desk 근처 idle 좌표로 이동 (서서 일하기)
+      if (char.deskOverflow) {
+        if (char.path.length > 0 && char.pathIndex < char.path.length) return;
+        // desk 영역 근처의 idle 좌표 중 하나를 선택
+        var nearIdle = this._findNearDeskIdleSpot(char);
+        if (nearIdle) {
+          if (Math.abs(char.x - nearIdle.x) < 5 && Math.abs(char.y - nearIdle.y) < 5) return;
+          char.path = officePathfinder.findPath(char.x, char.y, nearIdle.x, nearIdle.y);
+          char.pathIndex = 0;
+        }
+        return;
+      }
+
       if (char.deskIndex !== undefined && char.deskIndex < coords.desk.length) {
         const target = coords.desk[char.deskIndex];
         const tx = Math.floor(target.x);
@@ -225,6 +253,10 @@ var officeCharacters = {
 
       if (char.agentState === 'done' || char.agentState === 'completed') {
         char.currentAnim = 'dance';
+      } else if (char.deskOverflow) {
+        // D6: 오버플로 에이전트는 서서 일하는 자세
+        char.facingDir = 'down';
+        char.currentAnim = 'down_idle';
       } else if (char.agentState !== 'error') {
         const config = currentSpot ? getSeatConfig(currentSpot.id) : { dir: 'down', animType: 'sit' };
         char.facingDir = config.dir;
@@ -291,8 +323,51 @@ var officeCharacters = {
     }
 
     if (text) {
-      char.bubble = { text: text, icon: icon, expiresAt: Date.now() + 8000 };
+      // working/thinking/help/error 상태는 상태 유지 중 영구 표시
+      var isPersistent = (status === 'working' || status === 'thinking' || status === 'help' || status === 'error');
+      char.bubble = { text: text, icon: icon, expiresAt: isPersistent ? Infinity : Date.now() + 8000 };
     }
+  },
+
+  /** D6: desk 영역 근처의 빈 idle 좌표 찾기 (오버플로 에이전트용) */
+  _findNearDeskIdleSpot: function (char) {
+    var coords = officeCoords;
+    if (!coords || !coords.idle || !coords.desk || coords.desk.length === 0) return null;
+
+    // desk 영역의 평균 좌표 계산
+    var avgX = 0, avgY = 0;
+    for (var i = 0; i < coords.desk.length; i++) {
+      avgX += coords.desk[i].x;
+      avgY += coords.desk[i].y;
+    }
+    avgX /= coords.desk.length;
+    avgY /= coords.desk.length;
+
+    // idle 좌표를 desk 평균 좌표와의 거리 순으로 정렬
+    var occupied = {};
+    this.characters.forEach(function (a) {
+      if (a.id === char.id) return;
+      var ax = Math.floor(a.x), ay = Math.floor(a.y);
+      if (a.path.length > 0) {
+        var t = a.path[a.path.length - 1];
+        ax = Math.floor(t.x);
+        ay = Math.floor(t.y);
+      }
+      occupied[ax + ',' + ay] = true;
+    });
+
+    var candidates = coords.idle.filter(function (p) {
+      return !occupied[Math.floor(p.x) + ',' + Math.floor(p.y)];
+    }).sort(function (a, b) {
+      var da = Math.abs(a.x - avgX) + Math.abs(a.y - avgY);
+      var db = Math.abs(b.x - avgX) + Math.abs(b.y - avgY);
+      return da - db;
+    });
+
+    // 결정론적 선택 (에이전트 ID 기반)
+    if (candidates.length === 0) return null;
+    var hash = avatarIndexFromId(char.id);
+    return candidates[hash % Math.min(candidates.length, 5)];
   },
 
   getCharacterArray: function () {

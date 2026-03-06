@@ -30,13 +30,11 @@ async function initOffice() {
     agents.forEach(function (a) {
       officeCharacters.addCharacter(a);
     });
-    console.log('[Office] Loaded', agents.length, 'agents');
   } catch (e) {
     console.error('[Office] Failed to fetch agents:', e);
   }
 
   officeInitialized = true;
-  console.log('[Office] Ready');
 }
 
 /** Called from dashboard SSE agent.created handler */
