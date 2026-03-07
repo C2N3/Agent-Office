@@ -56,7 +56,8 @@ async function init() {
   // Load existing agents
   try {
     const agents = await window.electronAPI.getAllAgents();
-    window.lastAgents = [...agents];
+    lastAgents.length = 0;
+    lastAgents.push(...agents);
     for (const agent of agents) {
       addAgent(agent);
     }

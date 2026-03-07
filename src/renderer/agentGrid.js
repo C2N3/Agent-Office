@@ -90,7 +90,7 @@ function migrateSatellites(parentCard, parentId) {
     const childId = card.dataset.agentId;
     if (childId === parentId) return; // skip self
 
-    const agentData = window.lastAgents?.find(a => a.id === childId);
+    const agentData = lastAgents?.find(a => a.id === childId);
     if (!agentData || agentData.parentId !== parentId) return;
     if (!isSatelliteCandidate(agentData)) return;
 
@@ -113,9 +113,8 @@ function migrateSatellites(parentCard, parentId) {
 }
 
 function addAgent(agent) {
-  if (!window.lastAgents) window.lastAgents = [];
-  if (!window.lastAgents.some(a => a.id === agent.id)) {
-    window.lastAgents.push(agent);
+  if (!lastAgents.some(a => a.id === agent.id)) {
+    lastAgents.push(agent);
   }
 
   // Check for existing DOM (satellite or card)
@@ -152,15 +151,13 @@ function addAgent(agent) {
 
 function updateAgent(agent) {
   // Capture previous data BEFORE updating lastAgents
-  const prevData = window.lastAgents?.find(a => a.id === agent.id);
+  const prevData = lastAgents?.find(a => a.id === agent.id);
 
-  if (window.lastAgents) {
-    const idx = window.lastAgents.findIndex(a => a.id === agent.id);
-    if (idx > -1) {
-      window.lastAgents[idx] = agent;
-    } else {
-      window.lastAgents.push(agent);
-    }
+  const idx = lastAgents.findIndex(a => a.id === agent.id);
+  if (idx > -1) {
+    lastAgents[idx] = agent;
+  } else {
+    lastAgents.push(agent);
   }
 
   // Try updating as satellite first
@@ -215,7 +212,7 @@ function updateAgent(agent) {
 
 function removeAgent(data) {
   // Try removing as satellite first
-  const agentData = window.lastAgents?.find(a => a.id === data.id);
+  const agentData = lastAgents?.find(a => a.id === data.id);
   if (agentData && isSatelliteCandidate(agentData)) {
     const parentCard = findParentCard(agentData);
     if (parentCard && removeSatelliteAvatar(parentCard, data.id)) {
@@ -323,7 +320,7 @@ function updateGridLayout() {
   const cardDataList = cards.map(c => {
     return {
       card: c,
-      data: window.lastAgents?.find(ag => ag.id === c.dataset.agentId) || { id: c.dataset.agentId }
+      data: lastAgents?.find(ag => ag.id === c.dataset.agentId) || { id: c.dataset.agentId }
     };
   });
 

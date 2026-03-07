@@ -31,6 +31,9 @@ const stateConfig = {
   'Offline': { anim: 'waiting', class: 'state-offline', label: 'Offline' }
 };
 
+// --- Shared agent data (replaces window.lastAgents) ---
+let lastAgents = [];
+
 // --- Per-agent state management ---
 const agentStates = new Map(); // agentId -> { animName, frameIdx, rafId, startTime, timerInterval, lastFormattedTime }
 

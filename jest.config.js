@@ -10,12 +10,13 @@ module.exports = {
   ],
   coverageThreshold: {
     global: {
-      branches: 20,
-      functions: 20,
-      lines: 20,
-      statements: 20
+      branches: 25,
+      functions: 25,
+      lines: 30,
+      statements: 30
     }
   },
+  forceExit: true,
   moduleNameMapper: {
     '^electron$': '<rootDir>/__mocks__/electron.js'
   },

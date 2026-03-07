@@ -11,6 +11,7 @@ jest.mock('fs', () => ({
   mkdirSync: jest.fn(),
   writeFileSync: jest.fn(),
   readFileSync: jest.fn(),
+  renameSync: jest.fn(),
 }));
 
 jest.mock('child_process', () => ({
@@ -49,12 +50,19 @@ describe('sessionPersistence', () => {
 
       expect(fs.writeFileSync).toHaveBeenCalledTimes(1);
       const [writePath, content] = fs.writeFileSync.mock.calls[0];
-      expect(writePath).toContain('state.json');
+      expect(writePath).toContain('state.json.tmp');
 
       const parsed = JSON.parse(content);
       expect(parsed.agents).toHaveLength(2);
       expect(parsed.pids).toHaveLength(2);
       expect(parsed.pids[0]).toEqual(['agent-1', 12345]);
+
+      // Atomic rename
+      expect(fs.renameSync).toHaveBeenCalledTimes(1);
+      const [tmpPath, finalPath] = fs.renameSync.mock.calls[0];
+      expect(tmpPath).toContain('state.json.tmp');
+      expect(finalPath).toContain('state.json');
+      expect(finalPath).not.toContain('.tmp');
     });
 
     test('creates directory if not exists', () => {
@@ -119,9 +127,10 @@ describe('sessionPersistence', () => {
       expect(sessionPids.has('agent-1')).toBe(true);
       expect(firstPreToolUseDone.has('agent-1')).toBe(true);
 
-      // state.json should be reset after recovery
+      // state.json should be reset after recovery (atomic: write .tmp then rename)
       const resetCall = fs.writeFileSync.mock.calls.find(c => c[0].includes('state.json'));
       expect(resetCall).toBeTruthy();
+      expect(fs.renameSync).toHaveBeenCalled();
 
       Object.defineProperty(process, 'platform', { value: origPlatform, configurable: true });
     });
@@ -208,12 +217,16 @@ describe('sessionPersistence', () => {
 
       recoverExistingSessions({ agentManager, sessionPids, firstPreToolUseDone, debugLog, errorHandler });
 
+      // Atomic write: writes to .tmp first
       const resetCall = fs.writeFileSync.mock.calls.find(c => {
         if (!c[0].includes('state.json')) return false;
         const parsed = JSON.parse(c[1]);
         return parsed.agents.length === 0 && parsed.pids.length === 0;
       });
       expect(resetCall).toBeTruthy();
+
+      // Then renames .tmp to final path
+      expect(fs.renameSync).toHaveBeenCalled();
     });
   });
 });

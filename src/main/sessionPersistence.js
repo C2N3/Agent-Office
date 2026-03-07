@@ -56,7 +56,9 @@ function savePersistedState({ agentManager, sessionPids }) {
     agents: agents,
     pids: Array.from(sessionPids.entries())
   };
-  fs.writeFileSync(statePath, JSON.stringify(state, null, 2), 'utf-8');
+  const tmpPath = statePath + '.tmp';
+  fs.writeFileSync(tmpPath, JSON.stringify(state, null, 2), 'utf-8');
+  fs.renameSync(tmpPath, statePath);
 }
 
 function recoverExistingSessions({ agentManager, sessionPids, firstPreToolUseDone, debugLog, errorHandler }) {
@@ -127,9 +129,11 @@ function recoverExistingSessions({ agentManager, sessionPids, firstPreToolUseDon
 
   // Reset state.json after recovering agents
   try {
-    fs.writeFileSync(statePath, JSON.stringify({ agents: [], pids: [] }, null, 2), 'utf-8');
+    const tmpPath = statePath + '.tmp';
+    fs.writeFileSync(tmpPath, JSON.stringify({ agents: [], pids: [] }, null, 2), 'utf-8');
+    fs.renameSync(tmpPath, statePath);
     debugLog('[Recover] state.json reset after recovery');
-  } catch (e) { }
+  } catch (e) { process.stderr.write(`[session-persist] reset error: ${e.message}\n`); }
 }
 
 module.exports = { savePersistedState, recoverExistingSessions };

@@ -34,7 +34,7 @@ console.error = (...args) => {
 
   try {
     fs.appendFileSync(errorLogPath, logMessage);
-  } catch (e) { }
+  } catch (e) { process.stderr.write(`[log-write-error] ${e.message}\n`); }
 
   originalConsoleError.apply(console, args);
 };
@@ -45,7 +45,7 @@ process.on('uncaughtException', (error) => {
   const logMessage = `[${timestamp}] UNCAUGHT EXCEPTION: ${error.message}\n${error.stack}\n`;
   try {
     fs.appendFileSync(errorLogPath, logMessage);
-  } catch (e) { }
+  } catch (e) { process.stderr.write(`[log-write-error] ${e.message}\n`); }
 });
 
 process.on('unhandledRejection', (reason, promise) => {
@@ -53,7 +53,7 @@ process.on('unhandledRejection', (reason, promise) => {
   const logMessage = `[${timestamp}] UNHANDLED REJECTION: ${reason}\n`;
   try {
     fs.appendFileSync(errorLogPath, logMessage);
-  } catch (e) { }
+  } catch (e) { process.stderr.write(`[log-write-error] ${e.message}\n`); }
 });
 
 // Debug logging to file
@@ -81,6 +81,8 @@ let sessionScanner = null;
 let heatmapScanner = null;
 let windowManager = null;
 let hookProcessor = null;
+let livenessIntervals = null;
+let agentListeners = null;
 
 app.whenReady().then(() => {
   debugLog('========== Pixel Agent Desk started ==========');
@@ -163,7 +165,7 @@ app.whenReady().then(() => {
     errorHandler,
   });
   windowManager.startDashboardServer();
-  startLivenessChecker({ agentManager, debugLog });
+  livenessIntervals = startLivenessChecker({ agentManager, debugLog });
 
   // 7. Recover existing active sessions
   recoverExistingSessions({
@@ -193,63 +195,67 @@ app.whenReady().then(() => {
   ipcMain.once('renderer-ready', () => {
     debugLog('[Main] renderer-ready event received!');
 
-    agentManager.on('agent-added', (agent) => {
-      const mw = windowManager.mainWindow;
-      if (mw && !mw.isDestroyed()) {
-        mw.webContents.send('agent-added', agent);
+    agentListeners = {
+      onAdded: (agent) => {
+        const mw = windowManager.mainWindow;
+        if (mw && !mw.isDestroyed()) {
+          mw.webContents.send('agent-added', agent);
+        }
+        const dw = windowManager.dashboardWindow;
+        if (dw && !dw.isDestroyed()) {
+          const adaptedAgent = adaptAgentToDashboard(agent);
+          dw.webContents.send('dashboard-agent-added', adaptedAgent);
+        }
+        savePersistedState({ agentManager, sessionPids });
+      },
+      onUpdated: (agent) => {
+        const mw = windowManager.mainWindow;
+        if (mw && !mw.isDestroyed()) {
+          mw.webContents.send('agent-updated', agent);
+        }
+        const dw = windowManager.dashboardWindow;
+        if (dw && !dw.isDestroyed()) {
+          const adaptedAgent = adaptAgentToDashboard(agent);
+          dw.webContents.send('dashboard-agent-updated', adaptedAgent);
+        }
+        savePersistedState({ agentManager, sessionPids });
+      },
+      onRemoved: (data) => {
+        const mw = windowManager.mainWindow;
+        if (mw && !mw.isDestroyed()) {
+          mw.webContents.send('agent-removed', data);
+        }
+        const dw = windowManager.dashboardWindow;
+        if (dw && !dw.isDestroyed()) {
+          dw.webContents.send('dashboard-agent-removed', data);
+        }
+        savePersistedState({ agentManager, sessionPids });
+        // Close dashboard when all agents are gone
+        if (agentManager.getAllAgents().length === 0) {
+          windowManager.closeDashboardWindow();
+        }
+      },
+      onCleaned: (data) => {
+        const mw = windowManager.mainWindow;
+        if (mw && !mw.isDestroyed()) {
+          mw.webContents.send('agents-cleaned', data);
+        }
+        const dw = windowManager.dashboardWindow;
+        if (dw && !dw.isDestroyed()) {
+          dw.webContents.send('dashboard-agent-removed', { type: 'batch', ...data });
+        }
+        savePersistedState({ agentManager, sessionPids });
+        // Close dashboard when all agents are gone
+        if (agentManager.getAllAgents().length === 0) {
+          windowManager.closeDashboardWindow();
+        }
       }
-      const dw = windowManager.dashboardWindow;
-      if (dw && !dw.isDestroyed()) {
-        const adaptedAgent = adaptAgentToDashboard(agent);
-        dw.webContents.send('dashboard-agent-added', adaptedAgent);
-      }
-      savePersistedState({ agentManager, sessionPids });
-    });
+    };
 
-    agentManager.on('agent-updated', (agent) => {
-      const mw = windowManager.mainWindow;
-      if (mw && !mw.isDestroyed()) {
-        mw.webContents.send('agent-updated', agent);
-      }
-      const dw = windowManager.dashboardWindow;
-      if (dw && !dw.isDestroyed()) {
-        const adaptedAgent = adaptAgentToDashboard(agent);
-        dw.webContents.send('dashboard-agent-updated', adaptedAgent);
-      }
-      savePersistedState({ agentManager, sessionPids });
-    });
-
-    agentManager.on('agent-removed', (data) => {
-      const mw = windowManager.mainWindow;
-      if (mw && !mw.isDestroyed()) {
-        mw.webContents.send('agent-removed', data);
-      }
-      const dw = windowManager.dashboardWindow;
-      if (dw && !dw.isDestroyed()) {
-        dw.webContents.send('dashboard-agent-removed', data);
-      }
-      savePersistedState({ agentManager, sessionPids });
-      // Close dashboard when all agents are gone
-      if (agentManager.getAllAgents().length === 0) {
-        windowManager.closeDashboardWindow();
-      }
-    });
-
-    agentManager.on('agents-cleaned', (data) => {
-      const mw = windowManager.mainWindow;
-      if (mw && !mw.isDestroyed()) {
-        mw.webContents.send('agents-cleaned', data);
-      }
-      const dw = windowManager.dashboardWindow;
-      if (dw && !dw.isDestroyed()) {
-        dw.webContents.send('dashboard-agent-removed', { type: 'batch', ...data });
-      }
-      savePersistedState({ agentManager, sessionPids });
-      // Close dashboard when all agents are gone
-      if (agentManager.getAllAgents().length === 0) {
-        windowManager.closeDashboardWindow();
-      }
-    });
+    agentManager.on('agent-added', agentListeners.onAdded);
+    agentManager.on('agent-updated', agentListeners.onUpdated);
+    agentManager.on('agent-removed', agentListeners.onRemoved);
+    agentManager.on('agents-cleaned', agentListeners.onCleaned);
 
     // Send sessions that arrived before ready and recovered data
     const allAgents = agentManager.getAllAgents();
@@ -276,7 +282,25 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
+  // Remove agentManager event listeners
+  if (agentManager && agentListeners) {
+    agentManager.removeListener('agent-added', agentListeners.onAdded);
+    agentManager.removeListener('agent-updated', agentListeners.onUpdated);
+    agentManager.removeListener('agent-removed', agentListeners.onRemoved);
+    agentManager.removeListener('agents-cleaned', agentListeners.onCleaned);
+    agentListeners = null;
+  }
+
   if (agentManager) agentManager.stop();
+
+  // Clear liveness checker intervals
+  if (livenessIntervals) {
+    clearInterval(livenessIntervals.zombieSweepId);
+    clearInterval(livenessIntervals.livenessCheckId);
+    livenessIntervals = null;
+    debugLog('[Main] Liveness intervals cleared');
+  }
+
   if (sessionScanner) {
     sessionScanner.stop();
     debugLog('[Main] SessionScanner stopped');

@@ -174,11 +174,11 @@ const ZOMBIE_SWEEP_INTERVAL = 30000;
 const NO_PID_TIMEOUT = GRACE_MS + 10000;
 
 function startLivenessChecker({ agentManager, debugLog }) {
-  setInterval(() => {
+  const zombieSweepId = setInterval(() => {
     if (agentManager) zombieSweep(agentManager, debugLog);
   }, ZOMBIE_SWEEP_INTERVAL);
 
-  setInterval(async () => {
+  const livenessCheckId = setInterval(async () => {
     if (!agentManager) return;
     for (const agent of agentManager.getAllAgents()) {
       if (agent.firstSeen && (Date.now() - agent.firstSeen) < GRACE_MS) continue;
@@ -231,6 +231,8 @@ function startLivenessChecker({ agentManager, debugLog }) {
       }
     }
   }, LIVENESS_INTERVAL);
+
+  return { zombieSweepId, livenessCheckId };
 }
 
 module.exports = { sessionPids, startLivenessChecker, detectClaudePidByTranscript };
