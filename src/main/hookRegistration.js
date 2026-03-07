@@ -42,6 +42,10 @@ function writeClaudeConfig(config, debugLog) {
   }
 }
 
+function hasOurHookInEntry(entry, hookUrl) {
+  return entry.hooks && entry.hooks.some(h => h.type === 'http' && h.url === hookUrl);
+}
+
 function isHookRegistered(debugLog) {
   const config = readClaudeConfig(debugLog);
   const HTTP_HOOK_URL = `http://localhost:${HOOK_SERVER_PORT}/hook`;
@@ -52,10 +56,8 @@ function isHookRegistered(debugLog) {
 
   const hookEvents = ['SessionStart', 'PreToolUse', 'PostToolUse'];
   for (const event of hookEvents) {
-    if (config.hooks[event]) {
-      if (!Array.isArray(config.hooks[event])) return false;
-      const hookStr = JSON.stringify(config.hooks[event]);
-      if (hookStr.includes(HTTP_HOOK_URL) && hookStr.includes('"type":"http"')) {
+    if (config.hooks[event] && Array.isArray(config.hooks[event])) {
+      if (config.hooks[event].some(entry => hasOurHookInEntry(entry, HTTP_HOOK_URL))) {
         return true;
       }
     }
@@ -88,18 +90,20 @@ function registerClaudeHooks(debugLog) {
     'PreCompact'
   ];
 
+  const ourEntry = {
+    matcher: "*",
+    hooks: [{ type: "http", url: HTTP_HOOK_URL }]
+  };
+
   for (const event of hookEvents) {
-    config.hooks[event] = [
-      {
-        matcher: "*",
-        hooks: [
-          {
-            type: "http",
-            url: HTTP_HOOK_URL
-          }
-        ]
-      }
-    ];
+    if (!Array.isArray(config.hooks[event])) {
+      // 이벤트에 훅이 없으면 새로 생성
+      config.hooks[event] = [ourEntry];
+    } else if (!config.hooks[event].some(entry => hasOurHookInEntry(entry, HTTP_HOOK_URL))) {
+      // 기존 훅 보존하고 우리 훅만 추가
+      config.hooks[event].push(ourEntry);
+    }
+    // 이미 등록돼 있으면 건드리지 않음
   }
 
   if (writeClaudeConfig(config, debugLog)) {
