@@ -16,11 +16,6 @@ function safeOn(channel, callback) {
 
 contextBridge.exposeInMainWorld('electronAPI', {
   formatTime: formatTime,
-  getWorkArea: () => {
-    ipcRenderer.send('get-work-area');
-    return new Promise(resolve => ipcRenderer.once('work-area-response', (_, d) => resolve(d)));
-  },
-  constrainWindow: (bounds) => ipcRenderer.send('constrain-window', bounds),
   resizeWindow: (size) => ipcRenderer.send('resize-window', size),
   rendererReady: () => ipcRenderer.send('renderer-ready'),
 
@@ -42,20 +37,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.send('get-avatars');
     return new Promise(resolve => ipcRenderer.once('avatars-response', (_, d) => resolve(d)));
   },
-  getAgentStats: () => {
-    ipcRenderer.send('get-agent-stats');
-    return new Promise(resolve => ipcRenderer.once('agent-stats-response', (_, d) => resolve(d)));
-  },
 
   // Terminal focus (on agent click) - uses actual PID via agentId, returns success/failure
   focusTerminal: (agentId) => ipcRenderer.invoke('focus-terminal', agentId),
 
   // Mission Control Dashboard methods
   openWebDashboard: () => ipcRenderer.invoke('open-web-dashboard'),
-  closeWebDashboard: () => ipcRenderer.invoke('close-web-dashboard'),
-  isWebDashboardOpen: () => ipcRenderer.invoke('is-web-dashboard-open'),
 
   // Error Recovery methods (P0-3)
-  getErrorLogs: () => ipcRenderer.invoke('get-error-logs'),
   executeRecoveryAction: (errorId, action) => ipcRenderer.invoke('execute-recovery-action', errorId, action)
 });

@@ -52,10 +52,6 @@ function registerIpcHandlers({ agentManager, sessionPids, windowManager, debugLo
     debugLog(`[Main] Resize → ${newWidth}x${newHeight}`);
   });
 
-  ipcMain.on('get-work-area', (event) => {
-    event.reply('work-area-response', screen.getPrimaryDisplay().workArea);
-  });
-
   ipcMain.on('get-avatars', (event) => {
     try {
       const charsDir = path.join(__dirname, '..', '..', 'public', 'characters');
@@ -76,20 +72,7 @@ function registerIpcHandlers({ agentManager, sessionPids, windowManager, debugLo
     }
   });
 
-  ipcMain.on('constrain-window', (event, bounds) => {
-    const mw = windowManager.mainWindow;
-    if (!mw) return;
-    const wb = mw.getBounds();
-    const { width, height } = wb;
-    const wa = screen.getDisplayMatching(wb).bounds;
-    mw.setPosition(
-      Math.max(wa.x, Math.min(bounds.x, wa.x + wa.width - width)),
-      Math.max(wa.y, Math.min(bounds.y, wa.y + wa.height - height))
-    );
-  });
-
   ipcMain.on('get-all-agents', (event) => event.reply('all-agents-response', agentManager?.getAllAgents() ?? []));
-  ipcMain.on('get-agent-stats', (event) => event.reply('agent-stats-response', agentManager?.getStats() ?? {}));
 
   ipcMain.handle('focus-terminal', async (event, agentId) => {
     const pid = sessionPids.get(agentId);
@@ -109,32 +92,6 @@ function registerIpcHandlers({ agentManager, sessionPids, windowManager, debugLo
       return result;
     } catch (error) {
       debugLog(`[MissionControl] Error opening dashboard: ${error.message}`);
-      return { success: false, error: error.message };
-    }
-  });
-
-  ipcMain.handle('close-web-dashboard', async (event) => {
-    try {
-      windowManager.closeDashboardWindow();
-      return { success: true };
-    } catch (error) {
-      debugLog(`[MissionControl] Error closing dashboard: ${error.message}`);
-      return { success: false, error: error.message };
-    }
-  });
-
-  ipcMain.handle('is-web-dashboard-open', async (event) => {
-    const dw = windowManager.dashboardWindow;
-    return {
-      isOpen: dw !== null && !dw.isDestroyed()
-    };
-  });
-
-  ipcMain.handle('get-error-logs', async () => {
-    try {
-      const logs = errorHandler.readRecentLogs(100);
-      return { success: true, logs };
-    } catch (error) {
       return { success: false, error: error.message };
     }
   });
