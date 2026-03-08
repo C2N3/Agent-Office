@@ -252,7 +252,12 @@ var officeCharacters = {
       }
 
       if (char.agentState === 'done' || char.agentState === 'completed') {
-        char.currentAnim = 'dance';
+        if (currentSpot && currentSpot.type === 'idle') {
+          const entry = IDLE_SEAT_MAP[currentSpot.id];
+          char.currentAnim = (entry === 'dance') ? 'dance' : 'sit_' + (entry || 'down');
+        } else {
+          char.currentAnim = 'sit_' + (char.facingDir || 'down');
+        }
       } else if (char.deskOverflow) {
         // D6: Overflow agent uses standing work pose
         char.facingDir = 'down';

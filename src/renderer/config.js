@@ -24,8 +24,8 @@ const SHEET = {
 //   Row 7: back_sit_idle(56-59)  back_sit_work(60-63)
 //   Row 8: front_done_dance(64-67)  front_alert_jump(68-71)
 const ANIM_SEQUENCES = {
-  working:  { frames: [12, 13, 14, 15], fps: 8, loop: true },  // front_sit_work
-  complete: { frames: [64, 65, 66, 67], fps: 6, loop: true },  // front_done_dance
+  working:  { frames: [64, 65, 66, 67], fps: 8, loop: true },  // front_done_dance
+  complete: { frames: [68, 69, 70, 71], fps: 4, loop: true },  // front_alert_jump
   waiting:  { frames: [0, 1, 2, 3],     fps: 4, loop: true },  // front_idle
   alert:    { frames: [68, 69, 70, 71], fps: 4, loop: true },  // front_alert_jump
 };

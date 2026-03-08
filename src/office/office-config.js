@@ -73,6 +73,16 @@ function getSeatConfig(id) {
   return SEAT_MAP[id] || { dir: 'down', animType: 'sit' };
 }
 
+// Idle zone spot → resting animation ('dance' or sit direction)
+const IDLE_SEAT_MAP = {
+  18: 'right',
+  28: 'right',
+  24: 'dance',
+  19: 'left',
+  29: 'left',
+  // all others default to 'down' (front_sit_idle)
+};
+
 // Dashboard status → office zone mapping
 const STATE_ZONE_MAP = {
   'working':   'desk',
