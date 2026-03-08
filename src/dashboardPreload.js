@@ -50,14 +50,4 @@ contextBridge.exposeInMainWorld('dashboardAPI', {
     ipcRenderer.send('dashboard-focus-agent', agentId);
   },
 
-  // PiP controls
-  togglePip: () => ipcRenderer.invoke('toggle-pip'),
-  isPipOpen: () => ipcRenderer.invoke('is-pip-open'),
-
-  onPipStateChanged: (callback) => {
-    const listener = (event, isOpen) => callback(isOpen);
-    ipcRenderer.on('pip-state-changed', listener);
-    return () => ipcRenderer.removeListener('pip-state-changed', listener);
-  },
-
 });

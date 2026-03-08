@@ -9,7 +9,6 @@ const path = require('path');
 function createWindowManager({ agentManager, sessionScanner, heatmapScanner, debugLog, adaptAgentToDashboard, errorHandler, getWindowSizeForAgents }) {
   let mainWindow = null;
   let dashboardWindow = null;
-  let pipWindow = null;
   let keepAliveInterval = null;
   let dashboardServer = null;
 
@@ -179,93 +178,7 @@ function createWindowManager({ agentManager, sessionScanner, heatmapScanner, deb
     }
   }
 
-  function createPipWindow() {
-    if (pipWindow && !pipWindow.isDestroyed()) {
-      pipWindow.focus();
-      return;
-    }
-
-    const { width, height } = screen.getPrimaryDisplay().workAreaSize;
-    // Office map is 864x800
-    const pipW = 432;
-    const pipH = 400;
-    const margin = 20;
-
-    pipWindow = new BrowserWindow({
-      width: pipW,
-      height: pipH,
-      x: width - pipW - margin,
-      y: height - pipH - margin,
-      show: false,
-      titleBarStyle: 'hidden',
-      titleBarOverlay: {
-        color: '#0d1117',
-        symbolColor: '#8b949e',
-        height: 28
-      },
-      alwaysOnTop: true,
-      resizable: true,
-      maximizable: false,
-      minWidth: 200,
-      minHeight: 200,
-      skipTaskbar: false,
-      title: 'Office PiP',
-      backgroundColor: '#050709',
-      hasShadow: true,
-      webPreferences: {
-        nodeIntegration: false,
-        contextIsolation: true,
-        sandbox: false,
-        preload: path.join(__dirname, '..', 'pipPreload.js')
-      }
-    });
-
-    pipWindow.setAspectRatio(864 / 800);
-    pipWindow.setAlwaysOnTop(true, 'floating');
-
-    pipWindow.loadURL('http://localhost:3000/pip');
-
-    // Show only when content is fully loaded (prevents RAF throttle on hidden window)
-    pipWindow.once('ready-to-show', () => {
-      if (pipWindow && !pipWindow.isDestroyed()) {
-        pipWindow.show();
-        debugLog('[PiP] Window shown (ready-to-show)');
-      }
-    });
-
-    // Handle load failure
-    pipWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
-      debugLog(`[PiP] Failed to load: ${errorCode} - ${errorDescription}`);
-      if (pipWindow && !pipWindow.isDestroyed()) pipWindow.destroy();
-      pipWindow = null;
-    });
-
-    // Notify dashboard: PiP opened → show placeholder
-    if (dashboardWindow && !dashboardWindow.isDestroyed()) {
-      dashboardWindow.webContents.send('pip-state-changed', true);
-    }
-
-    pipWindow.on('closed', () => {
-      pipWindow = null;
-      // Notify dashboard: PiP closed → restore canvas
-      if (dashboardWindow && !dashboardWindow.isDestroyed()) {
-        dashboardWindow.webContents.send('pip-state-changed', false);
-      }
-    });
-
-    debugLog('[PiP] Window created');
-  }
-
-  function closePipWindow() {
-    if (pipWindow && !pipWindow.isDestroyed()) {
-      pipWindow.close();
-      debugLog('[PiP] Window closed by request');
-    }
-    pipWindow = null;
-  }
-
   function closeDashboardWindow() {
-    closePipWindow();
     if (dashboardWindow && !dashboardWindow.isDestroyed()) {
       dashboardWindow.close();
       debugLog('[MissionControl] Window closed by request');
@@ -319,14 +232,11 @@ function createWindowManager({ agentManager, sessionScanner, heatmapScanner, deb
   return {
     get mainWindow() { return mainWindow; },
     get dashboardWindow() { return dashboardWindow; },
-    get pipWindow() { return pipWindow; },
     createWindow,
     startKeepAlive,
     stopKeepAlive,
     createDashboardWindow,
     closeDashboardWindow,
-    createPipWindow,
-    closePipWindow,
     startDashboardServer,
     stopDashboardServer,
     resizeWindowForAgents,

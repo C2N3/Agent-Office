@@ -603,65 +603,6 @@ document.querySelectorAll('.nav-item').forEach(b => {
   };
 });
 
-// ─── PiP TOGGLE ───
-function setPipMode(isOpen) {
-  const btn = document.getElementById('pipToggleBtn');
-  const placeholder = document.getElementById('pipPlaceholder');
-  const canvas = document.getElementById('office-canvas');
-
-  if (btn) btn.classList.toggle('active', isOpen);
-
-  if (isOpen) {
-    // Show placeholder, hide canvas, stop office rendering
-    if (placeholder) placeholder.style.display = 'flex';
-    if (canvas) canvas.style.display = 'none';
-    if (typeof stopOffice === 'function') stopOffice();
-  } else {
-    // Hide placeholder, show canvas, resume office rendering
-    if (placeholder) placeholder.style.display = 'none';
-    if (canvas) canvas.style.display = '';
-    if (typeof resumeOffice === 'function') resumeOffice();
-  }
-}
-
-function setupPipToggle() {
-  const btn = document.getElementById('pipToggleBtn');
-  if (!btn) return;
-
-  btn.addEventListener('click', async () => {
-    if (typeof dashboardAPI !== 'undefined' && dashboardAPI.togglePip) {
-      const result = await dashboardAPI.togglePip();
-      if (result && result.success) {
-        setPipMode(result.action === 'opened');
-      }
-    }
-  });
-
-  // "Exit PiP" button inside the placeholder
-  const exitBtn = document.getElementById('pipExitBtn');
-  if (exitBtn) {
-    exitBtn.addEventListener('click', async () => {
-      if (typeof dashboardAPI !== 'undefined' && dashboardAPI.togglePip) {
-        await dashboardAPI.togglePip();
-      }
-    });
-  }
-
-  // Sync state when PiP is closed externally (X, back-to-dashboard, or window close)
-  if (typeof dashboardAPI !== 'undefined' && dashboardAPI.onPipStateChanged) {
-    dashboardAPI.onPipStateChanged((isOpen) => {
-      setPipMode(isOpen);
-    });
-  }
-
-  // Check if PiP is already open on dashboard load (e.g. dashboard was reopened)
-  if (typeof dashboardAPI !== 'undefined' && dashboardAPI.isPipOpen) {
-    dashboardAPI.isPipOpen().then((isOpen) => {
-      if (isOpen) setPipMode(true);
-    });
-  }
-}
-
 // ─── BOOT ───
 function initApp() {
   // Sync startup view
@@ -684,8 +625,6 @@ function initApp() {
     initOffice();
     setupOfficeClickHandler();
   }, 100);
-
-  setupPipToggle();
 }
 
 document.addEventListener('DOMContentLoaded', initApp);
