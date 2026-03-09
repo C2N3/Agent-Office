@@ -281,13 +281,107 @@ function handleRequest(req, res) {
   res.end('Not Found');
 }
 
+// ─── API Route Handlers ───
+
+function handleSSE(req, res) {
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+  });
+  res.write(`event: connected\ndata: ${JSON.stringify({ type: 'connected', timestamp: Date.now() })}\n\n`);
+  sseClients.add(res);
+
+  const keepAlive = setInterval(() => res.write(': keepalive\n\n'), 15000);
+  req.on('close', () => {
+    clearInterval(keepAlive);
+    sseClients.delete(res);
+  });
+}
+
+function handleGetAgents(req, res) {
+  if (!agentManager) {
+    res.writeHead(503, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Agent manager not available' }));
+    return;
+  }
+  const agents = agentManager.getAllAgents().map(adaptAgentToDashboard);
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(agents));
+}
+
+function handleGetAgentById(req, res, url) {
+  if (!agentManager) {
+    res.writeHead(503, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Agent manager not available' }));
+    return;
+  }
+  const agentId = url.pathname.split('/').pop();
+  const agent = agentManager.getAgent(agentId);
+  if (!agent) {
+    res.writeHead(404, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Agent not found' }));
+    return;
+  }
+  const sessionStats = sessionScanner ? sessionScanner.getSessionStats(agentId) : null;
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({ ...agent, sessionStats }));
+}
+
+function handleGetStats(req, res) {
+  const stats = calculateStats();
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(stats));
+}
+
+function handleGetSessions(req, res) {
+  const allStats = sessionScanner ? sessionScanner.getAllStats() : {};
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(allStats));
+}
+
+function handleGetHeatmap(req, res, url) {
+  if (!heatmapScanner) {
+    res.writeHead(503, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Heatmap scanner not available' }));
+    return;
+  }
+  const days = parseInt(url.searchParams.get('days') || '365', 10);
+  const endDate = new Date();
+  const startDate = new Date();
+  startDate.setDate(endDate.getDate() - days);
+  const startStr = startDate.toISOString().slice(0, 10);
+  const endStr = endDate.toISOString().slice(0, 10);
+  const range = heatmapScanner.getRange(startStr, endStr);
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({ days: range, lastScan: heatmapScanner.lastScan }));
+}
+
+function handleGetHealth(req, res) {
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({
+    status: 'ok',
+    timestamp: Date.now(),
+    agents: agentManager ? agentManager.getAgentCount() : 0,
+    sseClients: sseClients.size,
+    wsClients: wsClients.size
+  }));
+}
+
+/** Route table: "METHOD /path" → handler */
+const apiRoutes = {
+  'GET /api/events': handleSSE,
+  'GET /api/agents': handleGetAgents,
+  'GET /api/stats': handleGetStats,
+  'GET /api/sessions': handleGetSessions,
+  'GET /api/heatmap': handleGetHeatmap,
+  'GET /api/health': handleGetHealth,
+};
+
 /**
  * Handle API requests
  */
 function handleAPIRequest(req, res, url) {
-  const pathname = url.pathname;
-
-  // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -298,108 +392,20 @@ function handleAPIRequest(req, res, url) {
     return;
   }
 
-  // ─── SSE event stream ───
-  if (pathname === '/api/events' && req.method === 'GET') {
-    res.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-    });
-    res.write(`event: connected\ndata: ${JSON.stringify({ type: 'connected', timestamp: Date.now() })}\n\n`);
-    sseClients.add(res);
-
-    // Keep-alive (15 seconds)
-    const keepAlive = setInterval(() => res.write(': keepalive\n\n'), 15000);
-    req.on('close', () => {
-      clearInterval(keepAlive);
-      sseClients.delete(res);
-    });
+  // Exact route match
+  const routeKey = `${req.method} ${url.pathname}`;
+  const handler = apiRoutes[routeKey];
+  if (handler) {
+    handler(req, res, url);
     return;
   }
 
-  // ─── GET /api/agents ───
-  if (pathname === '/api/agents' && req.method === 'GET') {
-    if (!agentManager) {
-      res.writeHead(503, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Agent manager not available' }));
-      return;
-    }
-    const agents = agentManager.getAllAgents().map(adaptAgentToDashboard);
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(agents));
+  // Parameterized: GET /api/agents/:id
+  if (url.pathname.startsWith('/api/agents/') && req.method === 'GET') {
+    handleGetAgentById(req, res, url);
     return;
   }
 
-  // ─── GET /api/agents/:id ───
-  if (pathname.startsWith('/api/agents/') && req.method === 'GET') {
-    if (!agentManager) {
-      res.writeHead(503, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Agent manager not available' }));
-      return;
-    }
-    const agentId = pathname.split('/').pop();
-    const agent = agentManager.getAgent(agentId);
-    if (!agent) {
-      res.writeHead(404, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Agent not found' }));
-      return;
-    }
-    // Merge session scan results
-    const sessionStats = sessionScanner ? sessionScanner.getSessionStats(agentId) : null;
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ ...agent, sessionStats }));
-    return;
-  }
-
-  // ─── GET /api/stats ───
-  if (pathname === '/api/stats' && req.method === 'GET') {
-    const stats = calculateStats();
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(stats));
-    return;
-  }
-
-  // ─── GET /api/sessions — JSONL scan results ───
-  if (pathname === '/api/sessions' && req.method === 'GET') {
-    const allStats = sessionScanner ? sessionScanner.getAllStats() : {};
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(allStats));
-    return;
-  }
-
-  // ─── GET /api/heatmap ───
-  if (pathname === '/api/heatmap' && req.method === 'GET') {
-    if (!heatmapScanner) {
-      res.writeHead(503, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Heatmap scanner not available' }));
-      return;
-    }
-    const days = parseInt(url.searchParams.get('days') || '365', 10);
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(endDate.getDate() - days);
-    const startStr = startDate.toISOString().slice(0, 10);
-    const endStr = endDate.toISOString().slice(0, 10);
-    const range = heatmapScanner.getRange(startStr, endStr);
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ days: range, lastScan: heatmapScanner.lastScan }));
-    return;
-  }
-
-  // ─── GET /api/health ───
-  if (pathname === '/api/health' && req.method === 'GET') {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({
-      status: 'ok',
-      timestamp: Date.now(),
-      agents: agentManager ? agentManager.getAgentCount() : 0,
-      sseClients: sseClients.size,
-      wsClients: wsClients.size
-    }));
-    return;
-  }
-
-  // 404
   res.writeHead(404, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify({ error: 'API endpoint not found' }));
 }

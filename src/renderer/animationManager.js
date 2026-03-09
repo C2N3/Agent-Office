@@ -2,7 +2,9 @@
  * Animation Manager — rAF loop, drawFrame, playAnimation
  */
 
-const animationManager = {
+import { SHEET, ANIM_SEQUENCES, agentStates } from './config.js';
+
+export const animationManager = {
   animations: new Map(), // agentId -> { agentId, element, animName, sequence, frameIdx, lastTime, rafId, scale }
 
   start(agentId, element, animName, scale = 1.0) {
@@ -94,7 +96,7 @@ const animationManager = {
   }
 };
 
-function drawFrame(element, frameIndex, scale = 1.0) {
+export function drawFrame(element, frameIndex, scale = 1.0) {
   if (!element) return;
   const col = frameIndex % SHEET.cols;
   const row = Math.floor(frameIndex / SHEET.cols);
@@ -103,7 +105,7 @@ function drawFrame(element, frameIndex, scale = 1.0) {
   element.style.backgroundPosition = `${x}px ${y}px`;
 }
 
-function playAnimation(agentId, element, animName, scale = 1.0) {
+export function playAnimation(agentId, element, animName, scale = 1.0) {
   animationManager.start(agentId, element, animName, scale);
 
   const state = agentStates.get(agentId) || {};

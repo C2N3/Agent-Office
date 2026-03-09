@@ -2,6 +2,12 @@
  * Agent Grid — add/update/remove Agent, updateGridLayout, resize
  */
 
+import { SHEET, ANIM_SEQUENCES, stateConfig, lastAgents, agentStates, agentAvatars } from './config.js';
+import { animationManager, playAnimation } from './animationManager.js';
+import { updateAgentState, createAgentCard, createMiniAvatar } from './agentCard.js';
+
+const agentGrid = document.getElementById('agent-grid');
+
 // --- Satellite avatar helpers ---
 
 const MINI_AVATAR_SCALE = 0.5;
@@ -112,7 +118,7 @@ function migrateSatellites(parentCard, parentId) {
   return migrated;
 }
 
-function addAgent(agent) {
+export function addAgent(agent) {
   if (!lastAgents.some(a => a.id === agent.id)) {
     lastAgents.push(agent);
   }
@@ -149,7 +155,7 @@ function addAgent(agent) {
   requestDynamicResize();
 }
 
-function updateAgent(agent) {
+export function updateAgent(agent) {
   // Capture previous data BEFORE updating lastAgents
   const prevData = lastAgents?.find(a => a.id === agent.id);
 
@@ -181,7 +187,7 @@ function updateAgent(agent) {
     prevData.teamName !== agent.teamName
   );
 
-  // Type changed to satellite candidate: migrate card → satellite
+  // Type changed to satellite candidate: migrate card -> satellite
   if ((typeChanged || relationshipChanged) && isSatelliteCandidate(agent)) {
     const parentCard = findParentCard(agent);
     if (parentCard) {
@@ -210,7 +216,7 @@ function updateAgent(agent) {
   }
 }
 
-function removeAgent(data) {
+export function removeAgent(data) {
   // Try removing as satellite first
   const agentData = lastAgents?.find(a => a.id === data.id);
   if (agentData && isSatelliteCandidate(agentData)) {
@@ -274,7 +280,7 @@ function removeAgent(data) {
   }, 250);
 }
 
-function cleanupAgents(data) {
+export function cleanupAgents(data) {
   updateGridLayout();
 }
 
@@ -283,11 +289,20 @@ const idleContainer = document.getElementById('container');
 const idleCharacter = document.getElementById('character');
 const idleBubble = document.getElementById('speech-bubble');
 
-function startIdleAnimation() {
+export function startIdleAnimation() {
   if (!idleCharacter) return;
   const seq = ANIM_SEQUENCES.waiting;
   drawFrameOn(idleCharacter, seq.frames[0]);
-  idleBubble.textContent = 'Waiting...';
+  if (idleBubble) idleBubble.textContent = 'Waiting...';
+}
+
+export function showIdleAvatar(avatarFile) {
+  if (!idleContainer) return;
+  idleContainer.style.display = 'flex';
+  if (idleCharacter && avatarFile) {
+    idleCharacter.style.backgroundImage = `url('./public/characters/${avatarFile}')`;
+  }
+  startIdleAnimation();
 }
 
 function drawFrameOn(el, frameIndex) {
@@ -300,7 +315,7 @@ function drawFrameOn(el, frameIndex) {
   el.style.backgroundPosition = `${col * -fw}px ${row * -fh}px`;
 }
 
-function updateGridLayout() {
+export function updateGridLayout() {
   const cards = Array.from(agentGrid.querySelectorAll('.agent-card'));
   if (cards.length === 0) {
     agentGrid.classList.remove('has-multiple');
@@ -377,7 +392,7 @@ function updateGridLayout() {
 
 // Window resize — debounce (restarts on each call, uses latest size)
 let _resizeTimer = null;
-function requestDynamicResize() {
+export function requestDynamicResize() {
   if (!window.electronAPI || !window.electronAPI.resizeWindow) return;
   clearTimeout(_resizeTimer);
   _resizeTimer = setTimeout(() => {

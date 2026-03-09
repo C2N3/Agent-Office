@@ -6,6 +6,52 @@
 const path = require('path');
 const { MODEL_PRICING, DEFAULT_PRICING, roundCost, getContextWindowSize } = require('../pricing');
 
+/**
+ * Calculate updated token usage from a PostToolUse tool_response.
+ * @returns {object|null} Updated tokenUsage object, or null if no usage data.
+ */
+function computeTokenUsage(agent, tokenUsage) {
+  if (!tokenUsage) return null;
+  const cur = agent.tokenUsage || { inputTokens: 0, outputTokens: 0, estimatedCost: 0 };
+  const inputTokens = cur.inputTokens + (tokenUsage.input_tokens || 0);
+  const outputTokens = cur.outputTokens + (tokenUsage.output_tokens || 0);
+  const pricing = MODEL_PRICING[agent.model] || DEFAULT_PRICING;
+  const estimatedCost = inputTokens * pricing.input + outputTokens * pricing.output;
+  const ctxWindow = getContextWindowSize(agent.model);
+  const latestInput = tokenUsage.input_tokens || 0;
+  const contextPercent = ctxWindow > 0 ? Math.min(100, Math.round((latestInput / ctxWindow) * 100)) : 0;
+  return { inputTokens, outputTokens, estimatedCost: roundCost(estimatedCost), contextPercent };
+}
+
+/**
+ * Attempt PID reconnection via transcript when an `echo $$` / `echo $PPID` is detected.
+ */
+function handlePidReconnect({ agentManager, sessionPids, sessionId, data, debugLog, detectClaudePidByTranscript }) {
+  if (data.tool_name !== 'Bash' || !data.tool_input) return;
+  if (!/echo\s+\$(\$|PPID)/.test(data.tool_input.command || '')) return;
+
+  const agent = agentManager && agentManager.getAgent(sessionId);
+  const jsonlPath = (agent && agent.jsonlPath) || data.transcript_path || null;
+  debugLog(`[Hook] PID reconnect trigger: ${sessionId.slice(0, 8)} (echo detected)`);
+
+  if (agent && !sessionPids.has(sessionId)) {
+    agentManager.updateAgent({ ...agent, firstSeen: Date.now() }, 'hook');
+  }
+  detectClaudePidByTranscript(jsonlPath, (result) => {
+    if (typeof result === 'number') {
+      sessionPids.set(sessionId, result);
+      debugLog(`[Hook] PID reconnected: ${sessionId.slice(0, 8)} -> pid=${result}`);
+    } else if (Array.isArray(result)) {
+      const registeredPids = new Set(sessionPids.values());
+      const newPid = result.find(p => !registeredPids.has(p));
+      if (newPid) {
+        sessionPids.set(sessionId, newPid);
+        debugLog(`[Hook] PID reconnected (fallback): ${sessionId.slice(0, 8)} -> pid=${newPid}`);
+      }
+    }
+  });
+}
+
 function createHookProcessor({ agentManager, sessionPids, debugLog, detectClaudePidByTranscript }) {
   // Internal state
   const pendingSessionStarts = [];
@@ -115,52 +161,16 @@ function createHookProcessor({ agentManager, sessionPids, debugLog, detectClaude
         if (agentManager && firstPreToolUseDone.has(sessionId)) {
           const agent = agentManager.getAgent(sessionId);
           if (agent) {
-            // Extract tool_response.token_usage
-            const tokenUsage = data.tool_response && data.tool_response.token_usage;
-            if (tokenUsage) {
-              const cur = agent.tokenUsage || { inputTokens: 0, outputTokens: 0, estimatedCost: 0 };
-              const inputTokens = cur.inputTokens + (tokenUsage.input_tokens || 0);
-              const outputTokens = cur.outputTokens + (tokenUsage.output_tokens || 0);
-              const pricing = MODEL_PRICING[agent.model] || DEFAULT_PRICING;
-              const estimatedCost = inputTokens * pricing.input + outputTokens * pricing.output;
-              const ctxWindow = getContextWindowSize(agent.model);
-              const latestInput = tokenUsage.input_tokens || 0;
-              const contextPercent = ctxWindow > 0 ? Math.min(100, Math.round((latestInput / ctxWindow) * 100)) : 0;
-              agentManager.updateAgent({
-                ...agent, sessionId, state: 'Thinking', currentTool: null,
-                tokenUsage: { inputTokens, outputTokens, estimatedCost: roundCost(estimatedCost), contextPercent }
-              }, 'hook');
-            } else {
-              agentManager.updateAgent({ ...agent, sessionId, state: 'Thinking', currentTool: null }, 'hook');
-            }
+            const rawUsage = data.tool_response && data.tool_response.token_usage;
+            const updatedUsage = computeTokenUsage(agent, rawUsage);
+            agentManager.updateAgent({
+              ...agent, sessionId, state: 'Thinking', currentTool: null,
+              ...(updatedUsage && { tokenUsage: updatedUsage })
+            }, 'hook');
           }
         }
 
-        // PID reconnect: echo $$ triggers transcript-based PID re-detection
-        if (data.tool_name === 'Bash' && data.tool_input &&
-            /echo\s+\$(\$|PPID)/.test((data.tool_input.command || ''))) {
-          const agent = agentManager && agentManager.getAgent(sessionId);
-          const jsonlPath = (agent && agent.jsonlPath) || data.transcript_path || null;
-          debugLog(`[Hook] PID reconnect trigger: ${sessionId.slice(0, 8)} (echo detected)`);
-          // Reset firstSeen to prevent premature removal while re-detecting
-          if (agent && !sessionPids.has(sessionId)) {
-            agentManager.updateAgent({ ...agent, firstSeen: Date.now() }, 'hook');
-          }
-          detectClaudePidByTranscript(jsonlPath, (result) => {
-            if (typeof result === 'number') {
-              sessionPids.set(sessionId, result);
-              debugLog(`[Hook] PID reconnected: ${sessionId.slice(0, 8)} → pid=${result}`);
-            } else if (Array.isArray(result)) {
-              const registeredPids = new Set(sessionPids.values());
-              const newPid = result.find(p => !registeredPids.has(p));
-              if (newPid) {
-                sessionPids.set(sessionId, newPid);
-                debugLog(`[Hook] PID reconnected (fallback): ${sessionId.slice(0, 8)} → pid=${newPid}`);
-              }
-            }
-          });
-        }
-
+        handlePidReconnect({ agentManager, sessionPids, sessionId, data, debugLog, detectClaudePidByTranscript });
         break;
       }
 

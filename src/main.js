@@ -195,60 +195,35 @@ app.whenReady().then(() => {
   ipcMain.once('renderer-ready', () => {
     debugLog('[Main] renderer-ready event received!');
 
+    // Helper: send to main + dashboard windows, then persist state
+    function broadcast(mainChannel, dashChannel, data, dashData) {
+      const mw = windowManager.mainWindow;
+      if (mw && !mw.isDestroyed()) mw.webContents.send(mainChannel, data);
+      const dw = windowManager.dashboardWindow;
+      if (dw && !dw.isDestroyed()) dw.webContents.send(dashChannel, dashData !== undefined ? dashData : data);
+      savePersistedState({ agentManager, sessionPids });
+    }
+
+    function closeDashboardIfEmpty() {
+      if (agentManager.getAllAgents().length === 0) {
+        windowManager.closeDashboardWindow();
+      }
+    }
+
     agentListeners = {
       onAdded: (agent) => {
-        const mw = windowManager.mainWindow;
-        if (mw && !mw.isDestroyed()) {
-          mw.webContents.send('agent-added', agent);
-        }
-        const dw = windowManager.dashboardWindow;
-        if (dw && !dw.isDestroyed()) {
-          const adaptedAgent = adaptAgentToDashboard(agent);
-          dw.webContents.send('dashboard-agent-added', adaptedAgent);
-        }
-        savePersistedState({ agentManager, sessionPids });
+        broadcast('agent-added', 'dashboard-agent-added', agent, adaptAgentToDashboard(agent));
       },
       onUpdated: (agent) => {
-        const mw = windowManager.mainWindow;
-        if (mw && !mw.isDestroyed()) {
-          mw.webContents.send('agent-updated', agent);
-        }
-        const dw = windowManager.dashboardWindow;
-        if (dw && !dw.isDestroyed()) {
-          const adaptedAgent = adaptAgentToDashboard(agent);
-          dw.webContents.send('dashboard-agent-updated', adaptedAgent);
-        }
-        savePersistedState({ agentManager, sessionPids });
+        broadcast('agent-updated', 'dashboard-agent-updated', agent, adaptAgentToDashboard(agent));
       },
       onRemoved: (data) => {
-        const mw = windowManager.mainWindow;
-        if (mw && !mw.isDestroyed()) {
-          mw.webContents.send('agent-removed', data);
-        }
-        const dw = windowManager.dashboardWindow;
-        if (dw && !dw.isDestroyed()) {
-          dw.webContents.send('dashboard-agent-removed', data);
-        }
-        savePersistedState({ agentManager, sessionPids });
-        // Close dashboard when all agents are gone
-        if (agentManager.getAllAgents().length === 0) {
-          windowManager.closeDashboardWindow();
-        }
+        broadcast('agent-removed', 'dashboard-agent-removed', data);
+        closeDashboardIfEmpty();
       },
       onCleaned: (data) => {
-        const mw = windowManager.mainWindow;
-        if (mw && !mw.isDestroyed()) {
-          mw.webContents.send('agents-cleaned', data);
-        }
-        const dw = windowManager.dashboardWindow;
-        if (dw && !dw.isDestroyed()) {
-          dw.webContents.send('dashboard-agent-removed', { type: 'batch', ...data });
-        }
-        savePersistedState({ agentManager, sessionPids });
-        // Close dashboard when all agents are gone
-        if (agentManager.getAllAgents().length === 0) {
-          windowManager.closeDashboardWindow();
-        }
+        broadcast('agents-cleaned', 'dashboard-agent-removed', data, { type: 'batch', ...data });
+        closeDashboardIfEmpty();
       }
     };
 

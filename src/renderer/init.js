@@ -2,6 +2,15 @@
  * Renderer Init — initialization, visibility handling
  */
 
+import { AVATAR_FILES, lastAgents, agentStates } from './config.js';
+import { playAnimation } from './animationManager.js';
+import { addAgent, updateAgent, removeAgent, cleanupAgents, updateGridLayout, showIdleAvatar } from './agentGrid.js';
+import { createWebDashboardButton, setupKeyboardShortcuts, setupContextMenu } from './uiComponents.js';
+import { createErrorUI } from './errorUI.js';
+
+let availableAvatars = [];
+let idleAvatar = 'avatar_0.webp';
+
 async function init() {
   if (!window.electronAPI) {
     console.error('[Renderer] electronAPI not available');
@@ -29,13 +38,7 @@ async function init() {
   }
 
   // Display idle avatar
-  if (idleContainer) {
-    idleContainer.style.display = 'flex';
-    if (idleCharacter && idleAvatar) {
-      idleCharacter.style.backgroundImage = `url('./public/characters/${idleAvatar}')`;
-    }
-    startIdleAnimation();
-  }
+  showIdleAvatar(idleAvatar);
 
   // Dashboard button — floating overlay at bottom-right corner
   const toolbar = document.createElement('div');

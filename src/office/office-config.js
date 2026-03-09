@@ -5,11 +5,12 @@
 
 /* eslint-disable no-unused-vars */
 
+// OFFICE constants — FRAME_W/H/COLS populated from sprite-frames.json at init
 const OFFICE = {
   TILE_SIZE: 32,
   FRAME_W: 48,
   FRAME_H: 64,
-  COLS: 8,  // 384px / 48px = 8 cols × 9 rows = 72 frames
+  COLS: 8,
   ANIM_FPS: 8,
   ANIM_INTERVAL: 1000 / 8,
   IDLE_ANIM_INTERVAL: 1000 / 2,
@@ -17,36 +18,46 @@ const OFFICE = {
   ARRIVE_THRESHOLD: 2,
 };
 
-// Sprite frame map (avatar_*.webp — 384x576, 8cols x 9rows, 48x64px/frame)
-// Row 0: front_idle(0-3)  front_walk(4-7)
-// Row 1: front_sit_idle(8-11)  front_sit_work(12-15)
-// Row 2: left_idle(16-19)  left_walk(20-23)
-// Row 3: left_sit_idle(24-27)  left_sit_work(28-31)
-// Row 4: right_idle(32-35)  right_walk(36-39)
-// Row 5: right_sit_idle(40-43)  right_sit_work(44-47)
-// Row 6: back_idle(48-51)  back_walk(52-55)
-// Row 7: back_sit_idle(56-59)  back_sit_work(60-63)
-// Row 8: front_done_dance(64-67)  front_alert_jump(68-71)
-const SPRITE_FRAMES = {
-  down_idle:      [0, 1, 2, 3],
-  walk_down:      [4, 5, 6, 7],
-  left_idle:      [16, 17, 18, 19],
-  walk_left:      [20, 21, 22, 23],
-  right_idle:     [32, 33, 34, 35],
-  walk_right:     [36, 37, 38, 39],
-  up_idle:        [48, 49, 50, 51],
-  walk_up:        [52, 53, 54, 55],
-  dance:          [64, 65, 66, 67],
-  alert_jump:     [68, 69, 70, 71],
-  sit_down:       [8,  9,  10, 11],
-  sit_left:       [24, 25, 26, 27],
-  sit_right:      [40, 41, 42, 43],
-  sit_up:         [56, 57, 58, 59],
-  sit_work_down:  [12, 13, 14, 15],
-  sit_work_left:  [28, 29, 30, 31],
-  sit_work_right: [44, 45, 46, 47],
-  sit_work_up:    [60, 61, 62, 63],
-};
+// SPRITE_FRAMES — office uses different key names (direction-based) than the raw JSON.
+// Built from sprite-frames.json at init via loadSpriteFrames().
+var SPRITE_FRAMES = {};
+
+/** Fetch sprite frame definitions and build SPRITE_FRAMES + update OFFICE constants. */
+async function loadSpriteFrames() {
+  try {
+    const res = await fetch('/public/shared/sprite-frames.json');
+    const data = await res.json();
+    const f = data.frames;
+
+    OFFICE.FRAME_W = data.sheet.frameWidth;
+    OFFICE.FRAME_H = data.sheet.frameHeight;
+    OFFICE.COLS = data.sheet.cols;
+
+    // Map canonical names → office direction-based keys
+    SPRITE_FRAMES = {
+      down_idle:      f.front_idle,
+      walk_down:      f.front_walk,
+      left_idle:      f.left_idle,
+      walk_left:      f.left_walk,
+      right_idle:     f.right_idle,
+      walk_right:     f.right_walk,
+      up_idle:        f.back_idle,
+      walk_up:        f.back_walk,
+      dance:          f.front_done_dance,
+      alert_jump:     f.front_alert_jump,
+      sit_down:       f.front_sit_idle,
+      sit_left:       f.left_sit_idle,
+      sit_right:      f.right_sit_idle,
+      sit_up:         f.back_sit_idle,
+      sit_work_down:  f.front_sit_work,
+      sit_work_left:  f.left_sit_work,
+      sit_work_right: f.right_sit_work,
+      sit_work_up:    f.back_sit_work,
+    };
+  } catch (e) {
+    console.error('[OfficeConfig] Failed to load sprite-frames.json:', e);
+  }
+}
 
 // Animation keys that use the slower idle FPS (vs active/walk FPS)
 const IDLE_ANIM_KEYS = new Set([
@@ -115,11 +126,19 @@ const STATE_COLORS = {
   help:      '#ef4444',
 };
 
-// All available avatar filenames (must match public/characters/)
-var AVATAR_FILES = [
-  'avatar_0.webp','avatar_1.webp','avatar_2.webp','avatar_3.webp',
-  'avatar_4.webp','avatar_5.webp','avatar_6.webp','avatar_7.webp',
-];
+// Loaded from public/shared/avatars.json at init time (single source of truth)
+var AVATAR_FILES = [];
+
+/** Fetch avatar list from shared JSON. Must be called before office init. */
+async function loadAvatarFiles() {
+  try {
+    const res = await fetch('/public/shared/avatars.json');
+    AVATAR_FILES = await res.json();
+  } catch (e) {
+    console.error('[OfficeConfig] Failed to load avatars.json, using fallback');
+    AVATAR_FILES = ['avatar_0.webp'];
+  }
+}
 
 /**
  * Deterministic avatar index from agentId (same result for same id, everywhere)

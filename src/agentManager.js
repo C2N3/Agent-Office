@@ -8,8 +8,17 @@ const EventEmitter = require('events');
 const path = require('path');
 const { formatSlugToDisplayName } = require('./utils');
 
-// AVATAR_FILES count (synced with renderer/config.js and office/office-config.js)
-const AVATAR_COUNT = 8;
+// Single source of truth: public/shared/avatars.json
+const AVATAR_FILES = require('../public/shared/avatars.json');
+const AVATAR_COUNT = AVATAR_FILES.length;
+
+/**
+ * Merge a field: entry value wins if defined, then existing, then default.
+ */
+function mergeField(entry, existing, key, defaultVal = null) {
+  if (entry[key] !== undefined) return entry[key];
+  return existing ? existing[key] : defaultVal;
+}
 
 class AgentManager extends EventEmitter {
   constructor() {
@@ -71,6 +80,8 @@ class AgentManager extends EventEmitter {
       lastDuration = now - activeStartTime;
     }
 
+    const m = (key, defaultVal = null) => mergeField(entry, existingAgent, key, defaultVal);
+
     const agentData = {
       id: agentId,
       sessionId: entry.sessionId,
@@ -79,20 +90,16 @@ class AgentManager extends EventEmitter {
       displayName: this.formatDisplayName(entry.slug, entry.projectPath),
       projectPath: entry.projectPath,
       jsonlPath: entry.jsonlPath || (existingAgent ? existingAgent.jsonlPath : null),
-      model: entry.model !== undefined ? entry.model : (existingAgent ? existingAgent.model : null),
-      permissionMode: entry.permissionMode !== undefined ? entry.permissionMode : (existingAgent ? existingAgent.permissionMode : null),
-      source: entry.source !== undefined ? entry.source : (existingAgent ? existingAgent.source : null),
-      agentType: entry.agentType !== undefined ? entry.agentType : (existingAgent ? existingAgent.agentType : null),
-      // Currently active tool
-      currentTool: entry.currentTool !== undefined ? entry.currentTool : (existingAgent ? existingAgent.currentTool : null),
-      // Last response message from the Stop event
-      lastMessage: entry.lastMessage !== undefined ? entry.lastMessage : (existingAgent ? existingAgent.lastMessage : null),
-      // SessionEnd termination reason
-      endReason: entry.endReason !== undefined ? entry.endReason : (existingAgent ? existingAgent.endReason : null),
-      // Team information
-      teammateName: entry.teammateName !== undefined ? entry.teammateName : (existingAgent ? existingAgent.teammateName : null),
-      teamName: entry.teamName !== undefined ? entry.teamName : (existingAgent ? existingAgent.teamName : null),
-      tokenUsage: entry.tokenUsage !== undefined ? entry.tokenUsage : (existingAgent ? existingAgent.tokenUsage : { inputTokens: 0, outputTokens: 0, estimatedCost: 0 }),
+      model: m('model'),
+      permissionMode: m('permissionMode'),
+      source: m('source'),
+      agentType: m('agentType'),
+      currentTool: m('currentTool'),
+      lastMessage: m('lastMessage'),
+      endReason: m('endReason'),
+      teammateName: m('teammateName'),
+      teamName: m('teamName'),
+      tokenUsage: m('tokenUsage', { inputTokens: 0, outputTokens: 0, estimatedCost: 0 }),
       avatarIndex: existingAgent ? existingAgent.avatarIndex : this._assignAvatarIndex(agentId),
       isSubagent: entry.isSubagent || (existingAgent ? existingAgent.isSubagent : false),
       isTeammate: entry.isTeammate || (existingAgent ? existingAgent.isTeammate : false),

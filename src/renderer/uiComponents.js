@@ -2,7 +2,7 @@
  * UI Components — Dashboard button, keyboard shortcuts, context menu
  */
 
-function createWebDashboardButton() {
+export function createWebDashboardButton() {
   const button = document.createElement('button');
   button.id = 'web-dashboard-btn';
   button.className = 'web-dashboard-btn';
@@ -50,7 +50,7 @@ function createWebDashboardButton() {
   return button;
 }
 
-function setupKeyboardShortcuts() {
+export function setupKeyboardShortcuts() {
   document.addEventListener('keydown', (e) => {
     // Ctrl/Cmd + D: Open Mission Control Dashboard
     if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
@@ -130,7 +130,7 @@ function setupKeyboardShortcuts() {
 
 }
 
-function setupContextMenu() {
+export function setupContextMenu() {
   document.addEventListener('contextmenu', (e) => {
     const agentCard = e.target.closest('.agent-card');
     if (!agentCard) return;

@@ -2,7 +2,10 @@
  * Agent Card — updateAgentState, createAgentCard
  */
 
-function updateAgentState(agentId, container, agentOrState) {
+import { stateConfig, agentStates, agentAvatars, AVATAR_FILES, avatarFromAgentId } from './config.js';
+import { playAnimation } from './animationManager.js';
+
+export function updateAgentState(agentId, container, agentOrState) {
   const isAgentObj = typeof agentOrState === 'object';
   const state = isAgentObj ? agentOrState.state : agentOrState;
   const isAggregated = isAgentObj && agentOrState.isAggregated;
@@ -114,13 +117,13 @@ function updateAgentState(agentId, container, agentOrState) {
 
 // --- Satellite (mini avatar) DOM creators ---
 
-function createSatelliteTray() {
+export function createSatelliteTray() {
   const tray = document.createElement('div');
   tray.className = 'satellite-tray';
   return tray;
 }
 
-function createMiniAvatar(agent) {
+export function createMiniAvatar(agent) {
   const mini = document.createElement('div');
   mini.className = 'mini-avatar';
   mini.dataset.agentId = agent.id;
@@ -145,7 +148,7 @@ function createMiniAvatar(agent) {
   const stateLabel = agent.state || 'Waiting';
   mini.title = `${label} — ${stateLabel}`;
 
-  // Click → focus terminal
+  // Click -> focus terminal
   mini.onclick = async (e) => {
     e.stopPropagation();
     if (window.electronAPI && window.electronAPI.focusTerminal) {
@@ -156,7 +159,7 @@ function createMiniAvatar(agent) {
   return mini;
 }
 
-function createAgentCard(agent) {
+export function createAgentCard(agent) {
   const card = document.createElement('div');
   card.className = 'agent-card';
   card.dataset.agentId = agent.id;

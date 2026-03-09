@@ -5,7 +5,7 @@
 const errorQueue = [];
 const MAX_ERRORS = 3;
 
-function createErrorUI(errorContext) {
+export function createErrorUI(errorContext) {
   errorQueue.push(errorContext);
   if (errorQueue.length > MAX_ERRORS) {
     errorQueue.shift();
