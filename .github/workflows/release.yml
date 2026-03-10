@@ -17,8 +17,6 @@ jobs:
             cmd: npm run dist:win
           - os: macos-latest
             cmd: npm run dist:mac
-          - os: ubuntu-latest
-            cmd: npm run dist:linux
 
     runs-on: ${{ matrix.os }}
 
@@ -48,9 +46,8 @@ jobs:
           path: |
             release/*.exe
             release/*.dmg
-            release/*.AppImage
-            release/*.deb
             release/*.yml
+            release/*.blockmap
           if-no-files-found: ignore
 
   publish:
