@@ -14,6 +14,9 @@ var officeRenderer = {
   laptopImages: { down: null, up: null, left: null, right: null },
   laptopOpenImages: { down: null, up: null, left: null, right: null },
 
+  // Camera state for zoom/pan
+  camera: { zoom: 1, panX: 0, panY: 0, minZoom: 0.5, maxZoom: 3 },
+
   async init(canvas) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
@@ -56,8 +59,90 @@ var officeRenderer = {
     // 5. Parse laptop object coords
     await parseObjectCoordinates(officeLayers.width, officeLayers.height);
 
+    // 6. Setup wheel zoom + middle-click pan
+    this._setupCameraControls(canvas);
+
     this.lastTime = performance.now();
     this.loop(this.lastTime);
+  },
+
+  _setupCameraControls: function (canvas) {
+    const cam = this.camera;
+
+    canvas.addEventListener('wheel', function (e) {
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = (e.clientX - rect.left) / rect.width * canvas.width;
+      const mouseY = (e.clientY - rect.top) / rect.height * canvas.height;
+
+      const oldZoom = cam.zoom;
+      const zoomDelta = e.deltaY < 0 ? 1.1 : 0.9;
+      cam.zoom = Math.max(cam.minZoom, Math.min(cam.maxZoom, cam.zoom * zoomDelta));
+
+      // Zoom towards mouse position
+      const zoomRatio = cam.zoom / oldZoom;
+      cam.panX = mouseX - (mouseX - cam.panX) * zoomRatio;
+      cam.panY = mouseY - (mouseY - cam.panY) * zoomRatio;
+    }, { passive: false });
+
+    // Left-click or middle-click drag to pan
+    var dragging = false, dragStartX = 0, dragStartY = 0, panStartX = 0, panStartY = 0, dragMoved = false;
+
+    canvas.addEventListener('mousedown', function (e) {
+      if (e.button === 0 || e.button === 1) {
+        e.preventDefault();
+        dragging = true;
+        dragMoved = false;
+        dragStartX = e.clientX;
+        dragStartY = e.clientY;
+        panStartX = cam.panX;
+        panStartY = cam.panY;
+        canvas.style.cursor = 'grabbing';
+      }
+    });
+
+    window.addEventListener('mousemove', function (e) {
+      if (!dragging) return;
+      var dx = e.clientX - dragStartX;
+      var dy = e.clientY - dragStartY;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) dragMoved = true;
+      var rect = canvas.getBoundingClientRect();
+      cam.panX = panStartX + (dx / rect.width * canvas.width) / cam.zoom;
+      cam.panY = panStartY + (dy / rect.height * canvas.height) / cam.zoom;
+    });
+
+    window.addEventListener('mouseup', function (e) {
+      if ((e.button === 0 || e.button === 1) && dragging) {
+        dragging = false;
+        canvas.style.cursor = '';
+      }
+    });
+
+    // Suppress click event if user was dragging (prevent popover on drag release)
+    canvas.addEventListener('click', function (e) {
+      if (dragMoved) {
+        e.stopImmediatePropagation();
+        dragMoved = false;
+      }
+    }, true);
+
+    // Double-click to reset zoom
+    canvas.addEventListener('dblclick', function () {
+      cam.zoom = 1;
+      cam.panX = 0;
+      cam.panY = 0;
+    });
+  },
+
+  /** Convert screen (client) coordinates to world (canvas) coordinates */
+  screenToWorld: function (clientX, clientY) {
+    var rect = this.canvas.getBoundingClientRect();
+    var canvasX = (clientX - rect.left) / rect.width * this.canvas.width;
+    var canvasY = (clientY - rect.top) / rect.height * this.canvas.height;
+    return {
+      x: (canvasX - this.camera.panX) / this.camera.zoom,
+      y: (canvasY - this.camera.panY) / this.camera.zoom,
+    };
   },
 
   stop: function () {
@@ -89,9 +174,14 @@ var officeRenderer = {
 
   render: function () {
     if (!this.ctx || !officeLayers.bgImage) return;
-    const ctx = this.ctx;
+    var ctx = this.ctx;
     ctx.imageSmoothingEnabled = false;
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+    // Apply camera transform
+    ctx.save();
+    ctx.translate(this.camera.panX, this.camera.panY);
+    ctx.scale(this.camera.zoom, this.camera.zoom);
 
     // 1. Background
     ctx.drawImage(officeLayers.bgImage, 0, 0);
@@ -126,6 +216,9 @@ var officeRenderer = {
       const isSubType = agent.metadata && agent.metadata.type === 'sub';
       const baseScale = isSubType ? 0.85 : 1.0;
 
+      var isOffline = agent.agentState === 'offline';
+      if (isOffline) ctx.globalAlpha = 0.35;
+
       ctx.save();
       ctx.translate(agent.x, agent.y);
       ctx.scale(baseScale, baseScale);
@@ -134,7 +227,9 @@ var officeRenderer = {
       ctx.restore();
 
       drawOfficeNameTag(ctx, agent);
-      drawOfficeBubble(ctx, agent);
+      if (!isOffline) drawOfficeBubble(ctx, agent);
+
+      if (isOffline) ctx.globalAlpha = 1.0;
     }
 
     // 4. Foreground
@@ -144,6 +239,9 @@ var officeRenderer = {
 
     // 5. Effects
     this.renderEffects(ctx);
+
+    // Restore camera transform
+    ctx.restore();
   },
 
   spawnEffect: function (type, x, y) {

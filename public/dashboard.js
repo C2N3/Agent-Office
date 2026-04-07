@@ -43,8 +43,8 @@ function connectSSE() {
   };
 
   es.addEventListener('connected', () => fetchInitialData());
-  es.addEventListener('agent.created', e => { const d = JSON.parse(e.data).data; updateAgent(d); if (typeof officeOnAgentCreated === 'function') officeOnAgentCreated(d); });
-  es.addEventListener('agent.updated', e => { const d = JSON.parse(e.data).data; updateAgent(d); if (typeof officeOnAgentUpdated === 'function') officeOnAgentUpdated(d); });
+  es.addEventListener('agent.created', e => { const d = JSON.parse(e.data).data; updateAgent(d); if (d.isRegistered && typeof officeOnAgentCreated === 'function') officeOnAgentCreated(d); });
+  es.addEventListener('agent.updated', e => { const d = JSON.parse(e.data).data; updateAgent(d); if (d.isRegistered && typeof officeOnAgentUpdated === 'function') officeOnAgentUpdated(d); });
   es.addEventListener('agent.removed', e => { const d = JSON.parse(e.data).data; removeAgent(d.id); if (typeof officeOnAgentRemoved === 'function') officeOnAgentRemoved(d); });
 }
 
@@ -127,21 +127,33 @@ function updateConnectionStatus(up) {
 
 // ─── RENDER AGENTS ───
 function renderAgentList() {
-  if (state.agents.size === 0) {
+  const registered = [...state.agents.values()].filter(a => a.isRegistered);
+  if (registered.length === 0) {
     DOM.standbyMessage.style.display = 'block';
     return;
   }
   DOM.standbyMessage.style.display = 'none';
-  for (const [id, ag] of state.agents) updateAgentUI(ag);
+  for (const ag of registered) updateAgentUI(ag);
+  // Add registered agents to office
+  for (const ag of registered) {
+    if (typeof officeOnAgentCreated === 'function') officeOnAgentCreated(ag);
+  }
 }
 
 function updateAgentUI(ag) {
+  // Only show registered agents in the Agent List
+  if (!ag.isRegistered) {
+    const existing = DOM.agentPanel.querySelector(`[data-id="${ag.id}"]`);
+    if (existing) existing.remove();
+    return;
+  }
   DOM.standbyMessage.style.display = 'none';
   const existing = DOM.agentPanel.querySelector(`[data-id="${ag.id}"]`);
 
-  const stClass = ['working', 'thinking', 'error', 'done', 'completed'].includes(ag.status) ? ag.status : 'waiting';
+  const stClass = ['working', 'thinking', 'error', 'done', 'completed', 'offline'].includes(ag.status) ? ag.status : 'waiting';
   const stText = ag.status.toUpperCase();
-  const typeHtml = ag.metadata?.isSubagent ? '<span class="mc-type-badge">SUB</span>' : '<span class="mc-type-badge main">MAIN</span>';
+  const typeHtml = ag.metadata?.isSubagent ? '<span class="mc-type-badge">SUB</span>'
+    : (ag.isRegistered ? '<span class="mc-type-badge" style="background:var(--color-info-dim);color:var(--color-info)">REG</span>' : '<span class="mc-type-badge main">MAIN</span>');
 
   const isAct = ['working', 'thinking'].includes(stClass);
   const actText = ag.currentTool ? `<span class="hl">${ag.currentTool}</span>` : (isAct ? stText : 'Idling...');
@@ -173,8 +185,12 @@ function updateAgentUI(ag) {
   const html = `
     <div class="mc-agent-header">
       <div class="mc-agent-name"><span class="agent-display-name" data-agent-id="${ag.id}" title="Double-click to rename">${ag.nickname || ag.name || 'Agent'}</span> ${typeHtml}</div>
-      <div class="mc-agent-status ${stClass}">${stText}</div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <div class="mc-agent-status ${stClass}">${stText}</div>
+        ${ag.isRegistered && ag.registryId ? `<button class="agent-delete-btn" data-delete-id="${ag.registryId}" title="Delete agent">&times;</button>` : ''}
+      </div>
     </div>
+    ${ag.role ? `<div class="mc-agent-role">${ag.role}</div>` : ''}
     <div class="mc-agent-activity">CMD> ${actText}</div>
     ${timelineHtml}
     <div class="mc-agent-metrics">
@@ -190,10 +206,12 @@ function updateAgentUI(ag) {
 
   if (existing) {
     existing.innerHTML = html;
+    existing.dataset.status = ag.status;
   } else {
     const div = document.createElement('div');
     div.className = 'mc-agent-card';
     div.dataset.id = ag.id;
+    div.dataset.status = ag.status;
     div.innerHTML = html;
     DOM.agentPanel.appendChild(div);
   }
@@ -217,11 +235,20 @@ const popoverEl = document.getElementById('officePopover');
 
 function hitTestOfficeCharacter(canvas, event) {
   if (typeof officeCharacters === 'undefined') return null;
-  const rect = canvas.getBoundingClientRect();
-  const scaleX = canvas.width / rect.width;
-  const scaleY = canvas.height / rect.height;
-  const cx = (event.clientX - rect.left) * scaleX;
-  const cy = (event.clientY - rect.top) * scaleY;
+
+  // Use camera-aware coordinate conversion if available
+  let cx, cy;
+  if (typeof officeRenderer !== 'undefined' && officeRenderer.screenToWorld) {
+    const world = officeRenderer.screenToWorld(event.clientX, event.clientY);
+    cx = world.x;
+    cy = world.y;
+  } else {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    cx = (event.clientX - rect.left) * scaleX;
+    cy = (event.clientY - rect.top) * scaleY;
+  }
 
   const chars = officeCharacters.getCharacterArray();
   // Reverse Y-sort: topmost (highest y) rendered last, so check first
@@ -676,9 +703,10 @@ async function openTerminalForAgent(agentId) {
     return;
   }
 
-  // Get agent info for cwd
+  // Get agent info for cwd and provider
   const agent = state.agents.get(agentId);
   const cwd = agent?.metadata?.projectPath || agent?.project || '';
+  const provider = agent?.metadata?.provider || null;
 
   if (typeof dashboardAPI === 'undefined' || !dashboardAPI.createTerminal) return;
 
@@ -689,6 +717,16 @@ async function openTerminalForAgent(agentId) {
   }
 
   createXtermInstance(agentId, agent?.nickname || agent?.name || 'Terminal');
+
+  // Auto-execute CLI based on provider (wait for shell to fully init)
+  if (provider === 'claude' || provider === 'codex') {
+    setTimeout(() => {
+      const cmd = provider === 'claude' ? 'claude' : 'codex';
+      if (dashboardAPI.writeTerminal) {
+        dashboardAPI.writeTerminal(agentId, cmd + '\r');
+      }
+    }, 1500);
+  }
 }
 
 function createXtermInstance(agentId, label) {
@@ -968,7 +1006,18 @@ function initApp() {
   const agentPanel = document.getElementById('agentPanel');
   if (agentPanel) {
     agentPanel.addEventListener('click', function (e) {
-      // Don't trigger on double-click (nickname edit) or on close buttons
+      // Delete button
+      const deleteBtn = e.target.closest('.agent-delete-btn');
+      if (deleteBtn && deleteBtn.dataset.deleteId) {
+        e.stopPropagation();
+        if (confirm('Delete this agent?')) {
+          if (typeof dashboardAPI !== 'undefined' && dashboardAPI.deleteRegisteredAgent) {
+            dashboardAPI.deleteRegisteredAgent(deleteBtn.dataset.deleteId);
+          }
+        }
+        return;
+      }
+      // Don't trigger on double-click (nickname edit)
       if (e.target.closest('.nickname-input') || e.target.closest('.agent-display-name')) return;
       const card = e.target.closest('.mc-agent-card');
       if (card && card.dataset.id) {
@@ -1029,5 +1078,50 @@ document.addEventListener('DOMContentLoaded', initApp);
       if (ev.key === 'Enter') { ev.preventDefault(); input.blur(); }
       if (ev.key === 'Escape') { ev.preventDefault(); input.value = currentName; input.blur(); }
     });
+  });
+})();
+
+// ─── AGENT CREATION MODAL ───
+(function setupAgentModal() {
+  const modal = document.getElementById('createAgentModal');
+  const form = document.getElementById('createAgentForm');
+  const openBtn = document.getElementById('createAgentBtn');
+  const cancelBtn = document.getElementById('cancelCreateBtn');
+  if (!modal || !form || !openBtn) return;
+
+  let selectedProvider = 'claude';
+
+  // Provider toggle buttons
+  const providerBtns = document.querySelectorAll('#providerSelect .provider-btn');
+  providerBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      providerBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedProvider = btn.dataset.provider;
+    });
+  });
+
+  openBtn.addEventListener('click', () => { modal.style.display = ''; });
+  if (cancelBtn) cancelBtn.addEventListener('click', () => { modal.style.display = 'none'; });
+  modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = document.getElementById('agentNameInput').value.trim();
+    const role = document.getElementById('agentRoleInput').value.trim();
+    const projectPath = document.getElementById('agentPathInput').value.trim();
+    if (!name || !projectPath) return;
+
+    if (typeof dashboardAPI !== 'undefined' && dashboardAPI.createRegisteredAgent) {
+      const result = await dashboardAPI.createRegisteredAgent({ name, role, projectPath, provider: selectedProvider });
+      if (result && result.success) {
+        modal.style.display = 'none';
+        form.reset();
+        // Reset provider toggle
+        providerBtns.forEach(b => b.classList.remove('active'));
+        providerBtns[0].classList.add('active');
+        selectedProvider = 'claude';
+      }
+    }
   });
 })();

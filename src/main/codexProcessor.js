@@ -9,7 +9,7 @@ function normalizeCodexEvent(data) {
   const base = {
     sessionId,
     cwd: data.cwd || '',
-    model: data.model || null,
+    model: data.model || 'codex',
     provider: 'codex',
     raw: data,
     rawType: data.type || 'unknown',
@@ -109,9 +109,10 @@ function extractCodexToolInput(item) {
   return null;
 }
 
-function createCodexProcessor({ agentManager, sessionPids, debugLog }) {
+function createCodexProcessor({ agentManager, agentRegistry, sessionPids, debugLog }) {
   const processor = createEventProcessor({
     agentManager,
+    agentRegistry,
     sessionPids,
     debugLog,
     detectPidByTranscript: null,
@@ -145,7 +146,7 @@ function createCodexProcessor({ agentManager, sessionPids, debugLog }) {
           provider: 'codex',
           sessionId,
           cwd: payload.cwd || '',
-          model: payload.model || payload.model_slug || null,
+          model: payload.model || payload.model_slug || 'codex',
           source: 'startup',
           initialState: 'Waiting',
         });

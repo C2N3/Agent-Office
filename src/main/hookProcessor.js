@@ -119,9 +119,10 @@ function normalizeHookEvent(data) {
   }
 }
 
-function createHookProcessor({ agentManager, sessionPids, debugLog, detectClaudePidByTranscript }) {
+function createHookProcessor({ agentManager, agentRegistry, sessionPids, debugLog, detectClaudePidByTranscript }) {
   const processor = createEventProcessor({
     agentManager,
+    agentRegistry,
     sessionPids,
     debugLog,
     detectPidByTranscript: detectClaudePidByTranscript,

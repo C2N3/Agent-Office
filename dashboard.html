@@ -130,7 +130,7 @@
 
               <!-- Agent List -->
               <div class="panel agent-list-panel" id="agentListPanel">
-                <div class="panel-header">Agent List</div>
+                <div class="panel-header">Agent List <button class="agent-create-btn" id="createAgentBtn" title="Register New Agent">+ New</button></div>
                 <div class="panel-body" id="agentPanel">
                   <div class="standby-state" id="standbyMessage">
                     <div>No agents dispatched.</div>
@@ -244,6 +244,28 @@
 
   <!-- Global Tooltip -->
   <div class="mc-tooltip" id="mcTooltip"></div>
+
+  <!-- Agent Creation Modal -->
+  <div class="modal-overlay" id="createAgentModal" style="display:none;">
+    <div class="modal-content">
+      <div class="modal-header">Register New Agent</div>
+      <form id="createAgentForm">
+        <label class="modal-label">Name<input type="text" id="agentNameInput" class="modal-input" placeholder="e.g. Stock Monitor Agent" required></label>
+        <label class="modal-label">Role<input type="text" id="agentRoleInput" class="modal-input" placeholder="e.g. Service development, bug fixes"></label>
+        <label class="modal-label">Project Path<input type="text" id="agentPathInput" class="modal-input" placeholder="e.g. D:\projects\stock-monitor" required></label>
+        <label class="modal-label">Provider
+          <div class="provider-select" id="providerSelect">
+            <button type="button" class="provider-btn active" data-provider="claude">Claude</button>
+            <button type="button" class="provider-btn" data-provider="codex">Codex</button>
+          </div>
+        </label>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" id="cancelCreateBtn">Cancel</button>
+          <button type="submit" class="btn-primary">Create</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <!-- Office Character Popover -->
   <div class="office-popover" id="officePopover"></div>

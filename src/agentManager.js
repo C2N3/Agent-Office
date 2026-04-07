@@ -59,7 +59,7 @@ class AgentManager extends EventEmitter {
    * Update or add an agent
    */
   updateAgent(entry, source = 'log') {
-    const agentId = entry.sessionId || entry.agentId || entry.uuid || 'unknown';
+    const agentId = entry.registryId || entry.sessionId || entry.agentId || entry.uuid || 'unknown';
     const now = Date.now();
     const existingAgent = this.agents.get(agentId);
 
@@ -92,14 +92,30 @@ class AgentManager extends EventEmitter {
 
     const nickname = this._nicknameStore?.getNickname(agentId) || null;
 
+    const registryId = entry.registryId || (existingAgent ? existingAgent.registryId : null);
+    const isRegistered = !!(registryId || entry.isRegistered || (existingAgent && existingAgent.isRegistered));
+
+    // For registered agents, prefer the entry's displayName (set from registry name)
+    const resolvedDisplayName = isRegistered
+      ? (entry.displayName || nickname || (existingAgent && existingAgent.displayName) || 'Agent')
+      : (nickname || this.formatDisplayName(entry.slug, entry.projectPath));
+
+    // Avatar: registered agents keep registry-provided avatar, ephemeral agents get auto-assigned
+    const resolvedAvatar = (entry.avatarIndex != null)
+      ? entry.avatarIndex
+      : (existingAgent ? existingAgent.avatarIndex : this._assignAvatarIndex(agentId));
+
     const agentData = {
       id: agentId,
-      sessionId: entry.sessionId,
+      registryId,
+      isRegistered,
+      role: entry.role || (existingAgent ? existingAgent.role : null),
+      sessionId: entry.sessionId || (existingAgent ? existingAgent.sessionId : null),
       agentId: entry.agentId,
       slug: entry.slug,
       nickname,
-      displayName: nickname || this.formatDisplayName(entry.slug, entry.projectPath),
-      projectPath: entry.projectPath,
+      displayName: resolvedDisplayName,
+      projectPath: entry.projectPath || (existingAgent ? existingAgent.projectPath : null),
       provider: m('provider'),
       jsonlPath: entry.jsonlPath || (existingAgent ? existingAgent.jsonlPath : null),
       model: m('model'),
@@ -112,7 +128,7 @@ class AgentManager extends EventEmitter {
       teammateName: m('teammateName'),
       teamName: m('teamName'),
       tokenUsage: m('tokenUsage', { inputTokens: 0, outputTokens: 0, estimatedCost: 0 }),
-      avatarIndex: existingAgent ? existingAgent.avatarIndex : this._assignAvatarIndex(agentId),
+      avatarIndex: resolvedAvatar,
       isSubagent: entry.isSubagent || (existingAgent ? existingAgent.isSubagent : false),
       isTeammate: entry.isTeammate || (existingAgent ? existingAgent.isTeammate : false),
       parentId: entry.parentId || (existingAgent ? existingAgent.parentId : null),
@@ -193,6 +209,27 @@ class AgentManager extends EventEmitter {
 
     this.emit('agent-removed', { id: agentId, displayName: agent.displayName });
     console.log(`[AgentManager] Removed: ${agent.displayName}`);
+    return true;
+  }
+
+  /**
+   * Transition a registered agent to Offline state instead of removing it.
+   */
+  transitionToOffline(agentId) {
+    const agent = this.agents.get(agentId);
+    if (!agent) return false;
+    this._cancelPendingEmit(agentId);
+    const offlineAgent = {
+      ...agent,
+      state: 'Offline',
+      currentTool: null,
+      sessionId: null,
+      jsonlPath: null,
+      lastActivity: Date.now(),
+    };
+    this.agents.set(agentId, offlineAgent);
+    this.emit('agent-updated', this.getAgentWithEffectiveState(agentId));
+    console.log(`[AgentManager] Offline: ${agent.displayName}`);
     return true;
   }
 

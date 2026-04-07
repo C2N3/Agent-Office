@@ -58,6 +58,14 @@ contextBridge.exposeInMainWorld('dashboardAPI', {
     return () => ipcRenderer.removeListener('pip-state-changed', listener);
   },
 
+  // ─── Agent Registry ───
+  createRegisteredAgent: (data) => ipcRenderer.invoke('registry:create', data),
+  listRegisteredAgents: () => ipcRenderer.invoke('registry:list'),
+  updateRegisteredAgent: (id, fields) => ipcRenderer.invoke('registry:update', id, fields),
+  toggleRegisteredAgent: (id, enabled) => ipcRenderer.invoke('registry:toggle', id, enabled),
+  archiveRegisteredAgent: (id) => ipcRenderer.invoke('registry:archive', id),
+  deleteRegisteredAgent: (id) => ipcRenderer.invoke('registry:delete', id),
+
   // ─── Nickname ───
   setNickname: (agentId, nickname) => ipcRenderer.invoke('nickname:set', agentId, nickname),
   getNickname: (agentId) => ipcRenderer.invoke('nickname:get', agentId),

@@ -9,6 +9,7 @@ const path = require('path');
 
 const DISCOVERY_INTERVAL_MS = 5000;
 const ACTIVE_SESSION_WINDOW_MS = 30 * 60 * 1000;
+const INACTIVITY_DONE_MS = 5 * 1000; // Mark as Done after 5s of no file changes
 
 function getCodexSessionsRoot() {
   return path.join(os.homedir(), '.codex', 'sessions');
@@ -156,6 +157,20 @@ function createCodexSessionMonitor({ codexProcessor, agentManager, debugLog, ses
       const age = now - tracked.lastMtimeMs;
       if (age < activeWindowMs) continue;
       cleanupTrackedFile(filePath, tracked);
+    }
+
+    // Mark agents as Done if their session file hasn't changed for INACTIVITY_DONE_MS
+    // This catches cancelled/interrupted sessions quickly
+    for (const [filePath, tracked] of trackedFiles.entries()) {
+      if (!tracked.sessionId) continue;
+      const age = now - tracked.lastMtimeMs;
+      if (age < INACTIVITY_DONE_MS) continue;
+
+      const agent = agentManager && agentManager.getAgent(tracked.sessionId);
+      if (agent && (agent.state === 'Working' || agent.state === 'Thinking')) {
+        agentManager.updateAgent({ ...agent, sessionId: tracked.sessionId, state: 'Done', currentTool: null }, 'codex');
+        debugLog(`[Codex] Inactivity → Done: ${tracked.sessionId.slice(0, 8)} (no file change for ${Math.round(age / 1000)}s)`);
+      }
     }
   }
 

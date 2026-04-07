@@ -143,7 +143,8 @@ function zombieSweep(agentManager, debugLog) {
   if (_zombieSweepRunning) return;
   _zombieSweepRunning = true;
 
-  const mainAgents = agentManager.getAllAgents().filter(a => !a.isSubagent && (!a.provider || a.provider === 'claude'));
+  // Exclude offline registered agents from zombie sweep — they have no process to count
+  const mainAgents = agentManager.getAllAgents().filter(a => !a.isSubagent && (!a.provider || a.provider === 'claude') && !(a.isRegistered && a.state === 'Offline'));
   const mainCount = mainAgents.length;
   if (mainCount <= 1) { _zombieSweepRunning = false; return; }
 
@@ -163,7 +164,7 @@ function zombieSweep(agentManager, debugLog) {
       const { agent } = sorted[i];
       debugLog(`[Live] Zombie sweep: removing ${agent.id.slice(0, 8)} (mtime=${new Date(sorted[i].mtime).toISOString()})`);
       sessionPids.delete(agent.id);
-      agentManager.removeAgent(agent.id);
+      removeOrOffline(agentManager, agent, debugLog);
     }
   });
 }
@@ -172,6 +173,16 @@ const LIVENESS_INTERVAL = 2000;
 const GRACE_MS = 10000;
 const ZOMBIE_SWEEP_INTERVAL = 30000;
 const NO_PID_TIMEOUT = GRACE_MS + 10000;
+
+/** Remove or transition agent based on registration status */
+function removeOrOffline(agentManager, agent, debugLog) {
+  if (agent.isRegistered) {
+    agentManager.transitionToOffline(agent.id);
+    debugLog(`[Live] ${agent.id.slice(0, 8)} (registered) → Offline`);
+  } else {
+    agentManager.removeAgent(agent.id);
+  }
+}
 
 function startLivenessChecker({ agentManager, debugLog }) {
   const zombieSweepId = setInterval(() => {
@@ -182,11 +193,18 @@ function startLivenessChecker({ agentManager, debugLog }) {
     if (!agentManager) return;
     for (const agent of agentManager.getAllAgents()) {
       if (agent.provider && agent.provider !== 'claude') continue;
+      // Skip offline registered agents — they have no session to check
+      if (agent.isRegistered && agent.state === 'Offline') continue;
       if (agent.firstSeen && (Date.now() - agent.firstSeen) < GRACE_MS) continue;
 
-      const pid = sessionPids.get(agent.id);
+      // For registered agents, PID is stored under sessionId, not registryId
+      const pidKey = agent.sessionId || agent.id;
+      const pid = sessionPids.get(pidKey) || sessionPids.get(agent.id);
       if (!pid) {
-        retryPidDetection(agent.id, agentManager, debugLog);
+        // Registered agents without a session have no PID — skip, don't penalize
+        if (agent.isRegistered && !agent.sessionId) continue;
+
+        retryPidDetection(pidKey, agentManager, debugLog);
         const noPidAge = Date.now() - (agent.firstSeen || 0);
         if (noPidAge > NO_PID_TIMEOUT) {
           // Solo agent protection: don't remove the only agent
@@ -195,7 +213,7 @@ function startLivenessChecker({ agentManager, debugLog }) {
             continue;
           }
           debugLog(`[Live] ${agent.id.slice(0, 8)} no PID for ${Math.round(noPidAge/1000)}s → removing`);
-          agentManager.removeAgent(agent.id);
+          removeOrOffline(agentManager, agent, debugLog);
         }
         continue;
       }
@@ -220,7 +238,7 @@ function startLivenessChecker({ agentManager, debugLog }) {
       });
 
       if (newPid) {
-        sessionPids.set(agent.id, newPid);
+        sessionPids.set(pidKey, newPid);
         debugLog(`[Live] ${agent.id.slice(0, 8)} PID renewed: ${pid} → ${newPid}`);
         if (agent.state === 'Offline') {
           agentManager.updateAgent({ ...agent, state: 'Waiting' }, 'live');
@@ -228,7 +246,7 @@ function startLivenessChecker({ agentManager, debugLog }) {
       } else {
         debugLog(`[Live] ${agent.id.slice(0, 8)} confirmed dead → removing`);
         sessionPids.delete(agent.id);
-        agentManager.removeAgent(agent.id);
+        removeOrOffline(agentManager, agent, debugLog);
       }
     }
   }, LIVENESS_INTERVAL);
