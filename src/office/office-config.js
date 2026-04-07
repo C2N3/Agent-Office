@@ -7,15 +7,16 @@
 
 // OFFICE constants — FRAME_W/H/COLS populated from sprite-frames.json at init
 const OFFICE = {
-  TILE_SIZE: 32,
-  FRAME_W: 48,
-  FRAME_H: 64,
+  MAP_SCALE: 2.1875,   // scale factor: old 48×64 → new 106×140
+  TILE_SIZE: 70,        // 32 * 2.1875
+  FRAME_W: 106,
+  FRAME_H: 140,
   COLS: 8,
   ANIM_FPS: 8,
   ANIM_INTERVAL: 1000 / 8,
   IDLE_ANIM_INTERVAL: 1000 / 2,
-  MOVE_SPEED: 110,
-  ARRIVE_THRESHOLD: 2,
+  MOVE_SPEED: 240,      // 110 * 2.1875
+  ARRIVE_THRESHOLD: 4,  // 2 * 2.1875 ≈ 4
 };
 
 // SPRITE_FRAMES — office uses different key names (direction-based) than the raw JSON.

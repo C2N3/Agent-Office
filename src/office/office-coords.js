@@ -51,8 +51,8 @@ async function parseMapCoordinates(bgW, bgH) {
       if (seenGrid[key]) continue;
       seenGrid[key] = true;
 
-      const finalX = gx * TILE + 16;
-      const finalY = gy * TILE + 32;
+      const finalX = gx * TILE + Math.floor(TILE / 2);
+      const finalY = gy * TILE + TILE;
 
       if (colorMatch(r, g, b, 0, 255, 0) || colorMatch(r, g, b, 0, 0, 0)) {
         tempIdle.push({ x: finalX, y: finalY });

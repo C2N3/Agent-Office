@@ -26,8 +26,8 @@ var officeCharacters = {
 
     const char = {
       id: agentData.id,
-      x: (officeLayers.width  || 800) / 2 + (Math.random() - 0.5) * 80,
-      y: (officeLayers.height || 800) / 2 + (Math.random() - 0.5) * 80,
+      x: (officeLayers.width  || 1750) / 2 + (Math.random() - 0.5) * 175,
+      y: (officeLayers.height || 1750) / 2 + (Math.random() - 0.5) * 175,
       path: [],
       pathIndex: 0,
       facingDir: 'down',
@@ -95,11 +95,11 @@ var officeCharacters = {
       // Trigger effect on state change
       if (typeof officeRenderer !== 'undefined') {
         const stateColor = STATE_COLORS[newState] || '#94a3b8';
-        officeRenderer.spawnEffect('stateChange', char.x, char.y - 32, stateColor);
+        officeRenderer.spawnEffect('stateChange', char.x, char.y - Math.round(OFFICE.FRAME_H * 0.5), stateColor);
         if (newState === 'done') {
-          officeRenderer.spawnEffect('confetti', char.x, char.y - 45);
+          officeRenderer.spawnEffect('confetti', char.x, char.y - Math.round(OFFICE.FRAME_H * 0.7));
         } else if (newState === 'error') {
-          officeRenderer.spawnEffect('warning', char.x, char.y - 65);
+          officeRenderer.spawnEffect('warning', char.x, char.y - OFFICE.FRAME_H - 5);
         }
       }
     }
@@ -157,7 +157,7 @@ var officeCharacters = {
       // Working sparkles
       if (char.agentState === 'working' && Math.random() < 0.05) {
         if (typeof officeRenderer !== 'undefined') {
-          officeRenderer.spawnEffect('focus', char.x, char.y - 40);
+          officeRenderer.spawnEffect('focus', char.x, char.y - Math.round(OFFICE.FRAME_H * 0.6));
         }
       }
     });

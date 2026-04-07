@@ -182,7 +182,7 @@ function updateAgentUI(ag) {
     timelineHtml = `<div class="mc-timeline">${segHtml}</div>`;
   }
 
-  const AVATAR_LIST = ['avatar_0.webp','avatar_1.webp','avatar_2.webp','avatar_3.webp','avatar_4.webp','avatar_5.webp','avatar_6.webp','avatar_7.webp'];
+  const AVATAR_LIST = ['avatar_0.webp','avatar_1.webp','avatar_2.webp','avatar_3.webp','avatar_4.webp','avatar_5.webp','avatar_6.webp','avatar_7.webp','avatar_8.webp'];
   const avFile = AVATAR_LIST[ag.avatarIndex != null ? ag.avatarIndex : 0];
 
   const html = `
@@ -258,8 +258,8 @@ function hitTestOfficeCharacter(canvas, event) {
   // Reverse Y-sort: topmost (highest y) rendered last, so check first
   const sorted = [...chars].sort((a, b) => b.y - a.y);
 
-  const FW = (typeof OFFICE !== 'undefined' && OFFICE.FRAME_W) || 48;
-  const FH = (typeof OFFICE !== 'undefined' && OFFICE.FRAME_H) || 64;
+  const FW = (typeof OFFICE !== 'undefined' && OFFICE.FRAME_W) || 106;
+  const FH = (typeof OFFICE !== 'undefined' && OFFICE.FRAME_H) || 140;
 
   for (const ch of sorted) {
     const left = ch.x - FW / 2;
@@ -302,8 +302,8 @@ function showOfficePopover(canvas, char) {
 
   // Position near the character
   const rect = canvas.getBoundingClientRect();
-  const FW = (typeof OFFICE !== 'undefined' && OFFICE.FRAME_W) || 48;
-  const FH = (typeof OFFICE !== 'undefined' && OFFICE.FRAME_H) || 64;
+  const FW = (typeof OFFICE !== 'undefined' && OFFICE.FRAME_W) || 106;
+  const FH = (typeof OFFICE !== 'undefined' && OFFICE.FRAME_H) || 140;
   const scaleX = rect.width / canvas.width;
   const scaleY = rect.height / canvas.height;
   const screenX = rect.left + (char.x - FW / 2) * scaleX;
@@ -1139,9 +1139,13 @@ document.addEventListener('DOMContentLoaded', initApp);
 
   const AVATAR_FILES = [
     'avatar_0.webp', 'avatar_1.webp', 'avatar_2.webp', 'avatar_3.webp',
-    'avatar_4.webp', 'avatar_5.webp', 'avatar_6.webp', 'avatar_7.webp'
+    'avatar_4.webp', 'avatar_5.webp', 'avatar_6.webp', 'avatar_7.webp',
+    'avatar_8.webp'
   ];
-  const FRAME_W = 48, FRAME_H = 64, COLS = 8;
+  const FRAME_W = (typeof OFFICE !== 'undefined' && OFFICE.FRAME_W) || 106;
+  const FRAME_H = (typeof OFFICE !== 'undefined' && OFFICE.FRAME_H) || 140;
+  const DISPLAY_W = 53, DISPLAY_H = 70;  // picker thumbnail size (half source)
+  const COLS = 8;
 
   let currentRegistryId = null;
   let currentAgentId = null;
@@ -1152,10 +1156,10 @@ document.addEventListener('DOMContentLoaded', initApp);
     item.className = 'avatar-picker-item';
     item.dataset.index = idx;
     item.style.backgroundImage = `url('./public/characters/${file}')`;
-    item.style.backgroundSize = `${FRAME_W * COLS}px auto`;
+    item.style.backgroundSize = `${DISPLAY_W * COLS}px auto`;
     item.style.backgroundPosition = '0px 0px';
-    item.style.width = FRAME_W + 'px';
-    item.style.height = FRAME_H + 'px';
+    item.style.width = DISPLAY_W + 'px';
+    item.style.height = DISPLAY_H + 'px';
     item.style.imageRendering = 'pixelated';
     item.title = `Avatar ${idx}`;
 

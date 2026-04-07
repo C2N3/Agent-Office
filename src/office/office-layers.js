@@ -34,8 +34,9 @@ async function buildOfficeLayers() {
 
   officeLayers.bgImage = bgImg;
   officeLayers.fgImage = fgImg;
-  officeLayers.width = bgImg.naturalWidth || 800;
-  officeLayers.height = bgImg.naturalHeight || 800;
+  var scale = (typeof OFFICE !== 'undefined' && OFFICE.MAP_SCALE) || 1;
+  officeLayers.width = Math.round((bgImg.naturalWidth || 800) * scale);
+  officeLayers.height = Math.round((bgImg.naturalHeight || 800) * scale);
 
   return officeLayers;
 }

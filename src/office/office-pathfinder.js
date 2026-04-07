@@ -93,7 +93,7 @@ var officePathfinder = {
         const path = [];
         let node = current;
         while (node) {
-          path.unshift({ x: node.x * TILE + 16, y: node.y * TILE + 16 });
+          path.unshift({ x: node.x * TILE + Math.floor(TILE / 2), y: node.y * TILE + Math.floor(TILE / 2) });
           node = node.parent;
         }
         path.shift(); // remove start

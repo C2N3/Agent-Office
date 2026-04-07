@@ -15,7 +15,7 @@ var officeRenderer = {
   laptopOpenImages: { down: null, up: null, left: null, right: null },
 
   // Camera state for zoom/pan
-  camera: { zoom: 1, panX: 0, panY: 0, minZoom: 0.5, maxZoom: 3 },
+  camera: { zoom: 0.5, panX: 0, panY: 0, minZoom: 0.15, maxZoom: 3 },
 
   async init(canvas) {
     this.canvas = canvas;
@@ -175,7 +175,7 @@ var officeRenderer = {
   render: function () {
     if (!this.ctx || !officeLayers.bgImage) return;
     var ctx = this.ctx;
-    ctx.imageSmoothingEnabled = false;
+    ctx.imageSmoothingEnabled = true;
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
     // Apply camera transform
@@ -183,8 +183,8 @@ var officeRenderer = {
     ctx.translate(this.camera.panX, this.camera.panY);
     ctx.scale(this.camera.zoom, this.camera.zoom);
 
-    // 1. Background
-    ctx.drawImage(officeLayers.bgImage, 0, 0);
+    // 1. Background (scaled to canvas size)
+    ctx.drawImage(officeLayers.bgImage, 0, 0, this.canvas.width, this.canvas.height);
 
     // 2. Laptops
     const laptopSpots = officeCoords.laptopSpots || [];
@@ -200,7 +200,10 @@ var officeRenderer = {
       });
 
       const img = isAtDesk ? this.laptopOpenImages[spot.dir] : this.laptopImages[spot.dir];
-      if (img) ctx.drawImage(img, spot.x, spot.y);
+      if (img) {
+        var ls = OFFICE.MAP_SCALE || 1;
+        ctx.drawImage(img, spot.x, spot.y, img.naturalWidth * ls, img.naturalHeight * ls);
+      }
     }
 
     // 3. Characters (Y-sorted)
@@ -210,7 +213,7 @@ var officeRenderer = {
       const agent = sorted[j];
 
       if (agent.agentState === 'error') {
-        if (Math.random() < 0.1) this.spawnEffect('warning', agent.x, agent.y - 65);
+        if (Math.random() < 0.1) this.spawnEffect('warning', agent.x, agent.y - OFFICE.FRAME_H - 5);
       }
 
       const isSubType = agent.metadata && agent.metadata.type === 'sub';
@@ -232,9 +235,9 @@ var officeRenderer = {
       if (isOffline) ctx.globalAlpha = 1.0;
     }
 
-    // 4. Foreground
+    // 4. Foreground (scaled to canvas size)
     if (officeLayers.fgImage && officeLayers.fgImage.complete && officeLayers.fgImage.naturalWidth > 0) {
-      ctx.drawImage(officeLayers.fgImage, 0, 0);
+      ctx.drawImage(officeLayers.fgImage, 0, 0, this.canvas.width, this.canvas.height);
     }
 
     // 5. Effects
@@ -245,6 +248,7 @@ var officeRenderer = {
   },
 
   spawnEffect: function (type, x, y) {
+    var S = OFFICE.MAP_SCALE || 1;
     const id = Math.random().toString(36).substr(2, 9);
     const now = performance.now();
 
@@ -253,37 +257,37 @@ var officeRenderer = {
       for (let i = 0; i < 20; i++) {
         this.effects.push({
           id: id + i, type: type,
-          x: x + (Math.random() - 0.5) * 10, y: y - 5,
-          vx: (Math.random() - 0.5) * 6, vy: -Math.random() * 8 - 2,
+          x: x + (Math.random() - 0.5) * 10 * S, y: y - 5 * S,
+          vx: (Math.random() - 0.5) * 6 * S, vy: (-Math.random() * 8 - 2) * S,
           rotation: Math.random() * Math.PI * 2,
           vRotation: (Math.random() - 0.5) * 0.4,
           startTime: now, duration: 1500 + Math.random() * 1000,
-          alpha: 1, scale: 0.6 + Math.random() * 0.8,
+          alpha: 1, scale: (0.6 + Math.random() * 0.8) * S,
           color: colors[Math.floor(Math.random() * colors.length)],
         });
       }
     } else if (type === 'warning') {
       this.effects.push({
         id: id, type: type, x: x, y: y,
-        vx: 0, vy: -0.2, rotation: 0, vRotation: 0,
-        startTime: now, duration: 1200, alpha: 1, scale: 1,
+        vx: 0, vy: -0.2 * S, rotation: 0, vRotation: 0,
+        startTime: now, duration: 1200, alpha: 1, scale: S,
       });
     } else if (type === 'focus') {
       this.effects.push({
         id: id, type: type,
-        x: x + (Math.random() - 0.5) * 15, y: y + (Math.random() - 0.5) * 10,
-        vx: (Math.random() - 0.5) * 0.3, vy: -0.4 - Math.random() * 0.4,
+        x: x + (Math.random() - 0.5) * 15 * S, y: y + (Math.random() - 0.5) * 10 * S,
+        vx: (Math.random() - 0.5) * 0.3 * S, vy: (-0.4 - Math.random() * 0.4) * S,
         rotation: (Math.random() - 0.5) * 0.2,
         vRotation: (Math.random() - 0.5) * 0.05,
         startTime: now, duration: 1000 + Math.random() * 500,
-        alpha: 1, scale: 0.8 + Math.random() * 0.4,
+        alpha: 1, scale: (0.8 + Math.random() * 0.4) * S,
         color: Math.random() > 0.5 ? '#00f2ff' : '#00ffaa',
       });
     } else if (type === 'stateChange') {
       this.effects.push({
         id: id, type: type, x: x, y: y,
         vx: 0, vy: 0, rotation: 0, vRotation: 0,
-        startTime: now, duration: 600, alpha: 1, scale: 0.3,
+        startTime: now, duration: 600, alpha: 1, scale: 0.3 * S,
         color: arguments[3] || '#f97316', // 4th argument = color
       });
     }
@@ -317,44 +321,44 @@ var officeRenderer = {
       ctx.scale(fx.scale, fx.scale);
       ctx.globalAlpha = fx.alpha;
 
+      var S = OFFICE.MAP_SCALE || 1;
       if (fx.type === 'confetti') {
         ctx.fillStyle = fx.color || '#fff';
         ctx.fillRect(-2, -3, 4, 6);
         ctx.fillStyle = 'rgba(255,255,255,0.3)';
         ctx.fillRect(-2, -3, 2, 2);
       } else if (fx.type === 'warning') {
-        const size = 24;
-        const wobble = Math.sin(performance.now() * 0.02) * 3;
+        const size = Math.round(24 * S);
+        const wobble = Math.sin(performance.now() * 0.02) * 3 * S;
         ctx.translate(wobble, 0);
         ctx.fillStyle = 'rgba(0,0,0,0.3)';
         this._drawTri(ctx, 2, 2, size);
         ctx.fillStyle = '#ffcc00';
         ctx.strokeStyle = '#000';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = Math.round(2 * S);
         this._drawTri(ctx, 0, 0, size);
         ctx.fill();
         ctx.stroke();
-        ctx.font = 'bold 16px Arial';
+        ctx.font = 'bold ' + Math.round(16 * S) + 'px Arial';
         ctx.fillStyle = '#000';
         ctx.textAlign = 'center';
-        ctx.fillText('!', 0, 7);
+        ctx.fillText('!', 0, Math.round(7 * S));
       } else if (fx.type === 'focus') {
         ctx.fillStyle = fx.color || '#fff';
-        ctx.font = 'bold 9px "Courier New", monospace';
+        ctx.font = 'bold ' + Math.round(9 * S) + 'px "Courier New", monospace';
         ctx.textAlign = 'center';
         const chars = ['0', '1', '{', '}', ';', '>', '_'];
         const charIdx = parseInt(fx.id.slice(-1), 36) % chars.length;
         ctx.fillText(chars[charIdx], 0, 0);
-        ctx.shadowBlur = 4;
+        ctx.shadowBlur = Math.round(4 * S);
         ctx.shadowColor = fx.color || '#fff';
         ctx.fillText(chars[charIdx], 0, 0);
       } else if (fx.type === 'stateChange') {
-        // Expanding circular ring effect
         const elapsed = performance.now() - fx.startTime;
         const t = elapsed / fx.duration;
-        const radius = 8 + t * 20;
+        const radius = (8 + t * 20) * S;
         ctx.strokeStyle = fx.color || '#f97316';
-        ctx.lineWidth = 2 * (1 - t);
+        ctx.lineWidth = 2 * S * (1 - t);
         ctx.beginPath();
         ctx.arc(0, 0, radius, 0, Math.PI * 2);
         ctx.stroke();
