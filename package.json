@@ -1,10 +1,11 @@
 {
-  "name": "pixel-agent-desk",
+  "name": "agent-office",
   "version": "2.0.0",
   "description": "Visualize multi-agent Claude CLI sessions as pixel avatars in real time",
   "main": "src/main.js",
   "scripts": {
     "postinstall": "node src/install.js",
+    "rebuild": "electron-rebuild -f -w node-pty",
     "start": "node scripts/run-electron.js",
     "dev": "node scripts/run-electron.js --dev",
     "test": "jest",
@@ -28,15 +29,15 @@
     "jsonl"
   ],
   "author": "Mgpixelart",
-  "homepage": "https://github.com/Mgpixelart/pixel-agent-desk",
+  "homepage": "https://github.com/Mgpixelart/agent-office",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Mgpixelart/pixel-agent-desk.git"
+    "url": "https://github.com/Mgpixelart/agent-office.git"
   },
   "license": "MIT",
   "build": {
-    "appId": "com.mgpixelart.pixel-agent-desk",
-    "productName": "Pixel Agent Desk",
+    "appId": "com.mgpixelart.agent-office",
+    "productName": "Agent-Office",
     "directories": {
       "output": "release"
     },
@@ -46,7 +47,9 @@
       "styles.css",
       "index.html",
       "dashboard.html",
-      "package.json"
+      "package.json",
+      "node_modules/node-pty/**/*",
+      "node_modules/@xterm/**/*"
     ],
     "win": {
       "signAndEditExecutable": false,
@@ -89,6 +92,7 @@
     }
   },
   "devDependencies": {
+    "@electron/rebuild": "^3.6.0",
     "@eslint/js": "^9.0.0",
     "@types/jest": "^30.0.0",
     "electron": "^32.0.0",
@@ -98,6 +102,10 @@
     "prettier": "^3.0.0"
   },
   "dependencies": {
-    "ajv": "^8.18.0"
+    "ajv": "^8.18.0",
+    "node-pty": "^1.0.0",
+    "@xterm/xterm": "^5.5.0",
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/addon-web-links": "^0.11.0"
   }
 }

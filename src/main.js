@@ -1,5 +1,5 @@
 /**
- * Pixel Agent Desk — Main Process Orchestrator
+ * Agent-Office — Main Process Orchestrator
  * Module initialization, event wiring, and app lifecycle management
  */
 
@@ -25,6 +25,8 @@ const { sessionPids, startLivenessChecker, detectClaudePidByTranscript } = requi
 const { savePersistedState, recoverExistingSessions } = require('./main/sessionPersistence');
 const { createWindowManager } = require('./main/windowManager');
 const { registerIpcHandlers } = require('./main/ipcHandlers');
+const { NicknameStore } = require('./main/nicknameStore');
+const { TerminalManager } = require('./main/terminalManager');
 
 // =====================================================
 // Save error logs to file
@@ -88,6 +90,7 @@ let windowManager = null;
 let hookProcessor = null;
 let codexProcessor = null;
 let codexSessionMonitor = null;
+let terminalManager = null;
 let livenessIntervals = null;
 let agentListeners = null;
 let hookServer = null;
@@ -95,7 +98,7 @@ let codexEventServer = null;
 let enabledProviders = [];
 
 app.whenReady().then(() => {
-  debugLog('========== Pixel Agent Desk started ==========');
+  debugLog('========== Agent-Office started ==========');
 
   // Minimal application menu (removes default File/Edit/Window/Help clutter)
   const isDev = process.argv.includes('--dev');
@@ -130,8 +133,12 @@ app.whenReady().then(() => {
     registerClaudeHooks(debugLog);
   }
 
+  // 0.5. Nickname store
+  const nicknameStore = new NicknameStore(debugLog);
+
   // 1. Start agent manager immediately
   agentManager = new AgentManager();
+  agentManager.setNicknameStore(nicknameStore);
   agentManager.start();
 
   // 2. Start Claude-only scanners
@@ -177,11 +184,19 @@ app.whenReady().then(() => {
     getWindowSizeForAgents,
   });
 
+  // 4.5. Create terminal manager
+  terminalManager = new TerminalManager({
+    debugLog,
+    getWindow: () => windowManager.dashboardWindow,
+  });
+
   // 5. Register IPC handlers
   registerIpcHandlers({
     agentManager,
     sessionPids,
     windowManager,
+    terminalManager,
+    nicknameStore,
     debugLog,
     adaptAgentToDashboard,
     errorHandler,
@@ -350,6 +365,12 @@ app.on('before-quit', () => {
   if (codexSessionMonitor) {
     codexSessionMonitor.stop();
     codexSessionMonitor = null;
+  }
+
+  // Clean up terminals
+  if (terminalManager) {
+    terminalManager.destroyAll();
+    debugLog('[Main] TerminalManager cleaned up');
   }
 
   // Clean up all resources

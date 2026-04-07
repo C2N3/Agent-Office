@@ -245,6 +245,33 @@ function handleRequest(req, res) {
     return;
   }
 
+  // Serve xterm.js library assets from node_modules
+  if (pathname.startsWith('/lib/')) {
+    const libMap = {
+      '/lib/xterm.js': 'node_modules/@xterm/xterm/lib/xterm.js',
+      '/lib/xterm.css': 'node_modules/@xterm/xterm/css/xterm.css',
+      '/lib/xterm-addon-fit.js': 'node_modules/@xterm/addon-fit/lib/addon-fit.js',
+      '/lib/xterm-addon-web-links.js': 'node_modules/@xterm/addon-web-links/lib/addon-web-links.js',
+    };
+    const mapped = libMap[pathname];
+    if (mapped) {
+      const baseDir = path.resolve(__dirname, '..');
+      const filePath = path.join(baseDir, mapped);
+      const ext = path.extname(filePath);
+      const mime = MIME_TYPES[ext] || 'application/octet-stream';
+      fs.readFile(filePath, (err, data) => {
+        if (err) {
+          res.writeHead(404, { 'Content-Type': 'text/plain' });
+          res.end('Not Found');
+          return;
+        }
+        res.writeHead(200, { 'Content-Type': mime, 'Cache-Control': 'no-cache' });
+        res.end(data);
+      });
+      return;
+    }
+  }
+
   // Static file serving: /public/* and /src/office/*
   if (pathname.startsWith('/public/') || pathname.startsWith('/src/office/')) {
     const baseDir = path.resolve(__dirname, '..');
@@ -270,7 +297,7 @@ function handleRequest(req, res) {
       }
       res.writeHead(200, {
         'Content-Type': mime,
-        'Cache-Control': 'public, max-age=3600'
+        'Cache-Control': 'no-cache'
       });
       res.end(data);
     });

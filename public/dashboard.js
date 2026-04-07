@@ -172,7 +172,7 @@ function updateAgentUI(ag) {
 
   const html = `
     <div class="mc-agent-header">
-      <div class="mc-agent-name">${ag.name || 'Agent'} ${typeHtml}</div>
+      <div class="mc-agent-name"><span class="agent-display-name" data-agent-id="${ag.id}" title="Double-click to rename">${ag.nickname || ag.name || 'Agent'}</span> ${typeHtml}</div>
       <div class="mc-agent-status ${stClass}">${stText}</div>
     </div>
     <div class="mc-agent-activity">CMD> ${actText}</div>
@@ -265,6 +265,7 @@ function showOfficePopover(canvas, char) {
     <div class="pop-row"><span>Tokens</span><span class="pop-val">${formatNum(inputTok + outputTok)}</span></div>
     <div class="pop-row"><span>Cost</span><span class="pop-val">$${cost.toFixed(4)}</span></div>
     <div class="pop-row"><span>Context</span><span class="pop-val">${ctxText}</span></div>
+    <button class="pop-terminal-btn" onclick="openTerminalForAgent('${char.id}')">Open Terminal</button>
   `;
   popoverEl.style.display = 'block';
 
@@ -640,6 +641,304 @@ document.querySelectorAll('.nav-item').forEach(b => {
   }
 })();
 
+// ─── TERMINAL MANAGEMENT ───
+const termState = {
+  terminals: new Map(),     // agentId → { xterm, fitAddon, element, tab }
+  activeId: null,
+  dataCleanup: null,
+  exitCleanup: null,
+};
+
+function initTerminals() {
+  if (typeof dashboardAPI === 'undefined') return;
+
+  if (dashboardAPI.onTerminalData) {
+    termState.dataCleanup = dashboardAPI.onTerminalData((agentId, data) => {
+      const t = termState.terminals.get(agentId);
+      if (t) t.xterm.write(data);
+    });
+  }
+
+  if (dashboardAPI.onTerminalExit) {
+    termState.exitCleanup = dashboardAPI.onTerminalExit((agentId, exitCode) => {
+      const t = termState.terminals.get(agentId);
+      if (t) {
+        t.xterm.writeln(`\r\n\x1b[90m[Process exited with code ${exitCode}]\x1b[0m`);
+      }
+    });
+  }
+}
+
+async function openTerminalForAgent(agentId) {
+  // If terminal already exists, just activate it
+  if (termState.terminals.has(agentId)) {
+    activateTerminalTab(agentId);
+    return;
+  }
+
+  // Get agent info for cwd
+  const agent = state.agents.get(agentId);
+  const cwd = agent?.metadata?.projectPath || agent?.project || '';
+
+  if (typeof dashboardAPI === 'undefined' || !dashboardAPI.createTerminal) return;
+
+  const result = await dashboardAPI.createTerminal(agentId, { cwd });
+  if (!result || !result.success) {
+    console.error('[Terminal] Failed to create:', result?.error);
+    return;
+  }
+
+  createXtermInstance(agentId, agent?.nickname || agent?.name || 'Terminal');
+}
+
+function createXtermInstance(agentId, label) {
+  // Check xterm.js is loaded
+  if (typeof Terminal === 'undefined') {
+    console.error('[Terminal UI] xterm.js not loaded — Terminal is undefined');
+    return;
+  }
+
+  const container = document.getElementById('terminalContainer');
+  const emptyState = document.getElementById('terminalEmptyState');
+  if (emptyState) emptyState.style.display = 'none';
+
+  // Create wrapper div — start as active so xterm can measure
+  const el = document.createElement('div');
+  el.className = 'terminal-instance active';
+  el.dataset.agentId = agentId;
+  container.appendChild(el);
+
+  // Deactivate all other instances
+  container.querySelectorAll('.terminal-instance').forEach(inst => {
+    if (inst !== el) inst.classList.remove('active');
+  });
+
+  // Create xterm instance
+  const xterm = new Terminal({
+    fontFamily: "'JetBrains Mono', 'Cascadia Code', monospace",
+    fontSize: 13,
+    lineHeight: 1.2,
+    theme: {
+      background: '#0b0d0f',
+      foreground: '#e6edf3',
+      cursor: '#e6edf3',
+      selectionBackground: 'rgba(47, 129, 247, 0.3)',
+      black: '#0b0d0f',
+      red: '#f85149',
+      green: '#238636',
+      yellow: '#d29922',
+      blue: '#2f81f7',
+      magenta: '#a371f7',
+      cyan: '#39c5cf',
+      white: '#e6edf3',
+    },
+    cursorBlink: true,
+    scrollback: 5000,
+  });
+
+  const fitAddon = (typeof FitAddon !== 'undefined') ? new FitAddon.FitAddon() : null;
+  if (fitAddon) xterm.loadAddon(fitAddon);
+
+  if (typeof WebLinksAddon !== 'undefined') {
+    xterm.loadAddon(new WebLinksAddon.WebLinksAddon());
+  }
+
+  xterm.open(el);
+
+  // Create tab
+  const tab = addTerminalTab(agentId, label);
+  termState.terminals.set(agentId, { xterm, fitAddon, element: el, tab });
+  termState.activeId = agentId;
+
+  // Mark tab active
+  document.querySelectorAll('.terminal-tab').forEach(t => t.classList.remove('active'));
+  tab.classList.add('active');
+
+  // Fit after DOM has fully settled (multiple rAF to ensure layout is complete)
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      if (fitAddon) {
+        try { fitAddon.fit(); } catch (e) { console.warn('[Terminal UI] fit error:', e); }
+        if (dashboardAPI.resizeTerminal) {
+          dashboardAPI.resizeTerminal(agentId, xterm.cols, xterm.rows);
+        }
+      }
+      xterm.focus();
+    });
+  });
+
+  // Forward keystrokes to main process
+  xterm.onData(data => {
+    if (dashboardAPI.writeTerminal) {
+      dashboardAPI.writeTerminal(agentId, data);
+    }
+  });
+
+  // Resize observer
+  const ro = new ResizeObserver(() => {
+    if (termState.activeId === agentId && fitAddon) {
+      try {
+        fitAddon.fit();
+        if (dashboardAPI.resizeTerminal) {
+          dashboardAPI.resizeTerminal(agentId, xterm.cols, xterm.rows);
+        }
+      } catch (e) { /* ignore resize errors during layout transitions */ }
+    }
+  });
+  ro.observe(el);
+}
+
+function addTerminalTab(agentId, label) {
+  const list = document.getElementById('terminalTabsList');
+  const tab = document.createElement('div');
+  tab.className = 'terminal-tab';
+  tab.dataset.agentId = agentId;
+  tab.innerHTML = `
+    <span class="terminal-tab-dot"></span>
+    <span class="terminal-tab-label">${label}</span>
+    <button class="terminal-tab-close" title="Close">&times;</button>
+  `;
+
+  tab.addEventListener('click', (e) => {
+    if (e.target.classList.contains('terminal-tab-close')) {
+      closeTerminal(agentId);
+    } else {
+      activateTerminalTab(agentId);
+    }
+  });
+
+  list.appendChild(tab);
+  return tab;
+}
+
+function activateTerminalTab(agentId) {
+  // Deactivate all
+  for (const [id, t] of termState.terminals) {
+    t.element.classList.remove('active');
+    t.tab.classList.remove('active');
+  }
+
+  // Activate target
+  const t = termState.terminals.get(agentId);
+  if (t) {
+    t.element.classList.add('active');
+    t.tab.classList.add('active');
+    termState.activeId = agentId;
+    requestAnimationFrame(() => {
+      t.fitAddon.fit();
+      t.xterm.focus();
+    });
+  }
+}
+
+function closeTerminal(agentId) {
+  const t = termState.terminals.get(agentId);
+  if (!t) return;
+
+  t.xterm.dispose();
+  t.element.remove();
+  t.tab.remove();
+  termState.terminals.delete(agentId);
+
+  if (dashboardAPI.destroyTerminal) {
+    dashboardAPI.destroyTerminal(agentId);
+  }
+
+  // Activate another tab or show empty state
+  if (termState.terminals.size > 0) {
+    const nextId = termState.terminals.keys().next().value;
+    activateTerminalTab(nextId);
+  } else {
+    termState.activeId = null;
+    const emptyState = document.getElementById('terminalEmptyState');
+    if (emptyState) emptyState.style.display = '';
+  }
+}
+
+// ─── RESIZABLE PANELS ───
+function initResizableHandles() {
+  // Vertical handle: resize left/right columns
+  const resizeV = document.getElementById('resizeV');
+  const leftCol = document.getElementById('leftCol');
+  const mainLayout = document.getElementById('mainLayout');
+
+  if (resizeV && leftCol && mainLayout) {
+    let startX, startW;
+    const onMouseMove = (e) => {
+      const dx = e.clientX - startX;
+      const newW = Math.max(280, Math.min(startW + dx, mainLayout.clientWidth - 306));
+      leftCol.style.width = newW + 'px';
+      // Refit active terminal
+      fitActiveTerminal();
+    };
+    const onMouseUp = () => {
+      resizeV.classList.remove('dragging');
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+    resizeV.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      startX = e.clientX;
+      startW = leftCol.offsetWidth;
+      resizeV.classList.add('dragging');
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    });
+  }
+
+  // Horizontal handle: resize office/agent-list split
+  const resizeH = document.getElementById('resizeH');
+  const officePanel = document.getElementById('officePanel');
+  const agentListPanel = document.getElementById('agentListPanel');
+
+  if (resizeH && officePanel && agentListPanel && leftCol) {
+    let startY, startOfficeH, totalH;
+    const onMouseMove = (e) => {
+      const dy = e.clientY - startY;
+      const newOfficeH = Math.max(150, Math.min(startOfficeH + dy, totalH - 106));
+      officePanel.style.flex = 'none';
+      officePanel.style.height = newOfficeH + 'px';
+      agentListPanel.style.flex = '1';
+    };
+    const onMouseUp = () => {
+      resizeH.classList.remove('dragging');
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+    resizeH.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      startY = e.clientY;
+      startOfficeH = officePanel.offsetHeight;
+      totalH = leftCol.offsetHeight;
+      resizeH.classList.add('dragging');
+      document.body.style.cursor = 'row-resize';
+      document.body.style.userSelect = 'none';
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    });
+  }
+}
+
+function fitActiveTerminal() {
+  if (termState.activeId) {
+    const t = termState.terminals.get(termState.activeId);
+    if (t && t.fitAddon) {
+      try {
+        t.fitAddon.fit();
+        if (dashboardAPI.resizeTerminal) {
+          dashboardAPI.resizeTerminal(termState.activeId, t.xterm.cols, t.xterm.rows);
+        }
+      } catch (e) { /* ignore */ }
+    }
+  }
+}
+
 // ─── BOOT ───
 function initApp() {
   // Sync startup view
@@ -654,6 +953,8 @@ function initApp() {
   if (tgtEl) tgtEl.classList.add('active');
 
   connectSSE();
+  initTerminals();
+  initResizableHandles();
   if (target === 'heatmap') renderHeatmapView();
   else if (target === 'usage') renderUsageView();
 
@@ -662,6 +963,71 @@ function initApp() {
     initOffice();
     setupOfficeClickHandler();
   }, 100);
+
+  // Agent card click → open terminal
+  const agentPanel = document.getElementById('agentPanel');
+  if (agentPanel) {
+    agentPanel.addEventListener('click', function (e) {
+      // Don't trigger on double-click (nickname edit) or on close buttons
+      if (e.target.closest('.nickname-input') || e.target.closest('.agent-display-name')) return;
+      const card = e.target.closest('.mc-agent-card');
+      if (card && card.dataset.id) {
+        openTerminalForAgent(card.dataset.id);
+      }
+    });
+  }
+
+  // "New Terminal" button → open generic terminal (no agent)
+  const newTermBtn = document.getElementById('terminalNewBtn');
+  if (newTermBtn) {
+    newTermBtn.addEventListener('click', () => {
+      const id = 'local-' + Date.now();
+      openTerminalForAgent(id);
+    });
+  }
 }
 
 document.addEventListener('DOMContentLoaded', initApp);
+
+// ─── NICKNAME INLINE EDIT ───
+(function setupNicknameEdit() {
+  const panel = document.getElementById('agentPanel');
+  if (!panel) return;
+
+  panel.addEventListener('dblclick', function (e) {
+    const nameEl = e.target.closest('.agent-display-name');
+    if (!nameEl || nameEl.querySelector('input')) return;
+
+    const agentId = nameEl.dataset.agentId;
+    const currentName = nameEl.textContent.trim();
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = currentName;
+    input.className = 'nickname-input';
+    input.style.cssText = 'background:#1a1d23;color:#e6edf3;border:1px solid #3b82f6;border-radius:4px;padding:1px 4px;font:inherit;width:100%;outline:none;';
+
+    nameEl.textContent = '';
+    nameEl.appendChild(input);
+    input.focus();
+    input.select();
+
+    function save() {
+      const val = input.value.trim();
+      if (val && val !== currentName && typeof dashboardAPI !== 'undefined') {
+        dashboardAPI.setNickname(agentId, val);
+      } else if (!val && typeof dashboardAPI !== 'undefined') {
+        dashboardAPI.removeNickname(agentId);
+      }
+      // UI will refresh via agent-updated event
+      input.remove();
+      nameEl.textContent = val || currentName;
+    }
+
+    input.addEventListener('blur', save);
+    input.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Enter') { ev.preventDefault(); input.blur(); }
+      if (ev.key === 'Escape') { ev.preventDefault(); input.value = currentName; input.blur(); }
+    });
+  });
+})();

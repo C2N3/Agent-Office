@@ -26,10 +26,18 @@ class AgentManager extends EventEmitter {
     this.agents = new Map();
     this._pendingEmit = new Map(); // agentId → { timer, state } — UI emit debounce
     this._usedAvatarIndices = new Set(); // Currently used avatar indices
+    this._nicknameStore = null; // Optional NicknameStore reference
     this.config = {
       softLimitWarning: 50,  // Soft warning (does not block, only logs)
       stateDebounceMs: 500,  // Working→Thinking transition debounce (ms)
     };
+  }
+
+  /**
+   * Set the nickname store reference
+   */
+  setNicknameStore(store) {
+    this._nicknameStore = store;
   }
 
   start() {
@@ -82,12 +90,15 @@ class AgentManager extends EventEmitter {
 
     const m = (key, defaultVal = null) => mergeField(entry, existingAgent, key, defaultVal);
 
+    const nickname = this._nicknameStore?.getNickname(agentId) || null;
+
     const agentData = {
       id: agentId,
       sessionId: entry.sessionId,
       agentId: entry.agentId,
       slug: entry.slug,
-      displayName: this.formatDisplayName(entry.slug, entry.projectPath),
+      nickname,
+      displayName: nickname || this.formatDisplayName(entry.slug, entry.projectPath),
       projectPath: entry.projectPath,
       provider: m('provider'),
       jsonlPath: entry.jsonlPath || (existingAgent ? existingAgent.jsonlPath : null),
@@ -127,6 +138,9 @@ class AgentManager extends EventEmitter {
       console.log(`[AgentManager] Agent added: ${agentData.displayName} (${newState})`);
     } else if (newState !== prevState) {
       this._emitWithDebounce(agentId, prevState, newState, agentData.displayName);
+    } else if (existingAgent.displayName !== agentData.displayName) {
+      // Name changed (e.g. nickname set/removed) — force emit without debounce
+      this.emit('agent-updated', this.getAgentWithEffectiveState(agentId));
     }
 
     return agentData;
@@ -229,7 +243,7 @@ class AgentManager extends EventEmitter {
   /**
    * Determine display name
    * 1. slug (e.g., "toasty-sparking-lecun" → "Toasty Sparking Lecun")
-   * 2. basename of projectPath (e.g., "pixel-agent-desk-master")
+   * 2. basename of projectPath (e.g., "agent-office-master")
    * 3. Fallback: "Agent"
    */
   formatDisplayName(slug, projectPath) {

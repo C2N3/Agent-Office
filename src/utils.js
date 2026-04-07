@@ -1,5 +1,5 @@
 /**
- * Shared Utilities for Pixel Agent Desk
+ * Shared Utilities for Agent-Office
  * Eliminates code duplication across modules
  */
 

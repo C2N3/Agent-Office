@@ -69,7 +69,7 @@ if ($hwnd -ne [IntPtr]::Zero) {
   }
 }
 
-function registerIpcHandlers({ agentManager, sessionPids, windowManager, debugLog, adaptAgentToDashboard, errorHandler }) {
+function registerIpcHandlers({ agentManager, sessionPids, windowManager, terminalManager, nicknameStore, debugLog, adaptAgentToDashboard, errorHandler }) {
   ipcMain.on('resize-window', (e, size) => {
     const mw = windowManager.mainWindow;
     if (!mw || mw.isDestroyed()) return;
@@ -176,6 +176,58 @@ function registerIpcHandlers({ agentManager, sessionPids, windowManager, debugLo
     windowManager.closePipWindow();
     windowManager.focusDashboardWindow();
   });
+
+  // ─── Nickname ───
+  if (nicknameStore) {
+    ipcMain.handle('nickname:set', async (event, agentId, nickname) => {
+      const result = nicknameStore.setNickname(agentId, nickname);
+      // Re-trigger agent update so displayName refreshes everywhere
+      const agent = agentManager?.getAgent(agentId);
+      if (agent) {
+        agentManager.updateAgent({ sessionId: agentId, state: agent.state }, 'nickname');
+      }
+      return { success: true, nickname: result };
+    });
+
+    ipcMain.handle('nickname:get', async (event, agentId) => {
+      return { nickname: nicknameStore.getNickname(agentId) };
+    });
+
+    ipcMain.handle('nickname:remove', async (event, agentId) => {
+      nicknameStore.removeNickname(agentId);
+      const agent = agentManager?.getAgent(agentId);
+      if (agent) {
+        agentManager.updateAgent({ sessionId: agentId, state: agent.state }, 'nickname');
+      }
+      return { success: true };
+    });
+  }
+
+  // ─── Terminal ───
+  if (terminalManager) {
+    ipcMain.handle('terminal:create', async (event, agentId, options) => {
+      try {
+        const result = terminalManager.createTerminal(agentId, options);
+        return result;
+      } catch (e) {
+        debugLog(`[Terminal] Create error: ${e.message}`);
+        return { success: false, error: e.message };
+      }
+    });
+
+    ipcMain.handle('terminal:write', async (event, agentId, data) => {
+      terminalManager.writeToTerminal(agentId, data);
+    });
+
+    ipcMain.handle('terminal:resize', async (event, agentId, cols, rows) => {
+      terminalManager.resizeTerminal(agentId, cols, rows);
+    });
+
+    ipcMain.handle('terminal:destroy', async (event, agentId) => {
+      terminalManager.destroyTerminal(agentId);
+      return { success: true };
+    });
+  }
 }
 
 module.exports = { registerIpcHandlers };

@@ -4,13 +4,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pixel Agent Desk</title>
+  <title>Agent-Office</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
     href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
     rel="stylesheet">
   <link rel="stylesheet" href="/public/dashboard.css">
+  <link rel="stylesheet" href="/lib/xterm.css">
 </head>
 
 <body>
@@ -20,7 +21,7 @@
     <aside class="sidebar">
       <div class="sidebar-header">
         <div class="brand-icon"></div>
-        Pixel Agent Desk
+        Agent-Office
       </div>
       <nav class="sidebar-nav">
         <div class="nav-label">Main</div>
@@ -54,7 +55,7 @@
       <div class="sidebar-footer">
         <div class="status-dot disconnected" id="statusIndicator"></div>
         <span id="connectionStatus">Connecting Gateway...</span>
-        <a class="github-link" href="https://github.com/Mgpixelart/pixel-agent-desk" target="_blank" title="GitHub">
+        <a class="github-link" href="https://github.com/Mgpixelart/agent-office" target="_blank" title="GitHub">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.009-.868-.013-1.703-2.782.604-3.369-1.342-3.369-1.342-.454-1.155-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0 1 12 6.836a9.59 9.59 0 0 1 2.504.337c1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.742 0 .267.18.578.688.48C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"/>
           </svg>
@@ -97,40 +98,65 @@
             </div>
           </div>
 
-          <!-- Office & Agents Panel Layout -->
-          <div class="office-layout">
+          <!-- Main Layout: Left (Office + Agent List) / Right (Terminal) -->
+          <div class="office-terminal-layout" id="mainLayout">
 
-            <!-- The 2D Floorplan -->
-            <div class="panel office-canvas-panel">
-              <div class="panel-header">
-                Operational Floorplan
-                <span class="panel-header-badge">LIVE</span>
-                <button class="pip-toggle-btn" id="pipToggleBtn" title="Picture-in-Picture">
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="2" width="14" height="11" rx="1.5"/><rect x="8" y="7" width="6" height="5" rx="1" fill="currentColor" stroke="none"/></svg>
-                </button>
+            <!-- Left Column -->
+            <div class="office-left-col" id="leftCol">
+              <!-- Office Canvas -->
+              <div class="panel office-canvas-panel" id="officePanel">
+                <div class="panel-header">
+                  Office
+                  <span class="panel-header-badge">LIVE</span>
+                  <button class="pip-toggle-btn" id="pipToggleBtn" title="Picture-in-Picture">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="2" width="14" height="11" rx="1.5"/><rect x="8" y="7" width="6" height="5" rx="1" fill="currentColor" stroke="none"/></svg>
+                  </button>
+                </div>
+                <div class="panel-body">
+                  <canvas id="office-canvas"></canvas>
+                  <div class="pip-placeholder" id="pipPlaceholder" style="display:none;">
+                    <svg width="48" height="48" viewBox="0 0 48 48" fill="none" stroke="#8b949e" stroke-width="2">
+                      <rect x="4" y="8" width="40" height="32" rx="4"/>
+                      <rect x="24" y="22" width="18" height="14" rx="2" fill="#2d333b" stroke="#8b949e"/>
+                    </svg>
+                    <div class="pip-placeholder-text">Playing in PiP mode</div>
+                    <button class="pip-placeholder-btn" id="pipStopBtn">Close PiP and view here</button>
+                  </div>
+                </div>
               </div>
-              <div class="panel-body">
-                <canvas id="office-canvas"></canvas>
-                <div class="pip-placeholder" id="pipPlaceholder" style="display:none;">
-                  <svg width="48" height="48" viewBox="0 0 48 48" fill="none" stroke="#8b949e" stroke-width="2">
-                    <rect x="4" y="8" width="40" height="32" rx="4"/>
-                    <rect x="24" y="22" width="18" height="14" rx="2" fill="#2d333b" stroke="#8b949e"/>
-                  </svg>
-                  <div class="pip-placeholder-text">Playing in PiP mode</div>
-                  <button class="pip-placeholder-btn" id="pipStopBtn">Close PiP and view here</button>
+
+              <!-- Horizontal resize handle (between Office and Agent List) -->
+              <div class="resize-handle-h" id="resizeH"></div>
+
+              <!-- Agent List -->
+              <div class="panel agent-list-panel" id="agentListPanel">
+                <div class="panel-header">Agent List</div>
+                <div class="panel-body" id="agentPanel">
+                  <div class="standby-state" id="standbyMessage">
+                    <div>No agents dispatched.</div>
+                    <div style="font-size:0.7rem; margin-top:6px;">Spawn an agent via CLI to populate roster.</div>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <!-- Agent List -->
-            <div class="panel agent-roster-panel">
-              <div class="panel-header">
-                System Roster
+            <!-- Vertical resize handle (between Left and Right columns) -->
+            <div class="resize-handle-v" id="resizeV"></div>
+
+            <!-- Right Column: Terminal -->
+            <div class="office-right-col panel" id="terminalPanel">
+              <div class="terminal-tabs" id="terminalTabs">
+                <div class="terminal-tabs-list" id="terminalTabsList"></div>
+                <button class="terminal-new-btn" id="terminalNewBtn" title="New Terminal">+</button>
               </div>
-              <div class="panel-body" id="agentPanel">
-                <div class="standby-state" id="standbyMessage">
-                  <div>No agents dispatched.</div>
-                  <div style="font-size:0.7rem; margin-top:6px;">Spawn an agent via CLI to populate roster.</div>
+              <div class="terminal-container" id="terminalContainer">
+                <div class="terminal-empty-state" id="terminalEmptyState">
+                  <svg width="48" height="48" fill="none" stroke="#8b949e" stroke-width="1.5">
+                    <polyline points="8 34 20 22 8 10"></polyline>
+                    <line x1="24" y1="38" x2="40" y2="38"></line>
+                  </svg>
+                  <div style="margin-top:12px;">No terminal open</div>
+                  <div style="font-size:0.7rem; margin-top:6px; color:var(--color-text-dark);">Click an agent to open a terminal.</div>
                 </div>
               </div>
             </div>
@@ -211,6 +237,7 @@
           </div>
         </div>
 
+
       </div>
     </main>
   </div>
@@ -231,6 +258,13 @@
   <script src="/src/office/office-renderer.js?v=6"></script>
   <script src="/src/office/office-ui.js?v=6"></script>
   <script src="/src/office/office-init.js?v=6"></script>
+
+  <!-- Terminal: ensure UMD scripts export to window, not CommonJS -->
+  <script>if(typeof module!=='undefined'){window.__module=module;delete window.module;}</script>
+  <script src="/lib/xterm.js"></script>
+  <script src="/lib/xterm-addon-fit.js"></script>
+  <script src="/lib/xterm-addon-web-links.js"></script>
+  <script>if(typeof window.__module!=='undefined'){window.module=window.__module;delete window.__module;}</script>
 
   <!-- Application Logic -->
   <script src="/public/dashboard.js"></script>
