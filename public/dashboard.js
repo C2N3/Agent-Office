@@ -182,11 +182,15 @@ function updateAgentUI(ag) {
     timelineHtml = `<div class="mc-timeline">${segHtml}</div>`;
   }
 
+  const AVATAR_LIST = ['avatar_0.webp','avatar_1.webp','avatar_2.webp','avatar_3.webp','avatar_4.webp','avatar_5.webp','avatar_6.webp','avatar_7.webp'];
+  const avFile = AVATAR_LIST[ag.avatarIndex != null ? ag.avatarIndex : 0];
+
   const html = `
     <div class="mc-agent-header">
-      <div class="mc-agent-name"><span class="agent-display-name" data-agent-id="${ag.id}" title="Double-click to rename">${ag.nickname || ag.name || 'Agent'}</span> ${typeHtml}</div>
+      <div class="mc-agent-name"><div class="mc-agent-avatar" style="background-image:url('./public/characters/${avFile}')"></div><span class="agent-display-name" data-agent-id="${ag.id}" title="Double-click to rename">${ag.nickname || ag.name || 'Agent'}</span> ${typeHtml}</div>
       <div style="display:flex;align-items:center;gap:6px;">
         <div class="mc-agent-status ${stClass}">${stText}</div>
+        ${ag.isRegistered && ag.registryId ? `<button class="agent-avatar-btn" data-avatar-id="${ag.registryId}" data-agent-id="${ag.id}" title="Change avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M5 20c0-4 3.5-7 7-7s7 3 7 7"/></svg></button>` : ''}
         ${ag.isRegistered && ag.registryId ? `<button class="agent-delete-btn" data-delete-id="${ag.registryId}" title="Delete agent">&times;</button>` : ''}
       </div>
     </div>
@@ -1123,5 +1127,74 @@ document.addEventListener('DOMContentLoaded', initApp);
         selectedProvider = 'claude';
       }
     }
+  });
+})();
+
+// ─── AVATAR PICKER ───
+(function setupAvatarPicker() {
+  const modal = document.getElementById('avatarPickerModal');
+  const grid = document.getElementById('avatarPickerGrid');
+  const cancelBtn = document.getElementById('cancelAvatarBtn');
+  if (!modal || !grid) return;
+
+  const AVATAR_FILES = [
+    'avatar_0.webp', 'avatar_1.webp', 'avatar_2.webp', 'avatar_3.webp',
+    'avatar_4.webp', 'avatar_5.webp', 'avatar_6.webp', 'avatar_7.webp'
+  ];
+  const FRAME_W = 48, FRAME_H = 64, COLS = 8;
+
+  let currentRegistryId = null;
+  let currentAgentId = null;
+
+  // Build avatar grid (show front_idle frame 0 for each)
+  AVATAR_FILES.forEach((file, idx) => {
+    const item = document.createElement('div');
+    item.className = 'avatar-picker-item';
+    item.dataset.index = idx;
+    item.style.backgroundImage = `url('./public/characters/${file}')`;
+    item.style.backgroundSize = `${FRAME_W * COLS}px auto`;
+    item.style.backgroundPosition = '0px 0px';
+    item.style.width = FRAME_W + 'px';
+    item.style.height = FRAME_H + 'px';
+    item.style.imageRendering = 'pixelated';
+    item.title = `Avatar ${idx}`;
+
+    item.addEventListener('click', async () => {
+      if (!currentRegistryId) return;
+      if (typeof dashboardAPI !== 'undefined' && dashboardAPI.updateRegisteredAgent) {
+        await dashboardAPI.updateRegisteredAgent(currentRegistryId, { avatarIndex: idx });
+      }
+      // Update office character avatar immediately
+      if (currentAgentId && typeof officeCharacters !== 'undefined') {
+        const char = officeCharacters.characters.get(currentAgentId);
+        if (char) {
+          char.avatarFile = file;
+          char.skinIndex = idx;
+        }
+      }
+      modal.style.display = 'none';
+    });
+    grid.appendChild(item);
+  });
+
+  if (cancelBtn) cancelBtn.addEventListener('click', () => { modal.style.display = 'none'; });
+  modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
+
+  // Delegate click from agent cards
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.agent-avatar-btn');
+    if (!btn) return;
+    e.stopPropagation();
+    currentRegistryId = btn.dataset.avatarId;
+    currentAgentId = btn.dataset.agentId;
+
+    // Highlight current avatar
+    const ag = state.agents.get(currentAgentId);
+    const currentIdx = ag ? (ag.avatarIndex != null ? ag.avatarIndex : 0) : 0;
+    grid.querySelectorAll('.avatar-picker-item').forEach(item => {
+      item.classList.toggle('selected', parseInt(item.dataset.index) === currentIdx);
+    });
+
+    modal.style.display = '';
   });
 })();

@@ -1337,3 +1337,65 @@ body {
 .mc-agent-card:hover {
   border-color: var(--color-primary);
 }
+
+/* ─── Agent Card Avatar Preview ─── */
+.mc-agent-avatar {
+  width: 24px;
+  height: 32px;
+  background-size: 192px auto;
+  background-position: 0px 0px;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  flex-shrink: 0;
+}
+
+/* ─── Avatar Change Button ─── */
+.agent-avatar-btn {
+  background: none;
+  border: none;
+  color: var(--color-text-dark);
+  cursor: pointer;
+  padding: 2px 4px;
+  line-height: 1;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+}
+
+.agent-avatar-btn:hover {
+  color: var(--color-info);
+  background: var(--color-info-dim);
+}
+
+/* ─── Avatar Picker Modal ─── */
+.avatar-picker-modal {
+  max-width: 420px;
+}
+
+.avatar-picker-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  padding: 20px 16px;
+}
+
+.avatar-picker-item {
+  cursor: pointer;
+  border: 2px solid var(--color-border);
+  border-radius: 6px;
+  background-color: var(--color-bg-dim);
+  transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+  flex-shrink: 0;
+}
+
+.avatar-picker-item:hover {
+  border-color: var(--color-primary);
+  transform: scale(1.15);
+  box-shadow: 0 0 12px rgba(56, 139, 253, 0.3);
+}
+
+.avatar-picker-item.selected {
+  border-color: var(--color-info);
+  box-shadow: 0 0 8px rgba(56, 139, 253, 0.4);
+}
