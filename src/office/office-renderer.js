@@ -15,7 +15,7 @@ var officeRenderer = {
   laptopOpenImages: { down: null, up: null, left: null, right: null },
 
   // Camera state for zoom/pan
-  camera: { zoom: 0.5, panX: 0, panY: 0, minZoom: 0.15, maxZoom: 3 },
+  camera: { zoom: 1, panX: 0, panY: 0, minZoom: 0.15, maxZoom: 3 },
 
   async init(canvas) {
     this.canvas = canvas;
