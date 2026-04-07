@@ -101,6 +101,14 @@ function createEventProcessor({
 
     debugLog(`[${logPrefix}] ${rawType} session=${sessionId.slice(0, 8)}`);
 
+    // Update transcriptPath in registry if it arrived late
+    if (event.transcriptPath && agentRegistry) {
+      const regId = sessionToRegistry.get(sessionId);
+      if (regId) {
+        agentRegistry.updateSessionTranscriptPath(regId, sessionId, event.transcriptPath);
+      }
+    }
+
     if (agentManager && event.type !== 'session.start' && event.type !== 'session.end') {
       const agentKey = resolveAgentId(sessionId);
       const existing = agentManager.getAgent(agentKey);
@@ -402,7 +410,7 @@ function createEventProcessor({
     const registeredAgent = agentRegistry ? agentRegistry.findByProjectPath(cwd) : null;
     if (registeredAgent) {
       // Link session to registered agent
-      agentRegistry.linkSession(registeredAgent.id, sessionId);
+      agentRegistry.linkSession(registeredAgent.id, sessionId, meta.jsonlPath || null);
       sessionToRegistry.set(sessionId, registeredAgent.id);
 
       agentManager.updateAgent({

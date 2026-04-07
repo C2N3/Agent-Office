@@ -6,6 +6,7 @@
 const { ipcMain, screen } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { parseConversation, getConversationSummary } = require('./conversationParser');
 
 function focusTerminalByPid(pid, label, debugLog) {
   const { execFile } = require('child_process');
@@ -291,6 +292,63 @@ function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowM
         agentManager.removeAgent(registryId);
       }
       return { success: result };
+    });
+
+    ipcMain.handle('registry:session-history', async (event, registryId) => {
+      const history = agentRegistry.getSessionHistory(registryId);
+      return history.map(entry => {
+        const summary = entry.transcriptPath
+          ? getConversationSummary(entry.transcriptPath)
+          : null;
+        return { ...entry, summary };
+      });
+    });
+
+    ipcMain.handle('registry:conversation', async (event, registryId, sessionId, options) => {
+      const history = agentRegistry.getSessionHistory(registryId);
+      const entry = history.find(h => h.sessionId === sessionId);
+
+      let transcriptPath = entry ? entry.transcriptPath : null;
+      if (!transcriptPath) {
+        const agent = agentManager?.getAgent(registryId);
+        if (agent && agent.sessionId === sessionId && agent.jsonlPath) {
+          transcriptPath = agent.jsonlPath;
+        }
+      }
+
+      if (!transcriptPath) return { error: 'Transcript not found' };
+      const result = parseConversation(transcriptPath, options || {});
+      if (!result) return { error: 'Could not parse transcript' };
+      return result;
+    });
+
+    ipcMain.handle('registry:resume-session', async (event, registryId, sessionId) => {
+      if (!terminalManager) return { success: false, error: 'Terminal not available' };
+
+      const agent = agentRegistry.getAgent(registryId);
+      if (!agent) return { success: false, error: 'Agent not found' };
+
+      // Use the agent's own ID — destroy existing terminal first
+      if (terminalManager.hasTerminal(registryId)) {
+        terminalManager.destroyTerminal(registryId);
+      }
+
+      // Validate cwd exists, fall back to home dir
+      let cwd = agent.projectPath || undefined;
+      if (cwd) {
+        try {
+          if (!fs.existsSync(cwd)) cwd = undefined;
+        } catch { cwd = undefined; }
+      }
+
+      const result = terminalManager.createTerminal(registryId, { cwd });
+      if (!result.success) return result;
+
+      setTimeout(() => {
+        terminalManager.writeToTerminal(registryId, `claude --resume ${sessionId}\r`);
+      }, 800);
+
+      return { ...result, terminalId: registryId };
     });
   }
 }

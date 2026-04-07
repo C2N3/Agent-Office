@@ -75,6 +75,7 @@ class AgentRegistry {
       archived: false,
       cumulativeTokens: { inputTokens: 0, outputTokens: 0, estimatedCost: 0, sessionCount: 0 },
       currentSessionId: null,
+      sessionHistory: [],
       provider: provider || null,
       model: model || null,
     };
@@ -139,14 +140,25 @@ class AgentRegistry {
   findByProjectPath(rawPath) {
     if (!rawPath) return null;
     const normalized = normalizePath(rawPath);
+    let bestMatch = null;
     for (const agent of this.agents.values()) {
       if (!agent.enabled || agent.archived) continue;
-      if (agent.currentSessionId) continue; // Already linked to a session
-      if (normalizePath(agent.projectPath) === normalized) {
-        return agent;
+      if (normalizePath(agent.projectPath) !== normalized) continue;
+
+      // Prefer an unlinked agent; fall back to one with a stale session
+      if (!agent.currentSessionId) {
+        return agent; // ideal: free agent
+      }
+      if (!bestMatch) {
+        bestMatch = agent; // fallback: already linked but path matches
       }
     }
-    return null;
+    // If only a linked agent was found, force-unlink its stale session first
+    if (bestMatch) {
+      this.debugLog(`[Registry] Force-unlinking stale session from ${bestMatch.id.slice(0, 8)} for new session`);
+      this.unlinkSession(bestMatch.id);
+    }
+    return bestMatch;
   }
 
   /**
@@ -165,11 +177,30 @@ class AgentRegistry {
     return null;
   }
 
-  linkSession(registryId, sessionId) {
+  linkSession(registryId, sessionId, transcriptPath) {
     const agent = this.agents.get(registryId);
     if (!agent) return;
     agent.currentSessionId = sessionId;
     agent.lastActiveAt = Date.now();
+
+    // Ensure sessionHistory array exists (backward compat with old data)
+    if (!Array.isArray(agent.sessionHistory)) {
+      agent.sessionHistory = [];
+    }
+
+    // Add to history if not already present
+    const existing = agent.sessionHistory.find(h => h.sessionId === sessionId);
+    if (!existing) {
+      agent.sessionHistory.push({
+        sessionId,
+        transcriptPath: transcriptPath || null,
+        startedAt: Date.now(),
+        endedAt: null,
+      });
+    } else if (transcriptPath && !existing.transcriptPath) {
+      existing.transcriptPath = transcriptPath;
+    }
+
     this._save();
     this.debugLog(`[Registry] Linked session: ${registryId.slice(0, 8)} ← ${sessionId.slice(0, 8)}`);
   }
@@ -177,10 +208,41 @@ class AgentRegistry {
   unlinkSession(registryId) {
     const agent = this.agents.get(registryId);
     if (!agent) return;
+
+    // Mark current session as ended in history
+    if (agent.currentSessionId && Array.isArray(agent.sessionHistory)) {
+      const entry = agent.sessionHistory.find(h => h.sessionId === agent.currentSessionId);
+      if (entry && !entry.endedAt) {
+        entry.endedAt = Date.now();
+      }
+    }
+
     agent.currentSessionId = null;
     agent.lastActiveAt = Date.now();
     this._save();
     this.debugLog(`[Registry] Unlinked session: ${registryId.slice(0, 8)}`);
+  }
+
+  /**
+   * Update transcriptPath for a session in history (may arrive after linkSession)
+   */
+  updateSessionTranscriptPath(registryId, sessionId, transcriptPath) {
+    const agent = this.agents.get(registryId);
+    if (!agent || !Array.isArray(agent.sessionHistory)) return;
+    const entry = agent.sessionHistory.find(h => h.sessionId === sessionId);
+    if (entry && !entry.transcriptPath && transcriptPath) {
+      entry.transcriptPath = transcriptPath;
+      this._save();
+    }
+  }
+
+  /**
+   * Get session history for a registered agent
+   */
+  getSessionHistory(registryId) {
+    const agent = this.agents.get(registryId);
+    if (!agent) return [];
+    return Array.isArray(agent.sessionHistory) ? [...agent.sessionHistory] : [];
   }
 
   accumulateTokens(registryId, sessionTokenUsage) {

@@ -16,7 +16,7 @@ class TerminalManager {
   /**
    * Create a new terminal for an agent
    * @param {string} agentId
-   * @param {{ cwd?: string, shell?: string, cols?: number, rows?: number }} options
+   * @param {{ cwd?: string, shell?: string, command?: string, args?: string[], cols?: number, rows?: number }} options
    */
   createTerminal(agentId, options = {}) {
     if (this.terminals.has(agentId)) {
@@ -33,9 +33,11 @@ class TerminalManager {
       return { success: false, error: 'node-pty not available' };
     }
 
-    const shell = options.shell || (process.platform === 'win32'
+    // Support custom command (e.g. 'claude') with args, or default to shell
+    const command = options.command || options.shell || (process.platform === 'win32'
       ? 'powershell.exe'
       : process.env.SHELL || '/bin/bash');
+    const args = options.args || [];
 
     const cwd = options.cwd || os.homedir();
     const cols = options.cols || 120;
@@ -47,7 +49,7 @@ class TerminalManager {
     env.TERM = 'xterm-256color';
 
     try {
-      const ptyProcess = pty.spawn(shell, [], {
+      const ptyProcess = pty.spawn(command, args, {
         name: 'xterm-256color',
         cols,
         rows,
@@ -75,7 +77,7 @@ class TerminalManager {
         }
       });
 
-      this.debugLog(`[Terminal] Created: ${agentId.slice(0, 8)} shell=${shell} cwd=${cwd}`);
+      this.debugLog(`[Terminal] Created: ${agentId.slice(0, 8)} cmd=${command} cwd=${cwd}`);
       return { success: true, pid: ptyProcess.pid };
     } catch (e) {
       this.debugLog(`[Terminal] Spawn error: ${e.message}`);

@@ -180,6 +180,7 @@ app.whenReady().then(() => {
   // 4. Create window manager
   windowManager = createWindowManager({
     agentManager,
+    agentRegistry,
     sessionScanner,
     heatmapScanner,
     debugLog,
