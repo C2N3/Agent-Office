@@ -810,6 +810,23 @@ function createXtermInstance(agentId, label) {
     });
   });
 
+  // Clipboard: Ctrl+C (when selection exists) = copy, Ctrl+V = paste
+  xterm.attachCustomKeyEventHandler((ev) => {
+    if (ev.ctrlKey && ev.key === 'c' && xterm.hasSelection()) {
+      navigator.clipboard.writeText(xterm.getSelection());
+      return false; // prevent sending to PTY
+    }
+    if (ev.ctrlKey && ev.key === 'v') {
+      navigator.clipboard.readText().then(text => {
+        if (text && dashboardAPI.writeTerminal) {
+          dashboardAPI.writeTerminal(agentId, text);
+        }
+      });
+      return false;
+    }
+    return true;
+  });
+
   // Forward keystrokes to main process
   xterm.onData(data => {
     if (dashboardAPI.writeTerminal) {
