@@ -69,7 +69,7 @@ if ($hwnd -ne [IntPtr]::Zero) {
   }
 }
 
-function registerIpcHandlers({ agentManager, sessionPids, windowManager, terminalManager, nicknameStore, debugLog, adaptAgentToDashboard, errorHandler }) {
+function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowManager, terminalManager, nicknameStore, debugLog, adaptAgentToDashboard, errorHandler }) {
   ipcMain.on('resize-window', (e, size) => {
     const mw = windowManager.mainWindow;
     if (!mw || mw.isDestroyed()) return;
@@ -226,6 +226,71 @@ function registerIpcHandlers({ agentManager, sessionPids, windowManager, termina
     ipcMain.handle('terminal:destroy', async (event, agentId) => {
       terminalManager.destroyTerminal(agentId);
       return { success: true };
+    });
+  }
+
+  // ─── Agent Registry ───
+  if (agentRegistry) {
+    ipcMain.handle('registry:create', async (event, data) => {
+      const agent = agentRegistry.createAgent(data);
+      // Create Offline entry in agentManager so it shows immediately
+      agentManager.updateAgent({
+        registryId: agent.id,
+        displayName: agent.name,
+        role: agent.role,
+        projectPath: agent.projectPath,
+        avatarIndex: agent.avatarIndex,
+        provider: agent.provider,
+        isRegistered: true,
+        state: 'Offline',
+      }, 'registry');
+      return { success: true, agent };
+    });
+
+    ipcMain.handle('registry:list', async () => {
+      return agentRegistry.getAllAgents();
+    });
+
+    ipcMain.handle('registry:update', async (event, registryId, fields) => {
+      const updated = agentRegistry.updateAgent(registryId, fields);
+      if (updated) {
+        const existing = agentManager.getAgent(registryId);
+        if (existing) {
+          agentManager.updateAgent({
+            ...existing,
+            registryId,
+            displayName: updated.name,
+            role: updated.role,
+            projectPath: updated.projectPath,
+            avatarIndex: updated.avatarIndex,
+          }, 'registry');
+        }
+      }
+      return { success: !!updated, agent: updated };
+    });
+
+    ipcMain.handle('registry:toggle', async (event, registryId, enabled) => {
+      agentRegistry.setEnabled(registryId, enabled);
+      return { success: true };
+    });
+
+    ipcMain.handle('registry:archive', async (event, registryId) => {
+      const result = agentRegistry.archiveAgent(registryId);
+      if (result) {
+        const existing = agentManager.getAgent(registryId);
+        if (existing && existing.state === 'Offline') {
+          agentManager.removeAgent(registryId);
+        }
+      }
+      return { success: result };
+    });
+
+    ipcMain.handle('registry:delete', async (event, registryId) => {
+      const result = agentRegistry.deleteAgent(registryId);
+      if (result) {
+        agentManager.removeAgent(registryId);
+      }
+      return { success: result };
     });
   }
 }

@@ -27,6 +27,7 @@ const { createWindowManager } = require('./main/windowManager');
 const { registerIpcHandlers } = require('./main/ipcHandlers');
 const { NicknameStore } = require('./main/nicknameStore');
 const { TerminalManager } = require('./main/terminalManager');
+const { AgentRegistry } = require('./main/agentRegistry');
 
 // =====================================================
 // Save error logs to file
@@ -133,8 +134,9 @@ app.whenReady().then(() => {
     registerClaudeHooks(debugLog);
   }
 
-  // 0.5. Nickname store
+  // 0.5. Nickname store + Agent registry
   const nicknameStore = new NicknameStore(debugLog);
+  const agentRegistry = new AgentRegistry(debugLog);
 
   // 1. Start agent manager immediately
   agentManager = new AgentManager();
@@ -155,6 +157,7 @@ app.whenReady().then(() => {
   if (enabledProviders.includes('claude')) {
     hookProcessor = createHookProcessor({
       agentManager,
+      agentRegistry,
       sessionPids,
       debugLog,
       detectClaudePidByTranscript,
@@ -163,6 +166,7 @@ app.whenReady().then(() => {
   if (enabledProviders.includes('codex')) {
     codexProcessor = createCodexProcessor({
       agentManager,
+      agentRegistry,
       sessionPids,
       debugLog,
     });
@@ -193,6 +197,7 @@ app.whenReady().then(() => {
   // 5. Register IPC handlers
   registerIpcHandlers({
     agentManager,
+    agentRegistry,
     sessionPids,
     windowManager,
     terminalManager,
@@ -238,6 +243,26 @@ app.whenReady().then(() => {
     });
   }
 
+  // 7.5. Populate offline registered agents
+  // Clear stale session links from previous run
+  for (const regAgent of agentRegistry.getActiveAgents()) {
+    if (regAgent.currentSessionId) {
+      agentRegistry.unlinkSession(regAgent.id);
+    }
+    agentManager.updateAgent({
+      registryId: regAgent.id,
+      displayName: regAgent.name,
+      role: regAgent.role,
+      projectPath: regAgent.projectPath,
+      avatarIndex: regAgent.avatarIndex,
+      provider: regAgent.provider,
+      isRegistered: true,
+      state: 'Offline',
+      tokenUsage: regAgent.cumulativeTokens || { inputTokens: 0, outputTokens: 0, estimatedCost: 0 },
+    }, 'registry');
+  }
+  debugLog(`[Main] ${agentRegistry.getActiveAgents().length} registered agent(s) loaded`);
+
   // 8. Test agents (mix of Main, Sub, and Team)
   const ENABLE_TEST_AGENTS = false;
   if (ENABLE_TEST_AGENTS) {
@@ -250,27 +275,16 @@ app.whenReady().then(() => {
     testSubagents.forEach(agent => agentManager.updateAgent(agent, 'test'));
   }
 
-  // 9. Create UI
-  windowManager.createWindow();
+  // 9. Create UI — only dashboard, no overlay window
+  // windowManager.createWindow(); // Disabled: overlay replaced by dashboard Agent List
   windowManager.createDashboardWindow();
 
-  // Send current state when renderer is ready
-  ipcMain.once('renderer-ready', () => {
-    debugLog('[Main] renderer-ready event received!');
-
-    // Helper: send to main + dashboard windows, then persist state
+  // Wire up agent event listeners immediately (no overlay window to wait for)
+  {
     function broadcast(mainChannel, dashChannel, data, dashData) {
-      const mw = windowManager.mainWindow;
-      if (mw && !mw.isDestroyed()) mw.webContents.send(mainChannel, data);
       const dw = windowManager.dashboardWindow;
       if (dw && !dw.isDestroyed()) dw.webContents.send(dashChannel, dashData !== undefined ? dashData : data);
       savePersistedState({ agentManager, sessionPids });
-    }
-
-    function closeDashboardIfEmpty() {
-      if (agentManager.getAllAgents().length === 0) {
-        windowManager.closeDashboardWindow();
-      }
     }
 
     agentListeners = {
@@ -282,11 +296,9 @@ app.whenReady().then(() => {
       },
       onRemoved: (data) => {
         broadcast('agent-removed', 'dashboard-agent-removed', data);
-        closeDashboardIfEmpty();
       },
       onCleaned: (data) => {
         broadcast('agents-cleaned', 'dashboard-agent-removed', data, { type: 'batch', ...data });
-        closeDashboardIfEmpty();
       }
     };
 
@@ -295,23 +307,12 @@ app.whenReady().then(() => {
     agentManager.on('agent-removed', agentListeners.onRemoved);
     agentManager.on('agents-cleaned', agentListeners.onCleaned);
 
-    // Send sessions that arrived before ready and recovered data
-    const allAgents = agentManager.getAllAgents();
-    if (allAgents.length > 0) {
-      debugLog(`[Main] Sending ${allAgents.length} agents to newly ready renderer`);
-      const mw = windowManager.mainWindow;
-      allAgents.forEach(agent => {
-        mw.webContents.send('agent-added', agent);
-      });
-      windowManager.resizeWindowForAgents(allAgents);
-    }
-
     if (hookProcessor) hookProcessor.flushPendingStarts();
     if (codexProcessor) codexProcessor.flushPendingStarts();
-  });
+  }
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) windowManager.createWindow();
+    if (BrowserWindow.getAllWindows().length === 0) windowManager.createDashboardWindow();
   });
 });
 

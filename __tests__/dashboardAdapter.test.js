@@ -17,8 +17,11 @@ describe('dashboardAdapter', () => {
       expect(mapPixelStateToDashboardState(pixel)).toBe(dash);
     });
 
+    test('maps Offline state', () => {
+      expect(mapPixelStateToDashboardState('Offline')).toBe('offline');
+    });
+
     test('returns default for unknown state', () => {
-      expect(mapPixelStateToDashboardState('Offline')).toBe(DEFAULT_STATE);
       expect(mapPixelStateToDashboardState('')).toBe(DEFAULT_STATE);
       expect(mapPixelStateToDashboardState(undefined)).toBe(DEFAULT_STATE);
     });

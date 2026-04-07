@@ -14,7 +14,8 @@ const STATE_MAP = {
   'Done': 'completed',
   'Waiting': 'waiting',
   'Help': 'help',
-  'Error': 'error'
+  'Error': 'error',
+  'Offline': 'offline'
 };
 
 /**
@@ -83,6 +84,10 @@ function adaptAgentToDashboard(pixelAgent) {
     sessionId: pixelAgent.sessionId,
     name: pixelAgent.displayName || 'Agent',
     nickname: pixelAgent.nickname || null,
+    isRegistered: pixelAgent.isRegistered || false,
+    registryId: pixelAgent.registryId || null,
+    role: pixelAgent.role || null,
+    enabled: pixelAgent.enabled !== false,
     project: extractProjectName(pixelAgent.projectPath),
     status: mapPixelStateToDashboardState(pixelAgent.state),
     type: determineAgentType(pixelAgent),
@@ -100,6 +105,7 @@ function adaptAgentToDashboard(pixelAgent) {
       teammateName: pixelAgent.teammateName || null,
       teamName: pixelAgent.teamName || null,
       endReason: pixelAgent.endReason || null,
+      provider: pixelAgent.provider || null,
       source: 'agent-office'
     },
     timing: {

@@ -75,6 +75,7 @@ function handlePidReconnect({
 
 function createEventProcessor({
   agentManager,
+  agentRegistry,
   sessionPids,
   debugLog,
   detectPidByTranscript,
@@ -84,6 +85,12 @@ function createEventProcessor({
 }) {
   const pendingSessionStarts = [];
   const firstToolUseDone = new Map();
+  const sessionToRegistry = new Map(); // sessionId → registryId
+
+  /** Resolve a sessionId to a registryId if linked, else return sessionId */
+  function resolveAgentId(sessionId) {
+    return sessionToRegistry.get(sessionId) || sessionId;
+  }
 
   function processEvent(event) {
     if (!event) return;
@@ -95,7 +102,8 @@ function createEventProcessor({
     debugLog(`[${logPrefix}] ${rawType} session=${sessionId.slice(0, 8)}`);
 
     if (agentManager && event.type !== 'session.start' && event.type !== 'session.end') {
-      const existing = agentManager.getAgent(sessionId);
+      const agentKey = resolveAgentId(sessionId);
+      const existing = agentManager.getAgent(agentKey);
       if (!existing) {
         debugLog(`[${logPrefix}] Auto-create from ${rawType}: ${sessionId.slice(0, 8)}`);
         handleSessionStart(sessionId, event.cwd || '', event.pid || 0, {
@@ -130,7 +138,7 @@ function createEventProcessor({
         };
 
         if (sessionSource !== 'startup' && agentManager) {
-          const existing = agentManager.getAgent(sessionId);
+          const existing = agentManager.getAgent(resolveAgentId(sessionId));
           if (existing) {
             const compactUpdate = {
               ...existing,
@@ -170,7 +178,7 @@ function createEventProcessor({
       case 'prompt.submit':
         firstToolUseDone.delete(sessionId);
         if (agentManager) {
-          const agent = agentManager.getAgent(sessionId);
+          const agent = agentManager.getAgent(resolveAgentId(sessionId));
           if (agent) {
             agentManager.updateAgent({ ...agent, sessionId, state: 'Thinking' }, updateSource);
           }
@@ -180,7 +188,7 @@ function createEventProcessor({
       case 'turn.complete':
         firstToolUseDone.delete(sessionId);
         if (agentManager) {
-          const agent = agentManager.getAgent(sessionId);
+          const agent = agentManager.getAgent(resolveAgentId(sessionId));
           if (agent) {
             const updatedUsage = computeTokenUsage(agent, event.tokenUsage);
             agentManager.updateAgent({
@@ -197,7 +205,7 @@ function createEventProcessor({
 
       case 'usage.update':
         if (agentManager) {
-          const agent = agentManager.getAgent(sessionId);
+          const agent = agentManager.getAgent(resolveAgentId(sessionId));
           if (agent) {
             const updatedUsage = computeTokenUsage(agent, event.tokenUsage);
             if (updatedUsage) {
@@ -213,7 +221,7 @@ function createEventProcessor({
 
       case 'message':
         if (agentManager && event.text !== undefined) {
-          const agent = agentManager.getAgent(sessionId);
+          const agent = agentManager.getAgent(resolveAgentId(sessionId));
           if (agent) {
             agentManager.updateAgent({ ...agent, sessionId, lastMessage: event.text }, updateSource);
           }
@@ -229,7 +237,7 @@ function createEventProcessor({
           }
         }
         if (agentManager) {
-          const agent = agentManager.getAgent(sessionId);
+          const agent = agentManager.getAgent(resolveAgentId(sessionId));
           if (agent) {
             agentManager.updateAgent({ ...agent, sessionId, state: 'Working', currentTool: event.toolName || null }, updateSource);
           }
@@ -238,7 +246,7 @@ function createEventProcessor({
 
       case 'tool.end':
         if (agentManager && firstToolUseDone.has(sessionId)) {
-          const agent = agentManager.getAgent(sessionId);
+          const agent = agentManager.getAgent(resolveAgentId(sessionId));
           if (agent) {
             const updatedUsage = computeTokenUsage(agent, event.tokenUsage);
             agentManager.updateAgent({
@@ -267,7 +275,7 @@ function createEventProcessor({
 
       case 'tool.error':
         if (agentManager) {
-          const agent = agentManager.getAgent(sessionId);
+          const agent = agentManager.getAgent(resolveAgentId(sessionId));
           if (agent) {
             agentManager.updateAgent({ ...agent, sessionId, state: 'Error', currentTool: event.toolName || null }, updateSource);
           }
@@ -276,7 +284,7 @@ function createEventProcessor({
 
       case 'help':
         if (agentManager) {
-          const agent = agentManager.getAgent(sessionId);
+          const agent = agentManager.getAgent(resolveAgentId(sessionId));
           if (agent) {
             agentManager.updateAgent({ ...agent, sessionId, state: 'Help', currentTool: event.toolName || null }, updateSource);
           }
@@ -285,7 +293,7 @@ function createEventProcessor({
 
       case 'notification':
         if (agentManager) {
-          const agent = agentManager.getAgent(sessionId);
+          const agent = agentManager.getAgent(resolveAgentId(sessionId));
           if (agent) {
             agentManager.updateAgent({ ...agent, sessionId, state: event.state || 'Waiting' }, updateSource);
           }
@@ -325,7 +333,7 @@ function createEventProcessor({
         const teammateName = event.teammateName || null;
         const teamName = event.teamName || null;
         if (agentManager) {
-          const agent = agentManager.getAgent(sessionId);
+          const agent = agentManager.getAgent(resolveAgentId(sessionId));
           if (agent) {
             agentManager.updateAgent({
               ...agent,
@@ -357,7 +365,7 @@ function createEventProcessor({
       case 'compact.start':
         debugLog(`[${logPrefix}] PreCompact (${event.trigger || 'unknown'}) for ${sessionId.slice(0, 8)}`);
         if (agentManager) {
-          const agent = agentManager.getAgent(sessionId);
+          const agent = agentManager.getAgent(resolveAgentId(sessionId));
           if (agent) {
             agentManager.updateAgent({ ...agent, sessionId, state: 'Thinking', firstSeen: Date.now() }, updateSource);
           }
@@ -390,25 +398,55 @@ function createEventProcessor({
       return;
     }
 
-    const displayName = cwd ? path.basename(cwd) : 'Agent';
-    agentManager.updateAgent({
-      sessionId,
-      projectPath: cwd,
-      displayName,
-      state: initialState,
-      provider: meta.provider || null,
-      jsonlPath: meta.jsonlPath || null,
-      model: meta.model || null,
-      permissionMode: meta.permissionMode || null,
-      source: meta.source || null,
-      agentType: meta.agentType || null,
-      teammateName: meta.teammateName || null,
-      teamName: meta.teamName || null,
-      isTeammate,
-      isSubagent,
-      parentId,
-    }, createSource);
-    debugLog(`[${logPrefix}] SessionStart -> agent: ${sessionId.slice(0, 8)} (${displayName}) ${isTeammate ? '[Team]' : ''} ${isSubagent ? '[Sub]' : ''} (Parent: ${parentId ? parentId.slice(0, 8) : 'none'})`);
+    // Check if this session matches a registered agent
+    const registeredAgent = agentRegistry ? agentRegistry.findByProjectPath(cwd) : null;
+    if (registeredAgent) {
+      // Link session to registered agent
+      agentRegistry.linkSession(registeredAgent.id, sessionId);
+      sessionToRegistry.set(sessionId, registeredAgent.id);
+
+      agentManager.updateAgent({
+        registryId: registeredAgent.id,
+        sessionId,
+        projectPath: cwd,
+        displayName: registeredAgent.name,
+        role: registeredAgent.role,
+        avatarIndex: registeredAgent.avatarIndex,
+        isRegistered: true,
+        state: initialState,
+        provider: meta.provider || null,
+        jsonlPath: meta.jsonlPath || null,
+        model: meta.model || null,
+        permissionMode: meta.permissionMode || null,
+        source: meta.source || null,
+        agentType: meta.agentType || null,
+        isTeammate,
+        isSubagent,
+        parentId,
+      }, createSource);
+      debugLog(`[${logPrefix}] SessionStart -> registered agent: ${registeredAgent.id.slice(0, 8)} "${registeredAgent.name}" ← session ${sessionId.slice(0, 8)}`);
+    } else {
+      // Ephemeral agent (no registry match)
+      const displayName = cwd ? path.basename(cwd) : 'Agent';
+      agentManager.updateAgent({
+        sessionId,
+        projectPath: cwd,
+        displayName,
+        state: initialState,
+        provider: meta.provider || null,
+        jsonlPath: meta.jsonlPath || null,
+        model: meta.model || null,
+        permissionMode: meta.permissionMode || null,
+        source: meta.source || null,
+        agentType: meta.agentType || null,
+        teammateName: meta.teammateName || null,
+        teamName: meta.teamName || null,
+        isTeammate,
+        isSubagent,
+        parentId,
+      }, createSource);
+      debugLog(`[${logPrefix}] SessionStart -> ephemeral agent: ${sessionId.slice(0, 8)} (${displayName}) ${isTeammate ? '[Team]' : ''} ${isSubagent ? '[Sub]' : ''} (Parent: ${parentId ? parentId.slice(0, 8) : 'none'})`);
+    }
 
     if (pid > 0) {
       sessionPids.set(sessionId, pid);
@@ -442,15 +480,29 @@ function createEventProcessor({
   }
 
   function handleSessionEnd(sessionId) {
+    const registryId = sessionToRegistry.get(sessionId);
+    const agentKey = registryId || sessionId;
+
     cleanupAgentResources(sessionId);
+    sessionToRegistry.delete(sessionId);
 
     if (!agentManager) return;
-    const agent = agentManager.getAgent(sessionId);
-    if (agent) {
-      debugLog(`[${logPrefix}] SessionEnd -> removing agent ${sessionId.slice(0, 8)}`);
-      agentManager.removeAgent(sessionId);
-    } else {
+    const agent = agentManager.getAgent(agentKey);
+    if (!agent) {
       debugLog(`[${logPrefix}] SessionEnd for unknown agent ${sessionId.slice(0, 8)}`);
+      return;
+    }
+
+    if (registryId && agentRegistry) {
+      // Registered agent: accumulate stats, transition to Offline
+      agentRegistry.accumulateTokens(registryId, agent.tokenUsage);
+      agentRegistry.unlinkSession(registryId);
+      agentManager.transitionToOffline(agentKey);
+      debugLog(`[${logPrefix}] SessionEnd -> registered agent ${registryId.slice(0, 8)} → Offline`);
+    } else {
+      // Ephemeral agent: remove as before
+      debugLog(`[${logPrefix}] SessionEnd -> removing ephemeral agent ${sessionId.slice(0, 8)}`);
+      agentManager.removeAgent(agentKey);
     }
   }
 

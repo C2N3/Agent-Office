@@ -110,6 +110,7 @@ const STATE_ZONE_MAP = {
   'completed': 'idle',
   'help':      'desk',
   'error':     'desk',
+  'offline':   'idle',
 };
 
 // State colors for nametags (unified palette — synced with styles.css, dashboard.html)
@@ -124,6 +125,7 @@ const STATE_COLORS = {
   completed: '#22c55e',
   waiting:   '#94a3b8',
   help:      '#ef4444',
+  offline:   '#475569',
 };
 
 // Loaded from public/shared/avatars.json at init time (single source of truth)

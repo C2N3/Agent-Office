@@ -313,6 +313,7 @@ var officeCharacters = {
       'done': 'done',
       'help': 'help',
       'error': 'error',
+      'offline': 'offline',
     };
     return map[dashboardStatus] || 'idle';
   },
