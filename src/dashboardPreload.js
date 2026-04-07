@@ -45,7 +45,7 @@ contextBridge.exposeInMainWorld('dashboardAPI', {
     return () => ipcRenderer.removeListener('dashboard-agent-removed', listener);
   },
 
-  // Send commands to Pixel Agent Desk
+  // Send commands to Agent-Office
   focusAgent: (agentId) => {
     ipcRenderer.send('dashboard-focus-agent', agentId);
   },
@@ -56,6 +56,27 @@ contextBridge.exposeInMainWorld('dashboardAPI', {
     const listener = (event, isOpen) => callback(isOpen);
     ipcRenderer.on('pip-state-changed', listener);
     return () => ipcRenderer.removeListener('pip-state-changed', listener);
+  },
+
+  // ─── Nickname ───
+  setNickname: (agentId, nickname) => ipcRenderer.invoke('nickname:set', agentId, nickname),
+  getNickname: (agentId) => ipcRenderer.invoke('nickname:get', agentId),
+  removeNickname: (agentId) => ipcRenderer.invoke('nickname:remove', agentId),
+
+  // ─── Terminal ───
+  createTerminal: (agentId, options) => ipcRenderer.invoke('terminal:create', agentId, options),
+  writeTerminal: (agentId, data) => ipcRenderer.invoke('terminal:write', agentId, data),
+  resizeTerminal: (agentId, cols, rows) => ipcRenderer.invoke('terminal:resize', agentId, cols, rows),
+  destroyTerminal: (agentId) => ipcRenderer.invoke('terminal:destroy', agentId),
+  onTerminalData: (callback) => {
+    const listener = (event, agentId, data) => callback(agentId, data);
+    ipcRenderer.on('terminal:data', listener);
+    return () => ipcRenderer.removeListener('terminal:data', listener);
+  },
+  onTerminalExit: (callback) => {
+    const listener = (event, agentId, exitCode) => callback(agentId, exitCode);
+    ipcRenderer.on('terminal:exit', listener);
+    return () => ipcRenderer.removeListener('terminal:exit', listener);
   },
 
 });

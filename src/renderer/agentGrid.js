@@ -210,6 +210,18 @@ export function updateAgent(agent) {
 
   updateAgentState(agent.id, card, agent);
 
+  // Update name badge if displayName/nickname changed
+  const nameBadge = card.querySelector('.agent-name');
+  if (nameBadge) {
+    const hasNickname = !!agent.nickname;
+    const hasSlugName = agent.slug && agent.displayName && agent.displayName !== 'Agent';
+    const newName = hasNickname ? agent.nickname : (hasSlugName ? agent.displayName : '');
+    if (nameBadge.textContent !== newName) {
+      nameBadge.textContent = newName;
+      nameBadge.style.display = (hasNickname || hasSlugName) ? '' : 'none';
+    }
+  }
+
   if (typeChanged || relationshipChanged) {
     updateGridLayout();
     requestDynamicResize();

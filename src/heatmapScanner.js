@@ -24,7 +24,7 @@ class HeatmapScanner {
     this.scanInterval = null;
 
     /** Persistence path (uses homedir at instance creation time) */
-    this.persistDir = path.join(os.homedir(), '.pixel-agent-desk');
+    this.persistDir = path.join(os.homedir(), '.agent-office');
     this.persistFile = path.join(this.persistDir, 'heatmap.json');
 
     /** @type {Record<string, DayStats>} "YYYY-MM-DD" → statistics */

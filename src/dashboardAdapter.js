@@ -1,12 +1,12 @@
 /**
  * Dashboard Data Adapter
- * Converts Pixel Agent Desk agent format to Dashboard format
+ * Converts Agent-Office agent format to Dashboard format
  */
 
 const path = require('path');
 
 /**
- * State mapping from Pixel Agent Desk to Dashboard
+ * State mapping from Agent-Office to Dashboard
  */
 const STATE_MAP = {
   'Working': 'working',
@@ -23,8 +23,8 @@ const STATE_MAP = {
 const DEFAULT_STATE = 'idle';
 
 /**
- * Map Pixel Agent Desk state to Dashboard state
- * @param {string} pixelState - Pixel Agent Desk state
+ * Map Agent-Office state to Dashboard state
+ * @param {string} pixelState - Agent-Office state
  * @returns {string} Dashboard state
  */
 function mapPixelStateToDashboardState(pixelState) {
@@ -44,7 +44,7 @@ function extractProjectName(projectPath) {
 
 /**
  * Determine agent type based on properties
- * @param {Object} agent - Pixel Agent Desk agent object
+ * @param {Object} agent - Agent-Office agent object
  * @returns {string} Agent type: 'main', 'subagent', or 'teammate'
  */
 function determineAgentType(agent) {
@@ -55,7 +55,7 @@ function determineAgentType(agent) {
 
 /**
  * Calculate elapsed time for an agent
- * @param {Object} agent - Pixel Agent Desk agent object
+ * @param {Object} agent - Agent-Office agent object
  * @returns {number} Elapsed time in milliseconds
  */
 function calculateElapsedTime(agent) {
@@ -73,8 +73,8 @@ function isAgentActive(state) {
 }
 
 /**
- * Adapt a single Pixel Agent Desk agent to Dashboard format
- * @param {Object} pixelAgent - Pixel Agent Desk agent object
+ * Adapt a single Agent-Office agent to Dashboard format
+ * @param {Object} pixelAgent - Agent-Office agent object
  * @returns {Object} Dashboard formatted agent
  */
 function adaptAgentToDashboard(pixelAgent) {
@@ -82,6 +82,7 @@ function adaptAgentToDashboard(pixelAgent) {
     id: pixelAgent.id || pixelAgent.sessionId,
     sessionId: pixelAgent.sessionId,
     name: pixelAgent.displayName || 'Agent',
+    nickname: pixelAgent.nickname || null,
     project: extractProjectName(pixelAgent.projectPath),
     status: mapPixelStateToDashboardState(pixelAgent.state),
     type: determineAgentType(pixelAgent),
@@ -99,7 +100,7 @@ function adaptAgentToDashboard(pixelAgent) {
       teammateName: pixelAgent.teammateName || null,
       teamName: pixelAgent.teamName || null,
       endReason: pixelAgent.endReason || null,
-      source: 'pixel-agent-desk'
+      source: 'agent-office'
     },
     timing: {
       elapsed: calculateElapsedTime(pixelAgent),

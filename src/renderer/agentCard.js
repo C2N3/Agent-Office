@@ -210,13 +210,14 @@ export function createAgentCard(agent) {
   typeTag.textContent = basename || 'Agent';
   typeTag.title = agent.projectPath || '';
 
-  // Agent name — show slug-based name only (omit project folder name)
+  // Agent name — show nickname or slug-based name
   const nameBadge = document.createElement('div');
   nameBadge.className = 'agent-name';
+  const hasNickname = !!agent.nickname;
   const hasSlugName = agent.slug && agent.displayName && agent.displayName !== 'Agent';
-  nameBadge.textContent = hasSlugName ? agent.displayName : '';
+  nameBadge.textContent = hasNickname ? agent.nickname : (hasSlugName ? agent.displayName : '');
   nameBadge.title = agent.projectPath || '';
-  if (!hasSlugName) nameBadge.style.display = 'none';
+  if (!hasNickname && !hasSlugName) nameBadge.style.display = 'none';
 
   // Timer element (pre-created to avoid dynamic DOM insertion in updateAgentState)
   const timerEl = document.createElement('div');

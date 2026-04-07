@@ -134,7 +134,7 @@ function createWindowManager({ agentManager, sessionScanner, heatmapScanner, deb
         height: dashH,
         x: Math.floor((width - dashW) / 2),
         y: Math.floor((height - dashH) / 2),
-        title: 'Pixel Agent Desk',
+        title: 'Agent-Office',
         backgroundColor: '#ffffff',
         webPreferences: {
           nodeIntegration: false,
