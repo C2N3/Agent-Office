@@ -5,6 +5,7 @@
 const {
   formatSlugToDisplayName,
   formatTime,
+  sanitizeProjectPath,
   getWindowSizeForAgents
 } = require('../src/utils');
 
@@ -51,6 +52,27 @@ describe('formatTime', () => {
     expect(formatTime(3599000)).toBe('59:59');
     expect(formatTime(3600000)).toBe('60:00');
     expect(formatTime(7200000)).toBe('120:00');
+  });
+});
+
+describe('sanitizeProjectPath', () => {
+  test('returns empty string for non-string values', () => {
+    expect(sanitizeProjectPath(null)).toBe('');
+    expect(sanitizeProjectPath(undefined)).toBe('');
+  });
+
+  test('strips surrounding double quotes', () => {
+    expect(sanitizeProjectPath('"D:\\workspace\\Agent-Office"'))
+      .toBe('D:\\workspace\\Agent-Office');
+  });
+
+  test('strips surrounding single quotes', () => {
+    expect(sanitizeProjectPath("'D:\\workspace\\Agent-Office'"))
+      .toBe('D:\\workspace\\Agent-Office');
+  });
+
+  test('expands home-relative paths', () => {
+    expect(sanitizeProjectPath('~/repo')).toMatch(/[\\/]repo$/);
   });
 });
 

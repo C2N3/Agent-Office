@@ -147,7 +147,11 @@
             <div class="office-right-col panel" id="terminalPanel">
               <div class="terminal-tabs" id="terminalTabs">
                 <div class="terminal-tabs-list" id="terminalTabsList"></div>
-                <button class="terminal-new-btn" id="terminalNewBtn" title="New Terminal">+</button>
+                <div class="terminal-toolbar">
+                  <button class="terminal-new-btn" id="terminalNewBtn" title="New Terminal">+</button>
+                  <button class="terminal-menu-btn" id="terminalMenuBtn" title="Terminal Profiles" aria-label="Terminal Profiles">▾</button>
+                  <div class="terminal-profile-menu" id="terminalProfileMenu" style="display:none;"></div>
+                </div>
               </div>
               <div class="terminal-container" id="terminalContainer">
                 <div class="terminal-empty-state" id="terminalEmptyState">

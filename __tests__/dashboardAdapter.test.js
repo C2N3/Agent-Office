@@ -41,6 +41,10 @@ describe('dashboardAdapter', () => {
     test('handles Windows paths', () => {
       expect(extractProjectName('C:\\Users\\dev\\projects\\my-app')).toBe('my-app');
     });
+
+    test('handles quoted Windows paths', () => {
+      expect(extractProjectName('"C:\\Users\\dev\\projects\\my-app"')).toBe('my-app');
+    });
   });
 
   describe('adaptAgentToDashboard', () => {

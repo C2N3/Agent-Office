@@ -98,6 +98,14 @@ const formatNum = n => {
   return n.toString();
 };
 
+function escapeText(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 function recalcStats() {
   const arr = Array.from(state.agents.values());
   state.stats.total = arr.length;
@@ -679,6 +687,8 @@ const termState = {
   activeId: null,
   dataCleanup: null,
   exitCleanup: null,
+  profiles: [],
+  defaultProfileId: null,
 };
 
 function initTerminals() {
@@ -701,7 +711,150 @@ function initTerminals() {
   }
 }
 
-async function openTerminalForAgent(agentId) {
+function getTerminalProfile(profileId) {
+  return termState.profiles.find(profile => profile.id === profileId) || null;
+}
+
+function getDefaultTerminalProfile() {
+  return getTerminalProfile(termState.defaultProfileId) || termState.profiles[0] || null;
+}
+
+function updateTerminalToolbarTitles() {
+  const newBtn = document.getElementById('terminalNewBtn');
+  if (!newBtn) return;
+  const defaultProfile = getDefaultTerminalProfile();
+  newBtn.title = defaultProfile
+    ? `New Terminal (${defaultProfile.title})`
+    : 'New Terminal';
+}
+
+function renderTerminalProfileMenu() {
+  const menu = document.getElementById('terminalProfileMenu');
+  if (!menu) return;
+
+  const defaultProfile = getDefaultTerminalProfile();
+  const profiles = termState.profiles;
+
+  if (profiles.length === 0) {
+    menu.innerHTML = '<div class="terminal-profile-section-title">No profiles detected</div>';
+    return;
+  }
+
+  const openItems = profiles.map(profile => `
+    <button class="terminal-profile-item" data-action="open-profile" data-profile-id="${escapeText(profile.id)}">
+      <span>${escapeText(profile.title)}</span>
+      ${profile.id === defaultProfile?.id ? '<span class="terminal-profile-badge">Default</span>' : ''}
+    </button>
+  `).join('');
+
+  const defaultItems = profiles.map(profile => `
+    <button class="terminal-profile-item ${profile.id === defaultProfile?.id ? 'selected' : ''}" data-action="set-default-profile" data-profile-id="${escapeText(profile.id)}">
+      <span>${escapeText(profile.title)}</span>
+      <span class="terminal-profile-check">${profile.id === defaultProfile?.id ? '✓' : ''}</span>
+    </button>
+  `).join('');
+
+  menu.innerHTML = `
+    <div class="terminal-profile-section-title">Open With</div>
+    ${openItems}
+    <div class="terminal-profile-divider"></div>
+    <div class="terminal-profile-section-title">Default Profile</div>
+    ${defaultItems}
+  `;
+}
+
+function closeTerminalProfileMenu() {
+  const menu = document.getElementById('terminalProfileMenu');
+  const button = document.getElementById('terminalMenuBtn');
+  if (menu) menu.style.display = 'none';
+  if (button) button.classList.remove('active');
+}
+
+async function refreshTerminalProfiles() {
+  if (typeof dashboardAPI === 'undefined' || !dashboardAPI.getTerminalProfiles) return;
+  const result = await dashboardAPI.getTerminalProfiles();
+  termState.profiles = Array.isArray(result?.profiles) ? result.profiles : [];
+  termState.defaultProfileId = result?.defaultProfileId || termState.profiles[0]?.id || null;
+  renderTerminalProfileMenu();
+  updateTerminalToolbarTitles();
+}
+
+async function ensureTerminalProfilesLoaded() {
+  if (termState.profiles.length > 0) return;
+  await refreshTerminalProfiles();
+}
+
+async function openNewLocalTerminal(profileId) {
+  await ensureTerminalProfilesLoaded();
+  const profile = getTerminalProfile(profileId) || getDefaultTerminalProfile();
+  const id = 'local-' + Date.now();
+  return openTerminalForAgent(id, {
+    profileId: profile?.id || null,
+    label: profile?.title || 'Terminal',
+  });
+}
+
+function initTerminalProfileMenu() {
+  const newBtn = document.getElementById('terminalNewBtn');
+  const menuBtn = document.getElementById('terminalMenuBtn');
+  const menu = document.getElementById('terminalProfileMenu');
+  if (!newBtn || !menuBtn || !menu) return;
+
+  newBtn.addEventListener('click', async () => {
+    await openNewLocalTerminal();
+  });
+
+  menuBtn.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    const willOpen = menu.style.display === 'none';
+    if (willOpen) {
+      await refreshTerminalProfiles();
+      menu.style.display = '';
+      menuBtn.classList.add('active');
+    } else {
+      closeTerminalProfileMenu();
+    }
+  });
+
+  menu.addEventListener('click', async (e) => {
+    const item = e.target.closest('[data-action]');
+    if (!item) return;
+
+    const action = item.dataset.action;
+    const profileId = item.dataset.profileId;
+    if (!profileId) return;
+
+    if (action === 'open-profile') {
+      closeTerminalProfileMenu();
+      await openNewLocalTerminal(profileId);
+      return;
+    }
+
+    if (action === 'set-default-profile' && typeof dashboardAPI !== 'undefined' && dashboardAPI.setDefaultTerminalProfile) {
+      const result = await dashboardAPI.setDefaultTerminalProfile(profileId);
+      if (result?.success) {
+        termState.profiles = Array.isArray(result.profiles) ? result.profiles : termState.profiles;
+        termState.defaultProfileId = result.defaultProfileId || profileId;
+        renderTerminalProfileMenu();
+        updateTerminalToolbarTitles();
+      }
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!menu.contains(e.target) && !menuBtn.contains(e.target)) {
+      closeTerminalProfileMenu();
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeTerminalProfileMenu();
+    }
+  });
+}
+
+async function openTerminalForAgent(agentId, openOptions = {}) {
   // If terminal already exists, just activate it
   if (termState.terminals.has(agentId)) {
     activateTerminalTab(agentId);
@@ -710,7 +863,7 @@ async function openTerminalForAgent(agentId) {
 
   // Get agent info for cwd and provider
   const agent = state.agents.get(agentId);
-  const cwd = agent?.metadata?.projectPath || agent?.project || '';
+  const cwd = openOptions.cwd || agent?.metadata?.projectPath || agent?.project || '';
   const provider = agent?.metadata?.provider || null;
   const agentStatus = agent?.status || '';
 
@@ -725,13 +878,23 @@ async function openTerminalForAgent(agentId) {
 
   if (typeof dashboardAPI === 'undefined' || !dashboardAPI.createTerminal) return;
 
-  const result = await dashboardAPI.createTerminal(agentId, { cwd });
+  const result = await dashboardAPI.createTerminal(agentId, {
+    cwd,
+    profileId: openOptions.profileId || undefined,
+  });
   if (!result || !result.success) {
     console.error('[Terminal] Failed to create:', result?.error);
     return;
   }
 
-  createXtermInstance(agentId, agent?.nickname || agent?.name || 'Terminal');
+  createXtermInstance(agentId, openOptions.label || agent?.nickname || agent?.name || result?.profileLabel || 'Terminal');
+
+  if (provider === 'codex' && dashboardAPI.writeTerminal) {
+    // Codex agents should boot directly into the Codex CLI instead of a blank shell.
+    setTimeout(() => {
+      dashboardAPI.writeTerminal(agentId, 'codex\r');
+    }, 250);
+  }
 }
 
 function createXtermInstance(agentId, label) {
@@ -1014,6 +1177,8 @@ function initApp() {
 
   connectSSE();
   initTerminals();
+  initTerminalProfileMenu();
+  refreshTerminalProfiles().catch(e => console.error('[Terminal Profiles]', e));
   initResizableHandles();
   if (target === 'heatmap') renderHeatmapView();
   else if (target === 'usage') renderUsageView();
@@ -1055,14 +1220,6 @@ function initApp() {
     });
   }
 
-  // "New Terminal" button → open generic terminal (no agent)
-  const newTermBtn = document.getElementById('terminalNewBtn');
-  if (newTermBtn) {
-    newTermBtn.addEventListener('click', () => {
-      const id = 'local-' + Date.now();
-      openTerminalForAgent(id);
-    });
-  }
 }
 
 document.addEventListener('DOMContentLoaded', initApp);

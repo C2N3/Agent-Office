@@ -27,6 +27,7 @@ const { createWindowManager } = require('./main/windowManager');
 const { registerIpcHandlers } = require('./main/ipcHandlers');
 const { NicknameStore } = require('./main/nicknameStore');
 const { TerminalManager } = require('./main/terminalManager');
+const { TerminalProfileService } = require('./main/terminalProfileService');
 const { AgentRegistry } = require('./main/agentRegistry');
 
 // =====================================================
@@ -92,6 +93,7 @@ let hookProcessor = null;
 let codexProcessor = null;
 let codexSessionMonitor = null;
 let terminalManager = null;
+let terminalProfileService = null;
 let livenessIntervals = null;
 let agentListeners = null;
 let hookServer = null;
@@ -136,6 +138,7 @@ app.whenReady().then(() => {
 
   // 0.5. Nickname store + Agent registry
   const nicknameStore = new NicknameStore(debugLog);
+  terminalProfileService = new TerminalProfileService(debugLog);
   const agentRegistry = new AgentRegistry(debugLog);
 
   // 1. Start agent manager immediately
@@ -193,6 +196,7 @@ app.whenReady().then(() => {
   terminalManager = new TerminalManager({
     debugLog,
     getWindow: () => windowManager.dashboardWindow,
+    terminalProfileService,
   });
 
   // 5. Register IPC handlers
@@ -202,6 +206,7 @@ app.whenReady().then(() => {
     sessionPids,
     windowManager,
     terminalManager,
+    terminalProfileService,
     nicknameStore,
     debugLog,
     adaptAgentToDashboard,

@@ -77,6 +77,8 @@ contextBridge.exposeInMainWorld('dashboardAPI', {
   removeNickname: (agentId) => ipcRenderer.invoke('nickname:remove', agentId),
 
   // ─── Terminal ───
+  getTerminalProfiles: () => ipcRenderer.invoke('terminal:profiles'),
+  setDefaultTerminalProfile: (profileId) => ipcRenderer.invoke('terminal:default-profile:set', profileId),
   createTerminal: (agentId, options) => ipcRenderer.invoke('terminal:create', agentId, options),
   writeTerminal: (agentId, data) => ipcRenderer.invoke('terminal:write', agentId, data),
   resizeTerminal: (agentId, cols, rows) => ipcRenderer.invoke('terminal:resize', agentId, cols, rows),
