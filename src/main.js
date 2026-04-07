@@ -211,6 +211,11 @@ app.whenReady().then(() => {
     debugLog,
     adaptAgentToDashboard,
     errorHandler,
+    attachRegisteredAgent: (agent) => {
+      const hookSessionId = hookProcessor?.attachRegisteredAgent ? hookProcessor.attachRegisteredAgent(agent) : null;
+      const codexSessionId = codexProcessor?.attachRegisteredAgent ? codexProcessor.attachRegisteredAgent(agent) : null;
+      return hookSessionId || codexSessionId || null;
+    },
   });
 
   // 6. Start background services
@@ -252,9 +257,14 @@ app.whenReady().then(() => {
   // 7.5. Populate offline registered agents
   // Clear stale session links from previous run
   for (const regAgent of agentRegistry.getActiveAgents()) {
-    if (regAgent.currentSessionId) {
+    const existing = agentManager.getAgent(regAgent.id);
+    const hasLiveAttachedSession = existing && existing.isRegistered && existing.state !== 'Offline';
+
+    if (regAgent.currentSessionId && !hasLiveAttachedSession) {
       agentRegistry.unlinkSession(regAgent.id);
     }
+    if (hasLiveAttachedSession) continue;
+
     agentManager.updateAgent({
       registryId: regAgent.id,
       displayName: regAgent.name,

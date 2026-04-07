@@ -71,7 +71,7 @@ if ($hwnd -ne [IntPtr]::Zero) {
   }
 }
 
-function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowManager, terminalManager, terminalProfileService, nicknameStore, debugLog, adaptAgentToDashboard, errorHandler }) {
+function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowManager, terminalManager, terminalProfileService, nicknameStore, debugLog, adaptAgentToDashboard, errorHandler, attachRegisteredAgent }) {
   ipcMain.on('resize-window', (e, size) => {
     const mw = windowManager.mainWindow;
     if (!mw || mw.isDestroyed()) return;
@@ -253,17 +253,20 @@ function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowM
   if (agentRegistry) {
     ipcMain.handle('registry:create', async (event, data) => {
       const agent = agentRegistry.createAgent(data);
+      const attachedSessionId = attachRegisteredAgent ? attachRegisteredAgent(agent) : null;
       // Create Offline entry in agentManager so it shows immediately
-      agentManager.updateAgent({
-        registryId: agent.id,
-        displayName: agent.name,
-        role: agent.role,
-        projectPath: agent.projectPath,
-        avatarIndex: agent.avatarIndex,
-        provider: agent.provider,
-        isRegistered: true,
-        state: 'Offline',
-      }, 'registry');
+      if (!attachedSessionId) {
+        agentManager.updateAgent({
+          registryId: agent.id,
+          displayName: agent.name,
+          role: agent.role,
+          projectPath: agent.projectPath,
+          avatarIndex: agent.avatarIndex,
+          provider: agent.provider,
+          isRegistered: true,
+          state: 'Offline',
+        }, 'registry');
+      }
       return { success: true, agent };
     });
 
@@ -274,6 +277,7 @@ function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowM
     ipcMain.handle('registry:update', async (event, registryId, fields) => {
       const updated = agentRegistry.updateAgent(registryId, fields);
       if (updated) {
+        const attachedSessionId = attachRegisteredAgent ? attachRegisteredAgent(updated) : null;
         const existing = agentManager.getAgent(registryId);
         if (existing) {
           agentManager.updateAgent({
@@ -283,6 +287,17 @@ function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowM
             role: updated.role,
             projectPath: updated.projectPath,
             avatarIndex: updated.avatarIndex,
+          }, 'registry');
+        } else if (!attachedSessionId) {
+          agentManager.updateAgent({
+            registryId,
+            displayName: updated.name,
+            role: updated.role,
+            projectPath: updated.projectPath,
+            avatarIndex: updated.avatarIndex,
+            provider: updated.provider,
+            isRegistered: true,
+            state: 'Offline',
           }, 'registry');
         }
       }

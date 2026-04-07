@@ -4,11 +4,15 @@
 
 const { createEventProcessor } = require('./eventProcessor');
 
+function getCodexWorkspacePath(data) {
+  return data.cwd || data.workspacePath || data.workspace_path || '';
+}
+
 function normalizeCodexEvent(data) {
   const sessionId = data.thread_id || data.session_id || data.sessionId;
   const base = {
     sessionId,
-    cwd: data.cwd || '',
+    cwd: getCodexWorkspacePath(data),
     model: data.model || 'codex',
     provider: 'codex',
     raw: data,
@@ -145,7 +149,7 @@ function createCodexProcessor({ agentManager, agentRegistry, sessionPids, debugL
           raw: entry,
           provider: 'codex',
           sessionId,
-          cwd: payload.cwd || '',
+          cwd: getCodexWorkspacePath(payload),
           model: payload.model || payload.model_slug || 'codex',
           source: 'startup',
           initialState: 'Waiting',
@@ -305,6 +309,7 @@ function createCodexProcessor({ agentManager, agentRegistry, sessionPids, debugL
     processCodexEvent,
     processSessionEntry,
     endSession,
+    attachRegisteredAgent: processor.attachRegisteredAgent,
     flushPendingStarts: processor.flushPendingStarts,
     cleanup: processor.cleanup,
     get firstToolUseDone() { return processor.firstToolUseDone; },

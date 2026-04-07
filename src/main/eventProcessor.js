@@ -4,6 +4,7 @@
  */
 
 const path = require('path');
+const { normalizePath } = require('./agentRegistry');
 const { calculateTokenCost, roundCost, getContextWindowSize } = require('../pricing');
 
 function computeTokenUsage(agent, tokenUsage) {
@@ -86,10 +87,37 @@ function createEventProcessor({
   const pendingSessionStarts = [];
   const firstToolUseDone = new Map();
   const sessionToRegistry = new Map(); // sessionId → registryId
+  const sessionContext = new Map(); // sessionId -> { cwd, meta }
 
   /** Resolve a sessionId to a registryId if linked, else return sessionId */
   function resolveAgentId(sessionId) {
     return sessionToRegistry.get(sessionId) || sessionId;
+  }
+
+  function rememberSessionContext(sessionId, cwd, meta = {}) {
+    if (!sessionId) return;
+    const existing = sessionContext.get(sessionId) || { cwd: '', meta: {} };
+    sessionContext.set(sessionId, {
+      cwd: cwd || existing.cwd || '',
+      meta: {
+        ...existing.meta,
+        ...meta,
+      },
+    });
+  }
+
+  function getSessionContext(sessionId) {
+    return sessionContext.get(sessionId) || { cwd: '', meta: {} };
+  }
+
+  function canBindRegistryAgent(registryAgent) {
+    if (!registryAgent || !registryAgent.id) return false;
+    if (registryAgent.currentSessionId) return false;
+    const existing = agentManager ? agentManager.getAgent(registryAgent.id) : null;
+    if (existing && existing.isRegistered && existing.sessionId && existing.state !== 'Offline') {
+      return false;
+    }
+    return true;
   }
 
   function processEvent(event) {
@@ -100,6 +128,17 @@ function createEventProcessor({
     if (!sessionId) return;
 
     debugLog(`[${logPrefix}] ${rawType} session=${sessionId.slice(0, 8)}`);
+
+    rememberSessionContext(sessionId, event.cwd || '', {
+      provider: event.provider || null,
+      jsonlPath: event.transcriptPath || null,
+      model: event.model || null,
+      permissionMode: event.permissionMode || null,
+      source: event.source || null,
+      agentType: event.agentType || null,
+      teammateName: event.teammateName || null,
+      teamName: event.teamName || null,
+    });
 
     // Update transcriptPath in registry if it arrived late
     if (event.transcriptPath && agentRegistry) {
@@ -114,20 +153,21 @@ function createEventProcessor({
       const existing = agentManager.getAgent(agentKey);
       if (!existing) {
         debugLog(`[${logPrefix}] Auto-create from ${rawType}: ${sessionId.slice(0, 8)}`);
-        handleSessionStart(sessionId, event.cwd || '', event.pid || 0, {
+        const cached = getSessionContext(sessionId);
+        handleSessionStart(sessionId, event.cwd || cached.cwd || '', event.pid || 0, {
           isTeammate: !!event.isTeammate,
           isSubagent: !!event.isSubagent,
           initialState: 'Waiting',
           parentId: event.parentId || null,
           meta: {
-            provider: event.provider || null,
-            jsonlPath: event.transcriptPath || null,
-            model: event.model || null,
-            permissionMode: event.permissionMode || null,
-            source: event.source || null,
-            agentType: event.agentType || null,
-            teammateName: event.teammateName || null,
-            teamName: event.teamName || null,
+            provider: event.provider || cached.meta.provider || null,
+            jsonlPath: event.transcriptPath || cached.meta.jsonlPath || null,
+            model: event.model || cached.meta.model || null,
+            permissionMode: event.permissionMode || cached.meta.permissionMode || null,
+            source: event.source || cached.meta.source || null,
+            agentType: event.agentType || cached.meta.agentType || null,
+            teammateName: event.teammateName || cached.meta.teammateName || null,
+            teamName: event.teamName || cached.meta.teamName || null,
           }
         });
       }
@@ -406,28 +446,36 @@ function createEventProcessor({
       return;
     }
 
+    const cached = getSessionContext(sessionId);
+    const resolvedCwd = cwd || cached.cwd || '';
+    const resolvedMeta = {
+      ...cached.meta,
+      ...meta,
+    };
+    rememberSessionContext(sessionId, resolvedCwd, resolvedMeta);
+
     // Check if this session matches a registered agent
-    const registeredAgent = agentRegistry ? agentRegistry.findByProjectPath(cwd) : null;
-    if (registeredAgent) {
+    const registeredAgent = agentRegistry ? agentRegistry.findByProjectPath(resolvedCwd) : null;
+    if (registeredAgent && canBindRegistryAgent(registeredAgent)) {
       // Link session to registered agent
-      agentRegistry.linkSession(registeredAgent.id, sessionId, meta.jsonlPath || null);
+      agentRegistry.linkSession(registeredAgent.id, sessionId, resolvedMeta.jsonlPath || null);
       sessionToRegistry.set(sessionId, registeredAgent.id);
 
       agentManager.updateAgent({
         registryId: registeredAgent.id,
         sessionId,
-        projectPath: cwd,
+        projectPath: resolvedCwd,
         displayName: registeredAgent.name,
         role: registeredAgent.role,
         avatarIndex: registeredAgent.avatarIndex,
         isRegistered: true,
         state: initialState,
-        provider: meta.provider || null,
-        jsonlPath: meta.jsonlPath || null,
-        model: meta.model || null,
-        permissionMode: meta.permissionMode || null,
-        source: meta.source || null,
-        agentType: meta.agentType || null,
+        provider: resolvedMeta.provider || null,
+        jsonlPath: resolvedMeta.jsonlPath || null,
+        model: resolvedMeta.model || null,
+        permissionMode: resolvedMeta.permissionMode || null,
+        source: resolvedMeta.source || null,
+        agentType: resolvedMeta.agentType || null,
         isTeammate,
         isSubagent,
         parentId,
@@ -435,20 +483,20 @@ function createEventProcessor({
       debugLog(`[${logPrefix}] SessionStart -> registered agent: ${registeredAgent.id.slice(0, 8)} "${registeredAgent.name}" ← session ${sessionId.slice(0, 8)}`);
     } else {
       // Ephemeral agent (no registry match)
-      const displayName = cwd ? path.basename(cwd) : 'Agent';
+      const displayName = resolvedCwd ? path.basename(resolvedCwd) : 'Agent';
       agentManager.updateAgent({
         sessionId,
-        projectPath: cwd,
+        projectPath: resolvedCwd,
         displayName,
         state: initialState,
-        provider: meta.provider || null,
-        jsonlPath: meta.jsonlPath || null,
-        model: meta.model || null,
-        permissionMode: meta.permissionMode || null,
-        source: meta.source || null,
-        agentType: meta.agentType || null,
-        teammateName: meta.teammateName || null,
-        teamName: meta.teamName || null,
+        provider: resolvedMeta.provider || null,
+        jsonlPath: resolvedMeta.jsonlPath || null,
+        model: resolvedMeta.model || null,
+        permissionMode: resolvedMeta.permissionMode || null,
+        source: resolvedMeta.source || null,
+        agentType: resolvedMeta.agentType || null,
+        teammateName: resolvedMeta.teammateName || null,
+        teamName: resolvedMeta.teamName || null,
         isTeammate,
         isSubagent,
         parentId,
@@ -465,7 +513,7 @@ function createEventProcessor({
       return;
     }
 
-    detectPidByTranscript(meta.jsonlPath || null, (result) => {
+    detectPidByTranscript(resolvedMeta.jsonlPath || null, (result) => {
       if (!result) return;
       if (typeof result === 'number') {
         sessionPids.set(sessionId, result);
@@ -524,12 +572,56 @@ function createEventProcessor({
   function cleanup() {
     firstToolUseDone.clear();
     pendingSessionStarts.length = 0;
+    sessionContext.clear();
+  }
+
+  function attachRegisteredAgent(registryAgent) {
+    if (!agentManager || !agentRegistry || !registryAgent || !registryAgent.id) return null;
+    if (!canBindRegistryAgent(registryAgent)) return null;
+
+    const targetPath = normalizePath(registryAgent.projectPath);
+    if (!targetPath) return null;
+
+    const provider = registryAgent.provider || null;
+    const candidates = agentManager.getAllAgents()
+      .filter((agent) => {
+        if (!agent || agent.isRegistered) return false;
+        if (!agent.sessionId) return false;
+        if (normalizePath(agent.projectPath) !== targetPath) return false;
+        if (provider && agent.provider && agent.provider !== provider) return false;
+        return true;
+      })
+      .sort((a, b) => (b.lastActivity || 0) - (a.lastActivity || 0));
+
+    const matched = candidates[0] || null;
+    if (!matched) return null;
+
+    const sessionId = matched.sessionId;
+    agentRegistry.linkSession(registryAgent.id, sessionId, matched.jsonlPath || null);
+    sessionToRegistry.set(sessionId, registryAgent.id);
+
+    agentManager.removeAgent(matched.id);
+    agentManager.updateAgent({
+      ...matched,
+      registryId: registryAgent.id,
+      sessionId,
+      displayName: registryAgent.name,
+      role: registryAgent.role,
+      projectPath: registryAgent.projectPath,
+      avatarIndex: registryAgent.avatarIndex,
+      isRegistered: true,
+      provider: matched.provider || registryAgent.provider || null,
+    }, updateSource);
+
+    debugLog(`[${logPrefix}] Attached live session ${sessionId.slice(0, 8)} -> registered agent ${registryAgent.id.slice(0, 8)}`);
+    return sessionId;
   }
 
   return {
     processEvent,
     handleSessionStart,
     handleSessionEnd,
+    attachRegisteredAgent,
     flushPendingStarts,
     cleanup,
     get firstToolUseDone() { return firstToolUseDone; },

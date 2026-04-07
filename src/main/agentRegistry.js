@@ -154,25 +154,14 @@ class AgentRegistry {
   findByProjectPath(rawPath) {
     if (!rawPath) return null;
     const normalized = normalizePath(rawPath);
-    let bestMatch = null;
     for (const agent of this.agents.values()) {
       if (!agent.enabled || agent.archived) continue;
       if (normalizePath(agent.projectPath) !== normalized) continue;
-
-      // Prefer an unlinked agent; fall back to one with a stale session
       if (!agent.currentSessionId) {
-        return agent; // ideal: free agent
-      }
-      if (!bestMatch) {
-        bestMatch = agent; // fallback: already linked but path matches
+        return agent;
       }
     }
-    // If only a linked agent was found, force-unlink its stale session first
-    if (bestMatch) {
-      this.debugLog(`[Registry] Force-unlinking stale session from ${bestMatch.id.slice(0, 8)} for new session`);
-      this.unlinkSession(bestMatch.id);
-    }
-    return bestMatch;
+    return null;
   }
 
   /**
