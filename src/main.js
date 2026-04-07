@@ -19,6 +19,7 @@ const { startHookServer } = require('./main/hookServer');
 const { createHookProcessor } = require('./main/hookProcessor');
 const { CODEX_EVENT_SERVER_PORT, startCodexEventServer } = require('./main/codexEventServer');
 const { createCodexProcessor } = require('./main/codexProcessor');
+const { createCodexSessionMonitor } = require('./main/codexSessionMonitor');
 const { getEnabledProviders } = require('./main/providerConfig');
 const { sessionPids, startLivenessChecker, detectClaudePidByTranscript } = require('./main/livenessChecker');
 const { savePersistedState, recoverExistingSessions } = require('./main/sessionPersistence');
@@ -86,6 +87,7 @@ let heatmapScanner = null;
 let windowManager = null;
 let hookProcessor = null;
 let codexProcessor = null;
+let codexSessionMonitor = null;
 let livenessIntervals = null;
 let agentListeners = null;
 let hookServer = null;
@@ -157,6 +159,11 @@ app.whenReady().then(() => {
       sessionPids,
       debugLog,
     });
+    codexSessionMonitor = createCodexSessionMonitor({
+      codexProcessor,
+      agentManager,
+      debugLog,
+    });
   }
 
   // 4. Create window manager
@@ -197,6 +204,9 @@ app.whenReady().then(() => {
       port: CODEX_EVENT_SERVER_PORT,
     });
   }
+  if (codexSessionMonitor) {
+    codexSessionMonitor.start();
+  }
   windowManager.startDashboardServer();
   if (enabledProviders.includes('claude')) {
     livenessIntervals = startLivenessChecker({ agentManager, debugLog });
@@ -227,6 +237,7 @@ app.whenReady().then(() => {
 
   // 9. Create UI
   windowManager.createWindow();
+  windowManager.createDashboardWindow();
 
   // Send current state when renderer is ready
   ipcMain.once('renderer-ready', () => {
@@ -335,6 +346,10 @@ app.on('before-quit', () => {
   if (codexEventServer) {
     codexEventServer.close();
     codexEventServer = null;
+  }
+  if (codexSessionMonitor) {
+    codexSessionMonitor.stop();
+    codexSessionMonitor = null;
   }
 
   // Clean up all resources

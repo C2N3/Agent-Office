@@ -1,8 +1,19 @@
+const fs = require('fs');
 const { getEnabledProviders } = require('../src/main/providerConfig');
 
 describe('providerConfig', () => {
+  beforeEach(() => {
+    jest.restoreAllMocks();
+  });
+
   test('defaults to Claude only', () => {
+    jest.spyOn(fs, 'existsSync').mockReturnValue(false);
     expect(getEnabledProviders({})).toEqual(['claude']);
+  });
+
+  test('defaults to Claude and Codex when codex sessions exist', () => {
+    jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+    expect(getEnabledProviders({})).toEqual(['claude', 'codex']);
   });
 
   test('supports explicit Codex only mode', () => {
@@ -18,6 +29,7 @@ describe('providerConfig', () => {
   });
 
   test('falls back to Claude when value is invalid', () => {
+    jest.spyOn(fs, 'existsSync').mockReturnValue(false);
     expect(getEnabledProviders({ PIXEL_AGENT_PROVIDER: 'unknown' })).toEqual(['claude']);
   });
 });

@@ -195,6 +195,22 @@ function createEventProcessor({
         }
         break;
 
+      case 'usage.update':
+        if (agentManager) {
+          const agent = agentManager.getAgent(sessionId);
+          if (agent) {
+            const updatedUsage = computeTokenUsage(agent, event.tokenUsage);
+            if (updatedUsage) {
+              agentManager.updateAgent({
+                ...agent,
+                sessionId,
+                tokenUsage: updatedUsage,
+              }, updateSource);
+            }
+          }
+        }
+        break;
+
       case 'message':
         if (agentManager && event.text !== undefined) {
           const agent = agentManager.getAgent(sessionId);

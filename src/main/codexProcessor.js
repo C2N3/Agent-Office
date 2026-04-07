@@ -119,6 +119,8 @@ function createCodexProcessor({ agentManager, sessionPids, debugLog }) {
     createSource: 'codex',
     updateSource: 'codex',
   });
+  const pendingFunctionCalls = new Map(); // callId -> { sessionId, name, args }
+  const latestTokenUsageBySession = new Map();
 
   function processCodexEvent(data) {
     const events = normalizeCodexEvent(data);
@@ -127,8 +129,181 @@ function createCodexProcessor({ agentManager, sessionPids, debugLog }) {
     }
   }
 
+  function processSessionEntry(entry, context = {}) {
+    if (!entry || !entry.type) return { sessionId: null };
+    const contextSessionId = context.sessionId || null;
+
+    switch (entry.type) {
+      case 'session_meta': {
+        const payload = entry.payload || {};
+        const sessionId = payload.id || null;
+        if (!sessionId) return { sessionId: null };
+        processor.processEvent({
+          type: 'session.start',
+          rawType: 'session_meta',
+          raw: entry,
+          provider: 'codex',
+          sessionId,
+          cwd: payload.cwd || '',
+          model: payload.model || payload.model_slug || null,
+          source: 'startup',
+          initialState: 'Waiting',
+        });
+        return { sessionId };
+      }
+
+      case 'event_msg': {
+        const payload = entry.payload || {};
+        const sessionId = entry.payload?.id || entry.payload?.thread_id || contextSessionId || null;
+
+        switch (payload.type) {
+          case 'task_started':
+            if (sessionId) {
+              processor.processEvent({
+                type: 'prompt.submit',
+                rawType: 'task_started',
+                raw: entry,
+                provider: 'codex',
+                sessionId,
+              });
+            }
+            return { sessionId };
+
+          case 'agent_message': {
+            const inferredSessionId = sessionId || findMostRecentSessionId();
+            if (inferredSessionId) {
+              processor.processEvent({
+                type: 'message',
+                rawType: 'agent_message',
+                raw: entry,
+                provider: 'codex',
+                sessionId: inferredSessionId,
+                text: payload.message || '',
+              });
+            }
+            return { sessionId: inferredSessionId };
+          }
+
+          case 'token_count': {
+            const inferredSessionId = sessionId || findMostRecentSessionId();
+            if (inferredSessionId && payload.info && payload.info.last_token_usage) {
+              latestTokenUsageBySession.set(inferredSessionId, payload.info.last_token_usage);
+            }
+            return { sessionId: inferredSessionId };
+          }
+
+          case 'task_complete': {
+            const inferredSessionId = sessionId || findMostRecentSessionId();
+            if (inferredSessionId) {
+              processor.processEvent({
+                type: 'turn.complete',
+                rawType: 'task_complete',
+                raw: entry,
+                provider: 'codex',
+                sessionId: inferredSessionId,
+                tokenUsage: latestTokenUsageBySession.get(inferredSessionId) || null,
+                lastAssistantMessage: payload.last_agent_message || null,
+              });
+            }
+            return { sessionId: inferredSessionId };
+          }
+
+          default:
+            return { sessionId: sessionId || findMostRecentSessionId() };
+        }
+      }
+
+      case 'response_item': {
+        const payload = entry.payload || {};
+        const sessionId = contextSessionId || findMostRecentSessionId();
+        if (!sessionId) return { sessionId: null };
+
+        if (payload.type === 'function_call') {
+          const parsedArgs = parseJsonMaybe(payload.arguments);
+          pendingFunctionCalls.set(payload.call_id, { sessionId, name: payload.name || 'tool', args: parsedArgs });
+          processor.processEvent({
+            type: 'tool.start',
+            rawType: 'function_call',
+            raw: entry,
+            provider: 'codex',
+            sessionId,
+            toolName: payload.name || 'tool',
+            toolInput: parsedArgs,
+          });
+          return { sessionId };
+        }
+
+        if (payload.type === 'function_call_output') {
+          const info = pendingFunctionCalls.get(payload.call_id) || { sessionId, name: 'tool', args: null };
+          pendingFunctionCalls.delete(payload.call_id);
+          processor.processEvent({
+            type: 'tool.end',
+            rawType: 'function_call_output',
+            raw: entry,
+            provider: 'codex',
+            sessionId: info.sessionId || sessionId,
+            toolName: info.name,
+            toolInput: info.args,
+          });
+          return { sessionId: info.sessionId || sessionId };
+        }
+
+        if (payload.type === 'message') {
+          const outputText = Array.isArray(payload.content)
+            ? payload.content.find((item) => item.type === 'output_text')?.text || ''
+            : '';
+          if (outputText) {
+            processor.processEvent({
+              type: 'message',
+              rawType: 'message',
+              raw: entry,
+              provider: 'codex',
+              sessionId,
+              text: outputText,
+            });
+          }
+          return { sessionId };
+        }
+
+        return { sessionId };
+      }
+
+      default:
+        return { sessionId: null };
+    }
+  }
+
+  function parseJsonMaybe(value) {
+    if (!value || typeof value !== 'string') return value || null;
+    try {
+      return JSON.parse(value);
+    } catch {
+      return { raw: value };
+    }
+  }
+
+  function findMostRecentSessionId() {
+    const agents = agentManager ? agentManager.getAllAgents().filter((agent) => agent.provider === 'codex') : [];
+    if (agents.length === 0) return null;
+    agents.sort((a, b) => (b.lastActivity || 0) - (a.lastActivity || 0));
+    return agents[0].id;
+  }
+
+  function endSession(sessionId, reason = 'ended') {
+    processor.processEvent({
+      type: 'session.end',
+      rawType: 'session.end',
+      raw: { reason },
+      provider: 'codex',
+      sessionId,
+      reason,
+    });
+  }
+
   return {
     processCodexEvent,
+    processSessionEntry,
+    endSession,
     flushPendingStarts: processor.flushPendingStarts,
     cleanup: processor.cleanup,
     get firstToolUseDone() { return processor.firstToolUseDone; },

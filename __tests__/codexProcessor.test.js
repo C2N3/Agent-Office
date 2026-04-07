@@ -173,6 +173,85 @@ describe('codexProcessor', () => {
 
     expect(agentManager.removeAgent).toHaveBeenCalledWith('thread-1234');
   });
+
+  test('session JSONL entries reconstruct state for codex desktop or cli sessions', () => {
+    processor.processSessionEntry({
+      type: 'session_meta',
+      payload: {
+        id: 'thread-1234',
+        cwd: '/workspace/app',
+        model_slug: 'gpt-5-codex',
+      },
+    });
+
+    processor.processSessionEntry({
+      type: 'event_msg',
+      payload: { type: 'task_started' },
+    }, { sessionId: 'thread-1234' });
+
+    processor.processSessionEntry({
+      type: 'response_item',
+      payload: {
+        type: 'function_call',
+        call_id: 'call-1',
+        name: 'exec_command',
+        arguments: '{"cmd":"npm test"}',
+      },
+    }, { sessionId: 'thread-1234' });
+
+    processor.processSessionEntry({
+      type: 'response_item',
+      payload: {
+        type: 'function_call_output',
+        call_id: 'call-1',
+      },
+    }, { sessionId: 'thread-1234' });
+
+    processor.processSessionEntry({
+      type: 'event_msg',
+      payload: {
+        type: 'token_count',
+        info: {
+          last_token_usage: { input_tokens: 50, cached_input_tokens: 10, output_tokens: 5 },
+        },
+      },
+    }, { sessionId: 'thread-1234' });
+
+    processor.processSessionEntry({
+      type: 'event_msg',
+      payload: {
+        type: 'task_complete',
+        last_agent_message: 'done',
+      },
+    }, { sessionId: 'thread-1234' });
+
+    expect(agentManager.updateAgent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: 'thread-1234',
+        provider: 'codex',
+        state: 'Waiting',
+      }),
+      'codex'
+    );
+    expect(agentManager.updateAgent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        state: 'Working',
+        currentTool: 'exec_command',
+      }),
+      'codex'
+    );
+    expect(agentManager.updateAgent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        state: 'Done',
+        lastMessage: 'done',
+        tokenUsage: expect.objectContaining({
+          inputTokens: 60,
+          outputTokens: 5,
+        }),
+      }),
+      'codex'
+    );
+  });
 });
 
 describe('normalizeCodexEvent', () => {
