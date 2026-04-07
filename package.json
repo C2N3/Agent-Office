@@ -5,8 +5,8 @@
   "main": "src/main.js",
   "scripts": {
     "postinstall": "node src/install.js",
-    "start": "electron .",
-    "dev": "electron . --dev",
+    "start": "node scripts/run-electron.js",
+    "dev": "node scripts/run-electron.js --dev",
     "test": "jest",
     "test:coverage": "jest --coverage",
     "test:watch": "jest --watch",
@@ -49,6 +49,7 @@
       "package.json"
     ],
     "win": {
+      "signAndEditExecutable": false,
       "target": [
         {
           "target": "nsis",

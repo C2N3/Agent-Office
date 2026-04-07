@@ -50,6 +50,7 @@ class SessionScanner {
         let updated = 0;
 
         for (const agent of agents) {
+            if (agent.provider && agent.provider !== 'claude') continue;
             if (!agent.jsonlPath) continue;
 
             try {

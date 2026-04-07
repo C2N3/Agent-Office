@@ -17,6 +17,10 @@ const { getWindowSizeForAgents } = require('./utils');
 const { HOOK_SERVER_PORT, registerClaudeHooks } = require('./main/hookRegistration');
 const { startHookServer } = require('./main/hookServer');
 const { createHookProcessor } = require('./main/hookProcessor');
+const { CODEX_EVENT_SERVER_PORT, startCodexEventServer } = require('./main/codexEventServer');
+const { createCodexProcessor } = require('./main/codexProcessor');
+const { createCodexSessionMonitor } = require('./main/codexSessionMonitor');
+const { getEnabledProviders } = require('./main/providerConfig');
 const { sessionPids, startLivenessChecker, detectClaudePidByTranscript } = require('./main/livenessChecker');
 const { savePersistedState, recoverExistingSessions } = require('./main/sessionPersistence');
 const { createWindowManager } = require('./main/windowManager');
@@ -82,14 +86,21 @@ let sessionScanner = null;
 let heatmapScanner = null;
 let windowManager = null;
 let hookProcessor = null;
+let codexProcessor = null;
+let codexSessionMonitor = null;
 let livenessIntervals = null;
 let agentListeners = null;
+let hookServer = null;
+let codexEventServer = null;
+let enabledProviders = [];
 
 app.whenReady().then(() => {
   debugLog('========== Pixel Agent Desk started ==========');
 
   // Minimal application menu (removes default File/Edit/Window/Help clutter)
   const isDev = process.argv.includes('--dev');
+  enabledProviders = getEnabledProviders();
+  debugLog(`[Main] Providers enabled: ${enabledProviders.join(', ')}`);
   const menuTemplate = [
     {
       label: 'View',
@@ -114,28 +125,46 @@ app.whenReady().then(() => {
   ];
   Menu.setApplicationMenu(Menu.buildFromTemplate(menuTemplate));
 
-  // 0. Auto-register Claude CLI hooks
-  registerClaudeHooks(debugLog);
+  // 0. Auto-register provider integrations
+  if (enabledProviders.includes('claude')) {
+    registerClaudeHooks(debugLog);
+  }
 
   // 1. Start agent manager immediately
   agentManager = new AgentManager();
   agentManager.start();
 
-  // 2. Start session scanner
-  sessionScanner = new SessionScanner(agentManager, debugLog);
-  sessionScanner.start(60_000);
+  // 2. Start Claude-only scanners
+  if (enabledProviders.includes('claude')) {
+    sessionScanner = new SessionScanner(agentManager, debugLog);
+    sessionScanner.start(60_000);
+  }
 
   // 2.5. Start heatmap scanner
   heatmapScanner = new HeatmapScanner(debugLog);
   heatmapScanner.start(300_000);
 
-  // 3. Create hook processor
-  hookProcessor = createHookProcessor({
-    agentManager,
-    sessionPids,
-    debugLog,
-    detectClaudePidByTranscript,
-  });
+  // 3. Create provider processors
+  if (enabledProviders.includes('claude')) {
+    hookProcessor = createHookProcessor({
+      agentManager,
+      sessionPids,
+      debugLog,
+      detectClaudePidByTranscript,
+    });
+  }
+  if (enabledProviders.includes('codex')) {
+    codexProcessor = createCodexProcessor({
+      agentManager,
+      sessionPids,
+      debugLog,
+    });
+    codexSessionMonitor = createCodexSessionMonitor({
+      codexProcessor,
+      agentManager,
+      debugLog,
+    });
+  }
 
   // 4. Create window manager
   windowManager = createWindowManager({
@@ -159,23 +188,40 @@ app.whenReady().then(() => {
   });
 
   // 6. Start background services
-  startHookServer({
-    processHookEvent: hookProcessor.processHookEvent,
-    debugLog,
-    HOOK_SERVER_PORT,
-    errorHandler,
-  });
+  if (hookProcessor) {
+    hookServer = startHookServer({
+      processHookEvent: hookProcessor.processHookEvent,
+      debugLog,
+      HOOK_SERVER_PORT,
+      errorHandler,
+    });
+  }
+  if (codexProcessor) {
+    codexEventServer = startCodexEventServer({
+      processCodexEvent: codexProcessor.processCodexEvent,
+      debugLog,
+      errorHandler,
+      port: CODEX_EVENT_SERVER_PORT,
+    });
+  }
+  if (codexSessionMonitor) {
+    codexSessionMonitor.start();
+  }
   windowManager.startDashboardServer();
-  livenessIntervals = startLivenessChecker({ agentManager, debugLog });
+  if (enabledProviders.includes('claude')) {
+    livenessIntervals = startLivenessChecker({ agentManager, debugLog });
+  }
 
   // 7. Recover existing active sessions
-  recoverExistingSessions({
-    agentManager,
-    sessionPids,
-    firstPreToolUseDone: hookProcessor.firstPreToolUseDone,
-    debugLog,
-    errorHandler,
-  });
+  if (hookProcessor) {
+    recoverExistingSessions({
+      agentManager,
+      sessionPids,
+      firstPreToolUseDone: hookProcessor.firstPreToolUseDone,
+      debugLog,
+      errorHandler,
+    });
+  }
 
   // 8. Test agents (mix of Main, Sub, and Team)
   const ENABLE_TEST_AGENTS = false;
@@ -191,6 +237,7 @@ app.whenReady().then(() => {
 
   // 9. Create UI
   windowManager.createWindow();
+  windowManager.createDashboardWindow();
 
   // Send current state when renderer is ready
   ipcMain.once('renderer-ready', () => {
@@ -244,7 +291,8 @@ app.whenReady().then(() => {
       windowManager.resizeWindowForAgents(allAgents);
     }
 
-    hookProcessor.flushPendingStarts();
+    if (hookProcessor) hookProcessor.flushPendingStarts();
+    if (codexProcessor) codexProcessor.flushPendingStarts();
   });
 
   app.on('activate', () => {
@@ -291,8 +339,22 @@ app.on('before-quit', () => {
     windowManager.stopKeepAlive();
   }
 
+  if (hookServer) {
+    hookServer.close();
+    hookServer = null;
+  }
+  if (codexEventServer) {
+    codexEventServer.close();
+    codexEventServer = null;
+  }
+  if (codexSessionMonitor) {
+    codexSessionMonitor.stop();
+    codexSessionMonitor = null;
+  }
+
   // Clean up all resources
   if (hookProcessor) hookProcessor.cleanup();
+  if (codexProcessor) codexProcessor.cleanup();
   sessionPids.clear();
 
   debugLog('[Main] All resources cleaned up');
