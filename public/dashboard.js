@@ -736,38 +736,61 @@ function renderTerminalProfileMenu() {
   const profiles = termState.profiles;
 
   if (profiles.length === 0) {
-    menu.innerHTML = '<div class="terminal-profile-section-title">No profiles detected</div>';
+    menu.innerHTML = `
+      <div class="terminal-launch-header">
+        <div>
+          <div class="terminal-launch-title">New Terminal</div>
+          <div class="terminal-launch-subtitle">No shell profiles were detected on this machine.</div>
+        </div>
+        <button class="terminal-launch-close" type="button" data-action="close-terminal-popover">&times;</button>
+      </div>
+    `;
     return;
   }
 
   const openItems = profiles.map(profile => `
     <button class="terminal-profile-item" data-action="open-profile" data-profile-id="${escapeText(profile.id)}">
-      <span>${escapeText(profile.title)}</span>
+      <span class="terminal-profile-item-main">
+        <span class="terminal-profile-item-title">${escapeText(profile.title)}</span>
+        <span class="terminal-profile-item-hint">Open a one-off terminal with this shell</span>
+      </span>
       ${profile.id === defaultProfile?.id ? '<span class="terminal-profile-badge">Default</span>' : ''}
     </button>
   `).join('');
 
   const defaultItems = profiles.map(profile => `
     <button class="terminal-profile-item ${profile.id === defaultProfile?.id ? 'selected' : ''}" data-action="set-default-profile" data-profile-id="${escapeText(profile.id)}">
-      <span>${escapeText(profile.title)}</span>
+      <span class="terminal-profile-item-main">
+        <span class="terminal-profile-item-title">${escapeText(profile.title)}</span>
+        <span class="terminal-profile-item-hint">Use when pressing the New Terminal button</span>
+      </span>
       <span class="terminal-profile-check">${profile.id === defaultProfile?.id ? '✓' : ''}</span>
     </button>
   `).join('');
 
   menu.innerHTML = `
+    <div class="terminal-launch-header">
+      <div>
+        <div class="terminal-launch-title">New Terminal</div>
+        <div class="terminal-launch-subtitle">Choose a shell for this tab, or change the default profile.</div>
+      </div>
+      <button class="terminal-launch-close" type="button" data-action="close-terminal-popover">&times;</button>
+    </div>
+    <button class="terminal-launch-primary" data-action="open-profile" data-profile-id="${escapeText(defaultProfile.id)}">
+      <span class="terminal-launch-primary-label">Open default terminal</span>
+      <span class="terminal-launch-primary-value">${escapeText(defaultProfile.title)}</span>
+    </button>
     <div class="terminal-profile-section-title">Open With</div>
-    ${openItems}
+    <div class="terminal-profile-list">${openItems}</div>
     <div class="terminal-profile-divider"></div>
     <div class="terminal-profile-section-title">Default Profile</div>
-    ${defaultItems}
+    <div class="terminal-profile-list">${defaultItems}</div>
   `;
 }
 
 function closeTerminalProfileMenu() {
   const menu = document.getElementById('terminalProfileMenu');
-  const button = document.getElementById('terminalMenuBtn');
   if (menu) menu.style.display = 'none';
-  if (button) button.classList.remove('active');
 }
 
 async function refreshTerminalProfiles() {
@@ -796,21 +819,14 @@ async function openNewLocalTerminal(profileId) {
 
 function initTerminalProfileMenu() {
   const newBtn = document.getElementById('terminalNewBtn');
-  const menuBtn = document.getElementById('terminalMenuBtn');
   const menu = document.getElementById('terminalProfileMenu');
-  if (!newBtn || !menuBtn || !menu) return;
+  if (!newBtn || !menu) return;
 
   newBtn.addEventListener('click', async () => {
-    await openNewLocalTerminal();
-  });
-
-  menuBtn.addEventListener('click', async (e) => {
-    e.stopPropagation();
     const willOpen = menu.style.display === 'none';
     if (willOpen) {
       await refreshTerminalProfiles();
       menu.style.display = '';
-      menuBtn.classList.add('active');
     } else {
       closeTerminalProfileMenu();
     }
@@ -821,6 +837,11 @@ function initTerminalProfileMenu() {
     if (!item) return;
 
     const action = item.dataset.action;
+    if (action === 'close-terminal-popover') {
+      closeTerminalProfileMenu();
+      return;
+    }
+
     const profileId = item.dataset.profileId;
     if (!profileId) return;
 
@@ -842,7 +863,7 @@ function initTerminalProfileMenu() {
   });
 
   document.addEventListener('click', (e) => {
-    if (!menu.contains(e.target) && !menuBtn.contains(e.target)) {
+    if (!menu.contains(e.target) && !newBtn.contains(e.target)) {
       closeTerminalProfileMenu();
     }
   });

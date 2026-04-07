@@ -20,12 +20,22 @@ describe('TerminalProfileService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
+    process.env.LOCALAPPDATA = 'C:\\Users\\minijay\\AppData\\Local';
 
-    fs.existsSync.mockImplementation(target => String(target).endsWith('terminal-preferences.json') ? false : true);
+    fs.existsSync.mockImplementation(target => {
+      const value = String(target);
+      if (value.endsWith('terminal-preferences.json')) return false;
+      if (value.includes('Programs\\Git\\bin\\bash.exe')) return true;
+      if (value.includes('Programs\\Git\\git-bash.exe')) return true;
+      return true;
+    });
     execFileSync.mockImplementation((command, args) => {
       if (command !== 'where.exe') return '';
 
       switch (args[0]) {
+      case 'git.exe':
+      case 'git':
+        return 'C:\\Users\\minijay\\AppData\\Local\\Programs\\Git\\cmd\\git.exe\r\n';
       case 'pwsh.exe':
         return 'C:\\Program Files\\PowerShell\\7\\pwsh.exe\r\n';
       case 'powershell.exe':

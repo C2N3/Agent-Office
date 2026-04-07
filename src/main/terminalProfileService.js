@@ -93,6 +93,13 @@ class TerminalProfileService {
 
   _detectWindowsProfiles() {
     const comspec = process.env.ComSpec || 'C:\\Windows\\System32\\cmd.exe';
+    const localGitDir = process.env.LOCALAPPDATA
+      ? path.join(process.env.LOCALAPPDATA, 'Programs', 'Git')
+      : null;
+    const resolvedGitExe = this._resolveExecutable(['git.exe', 'git']);
+    const inferredGitRoot = resolvedGitExe
+      ? path.resolve(path.dirname(resolvedGitExe), '..')
+      : null;
     return this._dedupeProfiles([
       {
         id: 'pwsh',
@@ -123,6 +130,10 @@ class TerminalProfileService {
         id: 'git-bash',
         title: 'Git Bash',
         command: this._resolveExecutable([
+          inferredGitRoot ? path.join(inferredGitRoot, 'bin', 'bash.exe') : null,
+          inferredGitRoot ? path.join(inferredGitRoot, 'git-bash.exe') : null,
+          localGitDir ? path.join(localGitDir, 'bin', 'bash.exe') : null,
+          localGitDir ? path.join(localGitDir, 'git-bash.exe') : null,
           'C:\\Program Files\\Git\\bin\\bash.exe',
           'C:\\Program Files\\Git\\git-bash.exe',
           'C:\\Program Files (x86)\\Git\\bin\\bash.exe',

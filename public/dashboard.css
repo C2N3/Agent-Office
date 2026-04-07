@@ -1044,10 +1044,8 @@ body {
 }
 
 .terminal-toolbar {
-  position: relative;
   display: flex;
   align-items: center;
-  gap: 4px;
   flex-shrink: 0;
 }
 
@@ -1133,96 +1131,6 @@ body {
   color: var(--color-text);
 }
 
-.terminal-menu-btn {
-  flex-shrink: 0;
-  width: 24px;
-  height: 28px;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  background: transparent;
-  color: var(--color-text-muted);
-  font-size: 0.7rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.terminal-menu-btn:hover,
-.terminal-menu-btn.active {
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--color-text);
-}
-
-.terminal-profile-menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  min-width: 240px;
-  padding: 8px;
-  background: rgba(21, 25, 28, 0.98);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
-  z-index: 20;
-}
-
-.terminal-profile-section-title {
-  padding: 6px 8px 4px;
-  font-size: 0.65rem;
-  font-weight: 600;
-  color: var(--color-text-dark);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.terminal-profile-item {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 8px;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--color-text-muted);
-  font-size: 0.76rem;
-  text-align: left;
-  cursor: pointer;
-}
-
-.terminal-profile-item:hover {
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--color-text);
-}
-
-.terminal-profile-item.selected {
-  color: var(--color-text);
-  background: rgba(255, 255, 255, 0.04);
-}
-
-.terminal-profile-badge {
-  padding: 2px 6px;
-  border-radius: 999px;
-  background: var(--color-primary-dim);
-  color: var(--color-primary);
-  font-size: 0.62rem;
-  font-weight: 600;
-}
-
-.terminal-profile-check {
-  color: var(--color-primary);
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
-}
-
-.terminal-profile-divider {
-  height: 1px;
-  margin: 8px 0;
-  background: var(--color-border);
-}
-
 .terminal-container {
   flex: 1;
   background: #0b0d0f;
@@ -1250,6 +1158,169 @@ body {
   justify-content: center;
   color: var(--color-text-muted);
   font-size: 0.85rem;
+}
+
+.terminal-launch-popover {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: min(360px, calc(100% - 24px));
+  max-height: calc(100% - 24px);
+  overflow-y: auto;
+  padding: 14px;
+  background: rgba(21, 25, 28, 0.98);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  z-index: 20;
+}
+
+.terminal-launch-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.terminal-launch-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.terminal-launch-subtitle {
+  margin-top: 3px;
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+.terminal-launch-close {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.terminal-launch-close:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--color-text);
+}
+
+.terminal-launch-primary {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 12px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(47, 129, 247, 0.35);
+  border-radius: 8px;
+  background: var(--color-primary-dim);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.terminal-launch-primary:hover {
+  background: rgba(47, 129, 247, 0.22);
+}
+
+.terminal-launch-primary-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.terminal-launch-primary-value {
+  font-size: 0.72rem;
+  color: var(--color-primary);
+  font-family: var(--font-mono);
+}
+
+.terminal-profile-section-title {
+  padding: 2px 0 6px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--color-text-dark);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.terminal-profile-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.terminal-profile-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--color-text-muted);
+  font-size: 0.76rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.terminal-profile-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--color-text);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.terminal-profile-item.selected {
+  color: var(--color-text);
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(47, 129, 247, 0.2);
+}
+
+.terminal-profile-item-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.terminal-profile-item-title {
+  font-size: 0.78rem;
+}
+
+.terminal-profile-item-hint {
+  font-size: 0.66rem;
+  color: var(--color-text-dark);
+}
+
+.terminal-profile-badge {
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--color-primary-dim);
+  color: var(--color-primary);
+  font-size: 0.62rem;
+  font-weight: 600;
+}
+
+.terminal-profile-check {
+  color: var(--color-primary);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+
+.terminal-profile-divider {
+  height: 1px;
+  margin: 12px 0;
+  background: var(--color-border);
 }
 
 /* Popover terminal button */
