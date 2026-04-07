@@ -6,6 +6,8 @@
 
 > Real-time pixel avatar visualization for Claude Code CLI and Codex CLI sessions.
 
+Korean README: [README.ko.md](README.ko.md)
+
 Agent-Office is a standalone Electron app that listens to [Claude Code](https://docs.anthropic.com/en/docs/claude-code) hook events and can also ingest [Codex](https://developers.openai.com/codex/) `exec --json` streams. It renders each agent session as an animated pixel character with a virtual office, activity heatmaps, and token usage analytics.
 
 ![Demo](docs/demo.gif)
