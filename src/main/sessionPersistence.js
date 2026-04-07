@@ -78,6 +78,11 @@ function recoverExistingSessions({ agentManager, sessionPids, firstPreToolUseDon
 
     let recoveredCount = 0;
     for (const agent of savedAgents) {
+      if (agent.provider && agent.provider !== 'claude') {
+        debugLog(`[Recover] Skipped non-Claude agent: ${agent.id.slice(0, 8)}`);
+        continue;
+      }
+
       const pid = savedPids.get(agent.id);
 
       if (!pid) {
@@ -107,6 +112,7 @@ function recoverExistingSessions({ agentManager, sessionPids, firstPreToolUseDon
         projectPath: agent.projectPath,
         displayName: agent.displayName,
         state: agent.state,
+        provider: agent.provider || 'claude',
         jsonlPath: agent.jsonlPath,
         isTeammate: agent.isTeammate,
         isSubagent: agent.isSubagent,

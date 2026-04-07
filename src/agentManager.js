@@ -89,6 +89,7 @@ class AgentManager extends EventEmitter {
       slug: entry.slug,
       displayName: this.formatDisplayName(entry.slug, entry.projectPath),
       projectPath: entry.projectPath,
+      provider: m('provider'),
       jsonlPath: entry.jsonlPath || (existingAgent ? existingAgent.jsonlPath : null),
       model: m('model'),
       permissionMode: m('permissionMode'),
