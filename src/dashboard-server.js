@@ -28,6 +28,7 @@ const MIME_TYPES = {
 let agentManager = null;
 let sessionScanner = null;
 let heatmapScanner = null;
+let agentRegistryRef = null;
 let missionControlWindow = null;
 const wsClients = new Set();
 const sseClients = new Set();
@@ -68,6 +69,13 @@ function setSessionScanner(scanner) {
  */
 function setHeatmapScanner(scanner) {
   heatmapScanner = scanner;
+}
+
+/**
+ * Set the agent registry reference
+ */
+function setAgentRegistry(registry) {
+  agentRegistryRef = registry;
 }
 
 /**
@@ -395,6 +403,66 @@ function handleGetHealth(req, res) {
   }));
 }
 
+// ─── Conversation / Session History Handlers ───
+
+const { parseConversation, getConversationSummary } = require('./main/conversationParser');
+
+function handleGetSessionHistory(req, res, registryId) {
+  if (!agentRegistryRef) {
+    res.writeHead(503, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Agent registry not available' }));
+    return;
+  }
+  const history = agentRegistryRef.getSessionHistory(registryId);
+  // Enrich each entry with a lightweight summary
+  const enriched = history.map(entry => {
+    const summary = entry.transcriptPath
+      ? getConversationSummary(entry.transcriptPath)
+      : null;
+    return { ...entry, summary };
+  });
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(enriched));
+}
+
+function handleGetConversation(req, res, registryId, sessionId, url) {
+  if (!agentRegistryRef) {
+    res.writeHead(503, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Agent registry not available' }));
+    return;
+  }
+  const history = agentRegistryRef.getSessionHistory(registryId);
+  const entry = history.find(h => h.sessionId === sessionId);
+
+  // Also check current agent's jsonlPath as fallback
+  let transcriptPath = entry ? entry.transcriptPath : null;
+  if (!transcriptPath && agentManager) {
+    const agent = agentManager.getAgent(registryId);
+    if (agent && agent.sessionId === sessionId && agent.jsonlPath) {
+      transcriptPath = agent.jsonlPath;
+    }
+  }
+
+  if (!transcriptPath) {
+    res.writeHead(404, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Transcript not found for this session' }));
+    return;
+  }
+
+  const limit = parseInt(url.searchParams.get('limit') || '0', 10);
+  const offset = parseInt(url.searchParams.get('offset') || '0', 10);
+  const result = parseConversation(transcriptPath, { limit: limit || undefined, offset: offset || undefined });
+
+  if (!result) {
+    res.writeHead(404, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Could not parse transcript file' }));
+    return;
+  }
+
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(result));
+}
+
 /** Route table: "METHOD /path" → handler */
 const apiRoutes = {
   'GET /api/events': handleSSE,
@@ -429,6 +497,16 @@ function handleAPIRequest(req, res, url) {
 
   // Parameterized: GET /api/agents/:id
   if (url.pathname.startsWith('/api/agents/') && req.method === 'GET') {
+    // Check for /api/agents/:id/history or /api/agents/:id/conversation/:sessionId
+    const agentSubParts = url.pathname.replace('/api/agents/', '').split('/');
+    if (agentSubParts.length === 2 && agentSubParts[1] === 'history') {
+      handleGetSessionHistory(req, res, agentSubParts[0]);
+      return;
+    }
+    if (agentSubParts.length === 3 && agentSubParts[1] === 'conversation') {
+      handleGetConversation(req, res, agentSubParts[0], agentSubParts[2], url);
+      return;
+    }
     handleGetAgentById(req, res, url);
     return;
   }
@@ -557,6 +635,7 @@ module.exports = {
   setAgentManager,
   setSessionScanner,
   setHeatmapScanner,
+  setAgentRegistry,
   setDashboardWindow,
   broadcastUpdate,
   broadcastSSE,

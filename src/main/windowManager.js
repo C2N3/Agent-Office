@@ -6,7 +6,7 @@
 const { BrowserWindow, screen, shell } = require('electron');
 const path = require('path');
 
-function createWindowManager({ agentManager, sessionScanner, heatmapScanner, debugLog, adaptAgentToDashboard, errorHandler, getWindowSizeForAgents }) {
+function createWindowManager({ agentManager, agentRegistry, sessionScanner, heatmapScanner, debugLog, adaptAgentToDashboard, errorHandler, getWindowSizeForAgents }) {
   let mainWindow = null;
   let dashboardWindow = null;
   let pipWindow = null;
@@ -292,6 +292,9 @@ function createWindowManager({ agentManager, sessionScanner, heatmapScanner, deb
       }
       if (heatmapScanner) {
         serverModule.setHeatmapScanner(heatmapScanner);
+      }
+      if (agentRegistry) {
+        serverModule.setAgentRegistry(agentRegistry);
       }
 
       dashboardServer = serverModule.startServer();

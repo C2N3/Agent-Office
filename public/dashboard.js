@@ -190,6 +190,7 @@ function updateAgentUI(ag) {
       <div class="mc-agent-name"><div class="mc-agent-avatar" style="background-image:url('./public/characters/${avFile}')"></div><span class="agent-display-name" data-agent-id="${ag.id}" title="Double-click to rename">${ag.nickname || ag.name || 'Agent'}</span> ${typeHtml}</div>
       <div style="display:flex;align-items:center;gap:6px;">
         <div class="mc-agent-status ${stClass}">${stText}</div>
+        ${ag.isRegistered && ag.registryId ? `<button class="agent-history-btn" data-history-id="${ag.registryId}" data-agent-name="${ag.nickname || ag.name || 'Agent'}" title="Session History"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg></button>` : ''}
         ${ag.isRegistered && ag.registryId ? `<button class="agent-avatar-btn" data-avatar-id="${ag.registryId}" data-agent-id="${ag.id}" title="Change avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M5 20c0-4 3.5-7 7-7s7 3 7 7"/></svg></button>` : ''}
         ${ag.isRegistered && ag.registryId ? `<button class="agent-delete-btn" data-delete-id="${ag.registryId}" title="Delete agent">&times;</button>` : ''}
       </div>
@@ -711,6 +712,16 @@ async function openTerminalForAgent(agentId) {
   const agent = state.agents.get(agentId);
   const cwd = agent?.metadata?.projectPath || agent?.project || '';
   const provider = agent?.metadata?.provider || null;
+  const agentStatus = agent?.status || '';
+
+  // If agent has an active session, focus its external terminal instead of opening a new one
+  const isActive = ['working', 'thinking', 'waiting', 'help'].includes(agentStatus);
+  if (isActive) {
+    if (typeof dashboardAPI !== 'undefined' && dashboardAPI.focusAgent) {
+      dashboardAPI.focusAgent(agentId);
+    }
+    return;
+  }
 
   if (typeof dashboardAPI === 'undefined' || !dashboardAPI.createTerminal) return;
 
@@ -721,16 +732,6 @@ async function openTerminalForAgent(agentId) {
   }
 
   createXtermInstance(agentId, agent?.nickname || agent?.name || 'Terminal');
-
-  // Auto-execute CLI based on provider (wait for shell to fully init)
-  if (provider === 'claude' || provider === 'codex') {
-    setTimeout(() => {
-      const cmd = provider === 'claude' ? 'claude' : 'codex';
-      if (dashboardAPI.writeTerminal) {
-        dashboardAPI.writeTerminal(agentId, cmd + '\r');
-      }
-    }, 1500);
-  }
 }
 
 function createXtermInstance(agentId, label) {
@@ -807,6 +808,23 @@ function createXtermInstance(agentId, label) {
       }
       xterm.focus();
     });
+  });
+
+  // Clipboard: Ctrl+C (when selection exists) = copy, Ctrl+V = paste
+  xterm.attachCustomKeyEventHandler((ev) => {
+    if (ev.ctrlKey && ev.key === 'c' && xterm.hasSelection()) {
+      navigator.clipboard.writeText(xterm.getSelection());
+      return false; // prevent sending to PTY
+    }
+    if (ev.ctrlKey && ev.key === 'v') {
+      navigator.clipboard.readText().then(text => {
+        if (text && dashboardAPI.writeTerminal) {
+          dashboardAPI.writeTerminal(agentId, text);
+        }
+      });
+      return false;
+    }
+    return true;
   });
 
   // Forward keystrokes to main process
@@ -1010,6 +1028,13 @@ function initApp() {
   const agentPanel = document.getElementById('agentPanel');
   if (agentPanel) {
     agentPanel.addEventListener('click', function (e) {
+      // History button
+      const histBtn = e.target.closest('.agent-history-btn');
+      if (histBtn && histBtn.dataset.historyId) {
+        e.stopPropagation();
+        openSessionHistory(histBtn.dataset.historyId, histBtn.dataset.agentName || 'Agent');
+        return;
+      }
       // Delete button
       const deleteBtn = e.target.closest('.agent-delete-btn');
       if (deleteBtn && deleteBtn.dataset.deleteId) {
@@ -1201,4 +1226,221 @@ document.addEventListener('DOMContentLoaded', initApp);
 
     modal.style.display = '';
   });
+})();
+
+// ─── SESSION HISTORY & CONVERSATION VIEWER ───
+
+(function setupConversationViewer() {
+  // Create modal elements
+  const overlay = document.createElement('div');
+  overlay.className = 'conv-overlay';
+  overlay.style.display = 'none';
+  document.body.appendChild(overlay);
+
+  const modal = document.createElement('div');
+  modal.className = 'conv-modal';
+  modal.innerHTML = `
+    <div class="conv-modal-header">
+      <div class="conv-modal-title">Session History</div>
+      <button class="conv-modal-close">&times;</button>
+    </div>
+    <div class="conv-modal-body">
+      <div class="conv-session-list"></div>
+      <div class="conv-chat-panel" style="display:none">
+        <div class="conv-chat-header">
+          <button class="conv-back-btn">&larr; Back</button>
+          <span class="conv-chat-session-id"></span>
+          <button class="conv-resume-btn">Resume</button>
+        </div>
+        <div class="conv-chat-messages"></div>
+      </div>
+    </div>
+  `;
+  overlay.appendChild(modal);
+
+  const sessionListEl = modal.querySelector('.conv-session-list');
+  const chatPanel = modal.querySelector('.conv-chat-panel');
+  const chatMessages = modal.querySelector('.conv-chat-messages');
+  const chatSessionId = modal.querySelector('.conv-chat-session-id');
+  const backBtn = modal.querySelector('.conv-back-btn');
+  const resumeBtn = modal.querySelector('.conv-resume-btn');
+  const closeBtn = modal.querySelector('.conv-modal-close');
+  const titleEl = modal.querySelector('.conv-modal-title');
+
+  let currentRegistryId = null;
+  let currentSessionId = null;
+  let currentAgentName = null;
+
+  function closeModal() {
+    overlay.style.display = 'none';
+    currentRegistryId = null;
+    currentSessionId = null;
+  }
+
+  closeBtn.addEventListener('click', closeModal);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
+
+  backBtn.addEventListener('click', () => {
+    chatPanel.style.display = 'none';
+    sessionListEl.style.display = '';
+    currentSessionId = null;
+  });
+
+  resumeBtn.addEventListener('click', async () => {
+    if (!currentRegistryId || !currentSessionId) return;
+    if (typeof dashboardAPI !== 'undefined' && dashboardAPI.resumeSession) {
+      const regId = currentRegistryId;
+      const sessId = currentSessionId;
+      const label = currentAgentName;
+      closeModal();
+
+      // If terminal already exists (Claude running), exit first then resume
+      if (termState.terminals.has(regId)) {
+        activateTerminalTab(regId);
+        if (dashboardAPI.writeTerminal) {
+          // Send /exit to gracefully quit current Claude session
+          dashboardAPI.writeTerminal(regId, '/exit\r');
+          // Wait for Claude to exit, then send resume command
+          setTimeout(() => {
+            dashboardAPI.writeTerminal(regId, `claude --resume ${sessId}\r`);
+          }, 1500);
+        }
+      } else {
+        // No existing terminal — create one and resume
+        const result = await dashboardAPI.resumeSession(regId, sessId);
+        if (result && result.success) {
+          if (typeof createXtermInstance === 'function') {
+            createXtermInstance(regId, label);
+          }
+        } else {
+          alert('Failed to resume: ' + (result?.error || 'unknown'));
+        }
+      }
+    } else {
+      alert('Resume is only available in the Electron app');
+    }
+  });
+
+  window.openSessionHistory = async function (registryId, agentName) {
+    currentRegistryId = registryId;
+    currentSessionId = null;
+    currentAgentName = agentName || 'Agent';
+    titleEl.textContent = currentAgentName + ' — Session History';
+    sessionListEl.style.display = '';
+    chatPanel.style.display = 'none';
+    sessionListEl.innerHTML = '<div class="conv-loading">Loading...</div>';
+    overlay.style.display = '';
+
+    try {
+      let history;
+      if (typeof dashboardAPI !== 'undefined' && dashboardAPI.getSessionHistory) {
+        history = await dashboardAPI.getSessionHistory(registryId);
+      } else {
+        const res = await fetch('/api/agents/' + registryId + '/history');
+        history = await res.json();
+      }
+
+      if (!history || history.length === 0) {
+        sessionListEl.innerHTML = '<div class="conv-empty">No session history yet.</div>';
+        return;
+      }
+
+      // Sort by startedAt descending (newest first)
+      history.sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0));
+
+      sessionListEl.innerHTML = history.map(h => {
+        const started = h.startedAt ? new Date(h.startedAt).toLocaleString() : '-';
+        const ended = h.endedAt ? new Date(h.endedAt).toLocaleString() : 'Active';
+        const msgCount = h.summary ? h.summary.messageCount : '?';
+        const hasTranscript = !!h.transcriptPath;
+        return `
+          <div class="conv-session-item ${hasTranscript ? 'clickable' : 'no-transcript'}" data-session-id="${h.sessionId}" data-has-transcript="${hasTranscript}">
+            <div class="conv-session-main">
+              <span class="conv-session-id-label">${h.sessionId.slice(0, 12)}...</span>
+              <span class="conv-session-msgs">${msgCount} messages</span>
+            </div>
+            <div class="conv-session-dates">
+              <span>${started}</span>
+              <span class="conv-session-arrow">&rarr;</span>
+              <span>${ended}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Click handler for session items
+      sessionListEl.querySelectorAll('.conv-session-item.clickable').forEach(item => {
+        item.addEventListener('click', () => {
+          openConversation(registryId, item.dataset.sessionId);
+        });
+      });
+
+    } catch (e) {
+      sessionListEl.innerHTML = '<div class="conv-empty">Failed to load history.</div>';
+      console.error('[History]', e);
+    }
+  };
+
+  async function openConversation(registryId, sessionId) {
+    currentSessionId = sessionId;
+    sessionListEl.style.display = 'none';
+    chatPanel.style.display = '';
+    chatSessionId.textContent = sessionId.slice(0, 16) + '...';
+    chatMessages.innerHTML = '<div class="conv-loading">Loading conversation...</div>';
+
+    try {
+      let data;
+      if (typeof dashboardAPI !== 'undefined' && dashboardAPI.getConversation) {
+        data = await dashboardAPI.getConversation(registryId, sessionId, {});
+      } else {
+        const res = await fetch('/api/agents/' + registryId + '/conversation/' + sessionId);
+        data = await res.json();
+      }
+
+      if (data.error) {
+        chatMessages.innerHTML = `<div class="conv-empty">${data.error}</div>`;
+        return;
+      }
+
+      if (!data.messages || data.messages.length === 0) {
+        chatMessages.innerHTML = '<div class="conv-empty">No messages in this session.</div>';
+        return;
+      }
+
+      chatMessages.innerHTML = data.messages.map(renderMessage).join('');
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+
+    } catch (e) {
+      chatMessages.innerHTML = '<div class="conv-empty">Failed to load conversation.</div>';
+      console.error('[Conversation]', e);
+    }
+  }
+
+  function renderMessage(msg) {
+    if (msg.role === 'system') {
+      return `<div class="conv-msg conv-msg-system"><span class="conv-msg-badge">SYSTEM</span> ${escapeHtml(msg.content)}</div>`;
+    }
+    if (msg.role === 'user') {
+      return `<div class="conv-msg conv-msg-user"><span class="conv-msg-badge">USER</span><div class="conv-msg-content">${escapeHtml(msg.content)}</div>${msg.timestamp ? `<span class="conv-msg-time">${formatTime(msg.timestamp)}</span>` : ''}</div>`;
+    }
+    if (msg.role === 'assistant') {
+      const toolHtml = msg.toolUses && msg.toolUses.length > 0
+        ? `<div class="conv-msg-tools">${msg.toolUses.map(t => `<span class="conv-tool-tag">${escapeHtml(t.name)}</span>`).join('')}</div>`
+        : '';
+      const tokenHtml = msg.tokens
+        ? `<span class="conv-msg-tokens">in:${msg.tokens.input} out:${msg.tokens.output}</span>`
+        : '';
+      return `<div class="conv-msg conv-msg-assistant"><span class="conv-msg-badge">ASSISTANT</span>${toolHtml}<div class="conv-msg-content">${escapeHtml(msg.content)}</div><div class="conv-msg-meta">${msg.model ? `<span class="conv-msg-model">${msg.model}</span>` : ''}${tokenHtml}${msg.timestamp ? `<span class="conv-msg-time">${formatTime(msg.timestamp)}</span>` : ''}</div></div>`;
+    }
+    return '';
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+  }
+
+  function formatTime(ts) {
+    try { return new Date(ts).toLocaleTimeString(); } catch { return ''; }
+  }
 })();

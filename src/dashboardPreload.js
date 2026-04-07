@@ -66,6 +66,11 @@ contextBridge.exposeInMainWorld('dashboardAPI', {
   archiveRegisteredAgent: (id) => ipcRenderer.invoke('registry:archive', id),
   deleteRegisteredAgent: (id) => ipcRenderer.invoke('registry:delete', id),
 
+  // ─── Session History / Conversation ───
+  getSessionHistory: (registryId) => ipcRenderer.invoke('registry:session-history', registryId),
+  getConversation: (registryId, sessionId, options) => ipcRenderer.invoke('registry:conversation', registryId, sessionId, options),
+  resumeSession: (registryId, sessionId) => ipcRenderer.invoke('registry:resume-session', registryId, sessionId),
+
   // ─── Nickname ───
   setNickname: (agentId, nickname) => ipcRenderer.invoke('nickname:set', agentId, nickname),
   getNickname: (agentId) => ipcRenderer.invoke('nickname:get', agentId),
