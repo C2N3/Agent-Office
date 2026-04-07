@@ -43,7 +43,7 @@ async function initOffice() {
   try {
     const res = await fetch('/api/agents');
     const agents = await res.json();
-    agents.filter(function (a) { return a.isRegistered; }).forEach(function (a) {
+    agents.forEach(function (a) {
       officeCharacters.addCharacter(a);
     });
   } catch (e) {
@@ -59,14 +59,12 @@ async function initOffice() {
 /** Called from dashboard SSE agent.created handler */
 function officeOnAgentCreated(data) {
   if (!officeInitialized) return;
-  if (!data.isRegistered) return; // Only show registered agents
   officeCharacters.addCharacter(data);
 }
 
 /** Called from dashboard SSE agent.updated handler */
 function officeOnAgentUpdated(data) {
   if (!officeInitialized) return;
-  if (!data.isRegistered) return;
   officeCharacters.updateCharacter(data);
 }
 

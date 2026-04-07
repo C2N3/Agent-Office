@@ -43,8 +43,8 @@ function connectSSE() {
   };
 
   es.addEventListener('connected', () => fetchInitialData());
-  es.addEventListener('agent.created', e => { const d = JSON.parse(e.data).data; updateAgent(d); if (d.isRegistered && typeof officeOnAgentCreated === 'function') officeOnAgentCreated(d); });
-  es.addEventListener('agent.updated', e => { const d = JSON.parse(e.data).data; updateAgent(d); if (d.isRegistered && typeof officeOnAgentUpdated === 'function') officeOnAgentUpdated(d); });
+  es.addEventListener('agent.created', e => { const d = JSON.parse(e.data).data; updateAgent(d); if (typeof officeOnAgentCreated === 'function') officeOnAgentCreated(d); });
+  es.addEventListener('agent.updated', e => { const d = JSON.parse(e.data).data; updateAgent(d); if (typeof officeOnAgentUpdated === 'function') officeOnAgentUpdated(d); });
   es.addEventListener('agent.removed', e => { const d = JSON.parse(e.data).data; removeAgent(d.id); if (typeof officeOnAgentRemoved === 'function') officeOnAgentRemoved(d); });
 }
 
@@ -135,15 +135,12 @@ function updateConnectionStatus(up) {
 
 // ─── RENDER AGENTS ───
 function renderAgentList() {
-  const registered = [...state.agents.values()].filter(a => a.isRegistered);
-  if (registered.length === 0) {
-    DOM.standbyMessage.style.display = 'block';
-    return;
-  }
-  DOM.standbyMessage.style.display = 'none';
+  const allAgents = [...state.agents.values()];
+  const registered = allAgents.filter(a => a.isRegistered);
+  DOM.standbyMessage.style.display = registered.length === 0 ? 'block' : 'none';
   for (const ag of registered) updateAgentUI(ag);
-  // Add registered agents to office
-  for (const ag of registered) {
+  // Add all live agents to office
+  for (const ag of allAgents) {
     if (typeof officeOnAgentCreated === 'function') officeOnAgentCreated(ag);
   }
 }
@@ -305,6 +302,7 @@ function showOfficePopover(canvas, char) {
     <div class="pop-row"><span>Tokens</span><span class="pop-val">${formatNum(inputTok + outputTok)}</span></div>
     <div class="pop-row"><span>Cost</span><span class="pop-val">$${cost.toFixed(4)}</span></div>
     <div class="pop-row"><span>Context</span><span class="pop-val">${ctxText}</span></div>
+    <button class="pop-terminal-btn" onclick="promptRenameAgent('${char.id}')">Rename</button>
     <button class="pop-terminal-btn" onclick="openTerminalForAgent('${char.id}')">Open Terminal</button>
   `;
   popoverEl.style.display = 'block';
@@ -333,6 +331,21 @@ function showOfficePopover(canvas, char) {
 
 function hideOfficePopover() {
   popoverEl.style.display = 'none';
+}
+
+async function promptRenameAgent(agentId) {
+  const ag = state.agents.get(agentId);
+  const currentName = (ag && (ag.nickname || ag.name)) || 'Agent';
+  const nextName = window.prompt('Rename agent', currentName);
+  if (nextName === null || typeof dashboardAPI === 'undefined') return;
+
+  const trimmed = nextName.trim();
+  if (trimmed) {
+    await dashboardAPI.setNickname(agentId, trimmed);
+  } else {
+    await dashboardAPI.removeNickname(agentId);
+  }
+  hideOfficePopover();
 }
 
 function setupOfficeClickHandler() {
