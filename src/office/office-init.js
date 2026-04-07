@@ -14,7 +14,7 @@ async function initOffice() {
   }
 
   // Load shared config before anything else
-  await Promise.all([loadAvatarFiles(), loadSpriteFrames()]);
+  await Promise.all([loadAvatarFiles(), loadSpriteFrames(), loadOfficeLayout()]);
 
   const canvas = document.getElementById('office-canvas');
   if (!canvas) return;

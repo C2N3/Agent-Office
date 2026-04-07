@@ -23,14 +23,49 @@ function loadOfficeImage(src) {
 var officeLayers = {
   bgImage: null,
   fgImage: null,
+  decorBefore: [],
+  decorAfter: [],
   width: 0,
   height: 0,
 };
 
+async function loadOfficeDecorItems() {
+  const decor = (typeof OFFICE_LAYOUT !== 'undefined' && OFFICE_LAYOUT.decor) || [];
+  const loaded = await Promise.all(decor.map(async function (item) {
+    return {
+      id: item.id,
+      x: item.x,
+      y: item.y,
+      width: item.width,
+      height: item.height,
+      scale: item.scale,
+      alpha: item.alpha,
+      layer: item.layer || 'bg',
+      image: await loadOfficeImage(item.src),
+    };
+  }));
+
+  officeLayers.decorBefore = loaded.filter(function (item) { return item.layer !== 'fg'; });
+  officeLayers.decorAfter = loaded.filter(function (item) { return item.layer === 'fg'; });
+}
+
 async function buildOfficeLayers() {
   const ts = Date.now();
-  const bgImg = await loadOfficeImage('/public/office/map/office_bg_32.webp?t=' + ts);
-  const fgImg = await loadOfficeImage('/public/office/map/office_fg_32.webp?t=' + ts);
+  const assets = (typeof OFFICE_LAYOUT !== 'undefined' && OFFICE_LAYOUT.assets) || {};
+  const bgSrc = assets.background || '/public/office/map/office_bg_32.webp';
+  const fgSrc = assets.foreground || '/public/office/map/office_fg_32.webp';
+  const cacheBust = function (src) {
+    const sep = src.indexOf('?') === -1 ? '?' : '&';
+    return src + sep + 't=' + ts;
+  };
+
+  const loaded = await Promise.all([
+    loadOfficeImage(cacheBust(bgSrc)),
+    loadOfficeImage(cacheBust(fgSrc)),
+    loadOfficeDecorItems(),
+  ]);
+  const bgImg = loaded[0];
+  const fgImg = loaded[1];
 
   officeLayers.bgImage = bgImg;
   officeLayers.fgImage = fgImg;

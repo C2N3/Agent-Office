@@ -253,7 +253,8 @@ var officeCharacters = {
 
       if (char.agentState === 'done' || char.agentState === 'completed') {
         if (currentSpot && currentSpot.type === 'idle') {
-          const entry = IDLE_SEAT_MAP[currentSpot.id];
+          const idleSeatMap = (typeof OFFICE_LAYOUT !== 'undefined' && OFFICE_LAYOUT.idleSeatMap) || {};
+          const entry = idleSeatMap[currentSpot.id];
           char.currentAnim = (entry === 'dance') ? 'dance' : 'sit_' + (entry || 'down');
         } else {
           char.currentAnim = 'sit_' + (char.facingDir || 'down');

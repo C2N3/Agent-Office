@@ -33,22 +33,27 @@ var officeRenderer = {
     await parseMapCoordinates(officeLayers.width, officeLayers.height);
 
     // 4. Load all skins + laptop images in parallel
-    const resMap = { down: 'front', up: 'back', left: 'left', right: 'right' };
     const directions = ['down', 'up', 'left', 'right'];
     const self = this;
     const ts = Date.now();
+    const laptopStates = (typeof OFFICE_LAYOUT !== 'undefined' && OFFICE_LAYOUT.assets && OFFICE_LAYOUT.assets.laptopStates) || {};
+    const cacheBust = function (src) {
+      const sep = src.indexOf('?') === -1 ? '?' : '&';
+      return src + sep + 'v=' + ts;
+    };
 
     const promises = [loadAllOfficeSkins()];
     directions.forEach(function (d) {
+      const states = laptopStates[d] || {};
       promises.push(new Promise(function (resolve) {
         const img = new Image();
-        img.src = '/public/office/ojects/office_laptop_' + resMap[d] + '_close.webp?v=' + ts;
+        img.src = cacheBust(states.closed || '');
         img.onload = function () { self.laptopImages[d] = img; resolve(); };
         img.onerror = function () { resolve(); };
       }));
       promises.push(new Promise(function (resolve) {
         const img = new Image();
-        img.src = '/public/office/ojects/office_laptop_' + resMap[d] + '_open.webp?v=' + ts;
+        img.src = cacheBust(states.open || '');
         img.onload = function () { self.laptopOpenImages[d] = img; resolve(); };
         img.onerror = function () { resolve(); };
       }));
@@ -186,12 +191,16 @@ var officeRenderer = {
     // 1. Background (scaled to canvas size)
     ctx.drawImage(officeLayers.bgImage, 0, 0, this.canvas.width, this.canvas.height);
 
-    // 2. Laptops
+    // 2. Static decor behind agents
+    this._drawDecorItems(ctx, officeLayers.decorBefore);
+
+    // 3. Laptops
     const laptopSpots = officeCoords.laptopSpots || [];
     const chars = officeCharacters.getCharacterArray();
     for (let i = 0; i < laptopSpots.length; i++) {
       const spot = laptopSpots[i];
-      const seatId = LAPTOP_ID_MAP[i] !== undefined ? LAPTOP_ID_MAP[i] : i;
+      const seatMap = (typeof OFFICE_LAYOUT !== 'undefined' && OFFICE_LAYOUT.laptopSeatMap) || {};
+      const seatId = seatMap[i] !== undefined ? seatMap[i] : i;
 
       const isAtDesk = chars.some(function (a) {
         return a.deskIndex === seatId &&
@@ -206,7 +215,7 @@ var officeRenderer = {
       }
     }
 
-    // 3. Characters (Y-sorted)
+    // 4. Characters (Y-sorted)
     const sorted = chars.slice().sort(function (a, b) { return a.y - b.y; });
 
     for (let j = 0; j < sorted.length; j++) {
@@ -235,12 +244,15 @@ var officeRenderer = {
       if (isOffline) ctx.globalAlpha = 1.0;
     }
 
-    // 4. Foreground (scaled to canvas size)
+    // 5. Foreground (scaled to canvas size)
     if (officeLayers.fgImage && officeLayers.fgImage.complete && officeLayers.fgImage.naturalWidth > 0) {
       ctx.drawImage(officeLayers.fgImage, 0, 0, this.canvas.width, this.canvas.height);
     }
 
-    // 5. Effects
+    // 6. Static decor above agents
+    this._drawDecorItems(ctx, officeLayers.decorAfter);
+
+    // 7. Effects
     this.renderEffects(ctx);
 
     // Restore camera transform
@@ -375,5 +387,24 @@ var officeRenderer = {
     ctx.lineTo(x + size / 2 + 2, y + h / 2);
     ctx.lineTo(x - size / 2 - 2, y + h / 2);
     ctx.closePath();
+  },
+
+  _drawDecorItems: function (ctx, items) {
+    if (!Array.isArray(items) || items.length === 0) return;
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (!item || !item.image || !item.image.complete || item.image.naturalWidth <= 0) continue;
+
+      const alpha = typeof item.alpha === 'number' ? item.alpha : 1;
+      const scale = (typeof item.scale === 'number' ? item.scale : 1) * ((OFFICE && OFFICE.MAP_SCALE) || 1);
+      const width = item.width || item.image.naturalWidth * scale;
+      const height = item.height || item.image.naturalHeight * scale;
+
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.drawImage(item.image, item.x, item.y, width, height);
+      ctx.restore();
+    }
   },
 };

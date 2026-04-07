@@ -12,7 +12,10 @@ var officePathfinder = {
 
   async init(bgW, bgH) {
     const TILE = OFFICE.TILE_SIZE;
-    const img = await loadOfficeImage('/public/office/map/office_collision.webp?t=' + Date.now());
+    const assets = (typeof OFFICE_LAYOUT !== 'undefined' && OFFICE_LAYOUT.assets) || {};
+    const src = assets.collision || '/public/office/map/office_collision.webp';
+    const sep = src.indexOf('?') === -1 ? '?' : '&';
+    const img = await loadOfficeImage(src + sep + 't=' + Date.now());
     const canvas = document.createElement('canvas');
     canvas.width = img.naturalWidth;
     canvas.height = img.naturalHeight;
