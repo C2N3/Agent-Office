@@ -4,9 +4,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Electron](https://img.shields.io/badge/Electron-32+-47848F?logo=electron&logoColor=white)](https://www.electronjs.org/)
 
-> Real-time pixel avatar visualization for Claude Code CLI multi-agent sessions.
+> Real-time pixel avatar visualization for Claude Code CLI and Codex CLI sessions.
 
-Pixel Agent Desk is a standalone Electron app that listens to [Claude Code](https://docs.anthropic.com/en/docs/claude-code) hook events and renders each agent session as an animated pixel character — complete with a virtual office, activity heatmaps, and token usage analytics.
+Pixel Agent Desk is a standalone Electron app that listens to [Claude Code](https://docs.anthropic.com/en/docs/claude-code) hook events and can also ingest [Codex](https://developers.openai.com/codex/) `exec --json` streams. It renders each agent session as an animated pixel character with a virtual office, activity heatmaps, and token usage analytics.
 
 ![Demo](docs/demo.gif)
 
@@ -26,11 +26,13 @@ Pixel Agent Desk is a standalone Electron app that listens to [Claude Code](http
 - **PiP Mode** — Always-on-top floating window so your pixel office stays visible while you work
 - **Auto Recovery** — Running sessions are automatically restored on app restart
 - **Sub-agents & Teams** — Full support for Claude Code sub-agents and team mode
+- **Codex MVP Input** — Optional `codex exec --json` forwarding path via local event ingestion
 
 ## Requirements
 
 - **Node.js** 20 or later
-- **Claude Code CLI** installed and configured
+- **Claude Code CLI** installed and configured for hook-based monitoring
+- **Codex CLI** optional for `exec --json` ingestion
 - **OS:** Windows, macOS, or Linux
 
 ## Quick Start
@@ -43,6 +45,25 @@ npm start
 ```
 
 > `npm install` also auto-registers the required Claude Code hooks in `~/.claude/settings.json`.
+
+## Codex MVP
+
+Enable the Codex adapter at runtime:
+
+```bash
+PIXEL_AGENT_PROVIDERS=claude,codex npm start
+```
+
+Forward a `codex exec --json` run into the app:
+
+```bash
+codex exec --json "summarize this repo" | node src/codex-forward.js
+```
+
+Notes:
+- The current Codex path is an MVP for live session state only.
+- Claude-only features such as hook auto-registration, PID recovery, and transcript scanning remain on the Claude adapter.
+- The Codex forwarder posts to `http://127.0.0.1:47822/codex-event` by default. Override with `PIXEL_AGENT_CODEX_PORT` if needed.
 
 ## Scripts
 
