@@ -71,7 +71,7 @@ if ($hwnd -ne [IntPtr]::Zero) {
   }
 }
 
-function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowManager, terminalManager, terminalProfileService, nicknameStore, debugLog, adaptAgentToDashboard, errorHandler, attachRegisteredAgent }) {
+function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowManager, terminalManager, terminalProfileService, workspaceManager, nicknameStore, debugLog, adaptAgentToDashboard, errorHandler, attachRegisteredAgent }) {
   ipcMain.on('resize-window', (e, size) => {
     const mw = windowManager.mainWindow;
     if (!mw || mw.isDestroyed()) return;
@@ -276,6 +276,7 @@ function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowM
           projectPath: agent.projectPath,
           avatarIndex: agent.avatarIndex,
           provider: agent.provider,
+          workspace: agent.workspace || null,
           isRegistered: true,
           state: 'Offline',
         }, 'registry');
@@ -300,6 +301,7 @@ function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowM
             role: updated.role,
             projectPath: updated.projectPath,
             avatarIndex: updated.avatarIndex,
+            workspace: updated.workspace || null,
           }, 'registry');
         } else if (!attachedSessionId) {
           agentManager.updateAgent({
@@ -309,6 +311,7 @@ function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowM
             projectPath: updated.projectPath,
             avatarIndex: updated.avatarIndex,
             provider: updated.provider,
+            workspace: updated.workspace || null,
             isRegistered: true,
             state: 'Offline',
           }, 'registry');
@@ -316,6 +319,88 @@ function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowM
       }
       return { success: !!updated, agent: updated };
     });
+
+    if (workspaceManager) {
+      ipcMain.handle('workspace:create', async (event, data) => {
+        try {
+          const workspaceResult = workspaceManager.createWorkspace(data);
+          const agent = agentRegistry.createAgent({
+            name: data.name,
+            role: data.role,
+            projectPath: workspaceResult.workspacePath,
+            provider: data.provider,
+            workspace: workspaceResult.workspace,
+          });
+
+          const attachedSessionId = attachRegisteredAgent ? attachRegisteredAgent(agent) : null;
+          if (!attachedSessionId) {
+            agentManager.updateAgent({
+              registryId: agent.id,
+              displayName: agent.name,
+              role: agent.role,
+              projectPath: agent.projectPath,
+              avatarIndex: agent.avatarIndex,
+              provider: agent.provider,
+              workspace: agent.workspace || null,
+              isRegistered: true,
+              state: 'Offline',
+            }, 'workspace');
+          }
+
+          return {
+            success: true,
+            agent,
+            workspace: workspaceResult.workspace,
+            bootstrapCommand: workspaceResult.bootstrapCommand,
+          };
+        } catch (error) {
+          debugLog(`[Workspace] Create error: ${error.message}`);
+          return { success: false, error: error.message };
+        }
+      });
+
+      ipcMain.handle('workspace:merge-cleanup', async (event, registryId) => {
+        try {
+          const agent = agentRegistry.getAgent(registryId);
+          if (!agent) return { success: false, error: 'Agent not found' };
+          if (agent.currentSessionId) return { success: false, error: 'Stop the active session before merging this workspace.' };
+          if (!agent.workspace) return { success: false, error: 'No managed workspace is attached to this agent.' };
+
+          const result = workspaceManager.mergeWorkspace(agent.workspace);
+          agentRegistry.archiveAgent(registryId);
+          const existing = agentManager.getAgent(registryId);
+          if (existing && existing.state === 'Offline') {
+            agentManager.removeAgent(registryId);
+          }
+
+          return { success: true, result };
+        } catch (error) {
+          debugLog(`[Workspace] Merge cleanup error: ${error.message}`);
+          return { success: false, error: error.message };
+        }
+      });
+
+      ipcMain.handle('workspace:remove', async (event, registryId) => {
+        try {
+          const agent = agentRegistry.getAgent(registryId);
+          if (!agent) return { success: false, error: 'Agent not found' };
+          if (agent.currentSessionId) return { success: false, error: 'Stop the active session before removing this workspace.' };
+          if (!agent.workspace) return { success: false, error: 'No managed workspace is attached to this agent.' };
+
+          const result = workspaceManager.removeWorkspace(agent.workspace, { deleteBranch: true });
+          agentRegistry.archiveAgent(registryId);
+          const existing = agentManager.getAgent(registryId);
+          if (existing && existing.state === 'Offline') {
+            agentManager.removeAgent(registryId);
+          }
+
+          return { success: true, result };
+        } catch (error) {
+          debugLog(`[Workspace] Remove error: ${error.message}`);
+          return { success: false, error: error.message };
+        }
+      });
+    }
 
     ipcMain.handle('registry:toggle', async (event, registryId, enabled) => {
       agentRegistry.setEnabled(registryId, enabled);

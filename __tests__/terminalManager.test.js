@@ -1,3 +1,7 @@
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+
 const mockSpawn = jest.fn();
 
 jest.mock('node-pty', () => ({
@@ -7,8 +11,15 @@ jest.mock('node-pty', () => ({
 const { TerminalManager } = require('../src/main/terminalManager');
 
 describe('TerminalManager', () => {
+  let tempCwd;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    tempCwd = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-office-terminal-'));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tempCwd, { recursive: true, force: true });
   });
 
   test('creates a terminal using the resolved profile command and args', () => {
@@ -35,13 +46,13 @@ describe('TerminalManager', () => {
     });
 
     const result = manager.createTerminal('local-1', {
-      cwd: 'D:\\workspace\\Agent-Office',
+      cwd: tempCwd,
       profileId: 'cmd',
     });
 
     expect(terminalProfileService.resolveProfile).toHaveBeenCalledWith('cmd');
     expect(mockSpawn).toHaveBeenCalledWith('C:\\Windows\\System32\\cmd.exe', ['/k'], expect.objectContaining({
-      cwd: 'D:\\workspace\\Agent-Office',
+      cwd: tempCwd,
       name: 'xterm-256color',
     }));
     expect(result).toEqual(expect.objectContaining({

@@ -54,6 +54,13 @@ describe('dashboardAdapter', () => {
         sessionId: 'sess-123',
         displayName: 'my-app',
         projectPath: '/projects/my-app',
+        workspace: {
+          type: 'git-worktree',
+          repositoryPath: '/projects/root',
+          repositoryName: 'root',
+          worktreePath: '/projects/my-app',
+          branch: 'feature/test',
+        },
         state: 'Working',
         model: 'claude-sonnet-4-6',
         tokenUsage: { inputTokens: 1000, outputTokens: 200, estimatedCost: 0.01 },
@@ -85,6 +92,10 @@ describe('dashboardAdapter', () => {
       expect(result.avatarIndex).toBe(2);
       expect(result.metadata.isSubagent).toBe(false);
       expect(result.metadata.permissionMode).toBe('default');
+      expect(result.metadata.workspace).toEqual(expect.objectContaining({
+        branch: 'feature/test',
+        repositoryName: 'root',
+      }));
       expect(result.metadata.source).toBe('agent-office');
       expect(result.timing.elapsed).toBeGreaterThan(0);
       expect(result.timing.active).toBe(true);

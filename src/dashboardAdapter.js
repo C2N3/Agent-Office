@@ -102,6 +102,7 @@ function adaptAgentToDashboard(pixelAgent) {
       isSubagent: pixelAgent.isSubagent || false,
       isTeammate: pixelAgent.isTeammate || false,
       projectPath: sanitizeProjectPath(pixelAgent.projectPath),
+      workspace: pixelAgent.workspace || null,
       parentId: pixelAgent.parentId || null,
       permissionMode: pixelAgent.permissionMode || null,
       teammateName: pixelAgent.teammateName || null,

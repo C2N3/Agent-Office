@@ -29,6 +29,7 @@ const { NicknameStore } = require('./main/nicknameStore');
 const { TerminalManager } = require('./main/terminalManager');
 const { TerminalProfileService } = require('./main/terminalProfileService');
 const { AgentRegistry } = require('./main/agentRegistry');
+const { WorkspaceManager } = require('./main/workspaceManager');
 
 // =====================================================
 // Save error logs to file
@@ -94,6 +95,7 @@ let codexProcessor = null;
 let codexSessionMonitor = null;
 let terminalManager = null;
 let terminalProfileService = null;
+let workspaceManager = null;
 let livenessIntervals = null;
 let agentListeners = null;
 let hookServer = null;
@@ -158,6 +160,7 @@ app.whenReady().then(() => {
   const nicknameStore = new NicknameStore(debugLog);
   terminalProfileService = new TerminalProfileService(debugLog);
   const agentRegistry = new AgentRegistry(debugLog);
+  workspaceManager = new WorkspaceManager({ debugLog });
 
   // 1. Start agent manager immediately
   agentManager = new AgentManager();
@@ -225,6 +228,7 @@ app.whenReady().then(() => {
     windowManager,
     terminalManager,
     terminalProfileService,
+    workspaceManager,
     nicknameStore,
     debugLog,
     adaptAgentToDashboard,
@@ -290,6 +294,7 @@ app.whenReady().then(() => {
       projectPath: regAgent.projectPath,
       avatarIndex: regAgent.avatarIndex,
       provider: regAgent.provider,
+      workspace: regAgent.workspace || null,
       isRegistered: true,
       state: 'Offline',
       tokenUsage: regAgent.cumulativeTokens || { inputTokens: 0, outputTokens: 0, estimatedCost: 0 },

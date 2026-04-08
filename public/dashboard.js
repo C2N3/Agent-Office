@@ -236,6 +236,25 @@ function updateAgentUI(ag) {
   const hasCtx = ctxPct != null;
   const ctxColor = !hasCtx ? '' : ctxPct > 85 ? 'ctx-high' : ctxPct > 60 ? 'ctx-mid' : 'ctx-low';
   const ctxValText = hasCtx ? `~${ctxPct}%` : '--';
+  const workspaceMeta = ag.metadata?.workspace || null;
+  const workspaceBranch = workspaceMeta?.branch || '';
+  const workspaceRepo = workspaceMeta?.repositoryName || '';
+  const workspaceBadge = workspaceBranch
+    ? `<span class="mc-type-badge workspace" title="${escapeText(workspaceRepo || 'worktree')}">WT ${escapeText(workspaceBranch)}</span>`
+    : '';
+  const workspaceSummary = workspaceBranch
+    ? `<div class="mc-agent-workspace">${escapeText(workspaceRepo || ag.project || 'workspace')} · ${escapeText(workspaceBranch)}</div>`
+    : '';
+  const workspaceActions = ag.isRegistered && ag.registryId && workspaceBranch
+    ? `
+        <button class="agent-workspace-btn merge" data-workspace-merge-id="${ag.registryId}" data-branch="${escapeText(workspaceBranch)}" title="Merge branch and clean up workspace">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="M8 6h8"/><path d="M6 8v4c0 2 2 4 4 4h2"/><path d="M18 8v4c0 2-2 4-4 4h-2"/></svg>
+        </button>
+        <button class="agent-workspace-btn remove" data-workspace-remove-id="${ag.registryId}" data-branch="${escapeText(workspaceBranch)}" title="Remove workspace and delete branch without merge">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+        </button>
+      `
+    : '';
 
   // Build timeline segments
   const hist = state.agentHistory.get(ag.id) || [];
@@ -257,15 +276,17 @@ function updateAgentUI(ag) {
 
   const html = `
     <div class="mc-agent-header">
-      <div class="mc-agent-name"><div class="mc-agent-avatar" style="background-image:url('./public/characters/${avFile}')"></div><span class="agent-display-name" data-agent-id="${ag.id}" title="Double-click to rename">${ag.nickname || ag.name || 'Agent'}</span> ${typeHtml}</div>
+      <div class="mc-agent-name"><div class="mc-agent-avatar" style="background-image:url('./public/characters/${avFile}')"></div><span class="agent-display-name" data-agent-id="${ag.id}" title="Double-click to rename">${ag.nickname || ag.name || 'Agent'}</span> ${typeHtml} ${workspaceBadge}</div>
       <div style="display:flex;align-items:center;gap:6px;">
         <div class="mc-agent-status ${stClass}">${stText}</div>
         ${ag.isRegistered && ag.registryId ? `<button class="agent-history-btn" data-history-id="${ag.registryId}" data-agent-name="${ag.nickname || ag.name || 'Agent'}" title="Session History"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg></button>` : ''}
+        ${workspaceActions}
         ${ag.isRegistered && ag.registryId ? `<button class="agent-avatar-btn" data-avatar-id="${ag.registryId}" data-agent-id="${ag.id}" title="Change avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M5 20c0-4 3.5-7 7-7s7 3 7 7"/></svg></button>` : ''}
         ${ag.isRegistered && ag.registryId ? `<button class="agent-delete-btn" data-delete-id="${ag.registryId}" title="Delete agent">&times;</button>` : ''}
       </div>
     </div>
     ${ag.role ? `<div class="mc-agent-role">${ag.role}</div>` : ''}
+    ${workspaceSummary}
     <div class="mc-agent-activity">CMD> ${actText}</div>
     ${timelineHtml}
     <div class="mc-agent-metrics">
@@ -355,6 +376,9 @@ function showOfficePopover(canvas, char) {
   const cost = (ag && ag.tokenUsage?.estimatedCost) || 0;
   const ctxPct = (ag && ag.tokenUsage?.contextPercent);
   const ctxText = ctxPct != null ? `~${ctxPct}%` : '-';
+  const workspaceMeta = ag?.metadata?.workspace || null;
+  const branch = escapeText(workspaceMeta?.branch || '-');
+  const repository = escapeText(workspaceMeta?.repositoryName || '-');
 
   popoverEl.innerHTML = `
     <div class="pop-header">
@@ -362,6 +386,8 @@ function showOfficePopover(canvas, char) {
       <div class="mc-agent-status ${stClass}" style="font-size:0.6rem">${status.toUpperCase()}</div>
     </div>
     <div class="pop-row"><span>Project</span><span class="pop-val">${project}</span></div>
+    <div class="pop-row"><span>Repo</span><span class="pop-val">${repository}</span></div>
+    <div class="pop-row"><span>Branch</span><span class="pop-val">${branch}</span></div>
     <div class="pop-row"><span>Tool</span><span class="pop-val">${tool}</span></div>
     <div class="pop-row"><span>Model</span><span class="pop-val">${model}</span></div>
     <div class="pop-row"><span>Tokens</span><span class="pop-val">${formatNum(inputTok + outputTok)}</span></div>
@@ -1004,7 +1030,7 @@ async function openTerminalForAgent(agentId, openOptions = {}) {
 
   createXtermInstance(agentId, openOptions.label || agent?.nickname || agent?.name || result?.profileLabel || 'Terminal');
 
-  if (provider === 'codex' && dashboardAPI.writeTerminal) {
+  if (provider === 'codex' && dashboardAPI.writeTerminal && !openOptions.skipProviderBoot) {
     // Codex agents should boot directly into the Codex CLI instead of a blank shell.
     setTimeout(() => {
       dashboardAPI.writeTerminal(agentId, 'codex\r');
@@ -1317,6 +1343,36 @@ function initApp() {
         openSessionHistory(histBtn.dataset.historyId, histBtn.dataset.agentName || 'Agent');
         return;
       }
+      const mergeBtn = e.target.closest('.agent-workspace-btn.merge');
+      if (mergeBtn && mergeBtn.dataset.workspaceMergeId) {
+        e.stopPropagation();
+        if (confirm(`Merge branch "${mergeBtn.dataset.branch || ''}" and archive this workspace agent?`)) {
+          if (typeof dashboardAPI !== 'undefined' && dashboardAPI.mergeWorkspaceAgent) {
+            dashboardAPI.mergeWorkspaceAgent(mergeBtn.dataset.workspaceMergeId)
+              .then((result) => {
+                if (!result?.success) {
+                  alert(result?.error || 'Workspace merge failed.');
+                }
+              });
+          }
+        }
+        return;
+      }
+      const removeWorkspaceBtn = e.target.closest('.agent-workspace-btn.remove');
+      if (removeWorkspaceBtn && removeWorkspaceBtn.dataset.workspaceRemoveId) {
+        e.stopPropagation();
+        if (confirm(`Remove workspace branch "${removeWorkspaceBtn.dataset.branch || ''}" without merge and archive this agent?`)) {
+          if (typeof dashboardAPI !== 'undefined' && dashboardAPI.removeWorkspaceAgent) {
+            dashboardAPI.removeWorkspaceAgent(removeWorkspaceBtn.dataset.workspaceRemoveId)
+              .then((result) => {
+                if (!result?.success) {
+                  alert(result?.error || 'Workspace removal failed.');
+                }
+              });
+          }
+        }
+        return;
+      }
       // Delete button
       const deleteBtn = e.target.closest('.agent-delete-btn');
       if (deleteBtn && deleteBtn.dataset.deleteId) {
@@ -1390,11 +1446,15 @@ document.addEventListener('DOMContentLoaded', initApp);
   const form = document.getElementById('createAgentForm');
   const openBtn = document.getElementById('createAgentBtn');
   const cancelBtn = document.getElementById('cancelCreateBtn');
-  if (!modal || !form || !openBtn) return;
+  const errorEl = document.getElementById('createAgentError');
+  const modeBtns = document.querySelectorAll('#createModeSelect .provider-btn');
+  const existingFields = document.getElementById('existingAgentFields');
+  const worktreeFields = document.getElementById('worktreeAgentFields');
+  if (!modal || !form || !openBtn || !existingFields || !worktreeFields) return;
 
+  let createMode = 'existing';
   let selectedProvider = 'claude';
 
-  // Provider toggle buttons
   const providerBtns = document.querySelectorAll('#providerSelect .provider-btn');
   providerBtns.forEach(btn => {
     btn.addEventListener('click', () => {
@@ -1404,26 +1464,126 @@ document.addEventListener('DOMContentLoaded', initApp);
     });
   });
 
-  openBtn.addEventListener('click', () => { modal.style.display = ''; });
-  if (cancelBtn) cancelBtn.addEventListener('click', () => { modal.style.display = 'none'; });
-  modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
+  function setCreateMode(nextMode) {
+    createMode = nextMode === 'worktree' ? 'worktree' : 'existing';
+    modeBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.mode === createMode));
+    existingFields.style.display = createMode === 'existing' ? '' : 'none';
+    worktreeFields.style.display = createMode === 'worktree' ? '' : 'none';
+  }
+
+  function resetProviderSelection() {
+    providerBtns.forEach(btn => btn.classList.remove('active'));
+    if (providerBtns[0]) providerBtns[0].classList.add('active');
+    selectedProvider = 'claude';
+  }
+
+  function resetFormState() {
+    form.reset();
+    setCreateMode('existing');
+    resetProviderSelection();
+    if (errorEl) errorEl.textContent = '';
+    const openTerminalCheckbox = document.getElementById('workspaceOpenTerminalInput');
+    if (openTerminalCheckbox) openTerminalCheckbox.checked = true;
+  }
+
+  function closeModal() {
+    modal.style.display = 'none';
+    if (errorEl) errorEl.textContent = '';
+  }
+
+  function parsePathListValue(inputId) {
+    return String(document.getElementById(inputId)?.value || '')
+      .split(/\r?\n|,/)
+      .map(entry => entry.trim())
+      .filter(Boolean);
+  }
+
+  modeBtns.forEach(btn => {
+    btn.addEventListener('click', () => setCreateMode(btn.dataset.mode));
+  });
+
+  openBtn.addEventListener('click', () => {
+    resetFormState();
+    modal.style.display = '';
+  });
+  if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (errorEl) errorEl.textContent = '';
+
     const name = document.getElementById('agentNameInput').value.trim();
     const role = document.getElementById('agentRoleInput').value.trim();
+    if (!name) {
+      if (errorEl) errorEl.textContent = 'Name is required.';
+      return;
+    }
+
+    if (createMode === 'worktree') {
+      const repoPath = document.getElementById('agentRepoPathInput').value.trim();
+      if (!repoPath) {
+        if (errorEl) errorEl.textContent = 'Repository path is required.';
+        return;
+      }
+
+      if (typeof dashboardAPI === 'undefined' || !dashboardAPI.createWorkspaceAgent) {
+        if (errorEl) errorEl.textContent = 'Workspace creation is not available.';
+        return;
+      }
+
+      const payload = {
+        name,
+        role,
+        provider: selectedProvider,
+        repoPath,
+        branchName: document.getElementById('agentBranchInput').value.trim(),
+        workspaceParent: document.getElementById('agentWorkspaceParentInput').value.trim(),
+        startPoint: document.getElementById('agentStartPointInput').value.trim(),
+        copyPaths: parsePathListValue('agentCopyPathsInput'),
+        symlinkPaths: parsePathListValue('agentSymlinkPathsInput'),
+        bootstrapCommand: document.getElementById('agentBootstrapCommandInput').value.trim(),
+      };
+
+      const result = await dashboardAPI.createWorkspaceAgent(payload);
+      if (!result?.success) {
+        if (errorEl) errorEl.textContent = result?.error || 'Failed to create workspace.';
+        return;
+      }
+
+      const shouldOpenTerminal = !!document.getElementById('workspaceOpenTerminalInput')?.checked;
+      closeModal();
+      resetFormState();
+
+      if (shouldOpenTerminal && result.agent?.id) {
+        await openTerminalForAgent(result.agent.id, {
+          cwd: result.workspace?.worktreePath,
+          label: name,
+          skipProviderBoot: true,
+        });
+
+        if (result.bootstrapCommand && typeof dashboardAPI !== 'undefined' && dashboardAPI.writeTerminal) {
+          setTimeout(() => {
+            dashboardAPI.writeTerminal(result.agent.id, `${result.bootstrapCommand}\r`);
+          }, 250);
+        }
+      }
+      return;
+    }
+
     const projectPath = document.getElementById('agentPathInput').value.trim();
-    if (!name || !projectPath) return;
+    if (!projectPath) {
+      if (errorEl) errorEl.textContent = 'Project path is required.';
+      return;
+    }
 
     if (typeof dashboardAPI !== 'undefined' && dashboardAPI.createRegisteredAgent) {
       const result = await dashboardAPI.createRegisteredAgent({ name, role, projectPath, provider: selectedProvider });
       if (result && result.success) {
-        modal.style.display = 'none';
-        form.reset();
-        // Reset provider toggle
-        providerBtns.forEach(b => b.classList.remove('active'));
-        providerBtns[0].classList.add('active');
-        selectedProvider = 'claude';
+        closeModal();
+        resetFormState();
+      } else if (errorEl) {
+        errorEl.textContent = result?.error || 'Failed to register agent.';
       }
     }
   });

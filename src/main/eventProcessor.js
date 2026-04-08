@@ -468,6 +468,7 @@ function createEventProcessor({
         displayName: registeredAgent.name,
         role: registeredAgent.role,
         avatarIndex: registeredAgent.avatarIndex,
+        workspace: registeredAgent.workspace || null,
         isRegistered: true,
         state: initialState,
         provider: resolvedMeta.provider || null,
@@ -609,6 +610,7 @@ function createEventProcessor({
       role: registryAgent.role,
       projectPath: registryAgent.projectPath,
       avatarIndex: registryAgent.avatarIndex,
+      workspace: registryAgent.workspace || null,
       isRegistered: true,
       provider: matched.provider || registryAgent.provider || null,
     }, updateSource);

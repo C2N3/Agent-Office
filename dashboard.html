@@ -277,18 +277,51 @@
 
   <!-- Agent Creation Modal -->
   <div class="modal-overlay" id="createAgentModal" style="display:none;">
-    <div class="modal-content">
+    <div class="modal-content create-agent-modal">
       <div class="modal-header">Register New Agent</div>
       <form id="createAgentForm">
+        <label class="modal-label">Mode
+          <div class="provider-select" id="createModeSelect">
+            <button type="button" class="provider-btn active" data-mode="existing">Existing Path</button>
+            <button type="button" class="provider-btn" data-mode="worktree">Git Worktree</button>
+          </div>
+        </label>
         <label class="modal-label">Name<input type="text" id="agentNameInput" class="modal-input" placeholder="e.g. Stock Monitor Agent" required></label>
         <label class="modal-label">Role<input type="text" id="agentRoleInput" class="modal-input" placeholder="e.g. Service development, bug fixes"></label>
-        <label class="modal-label">Project Path<input type="text" id="agentPathInput" class="modal-input" placeholder="e.g. D:\projects\stock-monitor" required></label>
+        <div id="existingAgentFields">
+          <label class="modal-label">Project Path<input type="text" id="agentPathInput" class="modal-input" placeholder="e.g. D:\projects\stock-monitor"></label>
+        </div>
+        <div id="worktreeAgentFields" style="display:none;">
+          <label class="modal-label">Repository Path<input type="text" id="agentRepoPathInput" class="modal-input" placeholder="e.g. D:\projects\stock-monitor"></label>
+          <div class="modal-input-row">
+            <label class="modal-label">Branch Name<input type="text" id="agentBranchInput" class="modal-input" placeholder="optional, auto-generated if blank"></label>
+            <label class="modal-label">Start From<input type="text" id="agentStartPointInput" class="modal-input" placeholder="HEAD"></label>
+          </div>
+          <label class="modal-label">Workspace Parent<input type="text" id="agentWorkspaceParentInput" class="modal-input" placeholder="optional, defaults next to repo"></label>
+          <label class="modal-label">Copy Paths
+            <textarea id="agentCopyPathsInput" class="modal-input modal-textarea" rows="3" placeholder=".env.local&#10;config/dev.json"></textarea>
+            <span class="modal-help">Copied from the source repo into the new worktree after checkout.</span>
+          </label>
+          <label class="modal-label">Symlink Paths
+            <textarea id="agentSymlinkPathsInput" class="modal-input modal-textarea" rows="3" placeholder="node_modules&#10;.turbo"></textarea>
+            <span class="modal-help">Creates links inside the worktree. Useful for heavy dependency folders.</span>
+          </label>
+          <label class="modal-label">Bootstrap Command
+            <input type="text" id="agentBootstrapCommandInput" class="modal-input" placeholder="e.g. npm install && npm run dev">
+            <span class="modal-help">Optional command sent to the embedded terminal right after workspace creation.</span>
+          </label>
+          <label class="modal-checkbox">
+            <input type="checkbox" id="workspaceOpenTerminalInput" checked>
+            <span>Open embedded terminal after create</span>
+          </label>
+        </div>
         <label class="modal-label">Provider
           <div class="provider-select" id="providerSelect">
             <button type="button" class="provider-btn active" data-provider="claude">Claude</button>
             <button type="button" class="provider-btn" data-provider="codex">Codex</button>
           </div>
         </label>
+        <div class="modal-error" id="createAgentError"></div>
         <div class="modal-actions">
           <button type="button" class="btn-secondary" id="cancelCreateBtn">Cancel</button>
           <button type="submit" class="btn-primary">Create</button>

@@ -25,6 +25,7 @@ Agent-Office는 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) ho
 - **활동 히트맵** — 일별 에이전트 세션 빈도를 GitHub 스타일 그리드로 표시합니다
 - **토큰 분석** — 세션별 및 누적 토큰 사용량, 비용 추정치, 모델별 내역을 제공합니다
 - **터미널 포커스** — 아바타를 클릭하면 해당 터미널 창을 전면으로 가져옵니다
+- **Managed Workspaces** — 대시보드에서 `git worktree` 기반 작업공간을 생성하고, copy/symlink/bootstrap 설정을 함께 적용할 수 있습니다
 - **PiP 모드** — 작업 중에도 픽셀 오피스를 항상 보이게 유지하는 플로팅 창을 제공합니다
 - **자동 복구** — 앱을 재시작해도 실행 중 세션을 자동으로 복원합니다
 - **서브에이전트 및 팀 지원** — Claude Code의 sub-agent와 team mode를 지원합니다
@@ -74,6 +75,33 @@ codex exec --json "summarize this repo" | node src/codex-forward.js
 | `npm start` | Electron 앱을 실행합니다 |
 | `npm run dev` | 개발 모드로 실행합니다 (DevTools 활성화) |
 | `npm test` | 테스트를 실행합니다 |
+
+## Managed Workspaces
+
+대시보드의 `+ New` 버튼은 이제 두 가지 생성 모드를 제공합니다.
+
+- `Existing Path` — 이미 존재하는 프로젝트 폴더를 registered agent로 등록합니다
+- `Git Worktree` — 소스 저장소에서 새 worktree를 만들고, Agent-Office에 바로 연결합니다
+
+`Git Worktree` 모드에서는 다음을 한 번에 처리할 수 있습니다.
+
+- branch 이름 자동 생성 또는 직접 지정
+- worktree 부모 디렉터리 지정
+- `.env.local` 같은 설정 파일 복사
+- `node_modules` 같은 무거운 폴더 symlink
+- 생성 직후 임베디드 터미널 자동 오픈
+- `npm install` 같은 bootstrap 명령 자동 전송
+
+생성된 workspace agent에는 대시보드에서 바로 실행할 수 있는 lifecycle 액션도 붙습니다.
+
+- `Merge` — base branch로 merge 후 worktree와 branch를 정리하고 agent를 archive
+- `Remove` — merge 없이 clean worktree와 branch를 제거하고 agent를 archive
+
+안전 장치:
+
+- 활성 세션이 연결된 workspace는 merge/remove 할 수 없습니다
+- worktree에 uncommitted change가 있으면 merge/remove가 거부됩니다
+- merge 실패 시 `git merge --abort`로 자동 복구를 시도합니다
 
 ## 문제 해결
 

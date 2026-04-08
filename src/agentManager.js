@@ -116,6 +116,7 @@ class AgentManager extends EventEmitter {
       nickname,
       displayName: resolvedDisplayName,
       projectPath: entry.projectPath || (existingAgent ? existingAgent.projectPath : null),
+      workspace: m('workspace'),
       provider: m('provider'),
       jsonlPath: entry.jsonlPath || (existingAgent ? existingAgent.jsonlPath : null),
       model: m('model'),

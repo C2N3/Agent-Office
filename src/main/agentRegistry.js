@@ -50,6 +50,43 @@ function normalizePath(p) {
   return norm.replace(/\/+$/, '');
 }
 
+function sanitizePathList(list) {
+  if (!Array.isArray(list)) return [];
+  return list
+    .map((entry) => sanitizeProjectPath(entry))
+    .filter(Boolean);
+}
+
+function sanitizeWorkspace(workspace, fallbackProjectPath = '') {
+  if (!workspace || typeof workspace !== 'object') return null;
+
+  const repositoryPath = sanitizeProjectPath(workspace.repositoryPath);
+  const worktreePath = sanitizeProjectPath(workspace.worktreePath || fallbackProjectPath);
+  const workspaceParent = sanitizeProjectPath(workspace.workspaceParent);
+  const branch = String(workspace.branch || '').trim();
+  const startPoint = String(workspace.startPoint || '').trim();
+  const baseBranch = String(workspace.baseBranch || '').trim();
+  const bootstrapCommand = String(workspace.bootstrapCommand || '').trim();
+
+  if (!repositoryPath && !worktreePath && !branch) {
+    return null;
+  }
+
+  return {
+    type: workspace.type || 'git-worktree',
+    repositoryPath,
+    repositoryName: String(workspace.repositoryName || (repositoryPath ? path.basename(repositoryPath) : '')).trim(),
+    worktreePath,
+    workspaceParent,
+    branch,
+    startPoint,
+    baseBranch,
+    copyPaths: sanitizePathList(workspace.copyPaths),
+    symlinkPaths: sanitizePathList(workspace.symlinkPaths),
+    bootstrapCommand,
+  };
+}
+
 class AgentRegistry {
   constructor(debugLog) {
     this.debugLog = debugLog || (() => {});
@@ -70,6 +107,12 @@ class AgentRegistry {
             const sanitizedProjectPath = sanitizeProjectPath(agent.projectPath);
             if ((agent.projectPath || '') !== sanitizedProjectPath) {
               agent.projectPath = sanitizedProjectPath;
+              needsSave = true;
+            }
+            const sanitizedWorkspace = sanitizeWorkspace(agent.workspace, sanitizedProjectPath);
+            const currentWorkspace = agent.workspace || null;
+            if (JSON.stringify(currentWorkspace) !== JSON.stringify(sanitizedWorkspace)) {
+              agent.workspace = sanitizedWorkspace;
               needsSave = true;
             }
             this.agents.set(agent.id, agent);
@@ -99,7 +142,7 @@ class AgentRegistry {
     }
   }
 
-  createAgent({ name, role, projectPath, avatarIndex, provider, model }) {
+  createAgent({ name, role, projectPath, avatarIndex, provider, model, workspace }) {
     const sanitizedProjectPath = sanitizeProjectPath(projectPath);
     const id = crypto.randomUUID();
     const agent = {
@@ -117,6 +160,7 @@ class AgentRegistry {
       sessionHistory: [],
       provider: provider || null,
       model: model || null,
+      workspace: sanitizeWorkspace(workspace, sanitizedProjectPath),
     };
     this.agents.set(id, agent);
     this._save();
@@ -147,6 +191,9 @@ class AgentRegistry {
           ? sanitizeProjectPath(fields[key])
           : fields[key];
       }
+    }
+    if (fields.workspace !== undefined) {
+      agent.workspace = sanitizeWorkspace(fields.workspace, agent.projectPath);
     }
     this.agents.set(registryId, agent);
     this._save();
