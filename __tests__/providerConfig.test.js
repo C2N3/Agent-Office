@@ -20,6 +20,11 @@ describe('providerConfig', () => {
     expect(getEnabledProviders({ PIXEL_AGENT_PROVIDER: 'codex' })).toEqual(['codex']);
   });
 
+  test('detects Codex from an explicit session root override', () => {
+    jest.spyOn(fs, 'existsSync').mockImplementation((target) => target === '/custom/codex/sessions');
+    expect(getEnabledProviders({ PIXEL_AGENT_CODEX_SESSION_ROOT: '/custom/codex/sessions' })).toEqual(['claude', 'codex']);
+  });
+
   test('supports comma-separated provider list', () => {
     expect(getEnabledProviders({ PIXEL_AGENT_PROVIDERS: 'claude, codex, claude' })).toEqual(['claude', 'codex']);
   });

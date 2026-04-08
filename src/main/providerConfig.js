@@ -2,17 +2,14 @@
  * Runtime provider selection.
  */
 
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
+const { getCodexSessionRoots } = require('./codexPaths');
 
 const KNOWN_PROVIDERS = ['claude', 'codex'];
 
 function getEnabledProviders(env = process.env) {
   const raw = (env.PIXEL_AGENT_PROVIDERS || env.PIXEL_AGENT_PROVIDER || '').trim().toLowerCase();
   if (!raw || raw === 'default') {
-    const codexSessionsPath = path.join(os.homedir(), '.codex', 'sessions');
-    return fs.existsSync(codexSessionsPath) ? ['claude', 'codex'] : ['claude'];
+    return getCodexSessionRoots({ env }).length > 0 ? ['claude', 'codex'] : ['claude'];
   }
 
   if (raw === 'all') {

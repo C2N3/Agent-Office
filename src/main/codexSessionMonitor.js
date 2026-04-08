@@ -6,6 +6,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { getCodexSessionRoots } = require('./codexPaths');
 
 const DISCOVERY_INTERVAL_MS = 5000;
 const ACTIVE_SESSION_WINDOW_MS = 30 * 60 * 1000;
@@ -55,13 +56,25 @@ function parseJsonLines(content) {
     .filter(Boolean);
 }
 
-function createCodexSessionMonitor({ codexProcessor, agentManager, debugLog, sessionRoot = getCodexSessionsRoot(), activeWindowMs = ACTIVE_SESSION_WINDOW_MS }) {
+function createCodexSessionMonitor({
+  codexProcessor,
+  agentManager,
+  debugLog,
+  sessionRoot,
+  activeWindowMs = ACTIVE_SESSION_WINDOW_MS
+}) {
   const trackedFiles = new Map(); // filePath -> { position, sessionId, lastMtimeMs }
   let intervalId = null;
 
+  function getSessionRoots() {
+    if (Array.isArray(sessionRoot)) return sessionRoot;
+    if (typeof sessionRoot === 'string' && sessionRoot.trim()) return [sessionRoot];
+    return getCodexSessionRoots();
+  }
+
   function discoverCandidates() {
     const now = Date.now();
-    const allFiles = listJsonlFiles(sessionRoot);
+    const allFiles = getSessionRoots().flatMap((root) => listJsonlFiles(root));
     const threadId = process.env.CODEX_THREAD_ID || null;
 
     return allFiles.filter((filePath) => {

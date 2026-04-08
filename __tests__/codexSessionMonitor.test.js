@@ -13,8 +13,13 @@ jest.mock('fs', () => ({
   closeSync: jest.fn(),
 }));
 
+jest.mock('../src/main/codexPaths', () => ({
+  getCodexSessionRoots: jest.fn(() => []),
+}));
+
 const fs = require('fs');
 const path = require('path');
+const { getCodexSessionRoots } = require('../src/main/codexPaths');
 const { createCodexSessionMonitor } = require('../src/main/codexSessionMonitor');
 
 describe('codexSessionMonitor', () => {
@@ -89,5 +94,55 @@ describe('codexSessionMonitor', () => {
     expect(codexProcessor.processSessionEntry).toHaveBeenCalled();
     expect(agentManager.updateAgent).not.toHaveBeenCalled();
     expect(codexProcessor.endSession).not.toHaveBeenCalled();
+  });
+
+  test('scans auto-detected WSL session roots when no explicit root is provided', () => {
+    const sessionRoot = '\\\\wsl.localhost\\Ubuntu\\home\\alice\\.codex\\sessions';
+    const sessionLog = [
+      JSON.stringify({ type: 'session_meta', payload: { id: 'thread-wsl', workspacePath: '/workspace/app' } }),
+      '',
+    ].join('\n');
+
+    getCodexSessionRoots.mockReturnValue([sessionRoot]);
+    fs.existsSync.mockReturnValue(true);
+    fs.readdirSync.mockImplementation((dir) => {
+      const normalizedDir = dir.replace(/\\/g, '/');
+      if (normalizedDir === '//wsl.localhost/Ubuntu/home/alice/.codex/sessions') {
+        return [{ isDirectory: () => true, isFile: () => false, name: '2026' }];
+      }
+      if (normalizedDir === '//wsl.localhost/Ubuntu/home/alice/.codex/sessions/2026') {
+        return [{ isDirectory: () => true, isFile: () => false, name: '04' }];
+      }
+      if (normalizedDir === '//wsl.localhost/Ubuntu/home/alice/.codex/sessions/2026/04') {
+        return [{ isDirectory: () => true, isFile: () => false, name: '08' }];
+      }
+      if (normalizedDir === '//wsl.localhost/Ubuntu/home/alice/.codex/sessions/2026/04/08') {
+        return [{ isDirectory: () => false, isFile: () => true, name: 'thread-wsl.jsonl' }];
+      }
+      return [];
+    });
+
+    fs.statSync.mockReturnValue({
+      size: Buffer.byteLength(sessionLog),
+      mtimeMs: Date.now(),
+    });
+    fs.readFileSync.mockReturnValue(sessionLog);
+
+    const codexProcessor = {
+      processSessionEntry: jest.fn(() => ({ sessionId: 'thread-wsl' })),
+      endSession: jest.fn(),
+    };
+
+    const monitor = createCodexSessionMonitor({
+      codexProcessor,
+      agentManager: { getAgent: jest.fn(() => null) },
+      debugLog: jest.fn(),
+      activeWindowMs: 30 * 60 * 1000,
+    });
+
+    monitor.scan();
+
+    expect(getCodexSessionRoots).toHaveBeenCalled();
+    expect(codexProcessor.processSessionEntry).toHaveBeenCalled();
   });
 });
