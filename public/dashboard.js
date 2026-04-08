@@ -298,7 +298,8 @@ function updateAgentUI(ag) {
         ${ag.isRegistered && ag.registryId ? `<button class="agent-history-btn" data-history-id="${ag.registryId}" data-agent-name="${ag.nickname || ag.name || 'Agent'}" title="Session History"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg></button>` : ''}
         ${workspaceActions}
         ${ag.isRegistered && ag.registryId ? `<button class="agent-avatar-btn" data-avatar-id="${ag.registryId}" data-agent-id="${ag.id}" title="Change avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M5 20c0-4 3.5-7 7-7s7 3 7 7"/></svg></button>` : ''}
-        ${ag.isRegistered && ag.registryId ? `<button class="agent-delete-btn" data-delete-id="${ag.registryId}" title="Delete agent">&times;</button>` : ''}
+        ${ag.isRegistered && ag.registryId ? `<button class="agent-unregister-btn" data-archive-id="${ag.registryId}" title="Unregister agent and move record to Archive">Unregister</button>` : ''}
+        ${ag.isRegistered && ag.registryId ? `<button class="agent-delete-btn agent-delete-inline" data-delete-id="${ag.registryId}" title="Delete agent record permanently">Delete</button>` : ''}
       </div>
     </div>
     ${ag.role ? `<div class="mc-agent-role">${ag.role}</div>` : ''}
@@ -736,17 +737,17 @@ function buildBars(data, colorClass, isMoney = false) {
   return `<div class="chart-box">${bars}</div>`;
 }
 
-async function fetchArchivedWorkspaceAgents(force = false) {
+async function fetchArchivedAgents(force = false) {
   if (archiveState.loading) return archiveState.items || [];
   if (archiveState.items && !force) return archiveState.items;
 
   archiveState.loading = true;
   try {
     let items = [];
-    if (typeof dashboardAPI !== 'undefined' && dashboardAPI.listArchivedWorkspaceAgents) {
-      items = await dashboardAPI.listArchivedWorkspaceAgents();
+    if (typeof dashboardAPI !== 'undefined' && dashboardAPI.listArchivedAgents) {
+      items = await dashboardAPI.listArchivedAgents();
     } else {
-      const response = await fetch('/api/archived-workspaces');
+      const response = await fetch('/api/archived-agents');
       items = await response.json();
     }
     archiveState.items = Array.isArray(items) ? items : [];
@@ -762,30 +763,36 @@ async function fetchArchivedWorkspaceAgents(force = false) {
 
 async function renderArchiveView(force = false) {
   if (!DOM.archiveGrid) return;
-  DOM.archiveGrid.innerHTML = '<div class="standby-state">Loading archived workspaces...</div>';
-  const items = await fetchArchivedWorkspaceAgents(force);
+  DOM.archiveGrid.innerHTML = '<div class="standby-state">Loading archived agent records...</div>';
+  const items = await fetchArchivedAgents(force);
 
   if (!items || items.length === 0) {
-    DOM.archiveGrid.innerHTML = '<div class="standby-state">No archived workspaces yet.</div>';
+    DOM.archiveGrid.innerHTML = '<div class="standby-state">No archived agent records yet.</div>';
     return;
   }
 
   DOM.archiveGrid.innerHTML = items.map((item) => {
-    const workspace = item.workspace || {};
+    const workspace = item.workspace || null;
     const lastSession = Array.isArray(item.sessionHistory) && item.sessionHistory.length > 0
       ? [...item.sessionHistory].sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0))[0]
       : null;
     const tokenUsage = item.cumulativeTokens || {};
     const totalTokens = (tokenUsage.inputTokens || 0) + (tokenUsage.outputTokens || 0);
+    const subtitle = workspace
+      ? (workspace.repositoryName || item.projectPath || '-')
+      : (item.projectPath || item.role || '-');
+    const typeBadge = workspace
+      ? `<span class="mc-type-badge workspace">WT ${escapeText(workspace.branch || '-')}</span>`
+      : '<span class="mc-type-badge">Agent</span>';
 
     return `
       <article class="archive-card" data-registry-id="${item.id}">
         <div class="archive-card-header">
           <div>
             <div class="archive-card-title">${escapeText(item.name || 'Workspace')}</div>
-            <div class="archive-card-subtitle">${escapeText(workspace.repositoryName || item.projectPath || '-')}</div>
+            <div class="archive-card-subtitle">${escapeText(subtitle)}</div>
           </div>
-          <span class="mc-type-badge workspace">WT ${escapeText(workspace.branch || '-')}</span>
+          ${typeBadge}
         </div>
         ${item.role ? `<div class="archive-card-role">${escapeText(item.role)}</div>` : ''}
         <div class="archive-meta-grid">
@@ -796,7 +803,7 @@ async function renderArchiveView(force = false) {
         </div>
         <div class="archive-card-actions">
           <button class="agent-history-btn" data-history-id="${item.id}" data-agent-name="${escapeText(item.name || 'Workspace')}">History</button>
-          <button class="agent-delete-btn archive-delete-btn" data-delete-id="${item.id}" title="Delete archived record">&times;</button>
+          <button class="agent-delete-btn archive-delete-btn" data-delete-id="${item.id}" title="Delete archived record">Delete</button>
         </div>
       </article>
     `;
@@ -1512,11 +1519,24 @@ function initApp() {
         }
         return;
       }
+      const unregisterBtn = e.target.closest('.agent-unregister-btn');
+      if (unregisterBtn && unregisterBtn.dataset.archiveId) {
+        e.stopPropagation();
+        if (confirm('Unregister this agent and move its record to Archive?')) {
+          if (typeof dashboardAPI !== 'undefined' && dashboardAPI.archiveRegisteredAgent) {
+            dashboardAPI.archiveRegisteredAgent(unregisterBtn.dataset.archiveId).then(() => {
+              archiveState.items = null;
+              if (state.currentView === 'archive') renderArchiveView(true);
+            });
+          }
+        }
+        return;
+      }
       // Delete button
       const deleteBtn = e.target.closest('.agent-delete-btn');
       if (deleteBtn && deleteBtn.dataset.deleteId) {
         e.stopPropagation();
-        if (confirm('Delete this agent?')) {
+        if (confirm('Delete this agent record permanently? This cannot be undone.')) {
           if (typeof dashboardAPI !== 'undefined' && dashboardAPI.deleteRegisteredAgent) {
             dashboardAPI.deleteRegisteredAgent(deleteBtn.dataset.deleteId).then(() => {
               archiveState.items = null;
@@ -1553,7 +1573,7 @@ function initApp() {
       const deleteBtn = e.target.closest('.archive-delete-btn');
       if (deleteBtn && deleteBtn.dataset.deleteId) {
         e.stopPropagation();
-        if (confirm('Delete this archived workspace record?')) {
+        if (confirm('Delete this archived agent record permanently? This cannot be undone.')) {
           if (typeof dashboardAPI !== 'undefined' && dashboardAPI.deleteRegisteredAgent) {
             dashboardAPI.deleteRegisteredAgent(deleteBtn.dataset.deleteId).then(() => {
               archiveState.items = null;

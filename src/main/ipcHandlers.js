@@ -422,6 +422,10 @@ function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowM
       return agentRegistry.getArchivedWorkspaceAgents();
     });
 
+    ipcMain.handle('registry:list-archived', async () => {
+      return agentRegistry.getArchivedAgents();
+    });
+
     ipcMain.handle('registry:toggle', async (event, registryId, enabled) => {
       agentRegistry.setEnabled(registryId, enabled);
       return { success: true };

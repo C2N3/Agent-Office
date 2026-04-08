@@ -376,14 +376,14 @@ function handleGetSessions(req, res) {
   res.end(JSON.stringify(allStats));
 }
 
-function handleGetArchivedWorkspaces(req, res) {
+function handleGetArchivedAgents(req, res) {
   if (!agentRegistryRef) {
     res.writeHead(503, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'Agent registry not available' }));
     return;
   }
 
-  const archived = agentRegistryRef.getArchivedWorkspaceAgents();
+  const archived = agentRegistryRef.getArchivedAgents();
   res.writeHead(200, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify(archived));
 }
@@ -529,7 +529,8 @@ const apiRoutes = {
   'GET /api/agents': handleGetAgents,
   'GET /api/stats': handleGetStats,
   'GET /api/sessions': handleGetSessions,
-  'GET /api/archived-workspaces': handleGetArchivedWorkspaces,
+  'GET /api/archived-agents': handleGetArchivedAgents,
+  'GET /api/archived-workspaces': handleGetArchivedAgents,
   'GET /api/heatmap': handleGetHeatmap,
   'GET /api/health': handleGetHealth,
   'GET /api/office-layout': handleGetOfficeLayout,

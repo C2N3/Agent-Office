@@ -328,10 +328,15 @@ class AgentRegistry {
     return Array.isArray(agent.sessionHistory) ? [...agent.sessionHistory] : [];
   }
 
-  getArchivedWorkspaceAgents() {
+  getArchivedAgents() {
     return this.getAllAgents()
-      .filter((agent) => agent.archived && agent.workspace)
+      .filter((agent) => agent.archived)
       .sort((a, b) => (b.archivedAt || 0) - (a.archivedAt || 0));
+  }
+
+  getArchivedWorkspaceAgents() {
+    return this.getArchivedAgents()
+      .filter((agent) => agent.workspace);
   }
 
   accumulateTokens(registryId, sessionTokenUsage) {
