@@ -13,11 +13,38 @@ const { sanitizeProjectPath } = require('../utils');
 const PERSIST_DIR = path.join(os.homedir(), '.agent-office');
 const PERSIST_FILE = path.join(PERSIST_DIR, 'agent-registry.json');
 
+function convertWslPathToWindowsDrivePath(rawPath) {
+  if (typeof rawPath !== 'string' || !rawPath) return rawPath;
+
+  const normalized = rawPath.replace(/\\/g, '/');
+  const directMountMatch = normalized.match(/^\/mnt\/([a-zA-Z])(?:\/(.*))?$/);
+  if (directMountMatch) {
+    const [, driveLetter, rest = ''] = directMountMatch;
+    return `${driveLetter.toUpperCase()}:/${rest}`;
+  }
+
+  const uncMountMatch = normalized.match(/^\/\/wsl(?:\.localhost)?\/[^/]+\/mnt\/([a-zA-Z])(?:\/(.*))?$/i);
+  if (uncMountMatch) {
+    const [, driveLetter, rest = ''] = uncMountMatch;
+    return `${driveLetter.toUpperCase()}:/${rest}`;
+  }
+
+  return rawPath;
+}
+
 function normalizePath(p) {
   const sanitizedPath = sanitizeProjectPath(p);
   if (!sanitizedPath) return '';
-  let norm = path.resolve(sanitizedPath);
-  if (process.platform === 'win32') {
+
+  const isWindows = process.platform === 'win32';
+  const pathForResolution = isWindows
+    ? convertWslPathToWindowsDrivePath(sanitizedPath)
+    : sanitizedPath;
+
+  let norm = isWindows
+    ? path.win32.resolve(pathForResolution)
+    : path.resolve(pathForResolution);
+  if (isWindows) {
     norm = norm.replace(/\\/g, '/').toLowerCase();
   }
   return norm.replace(/\/+$/, '');
