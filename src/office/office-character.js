@@ -17,7 +17,7 @@ var officeCharacters = {
     }
 
     // Map dashboard status to office state
-    const officeState = this._mapStatus(agentData.status);
+    const officeState = this._mapStatus(agentData);
 
     // Prefer server-assigned avatarIndex, fallback: hash calculation
     const avatarIdx = (agentData.avatarIndex !== undefined && agentData.avatarIndex !== null)
@@ -45,6 +45,7 @@ var officeCharacters = {
         name: agentData.name || 'Agent',
         project: agentData.project || '',
         tool: agentData.currentTool || null,
+        provider: agentData.metadata?.provider || null,
         type: agentData.type || 'main',
         status: agentData.status || 'idle',
         lastMessage: agentData.lastMessage || null,
@@ -71,12 +72,13 @@ var officeCharacters = {
     }
 
     const oldState = char.agentState;
-    const newState = this._mapStatus(agentData.status);
+    const newState = this._mapStatus(agentData);
     char.agentState = newState;
     char.role = agentData.name || char.role;
     char.metadata.name = agentData.name || char.metadata.name;
     char.metadata.project = agentData.project || char.metadata.project;
     char.metadata.tool = agentData.currentTool || null;
+    char.metadata.provider = agentData.metadata?.provider || char.metadata.provider || null;
     char.metadata.status = agentData.status || 'idle';
     char.metadata.type = agentData.type || char.metadata.type;
     char.metadata.lastMessage = agentData.lastMessage || char.metadata.lastMessage;
@@ -305,7 +307,41 @@ var officeCharacters = {
     }
   },
 
-  _mapStatus: function (dashboardStatus) {
+  _humanizeToolName: function (toolName, provider) {
+    if (!toolName) return null;
+
+    if (provider === 'codex') {
+      const known = {
+        exec_command: 'Command',
+        apply_patch: 'Patch',
+        web_search: 'Web Search',
+        view_image: 'Image',
+        spawn_agent: 'Subagent',
+        send_input: 'Agent Input',
+        wait_agent: 'Waiting',
+        query_docs: 'Docs',
+        read_mcp_resource: 'MCP Resource',
+      };
+
+      if (known[toolName]) return known[toolName];
+    }
+
+    return String(toolName)
+      .replace(/[_-]+/g, ' ')
+      .replace(/\b\w/g, function (ch) { return ch.toUpperCase(); });
+  },
+
+  _mapStatus: function (agentOrStatus) {
+    const dashboardStatus = typeof agentOrStatus === 'string'
+      ? agentOrStatus
+      : (agentOrStatus?.status || 'idle');
+    const currentTool = typeof agentOrStatus === 'string'
+      ? null
+      : (agentOrStatus?.currentTool || null);
+    const provider = typeof agentOrStatus === 'string'
+      ? null
+      : (agentOrStatus?.metadata?.provider || null);
+
     const map = {
       'working': 'working',
       'thinking': 'thinking',
@@ -316,16 +352,23 @@ var officeCharacters = {
       'error': 'error',
       'offline': 'offline',
     };
+
+    if (provider === 'codex' && currentTool && !['error', 'offline', 'completed', 'done', 'help'].includes(dashboardStatus)) {
+      return 'working';
+    }
+
     return map[dashboardStatus] || 'idle';
   },
 
   _setBubble: function (char, agentData) {
     let text = null;
     let icon = null;
-    const status = agentData.status || char.metadata.status;
+    const status = this._mapStatus(agentData);
+    const provider = agentData.metadata?.provider || char.metadata.provider || null;
+    const currentTool = agentData.currentTool || char.metadata.tool || null;
 
-    if (status === 'working' && agentData.currentTool) {
-      text = agentData.currentTool;
+    if (status === 'working' && currentTool) {
+      text = this._humanizeToolName(currentTool, provider);
       icon = null;
     } else if (status === 'thinking') {
       text = 'Thinking...';
