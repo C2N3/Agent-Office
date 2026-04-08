@@ -404,6 +404,20 @@ function handleGetHealth(req, res) {
   }));
 }
 
+function handleGetAvatars(req, res) {
+  const charDir = path.join(__dirname, '..', 'public', 'characters');
+  try {
+    const files = fs.readdirSync(charDir)
+      .filter(f => /\.(webp|png|jpg|jpeg|gif)$/i.test(f))
+      .sort();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(files));
+  } catch (e) {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end('["avatar_0.webp"]');
+  }
+}
+
 function handleGetOfficeLayout(req, res) {
   res.writeHead(200, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify(loadOfficeLayoutManifest()));
@@ -506,6 +520,7 @@ const apiRoutes = {
   'GET /api/heatmap': handleGetHeatmap,
   'GET /api/health': handleGetHealth,
   'GET /api/office-layout': handleGetOfficeLayout,
+  'GET /api/avatars': handleGetAvatars,
 };
 
 /**

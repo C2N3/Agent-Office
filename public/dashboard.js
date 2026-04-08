@@ -1,5 +1,7 @@
 const REGISTERED_FILTER_STORAGE_KEY = 'mc-filter-registered-only';
 
+const SHARED_AVATAR_FILES = ['avatar_0.webp', 'avatar_1.webp', 'avatar_2.webp', 'avatar_3.webp'];
+
 const state = {
   agents: new Map(),
   agentHistory: new Map(),
@@ -251,8 +253,7 @@ function updateAgentUI(ag) {
     timelineHtml = `<div class="mc-timeline">${segHtml}</div>`;
   }
 
-  const AVATAR_LIST = ['avatar_0.webp','avatar_1.webp','avatar_2.webp','avatar_3.webp','avatar_4.webp','avatar_5.webp','avatar_6.webp','avatar_7.webp','avatar_8.webp'];
-  const avFile = AVATAR_LIST[ag.avatarIndex != null ? ag.avatarIndex : 0];
+  const avFile = SHARED_AVATAR_FILES[ag.avatarIndex != null ? ag.avatarIndex : 0] || SHARED_AVATAR_FILES[0] || 'avatar_0.webp';
 
   const html = `
     <div class="mc-agent-header">
@@ -1435,14 +1436,8 @@ document.addEventListener('DOMContentLoaded', initApp);
   const cancelBtn = document.getElementById('cancelAvatarBtn');
   if (!modal || !grid) return;
 
-  const AVATAR_FILES = [
-    'avatar_0.webp', 'avatar_1.webp', 'avatar_2.webp', 'avatar_3.webp',
-    'avatar_4.webp', 'avatar_5.webp', 'avatar_6.webp', 'avatar_7.webp',
-    'avatar_8.webp'
-  ];
-  const FRAME_W = (typeof OFFICE !== 'undefined' && OFFICE.FRAME_W) || 106;
-  const FRAME_H = (typeof OFFICE !== 'undefined' && OFFICE.FRAME_H) || 140;
-  const DISPLAY_W = 53, DISPLAY_H = 70;  // picker thumbnail size (half source)
+  const AVATAR_FILES = SHARED_AVATAR_FILES;
+  const DISPLAY_W = 53, DISPLAY_H = 70;
   const COLS = 8;
 
   let currentRegistryId = null;
@@ -1458,7 +1453,7 @@ document.addEventListener('DOMContentLoaded', initApp);
     item.style.backgroundPosition = '0px 0px';
     item.style.width = DISPLAY_W + 'px';
     item.style.height = DISPLAY_H + 'px';
-    item.style.imageRendering = 'pixelated';
+    item.style.imageRendering = 'auto';
     item.title = `Avatar ${idx}`;
 
     item.addEventListener('click', async () => {
@@ -1472,6 +1467,14 @@ document.addEventListener('DOMContentLoaded', initApp);
         if (char) {
           char.avatarFile = file;
           char.skinIndex = idx;
+        }
+      }
+      // Update agent list thumbnail immediately
+      if (currentAgentId) {
+        const ag = state.agents.get(currentAgentId);
+        if (ag) {
+          ag.avatarIndex = idx;
+          updateAgentUI(ag);
         }
       }
       modal.style.display = 'none';

@@ -100,7 +100,25 @@ let hookServer = null;
 let codexEventServer = null;
 let enabledProviders = [];
 
+// Scan public/characters/ and regenerate avatars.json
+function syncAvatarFiles() {
+  const charDir = path.join(__dirname, '..', 'public', 'characters');
+  const jsonPath = path.join(__dirname, '..', 'public', 'shared', 'avatars.json');
+  try {
+    const files = fs.readdirSync(charDir)
+      .filter(f => /\.(webp|png|jpg|jpeg|gif)$/i.test(f))
+      .sort();
+    if (files.length > 0) {
+      fs.writeFileSync(jsonPath, JSON.stringify(files, null, 2) + '\n');
+      debugLog(`[Main] avatars.json synced: ${files.length} files`);
+    }
+  } catch (e) {
+    console.error('[Main] Failed to sync avatars.json:', e.message);
+  }
+}
+
 app.whenReady().then(() => {
+  syncAvatarFiles();
   debugLog('========== Agent-Office started ==========');
 
   // Minimal application menu (removes default File/Edit/Window/Help clutter)

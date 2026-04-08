@@ -3,7 +3,7 @@
  */
 
 import { SHEET, ANIM_SEQUENCES, stateConfig, lastAgents, agentStates, agentAvatars } from './config.js';
-import { animationManager, playAnimation } from './animationManager.js';
+import { animationManager, playAnimation, getSpriteYOffset } from './animationManager.js';
 import { updateAgentState, createAgentCard, createMiniAvatar } from './agentCard.js';
 
 const agentGrid = document.getElementById('agent-grid');
@@ -321,10 +321,8 @@ function drawFrameOn(el, frameIndex) {
   if (!el) return;
   const col = frameIndex % SHEET.cols;
   const row = Math.floor(frameIndex / SHEET.cols);
-  // Single character at 1x native (48x64, bg 384x576)
-  const fw = 48;
-  const fh = 64;
-  el.style.backgroundPosition = `${col * -fw}px ${row * -fh}px`;
+  const yOff = getSpriteYOffset(el);
+  el.style.backgroundPosition = `${col * -SHEET.width}px ${row * -SHEET.height - yOff}px`;
 }
 
 export function updateGridLayout() {

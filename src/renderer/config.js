@@ -6,11 +6,16 @@
 import AVATAR_FILES_DATA from '../../public/shared/avatars.json' with { type: 'json' };
 import SPRITE_DATA from '../../public/shared/sprite-frames.json' with { type: 'json' };
 
-// --- Sprite sheet settings (from shared JSON) ---
+// --- Sprite sheet settings ---
+// srcWidth/srcHeight = actual pixel size in the image file (from JSON)
+// width/height = CSS display size (matches .agent-character in styles.css)
 export const SHEET = {
   cols: SPRITE_DATA.sheet.cols,
-  width: SPRITE_DATA.sheet.frameWidth,
-  height: SPRITE_DATA.sheet.frameHeight
+  rows: SPRITE_DATA.sheet.rows,
+  srcWidth: SPRITE_DATA.sheet.frameWidth,
+  srcHeight: SPRITE_DATA.sheet.frameHeight,
+  width: 48,
+  height: 64,
 };
 
 // --- Animation sequences (mapped from shared frame definitions) ---

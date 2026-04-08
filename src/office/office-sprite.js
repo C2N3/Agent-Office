@@ -42,12 +42,16 @@ function drawOfficeSprite(ctx, agent) {
   if (!frames) return;
   const frameIdx = frames[agent.animFrame % frames.length];
 
-  const sx = (frameIdx % OFFICE.COLS) * OFFICE.FRAME_W;
-  const sy = Math.floor(frameIdx / OFFICE.COLS) * OFFICE.FRAME_H;
+  // Auto-correct for AI-generated sheets taller than expected (e.g. 2528 instead of 2520)
+  const expectedHeight = OFFICE.SRC_FRAME_H * OFFICE.ROWS;
+  const yOffset = Math.max(0, img.naturalHeight - expectedHeight) / 2;
+
+  const sx = (frameIdx % OFFICE.COLS) * OFFICE.SRC_FRAME_W;
+  const sy = Math.floor(frameIdx / OFFICE.COLS) * OFFICE.SRC_FRAME_H + yOffset;
 
   ctx.drawImage(
     img,
-    sx, sy, OFFICE.FRAME_W, OFFICE.FRAME_H,
+    sx, sy, OFFICE.SRC_FRAME_W, OFFICE.SRC_FRAME_H,
     Math.round(agent.x - OFFICE.FRAME_W / 2),
     Math.round(agent.y - OFFICE.FRAME_H),
     OFFICE.FRAME_W, OFFICE.FRAME_H

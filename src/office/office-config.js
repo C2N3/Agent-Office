@@ -9,9 +9,12 @@
 const OFFICE = {
   MAP_SCALE: 2.1875,   // scale factor: old 48×64 → new 106×140
   TILE_SIZE: 70,        // 32 * 2.1875
-  FRAME_W: 106,
+  SRC_FRAME_W: 212,     // source sprite frame size (high-res)
+  SRC_FRAME_H: 280,
+  FRAME_W: 106,         // display size on office canvas
   FRAME_H: 140,
   COLS: 8,
+  ROWS: 9,
   ANIM_FPS: 8,
   ANIM_INTERVAL: 1000 / 8,
   IDLE_ANIM_INTERVAL: 1000 / 2,
@@ -30,9 +33,11 @@ async function loadSpriteFrames() {
     const data = await res.json();
     const f = data.frames;
 
-    OFFICE.FRAME_W = data.sheet.frameWidth;
-    OFFICE.FRAME_H = data.sheet.frameHeight;
+    OFFICE.SRC_FRAME_W = data.sheet.frameWidth;
+    OFFICE.SRC_FRAME_H = data.sheet.frameHeight;
     OFFICE.COLS = data.sheet.cols;
+    OFFICE.ROWS = data.sheet.rows;
+    // Display size stays fixed (office map designed for 106×140)
 
     // Map canonical names → office direction-based keys
     SPRITE_FRAMES = {

@@ -2,8 +2,8 @@
   "sheet": {
     "cols": 8,
     "rows": 9,
-    "frameWidth": 106,
-    "frameHeight": 140
+    "frameWidth": 212,
+    "frameHeight": 280
   },
   "frames": {
     "front_idle":      [0, 0, 0, 0],
