@@ -64,6 +64,33 @@ function sanitizeProjectPath(rawPath) {
 }
 
 /**
+ * Convert Windows-accessible WSL mount paths to a native Windows drive path.
+ * This keeps saved registry paths like /mnt/d/workspace usable when the
+ * Electron app is running on Windows shells.
+ * @param {string} rawPath
+ * @returns {string}
+ */
+function resolveProjectPathForPlatform(rawPath) {
+  const sanitized = sanitizeProjectPath(rawPath);
+  if (!sanitized || process.platform !== 'win32') return sanitized;
+
+  const normalized = sanitized.replace(/\\/g, '/');
+  const directMountMatch = normalized.match(/^\/mnt\/([a-zA-Z])(?:\/(.*))?$/);
+  if (directMountMatch) {
+    const [, driveLetter, rest = ''] = directMountMatch;
+    return `${driveLetter.toUpperCase()}:/${rest}`;
+  }
+
+  const uncMountMatch = normalized.match(/^\/\/wsl(?:\.localhost)?\/[^/]+\/mnt\/([a-zA-Z])(?:\/(.*))?$/i);
+  if (uncMountMatch) {
+    const [, driveLetter, rest = ''] = uncMountMatch;
+    return `${driveLetter.toUpperCase()}:/${rest}`;
+  }
+
+  return sanitized;
+}
+
+/**
  * Calculate window size based on agent count
  * @param {number|Array} agentsOrCount - Agent count or array of agents
  * @returns {Object} Window dimensions {width, height}
@@ -141,5 +168,6 @@ module.exports = {
   formatSlugToDisplayName,
   formatTime,
   sanitizeProjectPath,
+  resolveProjectPathForPlatform,
   getWindowSizeForAgents
 };

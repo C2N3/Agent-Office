@@ -5,7 +5,7 @@
 
 const fs = require('fs');
 const os = require('os');
-const { sanitizeProjectPath } = require('../utils');
+const { resolveProjectPathForPlatform } = require('../utils');
 
 class TerminalManager {
   constructor({ debugLog, getWindow, terminalProfileService }) {
@@ -47,7 +47,7 @@ class TerminalManager {
       : process.env.SHELL || '/bin/bash');
     const args = options.args || profile?.args || [];
 
-    let cwd = sanitizeProjectPath(options.cwd) || os.homedir();
+    let cwd = resolveProjectPathForPlatform(options.cwd) || os.homedir();
     const cols = options.cols || 120;
     const rows = options.rows || 30;
 

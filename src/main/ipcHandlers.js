@@ -7,7 +7,7 @@ const { ipcMain, screen } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { parseConversation, getConversationSummary } = require('./conversationParser');
-const { sanitizeProjectPath } = require('../utils');
+const { resolveProjectPathForPlatform } = require('../utils');
 
 function focusTerminalByPid(pid, label, debugLog) {
   const { execFile } = require('child_process');
@@ -488,7 +488,7 @@ function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowM
       }
 
       // Validate cwd exists, fall back to home dir
-      let cwd = sanitizeProjectPath(agent.projectPath) || undefined;
+      let cwd = resolveProjectPathForPlatform(agent.workspace?.worktreePath || agent.projectPath) || undefined;
       if (cwd) {
         try {
           if (!fs.existsSync(cwd) || !fs.statSync(cwd).isDirectory()) cwd = undefined;

@@ -6,6 +6,7 @@ const {
   formatSlugToDisplayName,
   formatTime,
   sanitizeProjectPath,
+  resolveProjectPathForPlatform,
   getWindowSizeForAgents
 } = require('../src/utils');
 
@@ -73,6 +74,35 @@ describe('sanitizeProjectPath', () => {
 
   test('expands home-relative paths', () => {
     expect(sanitizeProjectPath('~/repo')).toMatch(/[\\/]repo$/);
+  });
+});
+
+describe('resolveProjectPathForPlatform', () => {
+  const originalPlatform = process.platform;
+
+  afterEach(() => {
+    Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
+  });
+
+  test('converts WSL mount paths to Windows drive paths on Windows', () => {
+    Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
+
+    expect(resolveProjectPathForPlatform('/mnt/d/workspace/Agent-Office'))
+      .toBe('D:/workspace/Agent-Office');
+  });
+
+  test('converts WSL UNC mount paths to Windows drive paths on Windows', () => {
+    Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
+
+    expect(resolveProjectPathForPlatform('\\\\wsl.localhost\\Ubuntu\\mnt\\d\\workspace\\Agent-Office'))
+      .toBe('D:/workspace/Agent-Office');
+  });
+
+  test('leaves non-mounted WSL paths unchanged on Windows', () => {
+    Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
+
+    expect(resolveProjectPathForPlatform('/home/user/project'))
+      .toBe('/home/user/project');
   });
 });
 

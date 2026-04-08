@@ -11,6 +11,7 @@ jest.mock('node-pty', () => ({
 const { TerminalManager } = require('../src/main/terminalManager');
 
 describe('TerminalManager', () => {
+  const originalPlatform = process.platform;
   let tempCwd;
 
   beforeEach(() => {
@@ -19,6 +20,8 @@ describe('TerminalManager', () => {
   });
 
   afterEach(() => {
+    Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
+    jest.restoreAllMocks();
     fs.rmSync(tempCwd, { recursive: true, force: true });
   });
 
@@ -60,6 +63,44 @@ describe('TerminalManager', () => {
       pid: 4242,
       profileId: 'cmd',
       profileLabel: 'Command Prompt',
+    }));
+  });
+
+  test('converts Windows-accessible WSL mount cwd paths before spawning on Windows', () => {
+    Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
+
+    const fakePty = {
+      pid: 5150,
+      onData: jest.fn(),
+      onExit: jest.fn(),
+    };
+    mockSpawn.mockReturnValue(fakePty);
+
+    jest.spyOn(fs, 'existsSync').mockImplementation((target) => target === 'D:/workspace/Agent-Office');
+    jest.spyOn(fs, 'statSync').mockImplementation((target) => {
+      if (target !== 'D:/workspace/Agent-Office') {
+        throw new Error('not found');
+      }
+      return { isDirectory: () => true };
+    });
+
+    const manager = new TerminalManager({
+      debugLog: jest.fn(),
+      getWindow: () => null,
+      terminalProfileService: null,
+    });
+
+    const result = manager.createTerminal('local-2', {
+      cwd: '/mnt/d/workspace/Agent-Office',
+      shell: 'powershell.exe',
+    });
+
+    expect(mockSpawn).toHaveBeenCalledWith('powershell.exe', [], expect.objectContaining({
+      cwd: 'D:/workspace/Agent-Office',
+    }));
+    expect(result).toEqual(expect.objectContaining({
+      success: true,
+      pid: 5150,
     }));
   });
 });
