@@ -2087,10 +2087,10 @@ document.addEventListener('DOMContentLoaded', initApp);
         const msgCount = h.summary ? h.summary.messageCount : '?';
         const hasTranscript = !!h.transcriptPath;
         return `
-          <div class="conv-session-item ${hasTranscript ? 'clickable' : 'no-transcript'}" data-session-id="${h.sessionId}" data-has-transcript="${hasTranscript}">
+          <div class="conv-session-item ${hasTranscript ? '' : 'no-transcript'}" data-session-id="${h.sessionId}" data-has-transcript="${hasTranscript}">
             <div class="conv-session-main">
               <span class="conv-session-id-label">${h.sessionId.slice(0, 12)}...</span>
-              <span class="conv-session-msgs">${msgCount} messages</span>
+              <span class="conv-session-msgs">${msgCount} messages${hasTranscript ? '' : ' · transcript unavailable'}</span>
             </div>
             <div class="conv-session-dates">
               <span>${started}</span>
@@ -2101,8 +2101,8 @@ document.addEventListener('DOMContentLoaded', initApp);
         `;
       }).join('');
 
-      // Click handler for session items
-      sessionListEl.querySelectorAll('.conv-session-item.clickable').forEach(item => {
+      // Any recorded session can be resumed; transcript availability only affects preview.
+      sessionListEl.querySelectorAll('.conv-session-item').forEach(item => {
         item.addEventListener('click', () => {
           openConversation(registryId, item.dataset.sessionId);
         });

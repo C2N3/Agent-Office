@@ -1890,19 +1890,16 @@ body {
   border-radius: 8px;
   margin-bottom: 8px;
   transition: all 0.15s;
-}
-
-.conv-session-item.clickable {
   cursor: pointer;
 }
 
-.conv-session-item.clickable:hover {
+.conv-session-item:hover {
   border-color: var(--color-primary);
   background: var(--color-primary-dim);
 }
 
 .conv-session-item.no-transcript {
-  opacity: 0.5;
+  opacity: 0.75;
 }
 
 .conv-session-main {
