@@ -7,6 +7,21 @@
 
 var officeInitialized = false;
 
+function isRegisteredOnlyOfficeFilterEnabled() {
+  if (typeof window.dashboardIsRegisteredOnlyFilterEnabled === 'function') {
+    return !!window.dashboardIsRegisteredOnlyFilterEnabled();
+  }
+  try {
+    return localStorage.getItem('mc-filter-registered-only') !== 'false';
+  } catch (e) {
+    return true;
+  }
+}
+
+function shouldDisplayOfficeAgent(agent) {
+  return !isRegisteredOnlyOfficeFilterEnabled() || !!(agent && agent.isRegistered);
+}
+
 async function initOffice() {
   if (officeInitialized) {
     officeRenderer.resume();
@@ -44,6 +59,7 @@ async function initOffice() {
     const res = await fetch('/api/agents');
     const agents = await res.json();
     agents.forEach(function (a) {
+      if (!shouldDisplayOfficeAgent(a)) return;
       officeCharacters.addCharacter(a);
     });
   } catch (e) {
@@ -59,12 +75,17 @@ async function initOffice() {
 /** Called from dashboard SSE agent.created handler */
 function officeOnAgentCreated(data) {
   if (!officeInitialized) return;
+  if (!shouldDisplayOfficeAgent(data)) return;
   officeCharacters.addCharacter(data);
 }
 
 /** Called from dashboard SSE agent.updated handler */
 function officeOnAgentUpdated(data) {
   if (!officeInitialized) return;
+  if (!shouldDisplayOfficeAgent(data)) {
+    officeCharacters.removeCharacter(data.id);
+    return;
+  }
   officeCharacters.updateCharacter(data);
 }
 

@@ -406,6 +406,13 @@ body {
   background: rgba(255, 255, 255, 0.01);
 }
 
+.panel-header-title,
+.panel-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .panel-header-badge {
   background: var(--color-success-dim);
   color: var(--color-success);
@@ -414,6 +421,41 @@ body {
   font-size: 0.65rem;
   font-weight: 600;
   text-transform: uppercase;
+}
+
+.panel-header-filter-badge {
+  background: var(--color-info-dim);
+  color: var(--color-info);
+}
+
+.panel-header-filter-badge.is-off {
+  background: rgba(139, 148, 158, 0.16);
+  color: var(--color-text-muted);
+}
+
+.panel-filter-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  font-size: 0.68rem;
+  color: var(--color-text-dark);
+  cursor: pointer;
+  user-select: none;
+  background: rgba(255, 255, 255, 0.02);
+  transition: border-color 0.18s ease, color 0.18s ease, background 0.18s ease;
+}
+
+.panel-filter-toggle:hover {
+  border-color: var(--color-info);
+  color: var(--color-text);
+}
+
+.panel-filter-toggle input {
+  margin: 0;
+  accent-color: var(--color-info);
 }
 
 .panel-body {

@@ -1,9 +1,14 @@
+const REGISTERED_FILTER_STORAGE_KEY = 'mc-filter-registered-only';
+
 const state = {
   agents: new Map(),
   agentHistory: new Map(),
   stats: { total: 0, active: 0, completed: 0, totalTokens: 0, totalCost: 0, errorCount: 0 },
   connected: false,
-  currentView: localStorage.getItem('mc-view') || 'office'
+  currentView: localStorage.getItem('mc-view') || 'office',
+  filters: {
+    registeredOnly: localStorage.getItem(REGISTERED_FILTER_STORAGE_KEY) !== 'false'
+  }
 };
 
 const DOM = {
@@ -15,7 +20,11 @@ const DOM = {
   kpiTotalAgents: document.getElementById('kpiTotalAgents'),
   kpiTokens: document.getElementById('kpiTokens'),
   kpiCost: document.getElementById('kpiCost'),
-  kpiErrors: document.getElementById('kpiErrors')
+  kpiErrors: document.getElementById('kpiErrors'),
+  officeFilterBadge: document.getElementById('officeFilterBadge'),
+  agentListFilterBadge: document.getElementById('agentListFilterBadge'),
+  officeFilterToggle: document.getElementById('officeRegisteredFilterToggle'),
+  agentListFilterToggle: document.getElementById('agentListRegisteredFilterToggle')
 };
 
 // ─── SSE CONNECTION ───
@@ -88,7 +97,7 @@ function removeAgent(id) {
   recalcStats();
   const el = DOM.agentPanel.querySelector(`[data-id="${id}"]`);
   if (el) el.remove();
-  if (state.agents.size === 0) DOM.standbyMessage.style.display = 'block';
+  if (getVisibleAgents().length === 0) DOM.standbyMessage.style.display = 'block';
 }
 
 // ─── UTILS ───
@@ -134,20 +143,75 @@ function updateConnectionStatus(up) {
 }
 
 // ─── RENDER AGENTS ───
-function renderAgentList() {
-  const allAgents = [...state.agents.values()];
-  const registered = allAgents.filter(a => a.isRegistered);
-  DOM.standbyMessage.style.display = registered.length === 0 ? 'block' : 'none';
-  for (const ag of registered) updateAgentUI(ag);
-  // Add all live agents to office
-  for (const ag of allAgents) {
-    if (typeof officeOnAgentCreated === 'function') officeOnAgentCreated(ag);
+function isRegisteredOnlyFilterEnabled() {
+  return !!state.filters.registeredOnly;
+}
+
+window.dashboardIsRegisteredOnlyFilterEnabled = isRegisteredOnlyFilterEnabled;
+
+function shouldDisplayAgent(agent) {
+  return !isRegisteredOnlyFilterEnabled() || !!agent.isRegistered;
+}
+
+window.dashboardShouldDisplayAgent = shouldDisplayAgent;
+
+function getVisibleAgents() {
+  return [...state.agents.values()].filter(shouldDisplayAgent);
+}
+
+function updateFilterUI() {
+  const registeredOnly = isRegisteredOnlyFilterEnabled();
+  const badgeText = registeredOnly ? 'Registered Only' : 'All Agents';
+
+  [DOM.officeFilterBadge, DOM.agentListFilterBadge].forEach(badge => {
+    if (!badge) return;
+    badge.textContent = badgeText;
+    badge.classList.toggle('is-off', !registeredOnly);
+  });
+
+  [DOM.officeFilterToggle, DOM.agentListFilterToggle].forEach(toggle => {
+    if (!toggle) return;
+    toggle.checked = registeredOnly;
+  });
+}
+
+function renderOfficeRoster() {
+  for (const ag of state.agents.values()) {
+    if (shouldDisplayAgent(ag)) {
+      if (typeof officeOnAgentCreated === 'function') officeOnAgentCreated(ag);
+      continue;
+    }
+    if (typeof officeOnAgentRemoved === 'function') officeOnAgentRemoved({ id: ag.id });
   }
 }
 
+function setRegisteredOnlyFilter(enabled) {
+  state.filters.registeredOnly = !!enabled;
+  localStorage.setItem(REGISTERED_FILTER_STORAGE_KEY, enabled ? 'true' : 'false');
+  updateFilterUI();
+  renderAgentList();
+}
+
+function initFilterControls() {
+  [DOM.officeFilterToggle, DOM.agentListFilterToggle].forEach(toggle => {
+    if (!toggle) return;
+    toggle.addEventListener('change', function () {
+      setRegisteredOnlyFilter(toggle.checked);
+    });
+  });
+  updateFilterUI();
+}
+
+function renderAgentList() {
+  const visibleAgents = getVisibleAgents();
+  DOM.standbyMessage.style.display = visibleAgents.length === 0 ? 'block' : 'none';
+  for (const ag of state.agents.values()) updateAgentUI(ag);
+  renderOfficeRoster();
+}
+
 function updateAgentUI(ag) {
-  // Only show registered agents in the Agent List
-  if (!ag.isRegistered) {
+  // Only show agents that match the current filter in the Agent List
+  if (!shouldDisplayAgent(ag)) {
     const existing = DOM.agentPanel.querySelector(`[data-id="${ag.id}"]`);
     if (existing) existing.remove();
     return;
@@ -1198,6 +1262,8 @@ function fitActiveTerminal() {
 
 // ─── BOOT ───
 function initApp() {
+  initFilterControls();
+
   // Sync startup view
   document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
   let btn = document.querySelector(`[data-view="${state.currentView}"]`);
