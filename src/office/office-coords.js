@@ -12,7 +12,10 @@ var officeCoords = {
 };
 
 async function parseMapCoordinates(bgW, bgH) {
-  const img = await loadOfficeImage('/public/office/map/office_xy.webp?t=' + Date.now());
+  const assets = (typeof OFFICE_LAYOUT !== 'undefined' && OFFICE_LAYOUT.assets) || {};
+  const src = assets.coordinates || '/public/office/map/office_xy.webp';
+  const sep = src.indexOf('?') === -1 ? '?' : '&';
+  const img = await loadOfficeImage(src + sep + 't=' + Date.now());
   const canvas = document.createElement('canvas');
   canvas.width = img.naturalWidth;
   canvas.height = img.naturalHeight;
@@ -82,7 +85,10 @@ async function parseMapCoordinates(bgW, bgH) {
 }
 
 async function parseObjectCoordinates(bgW, bgH) {
-  const img = await loadOfficeImage('/public/office/ojects/office_laptop.webp?t=' + Date.now());
+  const assets = (typeof OFFICE_LAYOUT !== 'undefined' && OFFICE_LAYOUT.assets) || {};
+  const src = assets.laptopSpots || '/public/office/ojects/office_laptop.webp';
+  const sep = src.indexOf('?') === -1 ? '?' : '&';
+  const img = await loadOfficeImage(src + sep + 't=' + Date.now());
   const canvas = document.createElement('canvas');
   canvas.width = img.naturalWidth;
   canvas.height = img.naturalHeight;

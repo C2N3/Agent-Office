@@ -106,11 +106,20 @@
               <!-- Office Canvas -->
               <div class="panel office-canvas-panel" id="officePanel">
                 <div class="panel-header">
-                  Office
-                  <span class="panel-header-badge">LIVE</span>
-                  <button class="pip-toggle-btn" id="pipToggleBtn" title="Picture-in-Picture">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="2" width="14" height="11" rx="1.5"/><rect x="8" y="7" width="6" height="5" rx="1" fill="currentColor" stroke="none"/></svg>
-                  </button>
+                  <div class="panel-header-title">
+                    <span>Office</span>
+                    <span class="panel-header-badge">LIVE</span>
+                    <span class="panel-header-badge panel-header-filter-badge" id="officeFilterBadge">Registered Only</span>
+                  </div>
+                  <div class="panel-header-actions">
+                    <label class="panel-filter-toggle" for="officeRegisteredFilterToggle" title="Show only registered agents">
+                      <input type="checkbox" id="officeRegisteredFilterToggle">
+                      <span>Registered Only</span>
+                    </label>
+                    <button class="pip-toggle-btn" id="pipToggleBtn" title="Picture-in-Picture">
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="2" width="14" height="11" rx="1.5"/><rect x="8" y="7" width="6" height="5" rx="1" fill="currentColor" stroke="none"/></svg>
+                    </button>
+                  </div>
                 </div>
                 <div class="panel-body">
                   <canvas id="office-canvas"></canvas>
@@ -130,7 +139,19 @@
 
               <!-- Agent List -->
               <div class="panel agent-list-panel" id="agentListPanel">
-                <div class="panel-header">Agent List <button class="agent-create-btn" id="createAgentBtn" title="Register New Agent">+ New</button></div>
+                <div class="panel-header">
+                  <div class="panel-header-title">
+                    <span>Agent List</span>
+                    <span class="panel-header-badge panel-header-filter-badge" id="agentListFilterBadge">Registered Only</span>
+                  </div>
+                  <div class="panel-header-actions">
+                    <label class="panel-filter-toggle" for="agentListRegisteredFilterToggle" title="Show only registered agents">
+                      <input type="checkbox" id="agentListRegisteredFilterToggle">
+                      <span>Registered Only</span>
+                    </label>
+                    <button class="agent-create-btn" id="createAgentBtn" title="Register New Agent">+ New</button>
+                  </div>
+                </div>
                 <div class="panel-body" id="agentPanel">
                   <div class="standby-state" id="standbyMessage">
                     <div>No agents dispatched.</div>
@@ -147,7 +168,9 @@
             <div class="office-right-col panel" id="terminalPanel">
               <div class="terminal-tabs" id="terminalTabs">
                 <div class="terminal-tabs-list" id="terminalTabsList"></div>
-                <button class="terminal-new-btn" id="terminalNewBtn" title="New Terminal">+</button>
+                <div class="terminal-toolbar">
+                  <button class="terminal-new-btn" id="terminalNewBtn" title="New Terminal">+</button>
+                </div>
               </div>
               <div class="terminal-container" id="terminalContainer">
                 <div class="terminal-empty-state" id="terminalEmptyState">
@@ -158,6 +181,7 @@
                   <div style="margin-top:12px;">No terminal open</div>
                   <div style="font-size:0.7rem; margin-top:6px; color:var(--color-text-dark);">Click an agent to open a terminal.</div>
                 </div>
+                <div class="terminal-launch-popover" id="terminalProfileMenu" style="display:none;"></div>
               </div>
             </div>
 

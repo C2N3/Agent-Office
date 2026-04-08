@@ -1,9 +1,14 @@
+const REGISTERED_FILTER_STORAGE_KEY = 'mc-filter-registered-only';
+
 const state = {
   agents: new Map(),
   agentHistory: new Map(),
   stats: { total: 0, active: 0, completed: 0, totalTokens: 0, totalCost: 0, errorCount: 0 },
   connected: false,
-  currentView: localStorage.getItem('mc-view') || 'office'
+  currentView: localStorage.getItem('mc-view') || 'office',
+  filters: {
+    registeredOnly: localStorage.getItem(REGISTERED_FILTER_STORAGE_KEY) !== 'false'
+  }
 };
 
 const DOM = {
@@ -15,7 +20,11 @@ const DOM = {
   kpiTotalAgents: document.getElementById('kpiTotalAgents'),
   kpiTokens: document.getElementById('kpiTokens'),
   kpiCost: document.getElementById('kpiCost'),
-  kpiErrors: document.getElementById('kpiErrors')
+  kpiErrors: document.getElementById('kpiErrors'),
+  officeFilterBadge: document.getElementById('officeFilterBadge'),
+  agentListFilterBadge: document.getElementById('agentListFilterBadge'),
+  officeFilterToggle: document.getElementById('officeRegisteredFilterToggle'),
+  agentListFilterToggle: document.getElementById('agentListRegisteredFilterToggle')
 };
 
 // ─── SSE CONNECTION ───
@@ -43,8 +52,8 @@ function connectSSE() {
   };
 
   es.addEventListener('connected', () => fetchInitialData());
-  es.addEventListener('agent.created', e => { const d = JSON.parse(e.data).data; updateAgent(d); if (d.isRegistered && typeof officeOnAgentCreated === 'function') officeOnAgentCreated(d); });
-  es.addEventListener('agent.updated', e => { const d = JSON.parse(e.data).data; updateAgent(d); if (d.isRegistered && typeof officeOnAgentUpdated === 'function') officeOnAgentUpdated(d); });
+  es.addEventListener('agent.created', e => { const d = JSON.parse(e.data).data; updateAgent(d); if (typeof officeOnAgentCreated === 'function') officeOnAgentCreated(d); });
+  es.addEventListener('agent.updated', e => { const d = JSON.parse(e.data).data; updateAgent(d); if (typeof officeOnAgentUpdated === 'function') officeOnAgentUpdated(d); });
   es.addEventListener('agent.removed', e => { const d = JSON.parse(e.data).data; removeAgent(d.id); if (typeof officeOnAgentRemoved === 'function') officeOnAgentRemoved(d); });
 }
 
@@ -88,7 +97,7 @@ function removeAgent(id) {
   recalcStats();
   const el = DOM.agentPanel.querySelector(`[data-id="${id}"]`);
   if (el) el.remove();
-  if (state.agents.size === 0) DOM.standbyMessage.style.display = 'block';
+  if (getVisibleAgents().length === 0) DOM.standbyMessage.style.display = 'block';
 }
 
 // ─── UTILS ───
@@ -97,6 +106,14 @@ const formatNum = n => {
   if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
   return n.toString();
 };
+
+function escapeText(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
 
 function recalcStats() {
   const arr = Array.from(state.agents.values());
@@ -126,23 +143,75 @@ function updateConnectionStatus(up) {
 }
 
 // ─── RENDER AGENTS ───
-function renderAgentList() {
-  const registered = [...state.agents.values()].filter(a => a.isRegistered);
-  if (registered.length === 0) {
-    DOM.standbyMessage.style.display = 'block';
-    return;
-  }
-  DOM.standbyMessage.style.display = 'none';
-  for (const ag of registered) updateAgentUI(ag);
-  // Add registered agents to office
-  for (const ag of registered) {
-    if (typeof officeOnAgentCreated === 'function') officeOnAgentCreated(ag);
+function isRegisteredOnlyFilterEnabled() {
+  return !!state.filters.registeredOnly;
+}
+
+window.dashboardIsRegisteredOnlyFilterEnabled = isRegisteredOnlyFilterEnabled;
+
+function shouldDisplayAgent(agent) {
+  return !isRegisteredOnlyFilterEnabled() || !!agent.isRegistered;
+}
+
+window.dashboardShouldDisplayAgent = shouldDisplayAgent;
+
+function getVisibleAgents() {
+  return [...state.agents.values()].filter(shouldDisplayAgent);
+}
+
+function updateFilterUI() {
+  const registeredOnly = isRegisteredOnlyFilterEnabled();
+  const badgeText = registeredOnly ? 'Registered Only' : 'All Agents';
+
+  [DOM.officeFilterBadge, DOM.agentListFilterBadge].forEach(badge => {
+    if (!badge) return;
+    badge.textContent = badgeText;
+    badge.classList.toggle('is-off', !registeredOnly);
+  });
+
+  [DOM.officeFilterToggle, DOM.agentListFilterToggle].forEach(toggle => {
+    if (!toggle) return;
+    toggle.checked = registeredOnly;
+  });
+}
+
+function renderOfficeRoster() {
+  for (const ag of state.agents.values()) {
+    if (shouldDisplayAgent(ag)) {
+      if (typeof officeOnAgentCreated === 'function') officeOnAgentCreated(ag);
+      continue;
+    }
+    if (typeof officeOnAgentRemoved === 'function') officeOnAgentRemoved({ id: ag.id });
   }
 }
 
+function setRegisteredOnlyFilter(enabled) {
+  state.filters.registeredOnly = !!enabled;
+  localStorage.setItem(REGISTERED_FILTER_STORAGE_KEY, enabled ? 'true' : 'false');
+  updateFilterUI();
+  renderAgentList();
+}
+
+function initFilterControls() {
+  [DOM.officeFilterToggle, DOM.agentListFilterToggle].forEach(toggle => {
+    if (!toggle) return;
+    toggle.addEventListener('change', function () {
+      setRegisteredOnlyFilter(toggle.checked);
+    });
+  });
+  updateFilterUI();
+}
+
+function renderAgentList() {
+  const visibleAgents = getVisibleAgents();
+  DOM.standbyMessage.style.display = visibleAgents.length === 0 ? 'block' : 'none';
+  for (const ag of state.agents.values()) updateAgentUI(ag);
+  renderOfficeRoster();
+}
+
 function updateAgentUI(ag) {
-  // Only show registered agents in the Agent List
-  if (!ag.isRegistered) {
+  // Only show agents that match the current filter in the Agent List
+  if (!shouldDisplayAgent(ag)) {
     const existing = DOM.agentPanel.querySelector(`[data-id="${ag.id}"]`);
     if (existing) existing.remove();
     return;
@@ -297,6 +366,7 @@ function showOfficePopover(canvas, char) {
     <div class="pop-row"><span>Tokens</span><span class="pop-val">${formatNum(inputTok + outputTok)}</span></div>
     <div class="pop-row"><span>Cost</span><span class="pop-val">$${cost.toFixed(4)}</span></div>
     <div class="pop-row"><span>Context</span><span class="pop-val">${ctxText}</span></div>
+    <button class="pop-terminal-btn" onclick="promptRenameAgent('${char.id}')">Rename</button>
     <button class="pop-terminal-btn" onclick="openTerminalForAgent('${char.id}')">Open Terminal</button>
   `;
   popoverEl.style.display = 'block';
@@ -325,6 +395,21 @@ function showOfficePopover(canvas, char) {
 
 function hideOfficePopover() {
   popoverEl.style.display = 'none';
+}
+
+async function promptRenameAgent(agentId) {
+  const ag = state.agents.get(agentId);
+  const currentName = (ag && (ag.nickname || ag.name)) || 'Agent';
+  const nextName = window.prompt('Rename agent', currentName);
+  if (nextName === null || typeof dashboardAPI === 'undefined') return;
+
+  const trimmed = nextName.trim();
+  if (trimmed) {
+    await dashboardAPI.setNickname(agentId, trimmed);
+  } else {
+    await dashboardAPI.removeNickname(agentId);
+  }
+  hideOfficePopover();
 }
 
 function setupOfficeClickHandler() {
@@ -679,6 +764,8 @@ const termState = {
   activeId: null,
   dataCleanup: null,
   exitCleanup: null,
+  profiles: [],
+  defaultProfileId: null,
 };
 
 function initTerminals() {
@@ -701,7 +788,171 @@ function initTerminals() {
   }
 }
 
-async function openTerminalForAgent(agentId) {
+function getTerminalProfile(profileId) {
+  return termState.profiles.find(profile => profile.id === profileId) || null;
+}
+
+function getDefaultTerminalProfile() {
+  return getTerminalProfile(termState.defaultProfileId) || termState.profiles[0] || null;
+}
+
+function updateTerminalToolbarTitles() {
+  const newBtn = document.getElementById('terminalNewBtn');
+  if (!newBtn) return;
+  const defaultProfile = getDefaultTerminalProfile();
+  newBtn.title = defaultProfile
+    ? `New Terminal (${defaultProfile.title})`
+    : 'New Terminal';
+}
+
+function renderTerminalProfileMenu() {
+  const menu = document.getElementById('terminalProfileMenu');
+  if (!menu) return;
+
+  const defaultProfile = getDefaultTerminalProfile();
+  const profiles = termState.profiles;
+
+  if (profiles.length === 0) {
+    menu.innerHTML = `
+      <div class="terminal-launch-header">
+        <div>
+          <div class="terminal-launch-title">New Terminal</div>
+          <div class="terminal-launch-subtitle">No shell profiles were detected on this machine.</div>
+        </div>
+        <button class="terminal-launch-close" type="button" data-action="close-terminal-popover">&times;</button>
+      </div>
+    `;
+    return;
+  }
+
+  const openItems = profiles.map(profile => `
+    <button class="terminal-profile-item" data-action="open-profile" data-profile-id="${escapeText(profile.id)}">
+      <span class="terminal-profile-item-main">
+        <span class="terminal-profile-item-title">${escapeText(profile.title)}</span>
+        <span class="terminal-profile-item-hint">Open a one-off terminal with this shell</span>
+      </span>
+      ${profile.id === defaultProfile?.id ? '<span class="terminal-profile-badge">Default</span>' : ''}
+    </button>
+  `).join('');
+
+  const defaultItems = profiles.map(profile => `
+    <button class="terminal-profile-item ${profile.id === defaultProfile?.id ? 'selected' : ''}" data-action="set-default-profile" data-profile-id="${escapeText(profile.id)}">
+      <span class="terminal-profile-item-main">
+        <span class="terminal-profile-item-title">${escapeText(profile.title)}</span>
+        <span class="terminal-profile-item-hint">Use when pressing the New Terminal button</span>
+      </span>
+      <span class="terminal-profile-check">${profile.id === defaultProfile?.id ? '✓' : ''}</span>
+    </button>
+  `).join('');
+
+  menu.innerHTML = `
+    <div class="terminal-launch-header">
+      <div>
+        <div class="terminal-launch-title">New Terminal</div>
+        <div class="terminal-launch-subtitle">Choose a shell for this tab, or change the default profile.</div>
+      </div>
+      <button class="terminal-launch-close" type="button" data-action="close-terminal-popover">&times;</button>
+    </div>
+    <button class="terminal-launch-primary" data-action="open-profile" data-profile-id="${escapeText(defaultProfile.id)}">
+      <span class="terminal-launch-primary-label">Open default terminal</span>
+      <span class="terminal-launch-primary-value">${escapeText(defaultProfile.title)}</span>
+    </button>
+    <div class="terminal-profile-section-title">Open With</div>
+    <div class="terminal-profile-list">${openItems}</div>
+    <div class="terminal-profile-divider"></div>
+    <div class="terminal-profile-section-title">Default Profile</div>
+    <div class="terminal-profile-list">${defaultItems}</div>
+  `;
+}
+
+function closeTerminalProfileMenu() {
+  const menu = document.getElementById('terminalProfileMenu');
+  if (menu) menu.style.display = 'none';
+}
+
+async function refreshTerminalProfiles() {
+  if (typeof dashboardAPI === 'undefined' || !dashboardAPI.getTerminalProfiles) return;
+  const result = await dashboardAPI.getTerminalProfiles();
+  termState.profiles = Array.isArray(result?.profiles) ? result.profiles : [];
+  termState.defaultProfileId = result?.defaultProfileId || termState.profiles[0]?.id || null;
+  renderTerminalProfileMenu();
+  updateTerminalToolbarTitles();
+}
+
+async function ensureTerminalProfilesLoaded() {
+  if (termState.profiles.length > 0) return;
+  await refreshTerminalProfiles();
+}
+
+async function openNewLocalTerminal(profileId) {
+  await ensureTerminalProfilesLoaded();
+  const profile = getTerminalProfile(profileId) || getDefaultTerminalProfile();
+  const id = 'local-' + Date.now();
+  return openTerminalForAgent(id, {
+    profileId: profile?.id || null,
+    label: profile?.title || 'Terminal',
+  });
+}
+
+function initTerminalProfileMenu() {
+  const newBtn = document.getElementById('terminalNewBtn');
+  const menu = document.getElementById('terminalProfileMenu');
+  if (!newBtn || !menu) return;
+
+  newBtn.addEventListener('click', async () => {
+    const willOpen = menu.style.display === 'none';
+    if (willOpen) {
+      await refreshTerminalProfiles();
+      menu.style.display = '';
+    } else {
+      closeTerminalProfileMenu();
+    }
+  });
+
+  menu.addEventListener('click', async (e) => {
+    const item = e.target.closest('[data-action]');
+    if (!item) return;
+
+    const action = item.dataset.action;
+    if (action === 'close-terminal-popover') {
+      closeTerminalProfileMenu();
+      return;
+    }
+
+    const profileId = item.dataset.profileId;
+    if (!profileId) return;
+
+    if (action === 'open-profile') {
+      closeTerminalProfileMenu();
+      await openNewLocalTerminal(profileId);
+      return;
+    }
+
+    if (action === 'set-default-profile' && typeof dashboardAPI !== 'undefined' && dashboardAPI.setDefaultTerminalProfile) {
+      const result = await dashboardAPI.setDefaultTerminalProfile(profileId);
+      if (result?.success) {
+        termState.profiles = Array.isArray(result.profiles) ? result.profiles : termState.profiles;
+        termState.defaultProfileId = result.defaultProfileId || profileId;
+        renderTerminalProfileMenu();
+        updateTerminalToolbarTitles();
+      }
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!menu.contains(e.target) && !newBtn.contains(e.target)) {
+      closeTerminalProfileMenu();
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeTerminalProfileMenu();
+    }
+  });
+}
+
+async function openTerminalForAgent(agentId, openOptions = {}) {
   // If terminal already exists, just activate it
   if (termState.terminals.has(agentId)) {
     activateTerminalTab(agentId);
@@ -710,7 +961,7 @@ async function openTerminalForAgent(agentId) {
 
   // Get agent info for cwd and provider
   const agent = state.agents.get(agentId);
-  const cwd = agent?.metadata?.projectPath || agent?.project || '';
+  const cwd = openOptions.cwd || agent?.metadata?.projectPath || agent?.project || '';
   const provider = agent?.metadata?.provider || null;
   const agentStatus = agent?.status || '';
 
@@ -725,13 +976,23 @@ async function openTerminalForAgent(agentId) {
 
   if (typeof dashboardAPI === 'undefined' || !dashboardAPI.createTerminal) return;
 
-  const result = await dashboardAPI.createTerminal(agentId, { cwd });
+  const result = await dashboardAPI.createTerminal(agentId, {
+    cwd,
+    profileId: openOptions.profileId || undefined,
+  });
   if (!result || !result.success) {
     console.error('[Terminal] Failed to create:', result?.error);
     return;
   }
 
-  createXtermInstance(agentId, agent?.nickname || agent?.name || 'Terminal');
+  createXtermInstance(agentId, openOptions.label || agent?.nickname || agent?.name || result?.profileLabel || 'Terminal');
+
+  if (provider === 'codex' && dashboardAPI.writeTerminal) {
+    // Codex agents should boot directly into the Codex CLI instead of a blank shell.
+    setTimeout(() => {
+      dashboardAPI.writeTerminal(agentId, 'codex\r');
+    }, 250);
+  }
 }
 
 function createXtermInstance(agentId, label) {
@@ -1001,6 +1262,8 @@ function fitActiveTerminal() {
 
 // ─── BOOT ───
 function initApp() {
+  initFilterControls();
+
   // Sync startup view
   document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
   let btn = document.querySelector(`[data-view="${state.currentView}"]`);
@@ -1014,6 +1277,8 @@ function initApp() {
 
   connectSSE();
   initTerminals();
+  initTerminalProfileMenu();
+  refreshTerminalProfiles().catch(e => console.error('[Terminal Profiles]', e));
   initResizableHandles();
   if (target === 'heatmap') renderHeatmapView();
   else if (target === 'usage') renderUsageView();
@@ -1055,14 +1320,6 @@ function initApp() {
     });
   }
 
-  // "New Terminal" button → open generic terminal (no agent)
-  const newTermBtn = document.getElementById('terminalNewBtn');
-  if (newTermBtn) {
-    newTermBtn.addEventListener('click', () => {
-      const id = 'local-' + Date.now();
-      openTerminalForAgent(id);
-    });
-  }
 }
 
 document.addEventListener('DOMContentLoaded', initApp);

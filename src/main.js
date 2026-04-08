@@ -27,6 +27,7 @@ const { createWindowManager } = require('./main/windowManager');
 const { registerIpcHandlers } = require('./main/ipcHandlers');
 const { NicknameStore } = require('./main/nicknameStore');
 const { TerminalManager } = require('./main/terminalManager');
+const { TerminalProfileService } = require('./main/terminalProfileService');
 const { AgentRegistry } = require('./main/agentRegistry');
 
 // =====================================================
@@ -92,6 +93,7 @@ let hookProcessor = null;
 let codexProcessor = null;
 let codexSessionMonitor = null;
 let terminalManager = null;
+let terminalProfileService = null;
 let livenessIntervals = null;
 let agentListeners = null;
 let hookServer = null;
@@ -136,6 +138,7 @@ app.whenReady().then(() => {
 
   // 0.5. Nickname store + Agent registry
   const nicknameStore = new NicknameStore(debugLog);
+  terminalProfileService = new TerminalProfileService(debugLog);
   const agentRegistry = new AgentRegistry(debugLog);
 
   // 1. Start agent manager immediately
@@ -193,6 +196,7 @@ app.whenReady().then(() => {
   terminalManager = new TerminalManager({
     debugLog,
     getWindow: () => windowManager.dashboardWindow,
+    terminalProfileService,
   });
 
   // 5. Register IPC handlers
@@ -202,10 +206,16 @@ app.whenReady().then(() => {
     sessionPids,
     windowManager,
     terminalManager,
+    terminalProfileService,
     nicknameStore,
     debugLog,
     adaptAgentToDashboard,
     errorHandler,
+    attachRegisteredAgent: (agent) => {
+      const hookSessionId = hookProcessor?.attachRegisteredAgent ? hookProcessor.attachRegisteredAgent(agent) : null;
+      const codexSessionId = codexProcessor?.attachRegisteredAgent ? codexProcessor.attachRegisteredAgent(agent) : null;
+      return hookSessionId || codexSessionId || null;
+    },
   });
 
   // 6. Start background services
@@ -247,9 +257,14 @@ app.whenReady().then(() => {
   // 7.5. Populate offline registered agents
   // Clear stale session links from previous run
   for (const regAgent of agentRegistry.getActiveAgents()) {
-    if (regAgent.currentSessionId) {
+    const existing = agentManager.getAgent(regAgent.id);
+    const hasLiveAttachedSession = existing && existing.isRegistered && existing.state !== 'Offline';
+
+    if (regAgent.currentSessionId && !hasLiveAttachedSession) {
       agentRegistry.unlinkSession(regAgent.id);
     }
+    if (hasLiveAttachedSession) continue;
+
     agentManager.updateAgent({
       registryId: regAgent.id,
       displayName: regAgent.name,

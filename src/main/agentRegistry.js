@@ -8,13 +8,15 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 const crypto = require('crypto');
+const { sanitizeProjectPath } = require('../utils');
 
 const PERSIST_DIR = path.join(os.homedir(), '.agent-office');
 const PERSIST_FILE = path.join(PERSIST_DIR, 'agent-registry.json');
 
 function normalizePath(p) {
-  if (!p) return '';
-  let norm = path.resolve(p);
+  const sanitizedPath = sanitizeProjectPath(p);
+  if (!sanitizedPath) return '';
+  let norm = path.resolve(sanitizedPath);
   if (process.platform === 'win32') {
     norm = norm.replace(/\\/g, '/').toLowerCase();
   }
@@ -35,10 +37,19 @@ class AgentRegistry {
         const raw = fs.readFileSync(PERSIST_FILE, 'utf-8');
         const data = JSON.parse(raw);
         const list = Array.isArray(data) ? data : (data.agents || []);
+        let needsSave = false;
         for (const agent of list) {
           if (agent && agent.id) {
+            const sanitizedProjectPath = sanitizeProjectPath(agent.projectPath);
+            if ((agent.projectPath || '') !== sanitizedProjectPath) {
+              agent.projectPath = sanitizedProjectPath;
+              needsSave = true;
+            }
             this.agents.set(agent.id, agent);
           }
+        }
+        if (needsSave) {
+          this._save();
         }
         this.debugLog(`[Registry] Loaded ${this.agents.size} agent(s)`);
       }
@@ -62,12 +73,13 @@ class AgentRegistry {
   }
 
   createAgent({ name, role, projectPath, avatarIndex, provider, model }) {
+    const sanitizedProjectPath = sanitizeProjectPath(projectPath);
     const id = crypto.randomUUID();
     const agent = {
       id,
       name: (name || 'Agent').trim(),
       role: (role || '').trim(),
-      projectPath: projectPath || '',
+      projectPath: sanitizedProjectPath,
       avatarIndex: avatarIndex != null ? avatarIndex : 0,
       enabled: true,
       createdAt: Date.now(),
@@ -104,7 +116,9 @@ class AgentRegistry {
     const allowed = ['name', 'role', 'projectPath', 'avatarIndex', 'provider', 'model'];
     for (const key of allowed) {
       if (fields[key] !== undefined) {
-        agent[key] = fields[key];
+        agent[key] = key === 'projectPath'
+          ? sanitizeProjectPath(fields[key])
+          : fields[key];
       }
     }
     this.agents.set(registryId, agent);
@@ -140,25 +154,14 @@ class AgentRegistry {
   findByProjectPath(rawPath) {
     if (!rawPath) return null;
     const normalized = normalizePath(rawPath);
-    let bestMatch = null;
     for (const agent of this.agents.values()) {
       if (!agent.enabled || agent.archived) continue;
       if (normalizePath(agent.projectPath) !== normalized) continue;
-
-      // Prefer an unlinked agent; fall back to one with a stale session
       if (!agent.currentSessionId) {
-        return agent; // ideal: free agent
-      }
-      if (!bestMatch) {
-        bestMatch = agent; // fallback: already linked but path matches
+        return agent;
       }
     }
-    // If only a linked agent was found, force-unlink its stale session first
-    if (bestMatch) {
-      this.debugLog(`[Registry] Force-unlinking stale session from ${bestMatch.id.slice(0, 8)} for new session`);
-      this.unlinkSession(bestMatch.id);
-    }
-    return bestMatch;
+    return null;
   }
 
   /**

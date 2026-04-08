@@ -142,6 +142,7 @@ function createHookProcessor({ agentManager, agentRegistry, sessionPids, debugLo
     processHookEvent,
     handleSessionStart: processor.handleSessionStart,
     handleSessionEnd: processor.handleSessionEnd,
+    attachRegisteredAgent: processor.attachRegisteredAgent,
     flushPendingStarts: processor.flushPendingStarts,
     cleanup: processor.cleanup,
     get firstPreToolUseDone() { return processor.firstToolUseDone; },

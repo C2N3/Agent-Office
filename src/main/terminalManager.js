@@ -3,12 +3,15 @@
  * Manages node-pty instances for embedded terminals
  */
 
+const fs = require('fs');
 const os = require('os');
+const { sanitizeProjectPath } = require('../utils');
 
 class TerminalManager {
-  constructor({ debugLog, getWindow }) {
+  constructor({ debugLog, getWindow, terminalProfileService }) {
     this.debugLog = debugLog || (() => {});
     this.getWindow = getWindow || (() => null);
+    this.terminalProfileService = terminalProfileService || null;
     /** @type {Map<string, { pty: import('node-pty').IPty, cols: number, rows: number }>} */
     this.terminals = new Map();
   }
@@ -33,15 +36,26 @@ class TerminalManager {
       return { success: false, error: 'node-pty not available' };
     }
 
-    // Support custom command (e.g. 'claude') with args, or default to shell
-    const command = options.command || options.shell || (process.platform === 'win32'
+    // Support custom command (e.g. 'claude') with args, or resolve a configured shell profile.
+    const profile = (!options.command && !options.shell && this.terminalProfileService)
+      ? this.terminalProfileService.resolveProfile(options.profileId)
+      : null;
+    const command = options.command || options.shell || profile?.command || (process.platform === 'win32'
       ? 'powershell.exe'
       : process.env.SHELL || '/bin/bash');
-    const args = options.args || [];
+    const args = options.args || profile?.args || [];
 
-    const cwd = options.cwd || os.homedir();
+    let cwd = sanitizeProjectPath(options.cwd) || os.homedir();
     const cols = options.cols || 120;
     const rows = options.rows || 30;
+
+    try {
+      if (!fs.existsSync(cwd) || !fs.statSync(cwd).isDirectory()) {
+        cwd = os.homedir();
+      }
+    } catch {
+      cwd = os.homedir();
+    }
 
     const env = Object.assign({}, process.env);
     // Ensure color support
@@ -77,8 +91,13 @@ class TerminalManager {
         }
       });
 
-      this.debugLog(`[Terminal] Created: ${agentId.slice(0, 8)} cmd=${command} cwd=${cwd}`);
-      return { success: true, pid: ptyProcess.pid };
+      this.debugLog(`[Terminal] Created: ${agentId.slice(0, 8)} cmd=${command} profile=${profile?.id || 'custom'} cwd=${cwd}`);
+      return {
+        success: true,
+        pid: ptyProcess.pid,
+        profileId: profile?.id || null,
+        profileLabel: profile?.title || null,
+      };
     } catch (e) {
       this.debugLog(`[Terminal] Spawn error: ${e.message}`);
       return { success: false, error: e.message };

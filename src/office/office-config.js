@@ -67,8 +67,8 @@ const IDLE_ANIM_KEYS = new Set([
   'dance',
 ]);
 
-// Seat direction/pose config (global ID → pose)
-const SEAT_MAP = {
+// Default seat direction/pose config (global ID → pose)
+const DEFAULT_SEAT_MAP = {
   10: { dir: 'right', animType: 'sit' },
   12: { dir: 'right', animType: 'sit' },
   18: { dir: 'right', animType: 'sit' },
@@ -89,12 +89,8 @@ const SEAT_MAP = {
   15: { dir: 'up', animType: 'sit' },
 };
 
-function getSeatConfig(id) {
-  return SEAT_MAP[id] || { dir: 'down', animType: 'sit' };
-}
-
 // Idle zone spot → resting animation ('dance' or sit direction)
-const IDLE_SEAT_MAP = {
+const DEFAULT_IDLE_SEAT_MAP = {
   18: 'right',
   28: 'right',
   24: 'dance',
@@ -158,9 +154,69 @@ function avatarIndexFromId(id) {
 }
 
 // Laptop index → seat ID mapping
-const LAPTOP_ID_MAP = {
+const DEFAULT_LAPTOP_ID_MAP = {
   0: 10, 1: 8, 2: 9, 3: 11,
   4: 0, 5: 1, 6: 2, 7: 3,
   8: 12, 9: 14, 10: 15, 11: 13,
   12: 4, 13: 5, 14: 6, 15: 7,
 };
+
+var OFFICE_LAYOUT = {
+  name: 'Default Office',
+  mapScale: OFFICE.MAP_SCALE,
+  tileSize: OFFICE.TILE_SIZE,
+  assets: {
+    background: '/public/office/map/office_bg_32.webp',
+    foreground: '/public/office/map/office_fg_32.webp',
+    coordinates: '/public/office/map/office_xy.webp',
+    collision: '/public/office/map/office_collision.webp',
+    laptopSpots: '/public/office/ojects/office_laptop.webp',
+    laptopStates: {
+      down: {
+        closed: '/public/office/ojects/office_laptop_front_close.webp',
+        open: '/public/office/ojects/office_laptop_front_open.webp',
+      },
+      up: {
+        closed: '/public/office/ojects/office_laptop_back_close.webp',
+        open: '/public/office/ojects/office_laptop_back_open.webp',
+      },
+      left: {
+        closed: '/public/office/ojects/office_laptop_left_close.webp',
+        open: '/public/office/ojects/office_laptop_left_open.webp',
+      },
+      right: {
+        closed: '/public/office/ojects/office_laptop_right_close.webp',
+        open: '/public/office/ojects/office_laptop_right_open.webp',
+      },
+    },
+  },
+  seatMap: DEFAULT_SEAT_MAP,
+  idleSeatMap: DEFAULT_IDLE_SEAT_MAP,
+  laptopSeatMap: DEFAULT_LAPTOP_ID_MAP,
+  decor: [],
+};
+
+async function loadOfficeLayout() {
+  try {
+    const res = await fetch('/api/office-layout');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+
+    const layout = await res.json();
+    if (!layout || typeof layout !== 'object') return;
+
+    OFFICE_LAYOUT = layout;
+    if (typeof layout.mapScale === 'number' && layout.mapScale > 0) {
+      OFFICE.MAP_SCALE = layout.mapScale;
+    }
+    if (typeof layout.tileSize === 'number' && layout.tileSize > 0) {
+      OFFICE.TILE_SIZE = layout.tileSize;
+    }
+  } catch (e) {
+    console.warn('[OfficeConfig] Failed to load custom office layout, using default:', e);
+  }
+}
+
+function getSeatConfig(id) {
+  const seatMap = (OFFICE_LAYOUT && OFFICE_LAYOUT.seatMap) || DEFAULT_SEAT_MAP;
+  return seatMap[id] || { dir: 'down', animType: 'sit' };
+}

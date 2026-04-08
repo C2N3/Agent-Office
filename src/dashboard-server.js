@@ -8,6 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const { URL } = require('url');
 const { adaptAgentToDashboard } = require('./dashboardAdapter');
+const { loadOfficeLayoutManifest, resolveOfficeLayoutAssetPath } = require('./officeLayout');
 
 const PORT = 3000;
 const HTML_FILE = path.join(__dirname, '..', 'dashboard.html');
@@ -403,6 +404,39 @@ function handleGetHealth(req, res) {
   }));
 }
 
+function handleGetOfficeLayout(req, res) {
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(loadOfficeLayoutManifest()));
+}
+
+function handleGetOfficeLayoutAsset(req, res, url) {
+  const assetPrefix = '/api/office-layout/assets/';
+  const assetPath = url.pathname.slice(assetPrefix.length);
+  const resolved = resolveOfficeLayoutAssetPath(assetPath);
+
+  if (!resolved) {
+    res.writeHead(404, { 'Content-Type': 'text/plain' });
+    res.end('Not Found');
+    return;
+  }
+
+  const ext = path.extname(resolved);
+  const mime = MIME_TYPES[ext] || 'application/octet-stream';
+  fs.readFile(resolved, (err, data) => {
+    if (err) {
+      res.writeHead(404, { 'Content-Type': 'text/plain' });
+      res.end('Not Found');
+      return;
+    }
+
+    res.writeHead(200, {
+      'Content-Type': mime,
+      'Cache-Control': 'no-cache'
+    });
+    res.end(data);
+  });
+}
+
 // ─── Conversation / Session History Handlers ───
 
 const { parseConversation, getConversationSummary } = require('./main/conversationParser');
@@ -471,6 +505,7 @@ const apiRoutes = {
   'GET /api/sessions': handleGetSessions,
   'GET /api/heatmap': handleGetHeatmap,
   'GET /api/health': handleGetHealth,
+  'GET /api/office-layout': handleGetOfficeLayout,
 };
 
 /**
@@ -492,6 +527,11 @@ function handleAPIRequest(req, res, url) {
   const handler = apiRoutes[routeKey];
   if (handler) {
     handler(req, res, url);
+    return;
+  }
+
+  if (req.method === 'GET' && url.pathname.startsWith('/api/office-layout/assets/')) {
+    handleGetOfficeLayoutAsset(req, res, url);
     return;
   }
 

@@ -7,6 +7,21 @@
 
 var officeInitialized = false;
 
+function isRegisteredOnlyOfficeFilterEnabled() {
+  if (typeof window.dashboardIsRegisteredOnlyFilterEnabled === 'function') {
+    return !!window.dashboardIsRegisteredOnlyFilterEnabled();
+  }
+  try {
+    return localStorage.getItem('mc-filter-registered-only') !== 'false';
+  } catch (e) {
+    return true;
+  }
+}
+
+function shouldDisplayOfficeAgent(agent) {
+  return !isRegisteredOnlyOfficeFilterEnabled() || !!(agent && agent.isRegistered);
+}
+
 async function initOffice() {
   if (officeInitialized) {
     officeRenderer.resume();
@@ -14,7 +29,7 @@ async function initOffice() {
   }
 
   // Load shared config before anything else
-  await Promise.all([loadAvatarFiles(), loadSpriteFrames()]);
+  await Promise.all([loadAvatarFiles(), loadSpriteFrames(), loadOfficeLayout()]);
 
   const canvas = document.getElementById('office-canvas');
   if (!canvas) return;
@@ -43,7 +58,8 @@ async function initOffice() {
   try {
     const res = await fetch('/api/agents');
     const agents = await res.json();
-    agents.filter(function (a) { return a.isRegistered; }).forEach(function (a) {
+    agents.forEach(function (a) {
+      if (!shouldDisplayOfficeAgent(a)) return;
       officeCharacters.addCharacter(a);
     });
   } catch (e) {
@@ -59,14 +75,17 @@ async function initOffice() {
 /** Called from dashboard SSE agent.created handler */
 function officeOnAgentCreated(data) {
   if (!officeInitialized) return;
-  if (!data.isRegistered) return; // Only show registered agents
+  if (!shouldDisplayOfficeAgent(data)) return;
   officeCharacters.addCharacter(data);
 }
 
 /** Called from dashboard SSE agent.updated handler */
 function officeOnAgentUpdated(data) {
   if (!officeInitialized) return;
-  if (!data.isRegistered) return;
+  if (!shouldDisplayOfficeAgent(data)) {
+    officeCharacters.removeCharacter(data.id);
+    return;
+  }
   officeCharacters.updateCharacter(data);
 }
 

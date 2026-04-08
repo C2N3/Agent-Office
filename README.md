@@ -6,6 +6,8 @@
 
 > Real-time pixel avatar visualization for Claude Code CLI and Codex CLI sessions.
 
+Korean README: [README.ko.md](README.ko.md)
+
 Agent-Office is a standalone Electron app that listens to [Claude Code](https://docs.anthropic.com/en/docs/claude-code) hook events and can also ingest [Codex](https://developers.openai.com/codex/) `exec --json` streams. It renders each agent session as an animated pixel character with a virtual office, activity heatmaps, and token usage analytics.
 
 ![Demo](docs/demo.gif)
@@ -27,6 +29,7 @@ Agent-Office is a standalone Electron app that listens to [Claude Code](https://
 - **Auto Recovery** — Running sessions are automatically restored on app restart
 - **Sub-agents & Teams** — Full support for Claude Code sub-agents and team mode
 - **Codex MVP Input** — Optional `codex exec --json` forwarding path via local event ingestion
+- **Custom Office Layouts** — Override office structure, furniture layers, and seat metadata with a local manifest
 
 ## Requirements
 
@@ -72,6 +75,17 @@ Notes:
 | `npm start` | Launch the Electron app |
 | `npm run dev` | Development mode (DevTools enabled) |
 | `npm test` | Run tests |
+
+## Custom Office Layouts
+
+You can override the built-in office with a local manifest:
+
+- Create `office-layout/manifest.json` in the repo root, or
+- Set `AGENT_OFFICE_LAYOUT_DIR` to a layout directory
+
+The current layout system is image-driven, so structure changes come from replacing the background, collision, coordinate, and laptop marker assets. You can also add extra decor sprites and seat metadata overrides.
+
+See [docs/office-layout.md](docs/office-layout.md) for the manifest format and a full example.
 
 ## Troubleshooting
 

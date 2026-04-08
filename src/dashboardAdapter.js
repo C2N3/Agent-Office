@@ -4,6 +4,7 @@
  */
 
 const path = require('path');
+const { sanitizeProjectPath } = require('./utils');
 
 /**
  * State mapping from Agent-Office to Dashboard
@@ -38,8 +39,9 @@ function mapPixelStateToDashboardState(pixelState) {
  * @returns {string} Project name or 'Default'
  */
 function extractProjectName(projectPath) {
-  if (!projectPath) return 'Default';
-  const normalized = projectPath.replace(/\\/g, '/');
+  const sanitizedProjectPath = sanitizeProjectPath(projectPath);
+  if (!sanitizedProjectPath) return 'Default';
+  const normalized = sanitizedProjectPath.replace(/\\/g, '/');
   return path.basename(normalized);
 }
 
@@ -99,7 +101,7 @@ function adaptAgentToDashboard(pixelAgent) {
     metadata: {
       isSubagent: pixelAgent.isSubagent || false,
       isTeammate: pixelAgent.isTeammate || false,
-      projectPath: pixelAgent.projectPath || '',
+      projectPath: sanitizeProjectPath(pixelAgent.projectPath),
       parentId: pixelAgent.parentId || null,
       permissionMode: pixelAgent.permissionMode || null,
       teammateName: pixelAgent.teammateName || null,

@@ -6,7 +6,7 @@
 
 const EventEmitter = require('events');
 const path = require('path');
-const { formatSlugToDisplayName } = require('./utils');
+const { formatSlugToDisplayName, sanitizeProjectPath } = require('./utils');
 
 // Single source of truth: public/shared/avatars.json
 const AVATAR_FILES = require('../public/shared/avatars.json');
@@ -287,8 +287,9 @@ class AgentManager extends EventEmitter {
     if (slug) {
       return formatSlugToDisplayName(slug);
     }
-    if (projectPath) {
-      return path.basename(projectPath);
+    const sanitizedProjectPath = sanitizeProjectPath(projectPath);
+    if (sanitizedProjectPath) {
+      return path.basename(sanitizedProjectPath);
     }
     return 'Agent';
   }

@@ -3,6 +3,9 @@
  * Eliminates code duplication across modules
  */
 
+const os = require('os');
+const path = require('path');
+
 /**
  * Format slug to display name
  * @param {string} slug - Slug like "toasty-sparking-lecun"
@@ -23,6 +26,41 @@ function formatTime(ms) {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
+/**
+ * Sanitize user-entered project paths.
+ * Strips surrounding quotes so pasted shell paths still resolve correctly.
+ * @param {string} rawPath
+ * @returns {string}
+ */
+function sanitizeProjectPath(rawPath) {
+  if (typeof rawPath !== 'string') return '';
+
+  let sanitized = rawPath.trim();
+  if (!sanitized) return '';
+
+  while (
+    sanitized.length >= 2
+    && (
+      (sanitized.startsWith('"') && sanitized.endsWith('"'))
+      || (sanitized.startsWith('\'') && sanitized.endsWith('\''))
+    )
+  ) {
+    sanitized = sanitized.slice(1, -1).trim();
+  }
+
+  if (!sanitized) return '';
+
+  if (sanitized === '~') {
+    return os.homedir();
+  }
+
+  if (sanitized.startsWith('~/') || sanitized.startsWith('~\\')) {
+    return path.join(os.homedir(), sanitized.slice(2));
+  }
+
+  return sanitized;
 }
 
 /**
@@ -102,5 +140,6 @@ function getWindowSizeForAgents(agentsOrCount) {
 module.exports = {
   formatSlugToDisplayName,
   formatTime,
+  sanitizeProjectPath,
   getWindowSizeForAgents
 };
