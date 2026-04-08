@@ -94,4 +94,12 @@ contextBridge.exposeInMainWorld('dashboardAPI', {
     return () => ipcRenderer.removeListener('terminal:exit', listener);
   },
 
+  // ─── PowerShell Policy ───
+  onPsPolicyBlocked: (callback) => {
+    const listener = () => callback();
+    ipcRenderer.on('powershell:policy-blocked', listener);
+    return () => ipcRenderer.removeListener('powershell:policy-blocked', listener);
+  },
+  openPsPolicyTerminal: () => ipcRenderer.invoke('powershell:open-policy-terminal'),
+
 });

@@ -14,6 +14,8 @@ class TerminalManager {
     this.terminalProfileService = terminalProfileService || null;
     /** @type {Map<string, { pty: import('node-pty').IPty, cols: number, rows: number }>} */
     this.terminals = new Map();
+    // Prevent duplicate policy-blocked notifications
+    this._policyBlockedNotified = false;
   }
 
   /**
@@ -71,7 +73,7 @@ class TerminalManager {
         env,
       });
 
-      const entry = { pty: ptyProcess, cols, rows };
+      const entry = { pty: ptyProcess, cols, rows, dataBuf: '' };
       this.terminals.set(agentId, entry);
 
       // Forward PTY output to dashboard window via IPC
@@ -79,6 +81,21 @@ class TerminalManager {
         const win = this.getWindow();
         if (win && !win.isDestroyed()) {
           win.webContents.send('terminal:data', agentId, data);
+
+          // Detect PowerShell execution policy block (matches both English and Korean Windows)
+          // Buffer last 512 chars to handle strings split across chunks
+          if (!this._policyBlockedNotified) {
+            entry.dataBuf = (entry.dataBuf + data).slice(-512);
+            if (
+              entry.dataBuf.includes('PSSecurityException') ||
+              entry.dataBuf.includes('scripts is disabled on this system') ||
+              entry.dataBuf.includes('about_Execution_Policies') ||
+              entry.dataBuf.includes('UnauthorizedAccess')
+            ) {
+              this._policyBlockedNotified = true;
+              win.webContents.send('powershell:policy-blocked');
+            }
+          }
         }
       });
 

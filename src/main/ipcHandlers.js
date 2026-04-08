@@ -247,6 +247,19 @@ function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowM
       terminalManager.destroyTerminal(agentId);
       return { success: true };
     });
+
+    // Open a visible PowerShell window so the user can confirm the execution policy change
+    ipcMain.handle('powershell:open-policy-terminal', async () => {
+      if (process.platform !== 'win32') return { success: false };
+      const { spawn } = require('child_process');
+      const cmd = 'Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force; Write-Host "완료! 이 창을 닫아도 됩니다." -ForegroundColor Green';
+      spawn('cmd.exe', ['/c', 'start', 'powershell.exe', '-NoExit', '-Command', cmd], {
+        detached: true,
+        stdio: 'ignore',
+        shell: false,
+      }).unref();
+      return { success: true };
+    });
   }
 
   // ─── Agent Registry ───

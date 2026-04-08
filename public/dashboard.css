@@ -226,6 +226,30 @@ body {
   font-weight: 500;
 }
 
+.ps-policy-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(210, 153, 34, 0.12);
+  border-bottom: 1px solid #d29922;
+  color: #e3b341;
+  padding: 8px 14px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+.ps-policy-banner span { flex: 1; }
+.ps-policy-banner button {
+  background: rgba(210, 153, 34, 0.2);
+  border: 1px solid #d29922;
+  color: #e3b341;
+  border-radius: 4px;
+  padding: 3px 10px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ps-policy-banner button:hover { background: rgba(210, 153, 34, 0.35); }
+
 .scroll-container {
   flex: 1;
   overflow-y: auto;

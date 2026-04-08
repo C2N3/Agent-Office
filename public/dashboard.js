@@ -786,6 +786,22 @@ function initTerminals() {
       }
     });
   }
+
+  if (dashboardAPI.onPsPolicyBlocked) {
+    dashboardAPI.onPsPolicyBlocked(() => {
+      const banner = document.getElementById('psPolicyBanner');
+      if (banner) banner.style.display = 'flex';
+    });
+    document.getElementById('psPolicyFixBtn')?.addEventListener('click', () => {
+      dashboardAPI.openPsPolicyTerminal();
+      const banner = document.getElementById('psPolicyBanner');
+      if (banner) banner.style.display = 'none';
+    });
+    document.getElementById('psPolicyDismissBtn')?.addEventListener('click', () => {
+      const banner = document.getElementById('psPolicyBanner');
+      if (banner) banner.style.display = 'none';
+    });
+  }
 }
 
 function getTerminalProfile(profileId) {
