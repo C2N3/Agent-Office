@@ -92,6 +92,56 @@ describe('WorkspaceManager', () => {
     expect(fs.realpathSync(linkedModules)).toBe(path.join(repoRoot, 'node_modules'));
   });
 
+  test('inspects a repository and lists local branches', () => {
+    execFileSync.mockImplementation((command, args) => {
+      const workingTree = args[3];
+      const gitArgs = args.slice(4);
+
+      if (gitArgs[0] === 'rev-parse' && gitArgs[1] === '--show-toplevel') {
+        return `${workingTree}\n`;
+      }
+      if (gitArgs[0] === 'branch' && gitArgs[1] === '--show-current') {
+        return 'develop\n';
+      }
+      if (gitArgs[0] === 'for-each-ref') {
+        return 'develop\nmain\nrelease/1.0\n';
+      }
+      return '';
+    });
+
+    const result = manager.inspectRepository(repoRoot);
+
+    expect(result).toEqual({
+      repositoryPath: repoRoot,
+      repositoryName: 'repo',
+      currentBranch: 'develop',
+      branches: ['develop', 'main', 'release/1.0'],
+    });
+  });
+
+  test('stores explicit baseBranch and defaults startPoint to it', () => {
+    const result = manager.createWorkspace({
+      name: 'Feature Agent',
+      repoPath: repoRoot,
+      baseBranch: 'release/2026.04',
+      branchName: 'workspace/claude/feature-agent',
+    });
+
+    expect(result.workspace.baseBranch).toBe('release/2026.04');
+    expect(result.workspace.startPoint).toBe('release/2026.04');
+
+    const worktreeAddCall = execFileSync.mock.calls.find(([, args]) => args.includes('worktree') && args.includes('add'));
+    expect(worktreeAddCall).toBeDefined();
+    expect(worktreeAddCall[1]).toEqual(expect.arrayContaining([
+      'worktree',
+      'add',
+      '-b',
+      'workspace/claude/feature-agent',
+      result.workspacePath,
+      'release/2026.04',
+    ]));
+  });
+
   test('uses an existing local branch without -b', () => {
     execFileSync.mockImplementation((command, args) => {
       const workingTree = args[3];

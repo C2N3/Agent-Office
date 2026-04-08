@@ -60,10 +60,12 @@ contextBridge.exposeInMainWorld('dashboardAPI', {
 
   // ─── Agent Registry ───
   createRegisteredAgent: (data) => ipcRenderer.invoke('registry:create', data),
+  inspectWorkspaceRepo: (repoPath) => ipcRenderer.invoke('workspace:inspect-repo', repoPath),
   createWorkspaceAgent: (data) => ipcRenderer.invoke('workspace:create', data),
   mergeWorkspaceAgent: (registryId) => ipcRenderer.invoke('workspace:merge-cleanup', registryId),
   removeWorkspaceAgent: (registryId) => ipcRenderer.invoke('workspace:remove', registryId),
   listRegisteredAgents: () => ipcRenderer.invoke('registry:list'),
+  listArchivedWorkspaceAgents: () => ipcRenderer.invoke('registry:list-archived-workspaces'),
   updateRegisteredAgent: (id, fields) => ipcRenderer.invoke('registry:update', id, fields),
   toggleRegisteredAgent: (id, enabled) => ipcRenderer.invoke('registry:toggle', id, enabled),
   archiveRegisteredAgent: (id) => ipcRenderer.invoke('registry:archive', id),

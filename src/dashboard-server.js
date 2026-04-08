@@ -376,6 +376,18 @@ function handleGetSessions(req, res) {
   res.end(JSON.stringify(allStats));
 }
 
+function handleGetArchivedWorkspaces(req, res) {
+  if (!agentRegistryRef) {
+    res.writeHead(503, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Agent registry not available' }));
+    return;
+  }
+
+  const archived = agentRegistryRef.getArchivedWorkspaceAgents();
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(archived));
+}
+
 function handleGetHeatmap(req, res, url) {
   if (!heatmapScanner) {
     res.writeHead(503, { 'Content-Type': 'application/json' });
@@ -517,6 +529,7 @@ const apiRoutes = {
   'GET /api/agents': handleGetAgents,
   'GET /api/stats': handleGetStats,
   'GET /api/sessions': handleGetSessions,
+  'GET /api/archived-workspaces': handleGetArchivedWorkspaces,
   'GET /api/heatmap': handleGetHeatmap,
   'GET /api/health': handleGetHealth,
   'GET /api/office-layout': handleGetOfficeLayout,

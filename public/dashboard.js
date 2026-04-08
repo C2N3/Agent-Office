@@ -13,6 +13,11 @@ const state = {
   }
 };
 
+const archiveState = {
+  items: null,
+  loading: false,
+};
+
 const DOM = {
   statusIndicator: document.getElementById('statusIndicator'),
   connectionStatus: document.getElementById('connectionStatus'),
@@ -26,7 +31,9 @@ const DOM = {
   officeFilterBadge: document.getElementById('officeFilterBadge'),
   agentListFilterBadge: document.getElementById('agentListFilterBadge'),
   officeFilterToggle: document.getElementById('officeRegisteredFilterToggle'),
-  agentListFilterToggle: document.getElementById('agentListRegisteredFilterToggle')
+  agentListFilterToggle: document.getElementById('agentListRegisteredFilterToggle'),
+  archiveGrid: document.getElementById('archiveGrid'),
+  archiveRefreshBtn: document.getElementById('archiveRefreshBtn'),
 };
 
 // ─── SSE CONNECTION ───
@@ -108,6 +115,15 @@ const formatNum = n => {
   if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
   return n.toString();
 };
+
+function formatDateTime(ts) {
+  if (!ts) return '-';
+  try {
+    return new Date(ts).toLocaleString();
+  } catch {
+    return '-';
+  }
+}
 
 function escapeText(value) {
   return String(value || '')
@@ -720,6 +736,73 @@ function buildBars(data, colorClass, isMoney = false) {
   return `<div class="chart-box">${bars}</div>`;
 }
 
+async function fetchArchivedWorkspaceAgents(force = false) {
+  if (archiveState.loading) return archiveState.items || [];
+  if (archiveState.items && !force) return archiveState.items;
+
+  archiveState.loading = true;
+  try {
+    let items = [];
+    if (typeof dashboardAPI !== 'undefined' && dashboardAPI.listArchivedWorkspaceAgents) {
+      items = await dashboardAPI.listArchivedWorkspaceAgents();
+    } else {
+      const response = await fetch('/api/archived-workspaces');
+      items = await response.json();
+    }
+    archiveState.items = Array.isArray(items) ? items : [];
+  } catch (error) {
+    console.error('[Archive]', error);
+    archiveState.items = [];
+  } finally {
+    archiveState.loading = false;
+  }
+
+  return archiveState.items;
+}
+
+async function renderArchiveView(force = false) {
+  if (!DOM.archiveGrid) return;
+  DOM.archiveGrid.innerHTML = '<div class="standby-state">Loading archived workspaces...</div>';
+  const items = await fetchArchivedWorkspaceAgents(force);
+
+  if (!items || items.length === 0) {
+    DOM.archiveGrid.innerHTML = '<div class="standby-state">No archived workspaces yet.</div>';
+    return;
+  }
+
+  DOM.archiveGrid.innerHTML = items.map((item) => {
+    const workspace = item.workspace || {};
+    const lastSession = Array.isArray(item.sessionHistory) && item.sessionHistory.length > 0
+      ? [...item.sessionHistory].sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0))[0]
+      : null;
+    const tokenUsage = item.cumulativeTokens || {};
+    const totalTokens = (tokenUsage.inputTokens || 0) + (tokenUsage.outputTokens || 0);
+
+    return `
+      <article class="archive-card" data-registry-id="${item.id}">
+        <div class="archive-card-header">
+          <div>
+            <div class="archive-card-title">${escapeText(item.name || 'Workspace')}</div>
+            <div class="archive-card-subtitle">${escapeText(workspace.repositoryName || item.projectPath || '-')}</div>
+          </div>
+          <span class="mc-type-badge workspace">WT ${escapeText(workspace.branch || '-')}</span>
+        </div>
+        ${item.role ? `<div class="archive-card-role">${escapeText(item.role)}</div>` : ''}
+        <div class="archive-meta-grid">
+          <div><span>Archived</span><strong>${escapeText(formatDateTime(item.archivedAt))}</strong></div>
+          <div><span>Last Start</span><strong>${escapeText(formatDateTime(lastSession?.startedAt))}</strong></div>
+          <div><span>Last End</span><strong>${escapeText(formatDateTime(lastSession?.endedAt))}</strong></div>
+          <div><span>Totals</span><strong>${escapeText(formatNum(totalTokens))} tok / $${(tokenUsage.estimatedCost || 0).toFixed(2)}</strong></div>
+        </div>
+        <div class="archive-card-actions">
+          <button class="agent-history-btn" data-history-id="${item.id}" data-agent-name="${escapeText(item.name || 'Workspace')}">History</button>
+          <button class="agent-delete-btn archive-delete-btn" data-delete-id="${item.id}" title="Delete archived record">&times;</button>
+        </div>
+      </article>
+    `;
+  }).join('');
+}
+
 // ─── NAV LOGIC ───
 document.querySelectorAll('.usage-btn').forEach(b => {
   b.onclick = () => {
@@ -745,6 +828,7 @@ document.querySelectorAll('.nav-item').forEach(b => {
 
     if (target === 'heatmap') renderHeatmapView();
     else if (target === 'usage') renderUsageView();
+    else if (target === 'archive') renderArchiveView();
   };
 });
 
@@ -1007,6 +1091,8 @@ async function openTerminalForAgent(agentId, openOptions = {}) {
   const cwd = openOptions.cwd || agent?.metadata?.projectPath || agent?.project || '';
   const provider = agent?.metadata?.provider || null;
   const agentStatus = agent?.status || '';
+  const registryId = agent?.registryId || null;
+  const isRegistered = !!agent?.isRegistered;
 
   // If agent has an active session, focus its external terminal instead of opening a new one
   const isActive = ['working', 'thinking', 'waiting', 'help'].includes(agentStatus);
@@ -1015,6 +1101,14 @@ async function openTerminalForAgent(agentId, openOptions = {}) {
       dashboardAPI.focusAgent(agentId);
     }
     return;
+  }
+
+  if (!openOptions.skipAutoResume && provider === 'codex' && isRegistered && registryId && agentStatus === 'offline') {
+    const resumed = await resumeLatestRegisteredSession(
+      registryId,
+      openOptions.label || agent?.nickname || agent?.name || 'Terminal'
+    );
+    if (resumed) return;
   }
 
   if (typeof dashboardAPI === 'undefined' || !dashboardAPI.createTerminal) return;
@@ -1035,6 +1129,44 @@ async function openTerminalForAgent(agentId, openOptions = {}) {
     setTimeout(() => {
       dashboardAPI.writeTerminal(agentId, 'codex\r');
     }, 250);
+  }
+}
+
+async function resumeRegisteredSession(registryId, sessionId, label) {
+  if (!registryId || !sessionId) return { success: false, error: 'Missing session info' };
+  if (typeof dashboardAPI === 'undefined' || !dashboardAPI.resumeSession) {
+    return { success: false, error: 'Resume is only available in the Electron app' };
+  }
+
+  if (termState.terminals.has(registryId)) {
+    closeTerminal(registryId);
+  }
+
+  const result = await dashboardAPI.resumeSession(registryId, sessionId);
+  if (result?.success && typeof createXtermInstance === 'function') {
+    createXtermInstance(registryId, label || 'Terminal');
+  }
+  return result || { success: false, error: 'unknown' };
+}
+
+async function resumeLatestRegisteredSession(registryId, label) {
+  if (typeof dashboardAPI === 'undefined' || !dashboardAPI.getSessionHistory) return false;
+
+  try {
+    const history = await dashboardAPI.getSessionHistory(registryId);
+    if (!Array.isArray(history) || history.length === 0) return false;
+
+    const latest = history
+      .filter((entry) => !!entry?.sessionId)
+      .sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0))[0];
+
+    if (!latest?.sessionId) return false;
+
+    const result = await resumeRegisteredSession(registryId, latest.sessionId, label);
+    return !!result?.success;
+  } catch (error) {
+    console.error('[Terminal] Auto-resume failed:', error);
+    return false;
   }
 }
 
@@ -1325,6 +1457,7 @@ function initApp() {
   initResizableHandles();
   if (target === 'heatmap') renderHeatmapView();
   else if (target === 'usage') renderUsageView();
+  else if (target === 'archive') renderArchiveView();
 
   // We rely on standard office-init.js to boot the canvas logic
   if (typeof initOffice === 'function') setTimeout(() => {
@@ -1352,6 +1485,9 @@ function initApp() {
               .then((result) => {
                 if (!result?.success) {
                   alert(result?.error || 'Workspace merge failed.');
+                } else {
+                  archiveState.items = null;
+                  if (state.currentView === 'archive') renderArchiveView(true);
                 }
               });
           }
@@ -1367,6 +1503,9 @@ function initApp() {
               .then((result) => {
                 if (!result?.success) {
                   alert(result?.error || 'Workspace removal failed.');
+                } else {
+                  archiveState.items = null;
+                  if (state.currentView === 'archive') renderArchiveView(true);
                 }
               });
           }
@@ -1379,7 +1518,10 @@ function initApp() {
         e.stopPropagation();
         if (confirm('Delete this agent?')) {
           if (typeof dashboardAPI !== 'undefined' && dashboardAPI.deleteRegisteredAgent) {
-            dashboardAPI.deleteRegisteredAgent(deleteBtn.dataset.deleteId);
+            dashboardAPI.deleteRegisteredAgent(deleteBtn.dataset.deleteId).then(() => {
+              archiveState.items = null;
+              if (state.currentView === 'archive') renderArchiveView(true);
+            });
           }
         }
         return;
@@ -1389,6 +1531,36 @@ function initApp() {
       const card = e.target.closest('.mc-agent-card');
       if (card && card.dataset.id) {
         openTerminalForAgent(card.dataset.id);
+      }
+    });
+  }
+
+  if (DOM.archiveRefreshBtn) {
+    DOM.archiveRefreshBtn.addEventListener('click', () => {
+      renderArchiveView(true);
+    });
+  }
+
+  if (DOM.archiveGrid) {
+    DOM.archiveGrid.addEventListener('click', (e) => {
+      const historyBtn = e.target.closest('.agent-history-btn');
+      if (historyBtn && historyBtn.dataset.historyId) {
+        e.stopPropagation();
+        openSessionHistory(historyBtn.dataset.historyId, historyBtn.dataset.agentName || 'Workspace');
+        return;
+      }
+
+      const deleteBtn = e.target.closest('.archive-delete-btn');
+      if (deleteBtn && deleteBtn.dataset.deleteId) {
+        e.stopPropagation();
+        if (confirm('Delete this archived workspace record?')) {
+          if (typeof dashboardAPI !== 'undefined' && dashboardAPI.deleteRegisteredAgent) {
+            dashboardAPI.deleteRegisteredAgent(deleteBtn.dataset.deleteId).then(() => {
+              archiveState.items = null;
+              renderArchiveView(true);
+            });
+          }
+        }
       }
     });
   }
@@ -1450,10 +1622,23 @@ document.addEventListener('DOMContentLoaded', initApp);
   const modeBtns = document.querySelectorAll('#createModeSelect .provider-btn');
   const existingFields = document.getElementById('existingAgentFields');
   const worktreeFields = document.getElementById('worktreeAgentFields');
+  const repoPathInput = document.getElementById('agentRepoPathInput');
+  const branchInput = document.getElementById('agentBranchInput');
+  const baseBranchInput = document.getElementById('agentBaseBranchInput');
+  const baseBranchList = document.getElementById('agentBaseBranchList');
+  const branchModeInput = document.getElementById('agentBranchModeInput');
+  const startPointInput = document.getElementById('agentStartPointInput');
+  const inspectStatusEl = document.getElementById('agentRepoInspectStatus');
   if (!modal || !form || !openBtn || !existingFields || !worktreeFields) return;
 
   let createMode = 'existing';
   let selectedProvider = 'claude';
+  let branchMode = 'auto';
+  let baseBranchTouched = false;
+  let startPointTouched = false;
+  let lastInspectedRepoPath = '';
+  let inspectTimer = null;
+  let repoInspection = null;
 
   const providerBtns = document.querySelectorAll('#providerSelect .provider-btn');
   providerBtns.forEach(btn => {
@@ -1461,6 +1646,7 @@ document.addEventListener('DOMContentLoaded', initApp);
       providerBtns.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       selectedProvider = btn.dataset.provider;
+      syncAutoBranch();
     });
   });
 
@@ -1481,6 +1667,14 @@ document.addEventListener('DOMContentLoaded', initApp);
     form.reset();
     setCreateMode('existing');
     resetProviderSelection();
+    branchMode = 'auto';
+    baseBranchTouched = false;
+    startPointTouched = false;
+    lastInspectedRepoPath = '';
+    repoInspection = null;
+    updateBranchModeLabel();
+    if (baseBranchList) baseBranchList.innerHTML = '';
+    if (inspectStatusEl) inspectStatusEl.textContent = 'Enter a repository path to inspect branches.';
     if (errorEl) errorEl.textContent = '';
     const openTerminalCheckbox = document.getElementById('workspaceOpenTerminalInput');
     if (openTerminalCheckbox) openTerminalCheckbox.checked = true;
@@ -1498,12 +1692,132 @@ document.addEventListener('DOMContentLoaded', initApp);
       .filter(Boolean);
   }
 
+  function updateBranchModeLabel() {
+    if (branchModeInput) branchModeInput.value = branchMode === 'auto' ? 'Auto' : 'Custom';
+  }
+
+  function suggestBranchName() {
+    const agentName = document.getElementById('agentNameInput')?.value.trim() || 'agent';
+    const slug = agentName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'agent';
+    const providerSegment = selectedProvider || 'general';
+    return `workspace/${providerSegment}/${slug}`;
+  }
+
+  function syncAutoBranch() {
+    if (branchMode !== 'auto' || !branchInput) return;
+    branchInput.value = suggestBranchName();
+  }
+
+  function syncStartPointToBaseBranch() {
+    if (startPointTouched || !startPointInput || !baseBranchInput) return;
+    startPointInput.value = baseBranchInput.value.trim();
+  }
+
+  function populateBaseBranchOptions(branches = []) {
+    if (!baseBranchList) return;
+    baseBranchList.innerHTML = branches
+      .map((branch) => `<option value="${escapeText(branch)}"></option>`)
+      .join('');
+  }
+
+  async function inspectRepository(repoPath) {
+    const trimmedPath = String(repoPath || '').trim();
+    if (!trimmedPath) {
+      lastInspectedRepoPath = '';
+      repoInspection = null;
+      populateBaseBranchOptions([]);
+      if (!baseBranchTouched && baseBranchInput) {
+        baseBranchInput.value = '';
+      }
+      if (!startPointTouched && startPointInput) {
+        startPointInput.value = '';
+      }
+      if (inspectStatusEl) inspectStatusEl.textContent = 'Enter a repository path to inspect branches.';
+      return;
+    }
+    if (trimmedPath === lastInspectedRepoPath) return;
+    lastInspectedRepoPath = trimmedPath;
+    repoInspection = null;
+    if (inspectStatusEl) inspectStatusEl.textContent = 'Inspecting repository...';
+
+    if (typeof dashboardAPI === 'undefined' || !dashboardAPI.inspectWorkspaceRepo) {
+      if (inspectStatusEl) inspectStatusEl.textContent = 'Repository inspection is only available in the Electron app.';
+      return;
+    }
+
+    const result = await dashboardAPI.inspectWorkspaceRepo(trimmedPath);
+    if (!result?.success) {
+      repoInspection = null;
+      populateBaseBranchOptions([]);
+      if (inspectStatusEl) inspectStatusEl.textContent = result?.error || 'Could not inspect repository.';
+      return;
+    }
+
+    repoInspection = result.repository;
+    populateBaseBranchOptions(repoInspection.branches || []);
+    if (baseBranchInput && !baseBranchTouched) {
+      baseBranchInput.value = repoInspection.currentBranch || '';
+    }
+    syncStartPointToBaseBranch();
+    if (inspectStatusEl) {
+      const branchCount = Array.isArray(repoInspection.branches) ? repoInspection.branches.length : 0;
+      inspectStatusEl.textContent = `Detected ${repoInspection.repositoryName} · ${repoInspection.currentBranch || 'HEAD'} · ${branchCount} local branches`;
+    }
+  }
+
   modeBtns.forEach(btn => {
     btn.addEventListener('click', () => setCreateMode(btn.dataset.mode));
   });
 
+  document.getElementById('agentNameInput')?.addEventListener('input', syncAutoBranch);
+  branchInput?.addEventListener('input', () => {
+    const branchValue = branchInput.value.trim();
+    branchMode = !branchValue || branchValue === suggestBranchName() ? 'auto' : 'custom';
+    if (branchMode === 'auto' && !branchValue) {
+      syncAutoBranch();
+    }
+    updateBranchModeLabel();
+  });
+  branchInput?.addEventListener('focus', () => {
+    if (branchMode === 'auto' && !branchInput.value.trim()) {
+      syncAutoBranch();
+    }
+  });
+  baseBranchInput?.addEventListener('input', () => {
+    baseBranchTouched = true;
+    syncStartPointToBaseBranch();
+  });
+  startPointInput?.addEventListener('input', () => {
+    startPointTouched = !!startPointInput.value.trim();
+  });
+  repoPathInput?.addEventListener('input', () => {
+    if (inspectTimer) clearTimeout(inspectTimer);
+    lastInspectedRepoPath = '';
+    if (inspectStatusEl) {
+      inspectStatusEl.textContent = repoPathInput.value.trim()
+        ? 'Inspecting repository...'
+        : 'Enter a repository path to inspect branches.';
+    }
+    inspectTimer = setTimeout(() => {
+      inspectRepository(repoPathInput.value).catch((error) => {
+        console.error('[Workspace Inspect]', error);
+        if (inspectStatusEl) inspectStatusEl.textContent = 'Could not inspect repository.';
+      });
+    }, 300);
+  });
+  repoPathInput?.addEventListener('blur', () => {
+    inspectRepository(repoPathInput.value).catch((error) => {
+      console.error('[Workspace Inspect]', error);
+      if (inspectStatusEl) inspectStatusEl.textContent = 'Could not inspect repository.';
+    });
+  });
+
   openBtn.addEventListener('click', () => {
     resetFormState();
+    syncAutoBranch();
     modal.style.display = '';
   });
   if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
@@ -1538,8 +1852,9 @@ document.addEventListener('DOMContentLoaded', initApp);
         provider: selectedProvider,
         repoPath,
         branchName: document.getElementById('agentBranchInput').value.trim(),
+        baseBranch: document.getElementById('agentBaseBranchInput').value.trim(),
         workspaceParent: document.getElementById('agentWorkspaceParentInput').value.trim(),
-        startPoint: document.getElementById('agentStartPointInput').value.trim(),
+        startPoint: document.getElementById('agentStartPointInput').value.trim() || document.getElementById('agentBaseBranchInput').value.trim(),
         copyPaths: parsePathListValue('agentCopyPathsInput'),
         symlinkPaths: parsePathListValue('agentSymlinkPathsInput'),
         bootstrapCommand: document.getElementById('agentBootstrapCommandInput').value.trim(),
@@ -1730,27 +2045,9 @@ document.addEventListener('DOMContentLoaded', initApp);
       const label = currentAgentName;
       closeModal();
 
-      // If terminal already exists (Claude running), exit first then resume
-      if (termState.terminals.has(regId)) {
-        activateTerminalTab(regId);
-        if (dashboardAPI.writeTerminal) {
-          // Send /exit to gracefully quit current Claude session
-          dashboardAPI.writeTerminal(regId, '/exit\r');
-          // Wait for Claude to exit, then send resume command
-          setTimeout(() => {
-            dashboardAPI.writeTerminal(regId, `claude --resume ${sessId}\r`);
-          }, 1500);
-        }
-      } else {
-        // No existing terminal — create one and resume
-        const result = await dashboardAPI.resumeSession(regId, sessId);
-        if (result && result.success) {
-          if (typeof createXtermInstance === 'function') {
-            createXtermInstance(regId, label);
-          }
-        } else {
-          alert('Failed to resume: ' + (result?.error || 'unknown'));
-        }
+      const result = await resumeRegisteredSession(regId, sessId, label);
+      if (!result?.success) {
+        alert('Failed to resume: ' + (result?.error || 'unknown'));
       }
     } else {
       alert('Resume is only available in the Electron app');

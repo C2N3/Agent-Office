@@ -109,6 +109,10 @@ class AgentRegistry {
               agent.projectPath = sanitizedProjectPath;
               needsSave = true;
             }
+            if (agent.archived && !agent.archivedAt) {
+              agent.archivedAt = agent.lastActiveAt || agent.createdAt || Date.now();
+              needsSave = true;
+            }
             const sanitizedWorkspace = sanitizeWorkspace(agent.workspace, sanitizedProjectPath);
             const currentWorkspace = agent.workspace || null;
             if (JSON.stringify(currentWorkspace) !== JSON.stringify(sanitizedWorkspace)) {
@@ -155,6 +159,7 @@ class AgentRegistry {
       createdAt: Date.now(),
       lastActiveAt: null,
       archived: false,
+      archivedAt: null,
       cumulativeTokens: { inputTokens: 0, outputTokens: 0, estimatedCost: 0, sessionCount: 0 },
       currentSessionId: null,
       sessionHistory: [],
@@ -205,6 +210,7 @@ class AgentRegistry {
     const agent = this.agents.get(registryId);
     if (!agent) return false;
     agent.archived = true;
+    agent.archivedAt = Date.now();
     agent.enabled = false;
     agent.currentSessionId = null;
     this._save();
@@ -320,6 +326,12 @@ class AgentRegistry {
     const agent = this.agents.get(registryId);
     if (!agent) return [];
     return Array.isArray(agent.sessionHistory) ? [...agent.sessionHistory] : [];
+  }
+
+  getArchivedWorkspaceAgents() {
+    return this.getAllAgents()
+      .filter((agent) => agent.archived && agent.workspace)
+      .sort((a, b) => (b.archivedAt || 0) - (a.archivedAt || 0));
   }
 
   accumulateTokens(registryId, sessionTokenUsage) {

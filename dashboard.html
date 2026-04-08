@@ -51,6 +51,15 @@
           </svg>
           Token Usage
         </button>
+        <button class="nav-item" data-view="archive">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 7h18"></path>
+            <path d="M6 7V4h12v3"></path>
+            <rect x="4" y="7" width="16" height="13" rx="2"></rect>
+            <path d="M10 12h4"></path>
+          </svg>
+          Workspace Archive
+        </button>
       </nav>
       <div class="sidebar-footer">
         <div class="status-dot disconnected" id="statusIndicator"></div>
@@ -267,6 +276,21 @@
           </div>
         </div>
 
+        <div id="archiveView" class="view-section">
+          <div class="panel archive-panel">
+            <div class="archive-header">
+              <div>
+                <h2 style="font-size:1.1rem; margin-bottom:4px;">Workspace Archive</h2>
+                <div style="font-size:0.8rem; color:var(--color-text-muted);">Archived managed workspaces with session history and lifecycle totals.</div>
+              </div>
+              <button class="btn-secondary archive-refresh-btn" id="archiveRefreshBtn">Refresh</button>
+            </div>
+            <div class="archive-grid" id="archiveGrid">
+              <div class="standby-state">No archived workspaces yet.</div>
+            </div>
+          </div>
+        </div>
+
 
       </div>
     </main>
@@ -297,6 +321,16 @@
             <label class="modal-label">Branch Name<input type="text" id="agentBranchInput" class="modal-input" placeholder="optional, auto-generated if blank"></label>
             <label class="modal-label">Start From<input type="text" id="agentStartPointInput" class="modal-input" placeholder="HEAD"></label>
           </div>
+          <div class="modal-input-row">
+            <label class="modal-label">Base Branch
+              <input type="text" id="agentBaseBranchInput" class="modal-input" list="agentBaseBranchList" placeholder="auto-detected from repo">
+              <datalist id="agentBaseBranchList"></datalist>
+            </label>
+            <label class="modal-label">Branch Mode
+              <input type="text" id="agentBranchModeInput" class="modal-input" value="Auto" readonly>
+            </label>
+          </div>
+          <div class="modal-help" id="agentRepoInspectStatus">Enter a repository path to inspect branches.</div>
           <label class="modal-label">Workspace Parent<input type="text" id="agentWorkspaceParentInput" class="modal-input" placeholder="optional, defaults next to repo"></label>
           <label class="modal-label">Copy Paths
             <textarea id="agentCopyPathsInput" class="modal-input modal-textarea" rows="3" placeholder=".env.local&#10;config/dev.json"></textarea>

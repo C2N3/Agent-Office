@@ -71,6 +71,13 @@ if ($hwnd -ne [IntPtr]::Zero) {
   }
 }
 
+function buildResumeCommand(provider, sessionId) {
+  if (!sessionId) return null;
+  return provider === 'codex'
+    ? `codex resume ${sessionId}\r`
+    : `claude --resume ${sessionId}\r`;
+}
+
 function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowManager, terminalManager, terminalProfileService, workspaceManager, nicknameStore, debugLog, adaptAgentToDashboard, errorHandler, attachRegisteredAgent }) {
   ipcMain.on('resize-window', (e, size) => {
     const mw = windowManager.mainWindow;
@@ -321,6 +328,15 @@ function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowM
     });
 
     if (workspaceManager) {
+      ipcMain.handle('workspace:inspect-repo', async (event, repoPath) => {
+        try {
+          return { success: true, repository: workspaceManager.inspectRepository(repoPath) };
+        } catch (error) {
+          debugLog(`[Workspace] Inspect error: ${error.message}`);
+          return { success: false, error: error.message };
+        }
+      });
+
       ipcMain.handle('workspace:create', async (event, data) => {
         try {
           const workspaceResult = workspaceManager.createWorkspace(data);
@@ -402,6 +418,10 @@ function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowM
       });
     }
 
+    ipcMain.handle('registry:list-archived-workspaces', async () => {
+      return agentRegistry.getArchivedWorkspaceAgents();
+    });
+
     ipcMain.handle('registry:toggle', async (event, registryId, enabled) => {
       agentRegistry.setEnabled(registryId, enabled);
       return { success: true };
@@ -459,6 +479,8 @@ function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowM
 
       const agent = agentRegistry.getAgent(registryId);
       if (!agent) return { success: false, error: 'Agent not found' };
+      const resumeCommand = buildResumeCommand(agent.provider, sessionId);
+      if (!resumeCommand) return { success: false, error: 'Session not found' };
 
       // Use the agent's own ID — destroy existing terminal first
       if (terminalManager.hasTerminal(registryId)) {
@@ -477,7 +499,7 @@ function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowM
       if (!result.success) return result;
 
       setTimeout(() => {
-        terminalManager.writeToTerminal(registryId, `claude --resume ${sessionId}\r`);
+        terminalManager.writeToTerminal(registryId, resumeCommand);
       }, 800);
 
       return { ...result, terminalId: registryId };

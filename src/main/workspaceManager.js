@@ -95,6 +95,27 @@ class WorkspaceManager {
     }
   }
 
+  listLocalBranches(repoPath) {
+    const output = this.runGit(repoPath, ['for-each-ref', '--format=%(refname:short)', 'refs/heads']);
+    return output
+      .split(/\r?\n/)
+      .map((branch) => branch.trim())
+      .filter(Boolean);
+  }
+
+  inspectRepository(repoPath) {
+    const repositoryPath = this.resolveRepositoryRoot(repoPath);
+    const currentBranch = this.getCurrentBranch(repositoryPath);
+    const branches = this.listLocalBranches(repositoryPath);
+
+    return {
+      repositoryPath,
+      repositoryName: path.basename(repositoryPath),
+      currentBranch,
+      branches,
+    };
+  }
+
   ensureClean(repoPath, label) {
     const status = this.runGit(repoPath, ['status', '--porcelain']);
     if (status) {
@@ -141,11 +162,12 @@ class WorkspaceManager {
     const repoRoot = this.resolveRepositoryRoot(options.repoPath || options.projectPath);
     const repositoryName = path.basename(repoRoot);
     const branchName = slugifyBranchName(options.branchName || name);
-    const startPoint = String(options.startPoint || 'HEAD').trim() || 'HEAD';
+    const detectedBaseBranch = this.getCurrentBranch(repoRoot);
+    const baseBranch = String(options.baseBranch || detectedBaseBranch || 'HEAD').trim() || 'HEAD';
+    const startPoint = String(options.startPoint || baseBranch).trim() || baseBranch;
     const defaultParent = path.join(path.dirname(repoRoot), `${repositoryName}-worktrees`);
     const workspaceParent = path.resolve(sanitizeProjectPath(options.workspaceParent) || defaultParent);
     const workspacePath = path.resolve(sanitizeProjectPath(options.workspacePath) || path.join(workspaceParent, branchName));
-    const baseBranch = this.getCurrentBranch(repoRoot);
     const copyPaths = normalizePathList(options.copyPaths);
     const symlinkPaths = normalizePathList(options.symlinkPaths);
     const bootstrapCommand = String(options.bootstrapCommand || '').trim();
