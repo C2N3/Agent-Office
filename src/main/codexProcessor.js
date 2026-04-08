@@ -113,13 +113,13 @@ function extractCodexToolInput(item) {
   return null;
 }
 
-function createCodexProcessor({ agentManager, agentRegistry, sessionPids, debugLog }) {
+function createCodexProcessor({ agentManager, agentRegistry, sessionPids, debugLog, detectPidByTranscript = null }) {
   const processor = createEventProcessor({
     agentManager,
     agentRegistry,
     sessionPids,
     debugLog,
-    detectPidByTranscript: null,
+    detectPidByTranscript,
     logPrefix: 'Codex',
     createSource: 'codex',
     updateSource: 'codex',
@@ -134,9 +134,10 @@ function createCodexProcessor({ agentManager, agentRegistry, sessionPids, debugL
     }
   }
 
-  function processSessionEntry(entry, context = {}) {
+function processSessionEntry(entry, context = {}) {
     if (!entry || !entry.type) return { sessionId: null };
     const contextSessionId = context.sessionId || null;
+    const transcriptPath = context.transcriptPath || null;
 
     switch (entry.type) {
       case 'session_meta': {
@@ -150,6 +151,7 @@ function createCodexProcessor({ agentManager, agentRegistry, sessionPids, debugL
           provider: 'codex',
           sessionId,
           cwd: getCodexWorkspacePath(payload),
+          transcriptPath,
           model: payload.model || payload.model_slug || 'codex',
           source: 'startup',
           initialState: 'Waiting',
@@ -170,6 +172,7 @@ function createCodexProcessor({ agentManager, agentRegistry, sessionPids, debugL
                 raw: entry,
                 provider: 'codex',
                 sessionId,
+                transcriptPath,
               });
             }
             return { sessionId };
@@ -183,6 +186,7 @@ function createCodexProcessor({ agentManager, agentRegistry, sessionPids, debugL
                 raw: entry,
                 provider: 'codex',
                 sessionId: inferredSessionId,
+                transcriptPath,
                 text: payload.message || '',
               });
             }
@@ -206,6 +210,7 @@ function createCodexProcessor({ agentManager, agentRegistry, sessionPids, debugL
                 raw: entry,
                 provider: 'codex',
                 sessionId: inferredSessionId,
+                transcriptPath,
                 tokenUsage: latestTokenUsageBySession.get(inferredSessionId) || null,
                 lastAssistantMessage: payload.last_agent_message || null,
               });
@@ -232,6 +237,7 @@ function createCodexProcessor({ agentManager, agentRegistry, sessionPids, debugL
             raw: entry,
             provider: 'codex',
             sessionId,
+            transcriptPath,
             toolName: payload.name || 'tool',
             toolInput: parsedArgs,
           });
@@ -247,6 +253,7 @@ function createCodexProcessor({ agentManager, agentRegistry, sessionPids, debugL
             raw: entry,
             provider: 'codex',
             sessionId: info.sessionId || sessionId,
+            transcriptPath,
             toolName: info.name,
             toolInput: info.args,
           });
@@ -264,6 +271,7 @@ function createCodexProcessor({ agentManager, agentRegistry, sessionPids, debugL
               raw: entry,
               provider: 'codex',
               sessionId,
+              transcriptPath,
               text: outputText,
             });
           }

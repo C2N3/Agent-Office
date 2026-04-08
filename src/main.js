@@ -21,7 +21,7 @@ const { CODEX_EVENT_SERVER_PORT, startCodexEventServer } = require('./main/codex
 const { createCodexProcessor } = require('./main/codexProcessor');
 const { createCodexSessionMonitor } = require('./main/codexSessionMonitor');
 const { getEnabledProviders } = require('./main/providerConfig');
-const { sessionPids, startLivenessChecker, detectClaudePidByTranscript } = require('./main/livenessChecker');
+const { sessionPids, startLivenessChecker, detectClaudePidByTranscript, detectProviderPidBySessionFile } = require('./main/livenessChecker');
 const { savePersistedState, recoverExistingSessions } = require('./main/sessionPersistence');
 const { createWindowManager } = require('./main/windowManager');
 const { registerIpcHandlers } = require('./main/ipcHandlers');
@@ -167,8 +167,8 @@ app.whenReady().then(() => {
   agentManager.setNicknameStore(nicknameStore);
   agentManager.start();
 
-  // 2. Start Claude-only scanners
-  if (enabledProviders.includes('claude')) {
+  // 2. Start transcript scanners for enabled providers
+  if (enabledProviders.length > 0) {
     sessionScanner = new SessionScanner(agentManager, debugLog);
     sessionScanner.start(60_000);
   }
@@ -193,6 +193,7 @@ app.whenReady().then(() => {
       agentRegistry,
       sessionPids,
       debugLog,
+      detectPidByTranscript: (jsonlPath, callback) => detectProviderPidBySessionFile('codex', jsonlPath, callback),
     });
     codexSessionMonitor = createCodexSessionMonitor({
       codexProcessor,
@@ -261,16 +262,17 @@ app.whenReady().then(() => {
     codexSessionMonitor.start();
   }
   windowManager.startDashboardServer();
-  if (enabledProviders.includes('claude')) {
+  if (enabledProviders.some((provider) => provider === 'claude' || provider === 'codex')) {
     livenessIntervals = startLivenessChecker({ agentManager, debugLog });
   }
 
   // 7. Recover existing active sessions
-  if (hookProcessor) {
+  if (enabledProviders.length > 0) {
     recoverExistingSessions({
       agentManager,
       sessionPids,
-      firstPreToolUseDone: hookProcessor.firstPreToolUseDone,
+      firstPreToolUseDone: hookProcessor?.firstPreToolUseDone,
+      firstToolUseMaps: [codexProcessor?.firstToolUseDone].filter(Boolean),
       debugLog,
       errorHandler,
     });

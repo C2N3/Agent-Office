@@ -12,6 +12,7 @@ jest.mock('fs', () => ({
   writeFileSync: jest.fn(),
   readFileSync: jest.fn(),
   renameSync: jest.fn(),
+  statSync: jest.fn(),
 }));
 
 jest.mock('child_process', () => ({
@@ -25,11 +26,18 @@ const { savePersistedState, recoverExistingSessions } = require('../src/main/ses
 describe('sessionPersistence', () => {
   let debugLog;
   let errorHandler;
+  let originalKill;
 
   beforeEach(() => {
     jest.clearAllMocks();
     debugLog = jest.fn();
     errorHandler = { capture: jest.fn() };
+    originalKill = process.kill;
+    process.kill = jest.fn();
+  });
+
+  afterEach(() => {
+    process.kill = originalKill;
   });
 
   // ── savePersistedState ──
@@ -101,7 +109,7 @@ describe('sessionPersistence', () => {
     test('recovers agents with valid PIDs', () => {
       const savedState = {
         agents: [
-          { id: 'agent-1', projectPath: '/p/app', displayName: 'app', state: 'Working', jsonlPath: '/tmp/a.jsonl' },
+          { id: 'agent-1', sessionId: 'agent-1', projectPath: '/p/app', displayName: 'app', state: 'Working', jsonlPath: '/tmp/a.jsonl' },
         ],
         pids: [['agent-1', process.pid]], // current process PID (always alive)
       };
@@ -152,14 +160,16 @@ describe('sessionPersistence', () => {
 
     test('skips agents with dead PIDs', () => {
       const savedState = {
-        agents: [{ id: 'agent-dead', state: 'Working' }],
+        agents: [{ id: 'agent-dead', sessionId: 'agent-dead', state: 'Working' }],
         pids: [['agent-dead', 99999999]], // likely dead PID
       };
 
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue(JSON.stringify(savedState));
 
-      // process.kill will throw for non-existent PID
+      process.kill.mockImplementation(() => {
+        throw new Error('ESRCH');
+      });
       recoverExistingSessions({ agentManager, sessionPids, firstPreToolUseDone, debugLog, errorHandler });
 
       expect(agentManager.updateAgent).not.toHaveBeenCalled();
@@ -168,20 +178,57 @@ describe('sessionPersistence', () => {
 
     test('skips agents where PID is not a Claude process', () => {
       const savedState = {
-        agents: [{ id: 'agent-wrong', state: 'Working' }],
+        agents: [{ id: 'agent-wrong', sessionId: 'agent-wrong', state: 'Working' }],
         pids: [['agent-wrong', process.pid]],
       };
 
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue(JSON.stringify(savedState));
 
-      // isClaudeProcess returns false (not a Claude process)
+      process.kill.mockImplementation(() => true);
       execFileSync.mockReturnValue(''); // empty result → not Claude
 
       recoverExistingSessions({ agentManager, sessionPids, firstPreToolUseDone, debugLog, errorHandler });
 
       expect(agentManager.updateAgent).not.toHaveBeenCalled();
       expect(debugLog).toHaveBeenCalledWith(expect.stringContaining('not claude'));
+    });
+
+    test('recovers Codex agents from an active session file even without pid', () => {
+      const savedState = {
+        agents: [
+          {
+            id: 'registry-1',
+            registryId: 'registry-1',
+            sessionId: 'thread-123',
+            projectPath: '/p/app',
+            displayName: 'app',
+            state: 'Working',
+            provider: 'codex',
+            jsonlPath: '/tmp/codex.jsonl',
+            isRegistered: true,
+          },
+        ],
+        pids: [],
+      };
+
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue(JSON.stringify(savedState));
+      fs.statSync.mockReturnValue({ mtimeMs: Date.now() });
+
+      recoverExistingSessions({ agentManager, sessionPids, firstPreToolUseDone, debugLog, errorHandler });
+
+      expect(agentManager.updateAgent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          registryId: 'registry-1',
+          sessionId: 'thread-123',
+          provider: 'codex',
+          jsonlPath: '/tmp/codex.jsonl',
+        }),
+        'recover'
+      );
+      expect(sessionPids.has('thread-123')).toBe(false);
+      expect(firstPreToolUseDone.has('thread-123')).toBe(true);
     });
 
     test('handles missing state.json gracefully', () => {

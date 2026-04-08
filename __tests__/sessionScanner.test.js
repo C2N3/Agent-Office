@@ -9,9 +9,20 @@ const path = require('path');
 
 jest.mock('fs', () => ({
   readFileSync: jest.fn(),
+  existsSync: jest.fn(() => false),
+  readdirSync: jest.fn(() => []),
+  statSync: jest.fn(),
+  openSync: jest.fn(),
+  readSync: jest.fn(),
+  closeSync: jest.fn(),
+}));
+
+jest.mock('../src/main/codexPaths', () => ({
+  getCodexSessionRoots: jest.fn(() => []),
 }));
 
 const SessionScanner = require('../src/sessionScanner');
+const { getCodexSessionRoots } = require('../src/main/codexPaths');
 
 // Helper: build JSONL content from entries
 function buildJsonl(entries) {
@@ -195,6 +206,58 @@ describe('SessionScanner', () => {
       const stats = scanner.parseSessionFile('/tmp/session.jsonl');
       expect(stats.toolUses).toBe(3);
     });
+
+    test('parses Codex session files', () => {
+      const jsonl = buildJsonl([
+        {
+          type: 'session_meta',
+          payload: {
+            id: 'thread-1234',
+            model_slug: 'gpt-5-codex',
+            workspacePath: '/workspace/app',
+          },
+        },
+        {
+          type: 'event_msg',
+          timestamp: '2026-03-07T10:00:00Z',
+          payload: { type: 'task_started' },
+        },
+        {
+          type: 'event_msg',
+          timestamp: '2026-03-07T10:00:05Z',
+          payload: {
+            type: 'token_count',
+            info: {
+              last_token_usage: {
+                input_tokens: 100,
+                cached_input_tokens: 10,
+                output_tokens: 5,
+              },
+            },
+          },
+        },
+        {
+          type: 'event_msg',
+          timestamp: '2026-03-07T10:00:10Z',
+          payload: {
+            type: 'task_complete',
+            last_agent_message: 'done',
+          },
+        },
+      ]);
+
+      fs.readFileSync.mockReturnValue(jsonl);
+
+      const stats = scanner.parseSessionFile('/tmp/.codex/sessions/thread-1234.jsonl');
+
+      expect(stats.sessionId).toBe('thread-1234');
+      expect(stats.model).toBe('gpt-5-codex');
+      expect(stats.userMessages).toBe(1);
+      expect(stats.assistantMessages).toBe(1);
+      expect(stats.inputTokens).toBe(110);
+      expect(stats.outputTokens).toBe(5);
+      expect(stats.estimatedCost).toBeGreaterThan(0);
+    });
   });
 
   // ── scanAll ──
@@ -323,6 +386,82 @@ describe('SessionScanner', () => {
 
       expect(mockAgentManager.updateAgent).toHaveBeenCalledWith(
         expect.objectContaining({ model: 'claude-opus-4-6' }),
+        'scanner'
+      );
+    });
+
+    test('updates codex agents from Codex session roots', () => {
+      const codexRoot = '/tmp/.codex/sessions';
+      const codexFile = '/tmp/.codex/sessions/thread-1234.jsonl';
+      getCodexSessionRoots.mockReturnValue([codexRoot]);
+
+      mockAgentManager.getAllAgents.mockReturnValue([
+        {
+          id: 'agent-codex',
+          sessionId: 'thread-1234',
+          provider: 'codex',
+          jsonlPath: '/workspace/app',
+          tokenUsage: { inputTokens: 0, outputTokens: 0, estimatedCost: 0 },
+        },
+      ]);
+
+      fs.existsSync.mockImplementation((target) => target === codexRoot);
+      fs.readdirSync.mockImplementation((target) => {
+        if (target !== codexRoot) return [];
+        return [{
+          name: 'thread-1234.jsonl',
+          isDirectory: () => false,
+          isFile: () => true,
+        }];
+      });
+
+      fs.readFileSync.mockImplementation((target) => {
+        if (target !== codexFile) throw new Error(`unexpected read: ${target}`);
+        return buildJsonl([
+          {
+            type: 'session_meta',
+            payload: {
+              id: 'thread-1234',
+              model_slug: 'gpt-5-codex',
+              workspacePath: '/workspace/app',
+            },
+          },
+          {
+            type: 'event_msg',
+            payload: { type: 'task_started' },
+          },
+          {
+            type: 'event_msg',
+            payload: {
+              type: 'token_count',
+              info: {
+                last_token_usage: {
+                  input_tokens: 50,
+                  cached_input_tokens: 10,
+                  output_tokens: 5,
+                },
+              },
+            },
+          },
+          {
+            type: 'event_msg',
+            payload: { type: 'task_complete', last_agent_message: 'done' },
+          },
+        ]);
+      });
+
+      scanner.scanAll();
+
+      expect(mockAgentManager.updateAgent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sessionId: 'thread-1234',
+          provider: 'codex',
+          model: 'gpt-5-codex',
+          tokenUsage: expect.objectContaining({
+            inputTokens: 60,
+            outputTokens: 5,
+          }),
+        }),
         'scanner'
       );
     });

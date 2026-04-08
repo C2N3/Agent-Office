@@ -1,6 +1,6 @@
 /**
  * Conversation Parser
- * Parses Claude JSONL transcript files into a structured conversation message array.
+ * Parses Claude and Codex JSONL transcript files into a structured conversation message array.
  */
 
 'use strict';
@@ -51,38 +51,15 @@ function parseConversation(filePath, options = {}) {
     // Skip sidechain entries (internal compaction)
     if (entry.isSidechain) continue;
 
-    if (entry.type === 'user') {
-      const msg = {
-        role: 'user',
-        timestamp: entry.timestamp || null,
-        content: extractUserContent(entry),
-      };
-      messages.push(msg);
+    if (isClaudeEntry(entry)) {
+      sessionId = sessionId || entry.sessionId || null;
+      appendClaudeEntry(messages, entry);
+      continue;
     }
 
-    if (entry.type === 'assistant' && entry.message) {
-      const msg = {
-        role: 'assistant',
-        timestamp: entry.timestamp || null,
-        model: entry.message.model || null,
-        content: extractAssistantContent(entry.message),
-        toolUses: extractToolUses(entry.message),
-        tokens: extractTokens(entry.message),
-      };
-      messages.push(msg);
-    }
-
-    if (entry.type === 'system') {
-      if (entry.sessionId) sessionId = entry.sessionId;
-      // Include session boundary markers
-      if (entry.subtype === 'SessionEnd' || entry.subtype === 'SessionStart') {
-        messages.push({
-          role: 'system',
-          timestamp: entry.timestamp || null,
-          content: entry.subtype,
-          sessionId: entry.sessionId || null,
-        });
-      }
+    if (isCodexEntry(entry)) {
+      sessionId = sessionId || getCodexSessionId(entry);
+      appendCodexEntry(messages, entry);
     }
   }
 
@@ -99,6 +76,144 @@ function parseConversation(filePath, options = {}) {
   }
 
   return { messages: result, totalCount, sessionId };
+}
+
+function isClaudeEntry(entry) {
+  return entry.type === 'user' || entry.type === 'assistant' || entry.type === 'system';
+}
+
+function isCodexEntry(entry) {
+  return entry.type === 'session_meta' || entry.type === 'event_msg' || entry.type === 'response_item';
+}
+
+function getCodexSessionId(entry) {
+  if (entry.type === 'session_meta') {
+    return entry.payload && entry.payload.id ? entry.payload.id : null;
+  }
+  const payload = entry.payload || {};
+  return payload.id || payload.thread_id || null;
+}
+
+function appendClaudeEntry(messages, entry) {
+  if (entry.type === 'user') {
+    messages.push({
+      role: 'user',
+      timestamp: entry.timestamp || null,
+      content: extractUserContent(entry),
+    });
+    return;
+  }
+
+  if (entry.type === 'assistant' && entry.message) {
+    messages.push({
+      role: 'assistant',
+      timestamp: entry.timestamp || null,
+      model: entry.message.model || null,
+      content: extractAssistantContent(entry.message),
+      toolUses: extractToolUses(entry.message),
+      tokens: extractTokens(entry.message),
+    });
+    return;
+  }
+
+  if (entry.type === 'system') {
+    // Include Claude session boundary markers so history views can show session start/end.
+    if (entry.subtype === 'SessionEnd' || entry.subtype === 'SessionStart') {
+      messages.push({
+        role: 'system',
+        timestamp: entry.timestamp || null,
+        content: entry.subtype,
+        sessionId: entry.sessionId || null,
+      });
+    }
+  }
+}
+
+function appendCodexEntry(messages, entry) {
+  if (entry.type === 'session_meta') {
+    const payload = entry.payload || {};
+    if (payload.id) {
+      messages.push({
+        role: 'system',
+        timestamp: entry.timestamp || null,
+        content: 'Thread started',
+        sessionId: payload.id,
+      });
+    }
+    return;
+  }
+
+  const payload = entry.payload || {};
+
+  if (entry.type === 'event_msg') {
+    switch (payload.type) {
+      case 'task_started':
+        messages.push({
+          role: 'user',
+          timestamp: entry.timestamp || null,
+          content: payload.message || payload.prompt || payload.input || '',
+          sessionId: payload.id || payload.thread_id || null,
+        });
+        return;
+
+      case 'agent_message':
+        messages.push({
+          role: 'assistant',
+          timestamp: entry.timestamp || null,
+          content: payload.message || '',
+          sessionId: payload.id || payload.thread_id || null,
+        });
+        return;
+
+      case 'task_complete':
+        if (payload.last_agent_message) {
+          const previous = messages[messages.length - 1];
+          if (previous && previous.role === 'assistant' && previous.content === payload.last_agent_message) {
+            return;
+          }
+          messages.push({
+            role: 'assistant',
+            timestamp: entry.timestamp || null,
+            content: payload.last_agent_message,
+            sessionId: payload.id || payload.thread_id || null,
+          });
+        }
+        return;
+
+      default:
+        return;
+    }
+  }
+
+  if (entry.type === 'response_item') {
+    if (payload.type === 'function_call') {
+      messages.push({
+        role: 'assistant',
+        timestamp: entry.timestamp || null,
+        content: '',
+        toolUses: [{
+          name: payload.name || 'tool',
+          id: payload.call_id || null,
+        }],
+        sessionId: payload.id || payload.thread_id || null,
+      });
+      return;
+    }
+
+    if (payload.type === 'message') {
+      const outputText = Array.isArray(payload.content)
+        ? payload.content.find((item) => item.type === 'output_text')?.text || ''
+        : '';
+      if (outputText) {
+        messages.push({
+          role: 'assistant',
+          timestamp: entry.timestamp || null,
+          content: outputText,
+          sessionId: payload.id || payload.thread_id || null,
+        });
+      }
+    }
+  }
 }
 
 /**
@@ -166,35 +281,17 @@ function extractTokens(message) {
  * @returns {{ messageCount: number, firstAt: string|null, lastAt: string|null } | null}
  */
 function getConversationSummary(filePath) {
-  const resolved = resolveTranscriptPath(filePath);
-  if (!resolved) return null;
+  const result = parseConversation(filePath);
+  if (!result) return null;
 
-  let content;
-  try {
-    content = fs.readFileSync(resolved, 'utf-8');
-  } catch {
-    return null;
-  }
+  const messages = (result.messages || []).filter((message) => message.role === 'user' || message.role === 'assistant');
+  const timestamps = messages.map((message) => message.timestamp).filter(Boolean);
 
-  const lines = content.split('\n').filter(Boolean);
-  let messageCount = 0;
-  let firstAt = null;
-  let lastAt = null;
-
-  for (const line of lines) {
-    let entry;
-    try { entry = JSON.parse(line); } catch { continue; }
-    if (entry.isSidechain) continue;
-    if (entry.type === 'user' || entry.type === 'assistant') {
-      messageCount++;
-      if (entry.timestamp) {
-        if (!firstAt) firstAt = entry.timestamp;
-        lastAt = entry.timestamp;
-      }
-    }
-  }
-
-  return { messageCount, firstAt, lastAt };
+  return {
+    messageCount: messages.length,
+    firstAt: timestamps.length > 0 ? timestamps[0] : null,
+    lastAt: timestamps.length > 0 ? timestamps[timestamps.length - 1] : null,
+  };
 }
 
 module.exports = { parseConversation, getConversationSummary, resolveTranscriptPath };

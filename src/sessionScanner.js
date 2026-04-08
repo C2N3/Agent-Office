@@ -1,8 +1,7 @@
 /**
  * Session Scanner
- * Node.js implementation of the claude-sessions.ts pattern from Mission Control.
- * Parses transcript_path (JSONL) files every 60 seconds to extract token/cost/session
- * statistics and supplements them into the agentManager.
+ * Parses JSONL transcripts to extract token/cost/session statistics and
+ * supplements them into the agentManager.
  */
 
 'use strict';
@@ -10,7 +9,273 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { roundCost, calculateTokenCost } = require('./pricing');
+const { getCodexSessionRoots } = require('./main/codexPaths');
+const { roundCost, calculateTokenCost, normalizeModelName } = require('./pricing');
+
+function resolveTranscriptPath(filePath) {
+    if (!filePath) return null;
+    return filePath.startsWith('~')
+        ? path.join(os.homedir(), filePath.slice(1))
+        : filePath;
+}
+
+function listJsonlFiles(dir) {
+    if (!dir || !fs.existsSync(dir)) return [];
+
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    const files = [];
+
+    for (const entry of entries) {
+        const fullPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+            files.push(...listJsonlFiles(fullPath));
+        } else if (entry.isFile() && entry.name.endsWith('.jsonl')) {
+            files.push(fullPath);
+        }
+    }
+
+    return files;
+}
+
+function parseJsonLines(content) {
+    return content
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => {
+            try {
+                return JSON.parse(line);
+            } catch {
+                return null;
+            }
+        })
+        .filter(Boolean);
+}
+
+function getEntrySessionId(entry) {
+    return entry?.sessionId
+        || entry?.session_id
+        || entry?.thread_id
+        || entry?.payload?.id
+        || entry?.payload?.thread_id
+        || entry?.payload?.session_id
+        || null;
+}
+
+function getEntryTimestamp(entry) {
+    return entry?.timestamp || entry?.created_at || entry?.createdAt || null;
+}
+
+function normalizeTokenUsage(rawUsage) {
+    if (!rawUsage) return null;
+
+    const input = rawUsage.input_tokens
+        ?? rawUsage.inputTokens
+        ?? rawUsage.input
+        ?? 0;
+    const output = rawUsage.output_tokens
+        ?? rawUsage.outputTokens
+        ?? rawUsage.output
+        ?? 0;
+    const cacheRead = rawUsage.cache_read_input_tokens
+        ?? rawUsage.cached_input_tokens
+        ?? rawUsage.cacheRead
+        ?? 0;
+    const cacheCreate = rawUsage.cache_creation_input_tokens
+        ?? rawUsage.cacheCreate
+        ?? 0;
+
+    return {
+        input,
+        output,
+        cacheRead,
+        cacheCreate,
+    };
+}
+
+function makeEmptyStats() {
+    return {
+        model: null,
+        sessionId: null,
+        userMessages: 0,
+        assistantMessages: 0,
+        toolUses: 0,
+        inputTokens: 0,
+        outputTokens: 0,
+        cacheReadTokens: 0,
+        cacheCreationTokens: 0,
+        estimatedCost: 0,
+        firstMessageAt: null,
+        lastMessageAt: null,
+        lastActivity: null,
+    };
+}
+
+function detectSessionFormat(entries, filePath) {
+    const normalizedPath = filePath.replace(/\\/g, '/');
+    if (normalizedPath.includes('/.codex/sessions/')) {
+        return 'codex';
+    }
+    if (normalizedPath.includes('/.claude/')) {
+        return 'claude';
+    }
+
+    for (const entry of entries) {
+        if (!entry || typeof entry !== 'object') continue;
+        if (entry.type === 'session_meta' || entry.type === 'event_msg' || entry.type === 'response_item') {
+            return 'codex';
+        }
+    }
+
+    return 'claude';
+}
+
+function finalizeCost(stats) {
+    stats.estimatedCost = roundCost(calculateTokenCost({
+        input: stats.inputTokens - stats.cacheReadTokens - stats.cacheCreationTokens,
+        cacheRead: stats.cacheReadTokens,
+        cacheCreate: stats.cacheCreationTokens,
+        output: stats.outputTokens,
+    }, normalizeModelName(stats.model)));
+    return stats;
+}
+
+function parseClaudeEntries(entries) {
+    const stats = makeEmptyStats();
+
+    for (const entry of entries) {
+        const timestamp = getEntryTimestamp(entry);
+        if (timestamp) {
+            if (!stats.firstMessageAt) stats.firstMessageAt = timestamp;
+            stats.lastMessageAt = timestamp;
+            stats.lastActivity = timestamp;
+        }
+
+        if (entry.isSidechain) continue;
+
+        const sessionId = getEntrySessionId(entry);
+        if (sessionId && !stats.sessionId) {
+            stats.sessionId = sessionId;
+        }
+
+        if (entry.type === 'user') {
+            stats.userMessages++;
+        }
+
+        if (entry.type === 'assistant' && entry.message) {
+            stats.assistantMessages++;
+            if (entry.message.model) stats.model = entry.message.model;
+
+            const usage = normalizeTokenUsage(entry.message.usage);
+            if (usage) {
+                stats.cacheReadTokens += usage.cacheRead;
+                stats.cacheCreationTokens += usage.cacheCreate;
+                stats.inputTokens += usage.input + usage.cacheRead + usage.cacheCreate;
+                stats.outputTokens += usage.output;
+            }
+
+            if (Array.isArray(entry.message.content)) {
+                for (const block of entry.message.content) {
+                    if (block.type === 'tool_use') {
+                        stats.toolUses++;
+                    }
+                }
+            }
+        }
+    }
+
+    return finalizeCost(stats);
+}
+
+function parseCodexEntries(entries) {
+    const stats = makeEmptyStats();
+    let turnHasAssistantMessage = false;
+    let turnHasUserMessage = false;
+
+    for (const entry of entries) {
+        const timestamp = getEntryTimestamp(entry);
+        if (timestamp) {
+            if (!stats.firstMessageAt) stats.firstMessageAt = timestamp;
+            stats.lastMessageAt = timestamp;
+            stats.lastActivity = timestamp;
+        }
+
+        if (entry.isSidechain) continue;
+
+        const sessionId = getEntrySessionId(entry);
+        if (sessionId && !stats.sessionId) {
+            stats.sessionId = sessionId;
+        }
+
+        if (entry.type === 'session_meta') {
+            const payload = entry.payload || {};
+            stats.model = payload.model || payload.model_slug || stats.model;
+            continue;
+        }
+
+        if (entry.type === 'event_msg') {
+            const payload = entry.payload || {};
+            switch (payload.type) {
+                case 'task_started':
+                    stats.userMessages++;
+                    turnHasUserMessage = true;
+                    turnHasAssistantMessage = false;
+                    break;
+
+                case 'agent_message':
+                    if (!turnHasAssistantMessage) {
+                        stats.assistantMessages++;
+                        turnHasAssistantMessage = true;
+                    }
+                    break;
+
+                case 'token_count': {
+                    const usage = normalizeTokenUsage(payload.info?.last_token_usage || null);
+                    if (usage) {
+                        stats.cacheReadTokens += usage.cacheRead;
+                        stats.cacheCreationTokens += usage.cacheCreate;
+                        stats.inputTokens += usage.input + usage.cacheRead + usage.cacheCreate;
+                        stats.outputTokens += usage.output;
+                    }
+                    break;
+                }
+
+                case 'task_complete':
+                    if (turnHasUserMessage && !turnHasAssistantMessage) {
+                        stats.assistantMessages++;
+                        turnHasAssistantMessage = true;
+                    }
+                    turnHasUserMessage = false;
+                    break;
+
+                default:
+                    break;
+            }
+            continue;
+        }
+
+        if (entry.type === 'response_item') {
+            const payload = entry.payload || {};
+            switch (payload.type) {
+                case 'function_call':
+                    stats.toolUses++;
+                    break;
+
+                case 'message':
+                    if (!turnHasAssistantMessage) {
+                        stats.assistantMessages++;
+                        turnHasAssistantMessage = true;
+                    }
+                    break;
+
+                default:
+                    break;
+            }
+        }
+    }
+
+    return finalizeCost(stats);
+}
 
 class SessionScanner {
     /**
@@ -31,7 +296,7 @@ class SessionScanner {
      */
     start(intervalMs = 60_000) {
         this.debugLog('[SessionScanner] Started');
-        this.scanAll(); // Run once immediately
+        this.scanAll();
         this.scanInterval = setInterval(() => this.scanAll(), intervalMs);
     }
 
@@ -47,19 +312,30 @@ class SessionScanner {
     scanAll() {
         if (!this.agentManager) return;
         const agents = this.agentManager.getAllAgents();
+        const codexSessionStats = this._scanCodexSessionFiles();
         let updated = 0;
 
         for (const agent of agents) {
-            if (agent.provider && agent.provider !== 'claude') continue;
-            if (!agent.jsonlPath) continue;
+            const provider = agent.provider || 'claude';
+            if (agent.provider && provider !== 'claude' && provider !== 'codex') continue;
+
+            let stats = null;
+            if (provider === 'codex') {
+                const sessionKey = agent.sessionId || agent.id;
+                stats = codexSessionStats.get(sessionKey) || null;
+                if (!stats && agent.jsonlPath) {
+                    stats = this.parseSessionFile(agent.jsonlPath, { providerHint: 'codex' });
+                }
+            } else {
+                if (!agent.jsonlPath) continue;
+                stats = this.parseSessionFile(agent.jsonlPath, { providerHint: 'claude' });
+            }
+
+            if (!stats) continue;
 
             try {
-                const stats = this.parseSessionFile(agent.jsonlPath);
-                if (!stats) continue;
-
                 this.lastScanResults.set(agent.id, stats);
 
-                // Supplement if JSONL parsed values exceed tokens collected from hooks
                 const cur = agent.tokenUsage || { inputTokens: 0, outputTokens: 0, estimatedCost: 0 };
                 if (stats.inputTokens > cur.inputTokens || stats.outputTokens > cur.outputTokens) {
                     this.agentManager.updateAgent({
@@ -69,13 +345,12 @@ class SessionScanner {
                             outputTokens: stats.outputTokens,
                             estimatedCost: stats.estimatedCost,
                         },
-                        // Supplement model info from JSONL if missing
                         model: agent.model || stats.model || null,
                     }, 'scanner');
                     updated++;
                 }
             } catch (e) {
-                this.debugLog(`[SessionScanner] Error scanning ${agent.jsonlPath}: ${e.message}`);
+                this.debugLog(`[SessionScanner] Error scanning ${agent.jsonlPath || agent.sessionId || agent.id}: ${e.message}`);
             }
         }
 
@@ -87,13 +362,12 @@ class SessionScanner {
     /**
      * Parse a single JSONL file
      * @param {string} filePath transcript_path value (may include ~/... format)
+     * @param {{ providerHint?: string }} [options]
      * @returns {SessionStats | null}
      */
-    parseSessionFile(filePath) {
-        // Windows: replace ~ → os.homedir()
-        const resolvedPath = filePath.startsWith('~')
-            ? path.join(os.homedir(), filePath.slice(1))
-            : filePath;
+    parseSessionFile(filePath, options = {}) {
+        const resolvedPath = resolveTranscriptPath(filePath);
+        if (!resolvedPath) return null;
 
         let content;
         try {
@@ -102,83 +376,53 @@ class SessionScanner {
             return null;
         }
 
-        const lines = content.split('\n').filter(Boolean);
-        if (lines.length === 0) return null;
+        const entries = parseJsonLines(content);
+        if (entries.length === 0) return null;
 
-        let model = null;
-        let userMessages = 0;
-        let assistantMessages = 0;
-        let toolUses = 0;
-        let inputTokens = 0;
-        let outputTokens = 0;
-        let cacheReadTokens = 0;
-        let cacheCreationTokens = 0;
-        let firstMessageAt = null;
-        let lastMessageAt = null;
-        let lastActivity = null;
+        const format = options.providerHint || detectSessionFormat(entries, resolvedPath);
+        const stats = format === 'codex'
+            ? parseCodexEntries(entries)
+            : parseClaudeEntries(entries);
 
-        for (const line of lines) {
-            let entry;
-            try { entry = JSON.parse(line); } catch { continue; }
+        if (!stats.sessionId) {
+            stats.sessionId = getEntrySessionId(entries[0]) || null;
+        }
 
-            // Track timestamp
-            if (entry.timestamp) {
-                if (!firstMessageAt) firstMessageAt = entry.timestamp;
-                lastMessageAt = entry.timestamp;
-            }
+        if (!stats.model) {
+            const firstModelEntry = entries.find((entry) =>
+                entry?.message?.model || entry?.payload?.model || entry?.payload?.model_slug
+            );
+            stats.model = firstModelEntry?.message?.model
+                || firstModelEntry?.payload?.model
+                || firstModelEntry?.payload?.model_slug
+                || null;
+        }
 
-            // Ignore sidechain (internal to compact)
-            if (entry.isSidechain) continue;
+        return stats;
+    }
 
-            // Last activity time
-            if (entry.timestamp) lastActivity = entry.timestamp;
+    /**
+     * Scan Codex session files and return stats keyed by session id.
+     * @returns {Map<string, SessionStats>}
+     */
+    _scanCodexSessionFiles() {
+        const statsBySessionId = new Map();
+        const roots = getCodexSessionRoots();
 
-            if (entry.type === 'user') {
-                userMessages++;
-            }
-
-            if (entry.type === 'assistant' && entry.message) {
-                assistantMessages++;
-
-                // Extract model
-                if (entry.message.model) model = entry.message.model;
-
-                // Extract token usage (including cache)
-                const usage = entry.message.usage;
-                if (usage) {
-                    inputTokens += usage.input_tokens || 0;
-                    cacheReadTokens += usage.cache_read_input_tokens || 0;
-                    cacheCreationTokens += usage.cache_creation_input_tokens || 0;
-                    outputTokens += usage.output_tokens || 0;
-                }
-
-                // Count tool_use blocks
-                if (Array.isArray(entry.message.content)) {
-                    for (const block of entry.message.content) {
-                        if (block.type === 'tool_use') toolUses++;
+        for (const root of roots) {
+            for (const filePath of listJsonlFiles(root)) {
+                try {
+                    const stats = this.parseSessionFile(filePath, { providerHint: 'codex' });
+                    if (stats && stats.sessionId) {
+                        statsBySessionId.set(stats.sessionId, stats);
                     }
+                } catch (e) {
+                    this.debugLog(`[SessionScanner] Error scanning Codex file ${filePath}: ${e.message}`);
                 }
             }
         }
 
-        const totalInputTokens = inputTokens + cacheReadTokens + cacheCreationTokens;
-        const estimatedCost = calculateTokenCost({
-            input: inputTokens, cacheRead: cacheReadTokens,
-            cacheCreate: cacheCreationTokens, output: outputTokens
-        }, model);
-
-        return {
-            model,
-            userMessages,
-            assistantMessages,
-            toolUses,
-            inputTokens: totalInputTokens,
-            outputTokens,
-            estimatedCost: roundCost(estimatedCost),
-            firstMessageAt,
-            lastMessageAt,
-            lastActivity,
-        };
+        return statsBySessionId;
     }
 
     /**
@@ -202,11 +446,14 @@ class SessionScanner {
 /**
  * @typedef {Object} SessionStats
  * @property {string|null} model
+ * @property {string|null} sessionId
  * @property {number} userMessages
  * @property {number} assistantMessages
  * @property {number} toolUses
  * @property {number} inputTokens
  * @property {number} outputTokens
+ * @property {number} cacheReadTokens
+ * @property {number} cacheCreationTokens
  * @property {number} estimatedCost
  * @property {string|null} firstMessageAt
  * @property {string|null} lastMessageAt

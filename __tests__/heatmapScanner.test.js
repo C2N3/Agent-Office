@@ -76,6 +76,14 @@ function makeAssistantLine(timestamp, sessionId = 'sess-1', opts = {}) {
   });
 }
 
+function makeCodexLine(type, payload = {}, timestamp = null) {
+  const entry = { type, payload };
+  if (timestamp) {
+    entry.timestamp = timestamp;
+  }
+  return JSON.stringify(entry);
+}
+
 describe('HeatmapScanner', () => {
   test('constructor initializes empty state', () => {
     const scanner = new HeatmapScanner();
@@ -165,6 +173,56 @@ describe('HeatmapScanner', () => {
       expect(stats.days['2026-03-05']).toBeDefined();
       expect(stats.days['2026-03-04'].sessions).toBe(1);
       expect(stats.days['2026-03-05'].sessions).toBe(1);
+    });
+
+    test('scans Codex session roots and aggregates stats', async () => {
+      const codexDir = path.join(tmpDir, '.codex', 'sessions');
+      fs.mkdirSync(codexDir, { recursive: true });
+
+      const lines = [
+        makeCodexLine('session_meta', {
+          id: 'thread-1234',
+          model_slug: 'gpt-5-codex',
+          workspacePath: '/workspace/app',
+        }),
+        makeCodexLine('event_msg', { type: 'task_started' }, '2026-03-05T10:00:00Z'),
+        makeCodexLine('response_item', {
+          type: 'function_call',
+          call_id: 'call-1',
+          name: 'exec_command',
+          arguments: '{"cmd":"npm test"}',
+        }, '2026-03-05T10:00:02Z'),
+        makeCodexLine('event_msg', {
+          type: 'token_count',
+          info: {
+            last_token_usage: {
+              input_tokens: 100,
+              cached_input_tokens: 10,
+              output_tokens: 5,
+            },
+          },
+        }, '2026-03-05T10:00:03Z'),
+        makeCodexLine('event_msg', {
+          type: 'task_complete',
+          last_agent_message: 'done',
+        }, '2026-03-05T10:00:04Z'),
+      ].join('\n') + '\n';
+
+      fs.writeFileSync(path.join(codexDir, 'thread-1234.jsonl'), lines);
+
+      const scanner = new HeatmapScanner();
+      await scanner.scanAll();
+
+      const day = scanner.getDailyStats().days['2026-03-05'];
+      expect(day).toBeDefined();
+      expect(day.sessions).toBe(1);
+      expect(day.userMessages).toBe(1);
+      expect(day.assistantMessages).toBe(1);
+      expect(day.toolUses).toBe(1);
+      expect(day.inputTokens).toBe(110);
+      expect(day.outputTokens).toBe(5);
+      expect(day.projects).toContain('app');
+      expect(day.byModel['gpt-5-codex']).toBeDefined();
     });
   });
 

@@ -1,13 +1,14 @@
 /**
  * Liveness Checker
- * PID detection, transcript-based re-verification, 2-second interval process liveness check
+ * PID detection, session-file re-verification, 2-second interval process liveness check
  */
 
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
 
-const sessionPids = new Map(); // sessionId → actual claude process PID
+const sessionPids = new Map(); // sessionId → actual CLI process PID
+const KNOWN_PROVIDERS = new Set(['claude', 'codex']);
 
 async function checkLivenessTier1(agentId, pid) {
   try {
@@ -18,16 +19,21 @@ async function checkLivenessTier1(agentId, pid) {
   }
 }
 
+function getProviderPattern(provider) {
+  return provider === 'codex' ? 'codex' : 'claude';
+}
+
 /**
- * Function to accurately find the Claude PID for a session using transcript_path
+ * Function to accurately find the CLI PID for a session using its JSONL file.
  * Linux/macOS: lsof -t <path>
  * Windows: Restart Manager API (find-file-owner.ps1)
  */
-function detectClaudePidByTranscript(jsonlPath, callback) {
+function detectProviderPidBySessionFile(provider, jsonlPath, callback) {
   const { execFile } = require('child_process');
+  const resolvedProvider = KNOWN_PROVIDERS.has(provider) ? provider : 'claude';
 
   if (!jsonlPath) {
-    detectClaudePidsFallback(callback);
+    detectProviderPidsFallback(resolvedProvider, callback);
     return;
   }
 
@@ -45,7 +51,7 @@ function detectClaudePidByTranscript(jsonlPath, callback) {
           return callback(pids[0]);
         }
       }
-      detectClaudePidsFallback(callback);
+      detectProviderPidsFallback(resolvedProvider, callback);
     });
   } else {
     execFile('lsof', ['-t', resolved], { timeout: 3000 }, (err, stdout) => {
@@ -55,23 +61,26 @@ function detectClaudePidByTranscript(jsonlPath, callback) {
           return callback(pids[0]);
         }
       }
-      detectClaudePidsFallback(callback);
+      detectProviderPidsFallback(resolvedProvider, callback);
     });
   }
 }
 
-function detectClaudePidsFallback(callback) {
+function detectProviderPidsFallback(provider, callback) {
   const { execFile } = require('child_process');
+  const providerPattern = getProviderPattern(provider);
   if (process.platform === 'win32') {
-    // Search only node.exe (exclude Claude Desktop App's claude.exe)
-    const psCmd = `Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.Name -eq 'node.exe' -and $_.CommandLine -like '*claude*' } | Select-Object -ExpandProperty ProcessId`;
+    const psCmd = provider === 'claude'
+      ? `Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.Name -eq 'node.exe' -and $_.CommandLine -like '*${providerPattern}*' } | Select-Object -ExpandProperty ProcessId`
+      : `Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like '*${providerPattern}*' } | Select-Object -ExpandProperty ProcessId`;
     execFile('powershell.exe', ['-NoProfile', '-Command', psCmd], { timeout: 6000 }, (err, stdout) => {
       if (err || !stdout) return callback(null);
       const pids = stdout.trim().split('\n').map(p => parseInt(p.trim(), 10)).filter(p => !isNaN(p) && p > 0);
       callback(pids.length > 0 ? pids : null);
     });
   } else {
-    execFile('pgrep', ['-f', 'node.*claude'], { timeout: 3000 }, (err, stdout) => {
+    const pattern = provider === 'claude' ? 'node.*claude' : providerPattern;
+    execFile('pgrep', ['-f', pattern], { timeout: 3000 }, (err, stdout) => {
       if (err || !stdout) return callback(null);
       const pids = stdout.trim().split('\n').map(p => parseInt(p.trim(), 10)).filter(p => !isNaN(p) && p > 0);
       callback(pids.length > 0 ? pids : null);
@@ -79,16 +88,20 @@ function detectClaudePidsFallback(callback) {
   }
 }
 
+function detectClaudePidByTranscript(jsonlPath, callback) {
+  detectProviderPidBySessionFile('claude', jsonlPath, callback);
+}
+
 // Re-detect agents with unregistered PIDs (prevent duplicate execution)
 const _pidRetryRunning = new Set();
-function retryPidDetection(sessionId, agentManager, debugLog) {
+function retryPidDetection(sessionId, provider, agentManager, debugLog) {
   if (_pidRetryRunning.has(sessionId) || sessionPids.has(sessionId)) return;
   _pidRetryRunning.add(sessionId);
 
   const agent = agentManager ? agentManager.getAgent(sessionId) : null;
   const jsonlPath = agent ? agent.jsonlPath : null;
 
-  detectClaudePidByTranscript(jsonlPath, (result) => {
+  detectProviderPidBySessionFile(provider, jsonlPath, (result) => {
     _pidRetryRunning.delete(sessionId);
     if (!result) return;
 
@@ -107,21 +120,29 @@ function retryPidDetection(sessionId, agentManager, debugLog) {
 }
 
 /**
- * Count running Claude CLI processes (node.exe *claude*)
+ * Count running provider CLI processes.
  */
-function countClaudeProcesses(callback) {
+function countProviderProcesses(provider, callback) {
   const { execFile } = require('child_process');
+  const providerPattern = getProviderPattern(provider);
   if (process.platform === 'win32') {
-    const psCmd = `(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.Name -eq 'node.exe' -and $_.CommandLine -like '*claude*' }).Count`;
+    const psCmd = provider === 'claude'
+      ? `(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.Name -eq 'node.exe' -and $_.CommandLine -like '*${providerPattern}*' }).Count`
+      : `(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like '*${providerPattern}*' }).Count`;
     execFile('powershell.exe', ['-NoProfile', '-Command', psCmd], { timeout: 6000 }, (err, stdout) => {
       if (err || !stdout) return callback(0);
       callback(parseInt(stdout.trim(), 10) || 0);
     });
   } else {
-    execFile('pgrep', ['-fc', 'node.*claude'], { timeout: 3000 }, (err, stdout) => {
+    const pattern = provider === 'claude' ? 'node.*claude' : providerPattern;
+    execFile('pgrep', ['-fc', pattern], { timeout: 3000 }, (err, stdout) => {
       callback(parseInt((stdout || '').trim(), 10) || 0);
     });
   }
+}
+
+function countClaudeProcesses(callback) {
+  countProviderProcesses('claude', callback);
 }
 
 /**
@@ -143,30 +164,51 @@ function zombieSweep(agentManager, debugLog) {
   if (_zombieSweepRunning) return;
   _zombieSweepRunning = true;
 
-  // Exclude offline registered agents from zombie sweep — they have no process to count
-  const mainAgents = agentManager.getAllAgents().filter(a => !a.isSubagent && (!a.provider || a.provider === 'claude') && !(a.isRegistered && a.state === 'Offline'));
-  const mainCount = mainAgents.length;
-  if (mainCount <= 1) { _zombieSweepRunning = false; return; }
-
-  countClaudeProcesses((processCount) => {
-    _zombieSweepRunning = false;
-    if (processCount >= mainCount) return; // no excess avatars
-
-    const excess = mainCount - processCount;
-    debugLog(`[Live] Zombie sweep: ${processCount} processes, ${mainCount} agents → ${excess} excess`);
-
-    // Sort by jsonl mtime ascending (oldest first)
-    const sorted = mainAgents
-      .map(a => ({ agent: a, mtime: getJsonlMtime(a.jsonlPath) }))
-      .sort((a, b) => a.mtime - b.mtime);
-
-    for (let i = 0; i < excess; i++) {
-      const { agent } = sorted[i];
-      debugLog(`[Live] Zombie sweep: removing ${agent.id.slice(0, 8)} (mtime=${new Date(sorted[i].mtime).toISOString()})`);
-      sessionPids.delete(agent.id);
-      removeOrOffline(agentManager, agent, debugLog);
+  const providerAgents = new Map();
+  for (const agent of agentManager.getAllAgents()) {
+    if (agent.isSubagent) continue;
+    if (agent.isRegistered && agent.state === 'Offline') continue;
+    const provider = KNOWN_PROVIDERS.has(agent.provider) ? agent.provider : 'claude';
+    if (!providerAgents.has(provider)) {
+      providerAgents.set(provider, []);
     }
-  });
+    providerAgents.get(provider).push(agent);
+  }
+
+  const providers = Array.from(providerAgents.entries()).filter(([, agents]) => agents.length > 1);
+  if (providers.length === 0) {
+    _zombieSweepRunning = false;
+    return;
+  }
+
+  let pending = providers.length;
+  for (const [provider, mainAgents] of providers) {
+    countProviderProcesses(provider, (processCount) => {
+      if (processCount < mainAgents.length) {
+        const excess = mainAgents.length - processCount;
+        debugLog(`[Live] Zombie sweep(${provider}): ${processCount} processes, ${mainAgents.length} agents → ${excess} excess`);
+
+        const sorted = mainAgents
+          .map(a => ({ agent: a, mtime: getJsonlMtime(a.jsonlPath) }))
+          .sort((a, b) => a.mtime - b.mtime);
+
+        for (let i = 0; i < excess; i++) {
+          const record = sorted[i];
+          if (!record) break;
+          const { agent } = record;
+          const pidKey = agent.sessionId || agent.id;
+          debugLog(`[Live] Zombie sweep(${provider}): removing ${agent.id.slice(0, 8)} (mtime=${new Date(record.mtime).toISOString()})`);
+          sessionPids.delete(pidKey);
+          removeOrOffline(agentManager, agent, debugLog);
+        }
+      }
+
+      pending--;
+      if (pending === 0) {
+        _zombieSweepRunning = false;
+      }
+    });
+  }
 }
 
 const LIVENESS_INTERVAL = 2000;
@@ -192,7 +234,7 @@ function startLivenessChecker({ agentManager, debugLog }) {
   const livenessCheckId = setInterval(async () => {
     if (!agentManager) return;
     for (const agent of agentManager.getAllAgents()) {
-      if (agent.provider && agent.provider !== 'claude') continue;
+      const provider = KNOWN_PROVIDERS.has(agent.provider) ? agent.provider : 'claude';
       // Skip offline registered agents — they have no session to check
       if (agent.isRegistered && agent.state === 'Offline') continue;
       if (agent.firstSeen && (Date.now() - agent.firstSeen) < GRACE_MS) continue;
@@ -204,7 +246,7 @@ function startLivenessChecker({ agentManager, debugLog }) {
         // Registered agents without a session have no PID — skip, don't penalize
         if (agent.isRegistered && !agent.sessionId) continue;
 
-        retryPidDetection(pidKey, agentManager, debugLog);
+        retryPidDetection(pidKey, provider, agentManager, debugLog);
         const noPidAge = Date.now() - (agent.firstSeen || 0);
         if (noPidAge > NO_PID_TIMEOUT) {
           // Solo agent protection: don't remove the only agent
@@ -226,9 +268,9 @@ function startLivenessChecker({ agentManager, debugLog }) {
         continue;
       }
 
-      debugLog(`[Live] ${agent.id.slice(0, 8)} pid=${pid} dead → re-checking via transcript`);
+      debugLog(`[Live] ${agent.id.slice(0, 8)} pid=${pid} dead → re-checking via session file`);
       const newPid = await new Promise((resolve) => {
-        detectClaudePidByTranscript(agent.jsonlPath, (result) => {
+        detectProviderPidBySessionFile(provider, agent.jsonlPath, (result) => {
           if (typeof result === 'number') resolve(result);
           else if (Array.isArray(result)) {
             const registeredPids = new Set(sessionPids.values());
@@ -245,7 +287,7 @@ function startLivenessChecker({ agentManager, debugLog }) {
         }
       } else {
         debugLog(`[Live] ${agent.id.slice(0, 8)} confirmed dead → removing`);
-        sessionPids.delete(agent.id);
+        sessionPids.delete(pidKey);
         removeOrOffline(agentManager, agent, debugLog);
       }
     }
@@ -254,4 +296,9 @@ function startLivenessChecker({ agentManager, debugLog }) {
   return { zombieSweepId, livenessCheckId };
 }
 
-module.exports = { sessionPids, startLivenessChecker, detectClaudePidByTranscript };
+module.exports = {
+  sessionPids,
+  startLivenessChecker,
+  detectClaudePidByTranscript,
+  detectProviderPidBySessionFile,
+};

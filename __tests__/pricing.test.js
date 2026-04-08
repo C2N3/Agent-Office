@@ -3,9 +3,11 @@
  */
 
 const {
+  normalizeModelName,
   getContextWindowSize,
   MODEL_CONTEXT_WINDOWS,
   DEFAULT_CONTEXT_WINDOW,
+  MODEL_PRICING,
 } = require('../src/pricing');
 
 describe('getContextWindowSize', () => {
@@ -26,8 +28,15 @@ describe('getContextWindowSize', () => {
     expect(getContextWindowSize('')).toBe(DEFAULT_CONTEXT_WINDOW);
   });
 
+  test('normalizes Codex model names', () => {
+    expect(normalizeModelName('gpt-5-codex')).toBe('codex');
+    expect(normalizeModelName('codex')).toBe('codex');
+    expect(getContextWindowSize('gpt-5-codex')).toBe(DEFAULT_CONTEXT_WINDOW);
+    expect(MODEL_PRICING.codex).toBeDefined();
+    expect(MODEL_CONTEXT_WINDOWS.codex).toBe(DEFAULT_CONTEXT_WINDOW);
+  });
+
   test('MODEL_CONTEXT_WINDOWS covers all MODEL_PRICING keys', () => {
-    const { MODEL_PRICING } = require('../src/pricing');
     for (const model of Object.keys(MODEL_PRICING)) {
       expect(MODEL_CONTEXT_WINDOWS).toHaveProperty(model);
     }

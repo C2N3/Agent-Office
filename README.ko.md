@@ -28,14 +28,13 @@ Agent-Office는 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) ho
 - **Managed Workspaces** — 대시보드에서 `git worktree` 기반 작업공간을 생성하고, copy/symlink/bootstrap 설정을 함께 적용할 수 있습니다
 - **PiP 모드** — 작업 중에도 픽셀 오피스를 항상 보이게 유지하는 플로팅 창을 제공합니다
 - **자동 복구** — 앱을 재시작해도 실행 중 세션을 자동으로 복원합니다
+- **Codex 세션 지원** — `exec --json` forwarder와 `~/.codex/sessions` 스캔을 모두 지원합니다
 - **서브에이전트 및 팀 지원** — Claude Code의 sub-agent와 team mode를 지원합니다
-- **Codex MVP 입력 경로** — 로컬 이벤트 수집 방식으로 `codex exec --json` 연동을 지원합니다
 
 ## 요구 사항
 
 - **Node.js** 20 이상
-- Hook 기반 모니터링이 설정된 **Claude Code CLI**
-- `exec --json` 수집이 필요한 경우 선택적으로 **Codex CLI**
+- Hook 기반 모니터링이 설정된 **Claude Code CLI** 또는 session file/`exec --json`를 사용할 **Codex CLI**
 - **운영체제:** Windows, macOS, Linux
 
 ## 빠른 시작
@@ -47,9 +46,9 @@ npm install
 npm start
 ```
 
-> `npm install`을 실행하면 필요한 Claude Code hook이 `~/.claude/settings.json`에 자동 등록됩니다.
+> `npm install`을 실행하면 필요한 Claude Code hook이 `~/.claude/settings.json`에 자동 등록됩니다. Codex는 hook 등록이 아니라 session file/`exec --json` 경로를 사용합니다.
 
-## Codex MVP
+## Codex
 
 런타임에 Codex 어댑터를 활성화합니다:
 
@@ -64,8 +63,8 @@ codex exec --json "summarize this repo" | node src/codex-forward.js
 ```
 
 참고:
-- 현재 Codex 경로는 실시간 세션 상태 표시 중심의 MVP입니다.
-- Hook 자동 등록, PID 복구, transcript 스캔 같은 Claude 전용 기능은 여전히 Claude 어댑터에 남아 있습니다.
+- `Codex`도 자동 복구, 세션 스캔, 히트맵, 대화 히스토리 경로를 지원합니다.
+- `Claude`의 sub-agent/team hook 이벤트처럼 원본 이벤트가 따로 있는 기능은 여전히 Claude 경로에만 있습니다.
 - Codex forwarder는 기본적으로 `http://127.0.0.1:47822/codex-event`로 전송합니다. 필요하면 `PIXEL_AGENT_CODEX_PORT`로 변경할 수 있습니다.
 
 ## 스크립트
@@ -106,11 +105,12 @@ codex exec --json "summarize this repo" | node src/codex-forward.js
 ## 문제 해결
 
 **아바타가 나타나지 않음**
-- `~/.claude/settings.json`에 hook이 등록되어 있는지 확인하세요
-- hook 서버가 살아 있는지 확인하세요: `curl http://localhost:47821/hook` 응답이 404면 정상입니다
+- Claude를 쓰는 경우 `~/.claude/settings.json`에 hook이 등록되어 있는지 확인하세요
+- Codex를 쓰는 경우 `~/.codex/sessions` 아래에 세션 파일이 생성되는지, 또는 `codex exec --json ... | node src/codex-forward.js` 경로를 사용 중인지 확인하세요
+- Claude hook 서버가 살아 있는지 확인하려면 `curl http://localhost:47821/hook` 응답이 404면 정상입니다
 
 **유령 아바타가 남아 있음**
-- 보통 Windows에서 PID 감지 문제일 때 발생하며, 일반적으로 30초 안에 자동 정리됩니다
+- 보통 Windows에서 PID 감지 또는 session file 정리 지연일 때 발생하며, 일반적으로 30초 안에 자동 정리됩니다
 - 앱을 재시작하면 상태가 모두 초기화됩니다
 
 **대시보드가 열리지 않음**

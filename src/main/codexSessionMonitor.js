@@ -88,7 +88,10 @@ function createCodexSessionMonitor({
   }
 
   function ingestEntry(entry, tracked) {
-    const result = codexProcessor.processSessionEntry(entry, { sessionId: tracked.sessionId });
+    const result = codexProcessor.processSessionEntry(entry, {
+      sessionId: tracked.sessionId,
+      transcriptPath: tracked.filePath,
+    });
     if (result && result.sessionId) {
       tracked.sessionId = result.sessionId;
     }
@@ -102,6 +105,7 @@ function createCodexSessionMonitor({
       position: 0,
       sessionId: null,
       lastMtimeMs: stat.mtimeMs,
+      filePath,
     };
 
     try {

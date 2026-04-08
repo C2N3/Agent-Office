@@ -1,6 +1,6 @@
 /**
  * Heatmap Scanner
- * Scans JSONL transcripts under ~/.claude/projects/ to aggregate
+ * Scans JSONL transcripts under Claude and Codex session roots to aggregate
  * daily activity statistics (sessions, messages, tool usage, tokens, cost).
  * Provides data for GitHub contribution graph-style heatmap.
  */
@@ -10,10 +10,185 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { roundCost, calculateTokenCost } = require('./pricing');
+const { getCodexSessionRoots } = require('./main/codexPaths');
+const { roundCost, calculateTokenCost, normalizeModelName } = require('./pricing');
 
-/** Retention period (days) */
 const MAX_AGE_DAYS = 400;
+
+function resolvePath(filePath) {
+  if (!filePath) return null;
+  return filePath.startsWith('~')
+    ? path.join(os.homedir(), filePath.slice(1))
+    : filePath;
+}
+
+function listJsonlFiles(dir) {
+  if (!dir || !fs.existsSync(dir)) return [];
+
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  const files = [];
+
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...listJsonlFiles(fullPath));
+    } else if (entry.isFile() && entry.name.endsWith('.jsonl')) {
+      files.push(fullPath);
+    }
+  }
+
+  return files;
+}
+
+function parseJsonLines(content) {
+  return content
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      try {
+        return JSON.parse(line);
+      } catch {
+        return null;
+      }
+    })
+    .filter(Boolean);
+}
+
+function getEntryTimestamp(entry) {
+  return entry?.timestamp || entry?.created_at || entry?.createdAt || null;
+}
+
+function getEntrySessionId(entry) {
+  return entry?.sessionId
+    || entry?.session_id
+    || entry?.thread_id
+    || entry?.payload?.id
+    || entry?.payload?.thread_id
+    || entry?.payload?.session_id
+    || null;
+}
+
+function normalizeTokenUsage(rawUsage) {
+  if (!rawUsage) return null;
+
+  const input = rawUsage.input_tokens
+    ?? rawUsage.inputTokens
+    ?? rawUsage.input
+    ?? 0;
+  const output = rawUsage.output_tokens
+    ?? rawUsage.outputTokens
+    ?? rawUsage.output
+    ?? 0;
+  const cacheRead = rawUsage.cache_read_input_tokens
+    ?? rawUsage.cached_input_tokens
+    ?? rawUsage.cacheRead
+    ?? 0;
+  const cacheCreate = rawUsage.cache_creation_input_tokens
+    ?? rawUsage.cacheCreate
+    ?? 0;
+
+  return {
+    input,
+    output,
+    cacheRead,
+    cacheCreate,
+  };
+}
+
+function ensureDay(days, dateKey) {
+  if (!days[dateKey]) {
+    days[dateKey] = {
+      sessions: 0,
+      userMessages: 0,
+      assistantMessages: 0,
+      toolUses: 0,
+      inputTokens: 0,
+      outputTokens: 0,
+      estimatedCost: 0,
+      byModel: {},
+      projects: [],
+      _sessions: new Set(),
+      _projects: new Set(),
+    };
+  }
+  return days[dateKey];
+}
+
+function detectFileFormat(entries, filePath) {
+  const normalizedPath = filePath.replace(/\\/g, '/');
+  if (normalizedPath.includes('/.codex/sessions/')) return 'codex';
+  if (normalizedPath.includes('/.claude/projects/')) return 'claude';
+
+  for (const entry of entries) {
+    if (!entry || typeof entry !== 'object') continue;
+    if (entry.type === 'session_meta' || entry.type === 'event_msg' || entry.type === 'response_item') {
+      return 'codex';
+    }
+  }
+
+  return 'claude';
+}
+
+function getCodexProjectName(entry) {
+  const candidates = [
+    entry?.cwd,
+    entry?.workspacePath,
+    entry?.workspace_path,
+    entry?.payload?.cwd,
+    entry?.payload?.workspacePath,
+    entry?.payload?.workspace_path,
+  ];
+
+  for (const candidate of candidates) {
+    if (!candidate || typeof candidate !== 'string') continue;
+    const normalized = candidate.replace(/\\/g, '/').replace(/\/+$/, '');
+    if (!normalized) continue;
+    const base = path.basename(normalized);
+    if (base && base !== '/' && base !== '.') {
+      return base;
+    }
+  }
+
+  return null;
+}
+
+function getClaudeProjectName(filePath) {
+  const normalizedPath = filePath.replace(/\\/g, '/');
+  const match = normalizedPath.match(/\.claude\/projects\/([^/]+)/);
+  if (!match) return null;
+
+  const encoded = match[1];
+  const parts = encoded.split('-');
+  if (parts.length <= 1) return encoded;
+  return parts[parts.length - 1] || encoded;
+}
+
+function applyUsage(day, usage, model) {
+  if (!usage) return;
+
+  const resolvedModel = normalizeModelName(model);
+  const inputTokens = usage.input + usage.cacheRead + usage.cacheCreate;
+  const entryCost = roundCost(calculateTokenCost({
+    input: usage.input,
+    cacheRead: usage.cacheRead,
+    cacheCreate: usage.cacheCreate,
+    output: usage.output,
+  }, resolvedModel));
+
+  day.inputTokens += inputTokens;
+  day.outputTokens += usage.output;
+  day.estimatedCost = roundCost(day.estimatedCost + entryCost);
+
+  if (model) {
+    if (!day.byModel[model]) {
+      day.byModel[model] = { inputTokens: 0, outputTokens: 0, estimatedCost: 0 };
+    }
+    day.byModel[model].inputTokens += inputTokens;
+    day.byModel[model].outputTokens += usage.output;
+    day.byModel[model].estimatedCost = roundCost(day.byModel[model].estimatedCost + entryCost);
+  }
+}
 
 class HeatmapScanner {
   /**
@@ -23,25 +198,17 @@ class HeatmapScanner {
     this.debugLog = debugLog;
     this.scanInterval = null;
 
-    /** Persistence path (uses homedir at instance creation time) */
     this.persistDir = path.join(os.homedir(), '.agent-office');
     this.persistFile = path.join(this.persistDir, 'heatmap.json');
 
-    /** @type {Record<string, DayStats>} "YYYY-MM-DD" → statistics */
+    /** @type {Record<string, DayStats>} */
     this.days = {};
-    /** Last scan timestamp */
     this.lastScan = 0;
-    /** Per-file incremental offsets @type {Record<string, FileOffset>} */
     this.fileOffsets = {};
 
-    // Restore persisted data
     this._loadPersisted();
   }
 
-  /**
-   * Start periodic scanning
-   * @param {number} intervalMs (default 5 minutes)
-   */
   start(intervalMs = 300_000) {
     this.debugLog('[HeatmapScanner] Started');
     this.scanAll();
@@ -57,20 +224,22 @@ class HeatmapScanner {
     this.debugLog('[HeatmapScanner] Stopped');
   }
 
-  /**
-   * Full scan — search all JSONL files under ~/.claude/projects/
-   */
   async scanAll() {
-    const claudeDir = path.join(os.homedir(), '.claude', 'projects');
-    if (!fs.existsSync(claudeDir)) {
-      this.debugLog('[HeatmapScanner] No ~/.claude/projects/ directory');
+    const roots = this._getRoots();
+    if (roots.length === 0) {
+      this.debugLog('[HeatmapScanner] No transcript roots found');
       return;
     }
 
-    const jsonlFiles = this._findJsonlFiles(claudeDir);
+    const jsonlFiles = [];
+    for (const root of roots) {
+      jsonlFiles.push(...listJsonlFiles(root));
+    }
+
+    const uniqueFiles = [...new Set(jsonlFiles)];
     let newEntries = 0;
 
-    for (const filePath of jsonlFiles) {
+    for (const filePath of uniqueFiles) {
       try {
         newEntries += this._scanFile(filePath);
       } catch (e) {
@@ -82,25 +251,15 @@ class HeatmapScanner {
     this._pruneOldDays();
 
     if (newEntries > 0) {
-      this.debugLog(`[HeatmapScanner] Scanned ${jsonlFiles.length} files, ${newEntries} new entries`);
+      this.debugLog(`[HeatmapScanner] Scanned ${uniqueFiles.length} files, ${newEntries} new entries`);
       this._savePersisted();
     }
   }
 
-  /**
-   * Return daily statistics
-   * @returns {{ days: Record<string, DayStats>, lastScan: number }}
-   */
   getDailyStats() {
     return { days: this.days, lastScan: this.lastScan };
   }
 
-  /**
-   * Range query
-   * @param {string} startDate "YYYY-MM-DD"
-   * @param {string} endDate "YYYY-MM-DD"
-   * @returns {Record<string, DayStats>}
-   */
   getRange(startDate, endDate) {
     const result = {};
     for (const [date, stats] of Object.entries(this.days)) {
@@ -111,36 +270,20 @@ class HeatmapScanner {
     return result;
   }
 
-  // ─── Internal implementation ───
-
-  /**
-   * Recursively traverse directory and return list of .jsonl files
-   * @param {string} dir
-   * @returns {string[]}
-   */
-  _findJsonlFiles(dir) {
-    const results = [];
-    try {
-      const entries = fs.readdirSync(dir, { withFileTypes: true });
-      for (const entry of entries) {
-        const fullPath = path.join(dir, entry.name);
-        if (entry.isDirectory()) {
-          results.push(...this._findJsonlFiles(fullPath));
-        } else if (entry.isFile() && entry.name.endsWith('.jsonl')) {
-          results.push(fullPath);
-        }
-      }
-    } catch {
-      // Ignore permission issues, etc.
+  _getRoots() {
+    const roots = [];
+    const claudeRoot = path.join(os.homedir(), '.claude', 'projects');
+    if (fs.existsSync(claudeRoot)) {
+      roots.push(claudeRoot);
     }
-    return results;
+
+    for (const codexRoot of getCodexSessionRoots()) {
+      roots.push(codexRoot);
+    }
+
+    return roots;
   }
 
-  /**
-   * Incremental scan of a single file
-   * @param {string} filePath
-   * @returns {number} Number of newly processed entries
-   */
   _scanFile(filePath) {
     let stat;
     try {
@@ -150,15 +293,12 @@ class HeatmapScanner {
     }
 
     const offset = this.fileOffsets[filePath];
-
-    // Skip if no changes
     if (offset && offset.size === stat.size && offset.mtimeMs === stat.mtimeMs) {
       return 0;
     }
 
     const startByte = offset ? offset.bytesRead : 0;
     if (startByte >= stat.size) {
-      // File shrank (truncated/rotated) → re-read from the beginning
       if (startByte > stat.size) {
         this.fileOffsets[filePath] = { bytesRead: 0, size: 0, mtimeMs: 0 };
         return this._scanFile(filePath);
@@ -166,10 +306,6 @@ class HeatmapScanner {
       return 0;
     }
 
-    // Extract project name — ~/.claude/projects/{project-hash}/ structure
-    const projectName = this._extractProjectName(filePath);
-
-    // Incremental read
     const fd = fs.openSync(filePath, 'r');
     let buf;
     try {
@@ -180,65 +316,63 @@ class HeatmapScanner {
     }
 
     const chunk = buf.toString('utf-8');
-    const lines = chunk.split('\n').filter(Boolean);
+    const entries = parseJsonLines(chunk);
+    const format = detectFileFormat(entries, filePath);
+    const projectNameFromPath = format === 'claude' ? getClaudeProjectName(filePath) : null;
     let count = 0;
+    const sessionSeenInFile = new Set();
+    const turnStateBySession = new Map();
+    let model = null;
+    let codexSessionId = null;
+    let codexProjectName = null;
 
-    for (const line of lines) {
-      let entry;
-      try { entry = JSON.parse(line); } catch { continue; }
-      if (!entry.timestamp) continue;
-      // Ignore sidechain (internal to compact)
+    for (const entry of entries) {
+      if (format === 'codex' && entry.type === 'session_meta') {
+        const payload = entry.payload || {};
+        codexSessionId = payload.id || codexSessionId;
+        model = payload.model || payload.model_slug || model;
+        codexProjectName = getCodexProjectName(entry) || codexProjectName;
+      }
+
+      const timestamp = getEntryTimestamp(entry);
+      if (!timestamp) continue;
       if (entry.isSidechain) continue;
 
-      const dateKey = entry.timestamp.slice(0, 10); // "YYYY-MM-DD"
+      const dateKey = timestamp.slice(0, 10);
       if (!dateKey || dateKey.length !== 10) continue;
 
-      this._ensureDay(dateKey);
-      const day = this.days[dateKey];
+      const day = ensureDay(this.days, dateKey);
+      const sessionId = getEntrySessionId(entry) || (format === 'codex' ? codexSessionId : null);
+      const projectName = projectNameFromPath || getCodexProjectName(entry) || (format === 'codex' ? codexProjectName : null);
+      if (projectName && !day._projects.has(projectName)) {
+        day._projects.add(projectName);
+        day.projects.push(projectName);
+      }
 
-      // Session count (unique by sessionId)
-      const sessionId = entry.sessionId || null;
+      if (format === 'codex' && sessionId && !sessionSeenInFile.has(sessionId)) {
+        sessionSeenInFile.add(sessionId);
+        day.sessions++;
+        day._sessions.add(sessionId);
+      }
 
-      if (entry.type === 'user') {
+      if (format === 'claude' && entry.type === 'user' && sessionId && !day._sessions.has(sessionId)) {
+        day._sessions.add(sessionId);
+        day.sessions++;
+      }
+
+      if (entry.type === 'user' && format === 'claude') {
         day.userMessages++;
-        if (sessionId && !day._sessions.has(sessionId)) {
-          day._sessions.add(sessionId);
-          day.sessions++;
-        }
       }
 
       if (entry.type === 'assistant' && entry.message) {
         day.assistantMessages++;
+        if (entry.message.model) model = entry.message.model;
 
-        // Token aggregation
-        const usage = entry.message.usage;
+        const usage = normalizeTokenUsage(entry.message.usage);
         if (usage) {
-          const input = usage.input_tokens || 0;
-          const cacheRead = usage.cache_read_input_tokens || 0;
-          const cacheCreate = usage.cache_creation_input_tokens || 0;
-          const output = usage.output_tokens || 0;
-
-          day.inputTokens += input + cacheRead + cacheCreate;
-          day.outputTokens += output;
-
-          const model = entry.message.model || null;
-          const entryCost = roundCost(calculateTokenCost(
-            { input, cacheRead, cacheCreate, output }, model
-          ));
-          day.estimatedCost += entryCost;
-
-          // Per-model aggregation
-          if (model) {
-            if (!day.byModel[model]) {
-              day.byModel[model] = { inputTokens: 0, outputTokens: 0, estimatedCost: 0 };
-            }
-            day.byModel[model].inputTokens += input + cacheRead + cacheCreate;
-            day.byModel[model].outputTokens += output;
-            day.byModel[model].estimatedCost += entryCost;
-          }
+          applyUsage(day, usage, model || entry.message.model || null);
         }
 
-        // tool_use block count
         if (Array.isArray(entry.message.content)) {
           for (const block of entry.message.content) {
             if (block.type === 'tool_use') day.toolUses++;
@@ -246,16 +380,76 @@ class HeatmapScanner {
         }
       }
 
-      // Add project
-      if (projectName && !day._projects.has(projectName)) {
-        day._projects.add(projectName);
-        day.projects.push(projectName);
+      if (format === 'codex') {
+        const turnState = turnStateBySession.get(sessionId || '__default__') || {
+          userSeen: false,
+          assistantSeen: false,
+        };
+        if (!turnStateBySession.has(sessionId || '__default__')) {
+          turnStateBySession.set(sessionId || '__default__', turnState);
+        }
+
+        if (entry.type === 'session_meta') {
+          const payload = entry.payload || {};
+          model = payload.model || payload.model_slug || model;
+        } else if (entry.type === 'event_msg') {
+          const payload = entry.payload || {};
+          switch (payload.type) {
+            case 'task_started':
+              day.userMessages++;
+              turnState.userSeen = true;
+              turnState.assistantSeen = false;
+              break;
+
+            case 'agent_message':
+              if (!turnState.assistantSeen) {
+                day.assistantMessages++;
+                turnState.assistantSeen = true;
+              }
+              break;
+
+            case 'token_count': {
+              const usage = normalizeTokenUsage(payload.info?.last_token_usage || null);
+              if (usage) {
+                applyUsage(day, usage, model || payload.model || payload.model_slug || null);
+              }
+              break;
+            }
+
+            case 'task_complete':
+              if (turnState.userSeen && !turnState.assistantSeen) {
+                day.assistantMessages++;
+                turnState.assistantSeen = true;
+              }
+              turnState.userSeen = false;
+              break;
+
+            default:
+              break;
+          }
+        } else if (entry.type === 'response_item') {
+          const payload = entry.payload || {};
+          switch (payload.type) {
+            case 'function_call':
+              day.toolUses++;
+              break;
+
+            case 'message':
+              if (!turnState.assistantSeen) {
+                day.assistantMessages++;
+                turnState.assistantSeen = true;
+              }
+              break;
+
+            default:
+              break;
+          }
+        }
       }
 
       count++;
     }
 
-    // Update offset
     this.fileOffsets[filePath] = {
       bytesRead: stat.size,
       size: stat.size,
@@ -265,52 +459,6 @@ class HeatmapScanner {
     return count;
   }
 
-  /**
-   * Initialize daily statistics for a date key
-   * @param {string} dateKey "YYYY-MM-DD"
-   */
-  _ensureDay(dateKey) {
-    if (!this.days[dateKey]) {
-      this.days[dateKey] = {
-        sessions: 0,
-        userMessages: 0,
-        assistantMessages: 0,
-        toolUses: 0,
-        inputTokens: 0,
-        outputTokens: 0,
-        estimatedCost: 0,
-        byModel: {},
-        projects: [],
-        // Internal tracking (excluded during serialization)
-        _sessions: new Set(),
-        _projects: new Set(),
-      };
-    }
-  }
-
-  /**
-   * Extract project name from file path
-   * ~/.claude/projects/{encoded-project-path}/... → attempt to decode
-   * @param {string} filePath
-   * @returns {string|null}
-   */
-  _extractProjectName(filePath) {
-    const normalizedPath = filePath.replace(/\\/g, '/');
-    const match = normalizedPath.match(/\.claude\/projects\/([^/]+)/);
-    if (!match) return null;
-
-    const encoded = match[1];
-    // Claude CLI encodes the project path as a directory name
-    // The last segment is the meaningful project name
-    const parts = encoded.split('-');
-    // Return as-is if too short
-    if (parts.length <= 1) return encoded;
-    return parts[parts.length - 1] || encoded;
-  }
-
-  /**
-   * Clean up data older than MAX_AGE_DAYS
-   */
   _pruneOldDays() {
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - MAX_AGE_DAYS);
@@ -323,21 +471,16 @@ class HeatmapScanner {
     }
   }
 
-  /**
-   * Save persisted data
-   */
   _savePersisted() {
     try {
       if (!fs.existsSync(this.persistDir)) {
         fs.mkdirSync(this.persistDir, { recursive: true });
       }
 
-      // Exclude _sessions and _projects Sets from serialization
       const serialDays = {};
       for (const [date, stats] of Object.entries(this.days)) {
         const { _sessions, _projects, ...rest } = stats;
         rest.estimatedCost = roundCost(rest.estimatedCost);
-        // Round per-model costs
         if (rest.byModel) {
           for (const m of Object.keys(rest.byModel)) {
             rest.byModel[m].estimatedCost = roundCost(rest.byModel[m].estimatedCost);
@@ -358,9 +501,6 @@ class HeatmapScanner {
     }
   }
 
-  /**
-   * Load persisted data
-   */
   _loadPersisted() {
     try {
       if (!fs.existsSync(this.persistFile)) return;
