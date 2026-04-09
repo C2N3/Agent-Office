@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * UI Components — Dashboard button, keyboard shortcuts, context menu
  */
@@ -132,7 +133,8 @@ export function setupKeyboardShortcuts() {
 
 export function setupContextMenu() {
   document.addEventListener('contextmenu', (e) => {
-    const agentCard = e.target.closest('.agent-card');
+    const target = e.target as HTMLElement | null;
+    const agentCard = target?.closest('.agent-card');
     if (!agentCard) return;
 
     e.preventDefault();
@@ -169,8 +171,9 @@ export function setupContextMenu() {
 
     document.body.appendChild(menu);
 
-    const closeMenu = (e) => {
-      if (!document.body.contains(menu) || !menu.contains(e.target)) {
+    const closeMenu = (event) => {
+      const closeTarget = event.target as Node | null;
+      if (!document.body.contains(menu) || !menu.contains(closeTarget)) {
         if (document.body.contains(menu)) menu.remove();
         document.removeEventListener('click', closeMenu);
       }

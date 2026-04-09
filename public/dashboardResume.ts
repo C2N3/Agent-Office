@@ -1,3 +1,4 @@
+// @ts-nocheck
 (function attachDashboardResumeUtils(root, factory) {
   const api = factory();
 

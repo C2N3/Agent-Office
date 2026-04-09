@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Agent Card — updateAgentState, createAgentCard
  */

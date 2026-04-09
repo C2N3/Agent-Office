@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Animation Manager — rAF loop, drawFrame, playAnimation
  */

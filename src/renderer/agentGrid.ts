@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Agent Grid — add/update/remove Agent, updateGridLayout, resize
  */

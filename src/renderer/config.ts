@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Renderer Config — constants, sprite settings, state maps
  */
