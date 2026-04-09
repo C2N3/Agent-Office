@@ -30,14 +30,22 @@ if (!roots.some(hasTypeScriptSource)) {
   process.exit(0);
 }
 
-const tscPath = path.join(__dirname, '..', 'node_modules', 'typescript', 'bin', 'tsc');
-const result = spawnSync(process.execPath, [tscPath, '-p', 'tsconfig.emit.json'], {
+const tsgoPath = path.join(
+  __dirname,
+  '..',
+  'node_modules',
+  '@typescript',
+  'native-preview',
+  'bin',
+  'tsgo.js',
+);
+const result = spawnSync(process.execPath, [tsgoPath, '-p', 'tsconfig.emit.json'], {
   stdio: 'inherit',
   cwd: path.join(__dirname, '..'),
 });
 
 if (result.error) {
-  console.error('[build-types] Failed to execute TypeScript compiler:', result.error);
+  console.error('[build-types] Failed to execute tsgo:', result.error);
   process.exit(1);
 }
 

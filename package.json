@@ -12,7 +12,7 @@
     "start": "node scripts/run-electron.js",
     "predev": "npm run build:dist",
     "dev": "node scripts/run-electron.js --dev",
-    "typecheck": "node node_modules/typescript/bin/tsc -p tsconfig.json --noEmit",
+    "typecheck": "node node_modules/@typescript/native-preview/bin/tsgo.js -p tsconfig.json --noEmit",
     "pretest": "npm run build:dist",
     "test": "jest",
     "test:coverage": "jest --coverage",
@@ -123,7 +123,7 @@
     "eslint": "^9.0.0",
     "jest": "^30.2.0",
     "prettier": "^3.0.0",
-    "typescript": "^6.0.2"
+    "@typescript/native-preview": "7.0.0-dev.20260408.1"
   },
   "dependencies": {
     "@xterm/addon-fit": "^0.10.0",
