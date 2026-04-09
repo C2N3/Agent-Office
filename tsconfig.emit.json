@@ -8,9 +8,9 @@
     "sourceMap": false
   },
   "include": [
-    "src/main/eventProcessor/**/*.ts",
-    "src/main/eventProcessor/**/*.d.ts",
-    "src/dashboardServer/**/*.ts",
-    "src/dashboardServer/**/*.d.ts"
+    "src/**/*.ts",
+    "src/**/*.d.ts",
+    "public/**/*.ts",
+    "public/**/*.d.ts"
   ]
 }
