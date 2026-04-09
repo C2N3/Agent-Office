@@ -161,7 +161,7 @@ function getJsonlMtime(jsonlPath) {
 
 // Zombie sweep: compare process count vs main agent count, remove oldest by mtime
 let _zombieSweepRunning = false;
-function zombieSweep(agentManager, debugLog) {
+function zombieSweep(agentManager, agentRegistry, debugLog) {
   if (_zombieSweepRunning) return;
   _zombieSweepRunning = true;
 
@@ -200,7 +200,7 @@ function zombieSweep(agentManager, debugLog) {
           const pidKey = agent.sessionId || agent.id;
           debugLog(`[Live] Zombie sweep(${provider}): removing ${agent.id.slice(0, 8)} (mtime=${new Date(record.mtime).toISOString()})`);
           sessionPids.delete(pidKey);
-          removeOrOffline(agentManager, agent, debugLog);
+          removeOrOffline(agentManager, agentRegistry, agent, debugLog);
         }
       }
 
@@ -218,8 +218,10 @@ const ZOMBIE_SWEEP_INTERVAL = 30000;
 const NO_PID_TIMEOUT = GRACE_MS + 10000;
 
 /** Remove or transition agent based on registration status */
-function removeOrOffline(agentManager, agent, debugLog) {
+function removeOrOffline(agentManager, agentRegistry, agent, debugLog) {
   if (agent.isRegistered) {
+    const registryId = agent.registryId || agent.id;
+    agentRegistry?.unlinkSession?.(registryId);
     agentManager.transitionToOffline(agent.id);
     debugLog(`[Live] ${agent.id.slice(0, 8)} (registered) → Offline`);
   } else {
@@ -227,9 +229,9 @@ function removeOrOffline(agentManager, agent, debugLog) {
   }
 }
 
-function startLivenessChecker({ agentManager, debugLog }) {
+function startLivenessChecker({ agentManager, agentRegistry, debugLog }) {
   const zombieSweepId = setInterval(() => {
-    if (agentManager) zombieSweep(agentManager, debugLog);
+    if (agentManager) zombieSweep(agentManager, agentRegistry, debugLog);
   }, ZOMBIE_SWEEP_INTERVAL);
 
   const livenessCheckId = setInterval(async () => {
@@ -250,13 +252,13 @@ function startLivenessChecker({ agentManager, debugLog }) {
         retryPidDetection(pidKey, provider, agentManager, debugLog);
         const noPidAge = Date.now() - (agent.firstSeen || 0);
         if (noPidAge > NO_PID_TIMEOUT) {
-          // Solo agent protection: don't remove the only agent
-          if (agentManager.getAgentCount() <= 1) {
+          // Solo agent protection only applies to ephemeral agents.
+          if (!agent.isRegistered && agentManager.getAgentCount() <= 1) {
             debugLog(`[Live] ${agent.id.slice(0, 8)} no PID but solo agent → keeping`);
             continue;
           }
           debugLog(`[Live] ${agent.id.slice(0, 8)} no PID for ${Math.round(noPidAge/1000)}s → removing`);
-          removeOrOffline(agentManager, agent, debugLog);
+          removeOrOffline(agentManager, agentRegistry, agent, debugLog);
         }
         continue;
       }
@@ -289,7 +291,7 @@ function startLivenessChecker({ agentManager, debugLog }) {
       } else {
         debugLog(`[Live] ${agent.id.slice(0, 8)} confirmed dead → removing`);
         sessionPids.delete(pidKey);
-        removeOrOffline(agentManager, agent, debugLog);
+        removeOrOffline(agentManager, agentRegistry, agent, debugLog);
       }
     }
   }, LIVENESS_INTERVAL);

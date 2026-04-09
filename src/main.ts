@@ -264,7 +264,7 @@ app.whenReady().then(() => {
   }
   windowManager.startDashboardServer();
   if (enabledProviders.some((provider) => provider === 'claude' || provider === 'codex')) {
-    livenessIntervals = startLivenessChecker({ agentManager, debugLog });
+    livenessIntervals = startLivenessChecker({ agentManager, agentRegistry, debugLog });
   }
 
   // 7. Recover existing active sessions

@@ -39,9 +39,7 @@ const dashboardAPI: DashboardAPI = {
   onAgentAdded: (callback: (data: DashboardAgent) => void) => listen('dashboard-agent-added', callback),
   onAgentUpdated: (callback: (data: DashboardAgent) => void) => listen('dashboard-agent-updated', callback),
   onAgentRemoved: (callback: (data: DashboardAgentRemoval) => void) => listen('dashboard-agent-removed', callback),
-  focusAgent: (agentId: string) => {
-    ipcRenderer.send('dashboard-focus-agent', agentId);
-  },
+  focusAgent: (agentId: string) => ipcRenderer.invoke('focus-terminal', agentId),
   togglePip: () => ipcRenderer.invoke('toggle-pip'),
   onPipStateChanged: (callback: (isOpen: boolean) => void) => listen('pip-state-changed', callback),
   createRegisteredAgent: (data: Partial<DashboardAgentRecord> & { name: string; projectPath: string }) => ipcRenderer.invoke('registry:create', data),
