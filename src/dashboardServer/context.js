@@ -1,52 +1,42 @@
-const refs = {
-  agentManager: null,
-  sessionScanner: null,
-  heatmapScanner: null,
-  agentRegistryRef: null,
-  missionControlWindow: null,
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.clients = exports.refs = void 0;
+exports.setAgentManager = setAgentManager;
+exports.setSessionScanner = setSessionScanner;
+exports.setHeatmapScanner = setHeatmapScanner;
+exports.setAgentRegistry = setAgentRegistry;
+exports.setDashboardWindow = setDashboardWindow;
+exports.getRefs = getRefs;
+exports.getClients = getClients;
+exports.refs = {
+    agentManager: null,
+    sessionScanner: null,
+    heatmapScanner: null,
+    agentRegistryRef: null,
+    missionControlWindow: null,
 };
-
-const clients = {
-  wsClients: new Set(),
-  sseClients: new Set(),
+exports.clients = {
+    wsClients: new Set(),
+    sseClients: new Set(),
 };
-
 function setAgentManager(manager) {
-  refs.agentManager = manager;
+    exports.refs.agentManager = manager;
 }
-
 function setSessionScanner(scanner) {
-  refs.sessionScanner = scanner;
+    exports.refs.sessionScanner = scanner;
 }
-
 function setHeatmapScanner(scanner) {
-  refs.heatmapScanner = scanner;
+    exports.refs.heatmapScanner = scanner;
 }
-
 function setAgentRegistry(registry) {
-  refs.agentRegistryRef = registry;
+    exports.refs.agentRegistryRef = registry;
 }
-
 function setDashboardWindow(window) {
-  refs.missionControlWindow = window;
+    exports.refs.missionControlWindow = window;
 }
-
 function getRefs() {
-  return refs;
+    return exports.refs;
 }
-
 function getClients() {
-  return clients;
+    return exports.clients;
 }
-
-module.exports = {
-  clients,
-  getClients,
-  getRefs,
-  refs,
-  setAgentManager,
-  setAgentRegistry,
-  setDashboardWindow,
-  setHeatmapScanner,
-  setSessionScanner,
-};
