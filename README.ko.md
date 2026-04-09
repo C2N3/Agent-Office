@@ -47,6 +47,8 @@ npm start
 ```
 
 > `npm install`을 실행하면 필요한 Claude Code hook이 `~/.claude/settings.json`에 자동 등록됩니다. Codex는 hook 등록이 아니라 session file/`exec --json` 경로를 사용합니다.
+>
+> 현재 런타임 산출물은 `dist/` 기준입니다. `npm start`, `npm run dev`, `npm run dashboard`, `npm test`는 실행 전에 자동으로 `npm run build:dist`를 호출합니다. `node dist/...` 경로를 직접 실행할 때는 먼저 `npm run build:dist`를 한 번 돌려 두세요.
 
 ## Codex
 
@@ -71,9 +73,12 @@ codex exec --json "summarize this repo" | node dist/src/codex-forward.js
 
 | 명령어 | 설명 |
 |---------|-------------|
+| `npm run build:dist` | TypeScript 런타임을 `dist/`로 빌드합니다 |
+| `npm run typecheck` | `tsgo --noEmit`으로 타입 검사를 실행합니다 |
 | `npm start` | Electron 앱을 실행합니다 |
 | `npm run dev` | 개발 모드로 실행합니다 (DevTools 활성화) |
-| `npm test` | 테스트를 실행합니다 |
+| `npm run dashboard` | 대시보드 서버를 실행합니다 |
+| `npm test` | `dist/`를 먼저 갱신한 뒤 테스트를 실행합니다 |
 
 ## Managed Workspaces
 

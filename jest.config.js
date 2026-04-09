@@ -2,7 +2,9 @@ module.exports = {
   testEnvironment: 'node',
   coverageDirectory: 'coverage',
   collectCoverageFrom: [
+    'src/**/*.ts',
     'src/**/*.js',
+    '!src/**/*.d.ts',
     '!node_modules/**',
     '!coverage/**',
     '!__tests__/**',

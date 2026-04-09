@@ -11,10 +11,19 @@ npm install
 npm start
 ```
 
+`npm start`, `npm run dev`, `npm run dashboard`, and `npm test` all build the current TypeScript runtime into `dist/` before they run. If you need to refresh the emitted runtime manually, use `npm run build:dist`.
+
 ### Running Tests
 
 ```bash
-npm test                # Run all tests
+npm run build:dist      # Refresh dist/ from the current TypeScript sources
+npm run typecheck       # Run tsgo in no-emit mode
+npm test -- --runInBand # Run the Jest suite serially
+```
+
+Additional commands:
+
+```bash
 npm run test:coverage   # Run with coverage report
 npm run test:watch      # Watch mode for development
 ```
@@ -45,9 +54,10 @@ npm run test:watch      # Watch mode for development
 
 ## Code Guidelines
 
-- **JavaScript only** — no TypeScript, no build step, no transpilation
-- **No frameworks** — vanilla JS, vanilla Canvas, vanilla HTTP
-- **Tests** — use Jest 30; place test files in `__tests__/`
+- **TypeScript-first runtime** — runtime modules now live in `src/**/*.ts` and emit to `dist/`
+- **Intentional JS exception** — keep `src/install.js` in JavaScript unless bootstrap strategy changes in a dedicated follow-up refactor
+- **No frameworks** — keep the current Electron, vanilla DOM/canvas, and small HTTP server approach
+- **Tests** — use Jest 30; place test files in `__tests__/` and keep existing `dist/`-aware runtime assumptions intact unless you are explicitly redesigning the test loader
 - **Keep it simple** — avoid abstractions until they're clearly needed
 
 ## Architecture Rules
