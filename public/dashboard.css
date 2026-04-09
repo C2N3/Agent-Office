@@ -1667,6 +1667,25 @@ body {
   background: var(--color-primary-dim);
 }
 
+.bulk-archive-btn {
+  padding: 2px 10px;
+  font-size: 0.7rem;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.bulk-archive-btn:hover:not(:disabled) {
+  background: rgba(139, 148, 158, 0.12);
+}
+
+.bulk-archive-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 /* ─── OFFLINE & REGISTERED AGENT STYLES ─── */
 .mc-agent-card[data-status="offline"] {
   opacity: 0.5;

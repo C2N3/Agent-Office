@@ -71,6 +71,7 @@ contextBridge.exposeInMainWorld('dashboardAPI', {
   toggleRegisteredAgent: (id, enabled) => ipcRenderer.invoke('registry:toggle', id, enabled),
   archiveRegisteredAgent: (id) => ipcRenderer.invoke('registry:archive', id),
   deleteRegisteredAgent: (id) => ipcRenderer.invoke('registry:delete', id),
+  clearInactiveUnregisteredAgents: () => ipcRenderer.invoke('agents:clear-inactive-unregistered'),
 
   // ─── Session History / Conversation ───
   getSessionHistory: (registryId) => ipcRenderer.invoke('registry:session-history', registryId),

@@ -32,6 +32,7 @@ const DOM = {
   agentListFilterBadge: document.getElementById('agentListFilterBadge'),
   officeFilterToggle: document.getElementById('officeRegisteredFilterToggle'),
   agentListFilterToggle: document.getElementById('agentListRegisteredFilterToggle'),
+  bulkArchiveBtn: document.getElementById('bulkArchiveBtn'),
   archiveGrid: document.getElementById('archiveGrid'),
   archiveRefreshBtn: document.getElementById('archiveRefreshBtn'),
 };
@@ -177,6 +178,20 @@ function getVisibleAgents() {
   return [...state.agents.values()].filter(shouldDisplayAgent);
 }
 
+function getClearableUnregisteredAgents() {
+  return [...state.agents.values()].filter(agent => !agent.isRegistered && (agent.status === 'offline' || agent.status === 'completed'));
+}
+
+function updateBulkArchiveButton() {
+  if (!DOM.bulkArchiveBtn) return;
+  const count = getClearableUnregisteredAgents().length;
+  DOM.bulkArchiveBtn.disabled = count === 0;
+  DOM.bulkArchiveBtn.textContent = count > 0 ? `Clear Unregistered (${count})` : 'Clear Unregistered';
+  DOM.bulkArchiveBtn.title = count > 0
+    ? `Clear ${count} inactive unregistered agent${count === 1 ? '' : 's'}`
+    : 'No inactive unregistered agents available to clear';
+}
+
 function updateFilterUI() {
   const registeredOnly = isRegisteredOnlyFilterEnabled();
   const badgeText = registeredOnly ? 'Registered Only' : 'All Agents';
@@ -224,7 +239,38 @@ function renderAgentList() {
   const visibleAgents = getVisibleAgents();
   DOM.standbyMessage.style.display = visibleAgents.length === 0 ? 'block' : 'none';
   for (const ag of state.agents.values()) updateAgentUI(ag);
+  updateBulkArchiveButton();
   renderOfficeRoster();
+}
+
+async function clearUnregisteredAgents() {
+  const agents = getClearableUnregisteredAgents();
+  if (agents.length === 0) {
+    alert('No inactive unregistered agents are available to clear.');
+    return;
+  }
+
+  const count = agents.length;
+  if (!confirm(`Clear ${count} inactive unregistered agent${count === 1 ? '' : 's'}?`)) return;
+  if (typeof dashboardAPI === 'undefined' || !dashboardAPI.clearInactiveUnregisteredAgents) return;
+
+  if (DOM.bulkArchiveBtn) DOM.bulkArchiveBtn.disabled = true;
+
+  let clearedCount = 0;
+  try {
+    const result = await dashboardAPI.clearInactiveUnregisteredAgents();
+    if (result?.success) {
+      clearedCount = result.clearedCount || 0;
+    }
+  } catch (error) {
+    console.error('[Clear Unregistered]', error);
+  }
+
+  updateBulkArchiveButton();
+
+  if (clearedCount !== count) {
+    alert(`Cleared ${clearedCount} of ${count} agents. Some items may have changed state before removal.`);
+  }
 }
 
 function updateAgentUI(ag) {
@@ -1559,6 +1605,13 @@ function initApp() {
     DOM.archiveRefreshBtn.addEventListener('click', () => {
       renderArchiveView(true);
     });
+  }
+
+  if (DOM.bulkArchiveBtn) {
+    DOM.bulkArchiveBtn.addEventListener('click', () => {
+      clearUnregisteredAgents();
+    });
+    updateBulkArchiveButton();
   }
 
   if (DOM.archiveGrid) {

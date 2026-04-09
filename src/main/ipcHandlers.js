@@ -160,6 +160,28 @@ function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowM
     }
   });
 
+  ipcMain.handle('agents:clear-inactive-unregistered', async () => {
+    if (!agentManager) return { success: false, clearedCount: 0, clearedIds: [] };
+
+    const removableAgents = agentManager.getAllAgents().filter((agent) => {
+      if (!agent || agent.isRegistered) return false;
+      return agent.state === 'Done' || agent.state === 'Offline';
+    });
+
+    const clearedIds = [];
+    for (const agent of removableAgents) {
+      if (agentManager.removeAgent(agent.id)) {
+        clearedIds.push(agent.id);
+      }
+    }
+
+    return {
+      success: true,
+      clearedCount: clearedIds.length,
+      clearedIds,
+    };
+  });
+
   // ─── PiP ───
   ipcMain.handle('toggle-pip', async () => {
     try {
