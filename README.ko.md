@@ -47,6 +47,8 @@ npm start
 ```
 
 > `npm install`을 실행하면 필요한 Claude Code hook이 `~/.claude/settings.json`에 자동 등록됩니다. Codex는 hook 등록이 아니라 session file/`exec --json` 경로를 사용합니다.
+>
+> 현재 프로덕션 런타임 산출물은 `dist/` 기준입니다. `npm start`와 `npm run dashboard`는 실행 전에 자동으로 `npm run build:dist`를 호출합니다. `npm run dev`는 source 변경을 감지해 `dist/`를 다시 빌드한 뒤 Electron을 자동 재시작합니다. `node dist/...` 경로를 직접 실행할 때는 먼저 `npm run build:dist`를 한 번 돌려 두세요.
 
 ## Codex
 
@@ -59,7 +61,7 @@ PIXEL_AGENT_PROVIDERS=claude,codex npm start
 `codex exec --json` 실행 결과를 앱으로 전달합니다:
 
 ```bash
-codex exec --json "summarize this repo" | node src/codex-forward.js
+codex exec --json "summarize this repo" | node dist/src/codex-forward.js
 ```
 
 참고:
@@ -71,9 +73,13 @@ codex exec --json "summarize this repo" | node src/codex-forward.js
 
 | 명령어 | 설명 |
 |---------|-------------|
+| `npm run build:dist` | TypeScript 런타임을 `dist/`로 빌드합니다 |
+| `npm run build:dist:watch` | `src/`, `public/`, tsconfig 변경을 감시하며 `dist/`를 다시 빌드합니다 |
+| `npm run typecheck` | `tsgo --noEmit`으로 타입 검사를 실행합니다 |
 | `npm start` | Electron 앱을 실행합니다 |
-| `npm run dev` | 개발 모드로 실행합니다 (DevTools 활성화) |
-| `npm test` | 테스트를 실행합니다 |
+| `npm run dev` | source 변경 시 `dist/`를 다시 빌드하고 Electron을 자동 재시작하는 개발 루프를 실행합니다 |
+| `npm run dashboard` | 대시보드 서버를 실행합니다 |
+| `npm test` | source TypeScript 기준으로 Jest 테스트를 실행합니다 |
 
 ## Managed Workspaces
 
@@ -106,7 +112,7 @@ codex exec --json "summarize this repo" | node src/codex-forward.js
 
 **아바타가 나타나지 않음**
 - Claude를 쓰는 경우 `~/.claude/settings.json`에 hook이 등록되어 있는지 확인하세요
-- Codex를 쓰는 경우 `~/.codex/sessions` 아래에 세션 파일이 생성되는지, 또는 `codex exec --json ... | node src/codex-forward.js` 경로를 사용 중인지 확인하세요
+- Codex를 쓰는 경우 `~/.codex/sessions` 아래에 세션 파일이 생성되는지, 또는 `codex exec --json ... | node dist/src/codex-forward.js` 경로를 사용 중인지 확인하세요
 - Claude hook 서버가 살아 있는지 확인하려면 `curl http://localhost:47821/hook` 응답이 404면 정상입니다
 
 **유령 아바타가 남아 있음**

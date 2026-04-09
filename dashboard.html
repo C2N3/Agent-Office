@@ -380,15 +380,15 @@
   <div class="office-popover" id="officePopover"></div>
 
   <!-- Office Engine Scripts -->
-  <script src="/src/office/office-config.js?v=6"></script>
-  <script src="/src/office/office-layers.js?v=6"></script>
-  <script src="/src/office/office-coords.js?v=6"></script>
-  <script src="/src/office/office-pathfinder.js?v=6"></script>
-  <script src="/src/office/office-sprite.js?v=6"></script>
-  <script src="/src/office/office-character.js?v=6"></script>
-  <script src="/src/office/office-renderer.js?v=6"></script>
-  <script src="/src/office/office-ui.js?v=6"></script>
-  <script src="/src/office/office-init.js?v=6"></script>
+  <script src="/dist/src/office/office-config.js?v=6"></script>
+  <script src="/dist/src/office/office-layers.js?v=6"></script>
+  <script src="/dist/src/office/office-coords.js?v=6"></script>
+  <script src="/dist/src/office/office-pathfinder.js?v=6"></script>
+  <script src="/dist/src/office/office-sprite.js?v=6"></script>
+  <script src="/dist/src/office/office-character.js?v=6"></script>
+  <script src="/dist/src/office/office-renderer.js?v=6"></script>
+  <script src="/dist/src/office/office-ui.js?v=6"></script>
+  <script src="/dist/src/office/office-init.js?v=6"></script>
 
   <!-- Terminal: ensure UMD scripts export to window, not CommonJS -->
   <script>if(typeof module!=='undefined'){window.__module=module;delete window.module;}</script>
@@ -398,8 +398,8 @@
   <script>if(typeof window.__module!=='undefined'){window.module=window.__module;delete window.__module;}</script>
 
   <!-- Application Logic -->
-  <script src="/public/dashboardResume.js"></script>
-  <script src="/public/dashboard.js"></script>
+  <script src="/dist/public/dashboardResume.js"></script>
+  <script type="module" src="/dist/public/dashboard.js"></script>
 </body>
 
 </html>

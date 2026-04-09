@@ -4,10 +4,11 @@
  * Automatically registers HTTP hooks in the Claude CLI config.
  * Runs automatically during npm install.
  *
- * Delegates actual registration logic to hookRegistration.js.
+ * Delegates actual registration logic to a JS-only helper because postinstall
+ * runs before the TypeScript sources are built into dist/.
  */
 
-const { registerClaudeHooks } = require('./main/hookRegistration');
+const { registerClaudeHooks } = require('./main/hookRegistration.install');
 
 /**
  * Main entry point
