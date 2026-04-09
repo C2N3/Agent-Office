@@ -87,6 +87,28 @@ function sanitizeWorkspace(workspace, fallbackProjectPath = '') {
   };
 }
 
+function buildSessionHistoryEntry(entry = {}) {
+  const runtimeSessionId = entry.runtimeSessionId || entry.sessionId || null;
+  const resumeSessionId = entry.resumeSessionId || entry.sessionId || null;
+  const sessionId = entry.sessionId || resumeSessionId || runtimeSessionId || null;
+
+  return {
+    sessionId,
+    runtimeSessionId,
+    resumeSessionId,
+    transcriptPath: entry.transcriptPath || null,
+    startedAt: entry.startedAt ?? null,
+    endedAt: entry.endedAt || null,
+  };
+}
+
+function sessionEntryMatches(entry, sessionId) {
+  if (!entry || !sessionId) return false;
+  return entry.sessionId === sessionId
+    || entry.runtimeSessionId === sessionId
+    || entry.resumeSessionId === sessionId;
+}
+
 class AgentRegistry {
   constructor(debugLog) {
     this.debugLog = debugLog || (() => {});
@@ -117,6 +139,23 @@ class AgentRegistry {
             const currentWorkspace = agent.workspace || null;
             if (JSON.stringify(currentWorkspace) !== JSON.stringify(sanitizedWorkspace)) {
               agent.workspace = sanitizedWorkspace;
+              needsSave = true;
+            }
+            const normalizedCurrentRuntimeSessionId = agent.currentRuntimeSessionId || agent.currentSessionId || null;
+            if (agent.currentRuntimeSessionId !== normalizedCurrentRuntimeSessionId) {
+              agent.currentRuntimeSessionId = normalizedCurrentRuntimeSessionId;
+              needsSave = true;
+            }
+            const normalizedCurrentResumeSessionId = agent.currentResumeSessionId || agent.currentSessionId || null;
+            if (agent.currentResumeSessionId !== normalizedCurrentResumeSessionId) {
+              agent.currentResumeSessionId = normalizedCurrentResumeSessionId;
+              needsSave = true;
+            }
+            const normalizedHistory = Array.isArray(agent.sessionHistory)
+              ? agent.sessionHistory.map((entry) => buildSessionHistoryEntry(entry))
+              : [];
+            if (JSON.stringify(agent.sessionHistory || []) !== JSON.stringify(normalizedHistory)) {
+              agent.sessionHistory = normalizedHistory;
               needsSave = true;
             }
             this.agents.set(agent.id, agent);
@@ -162,6 +201,8 @@ class AgentRegistry {
       archivedAt: null,
       cumulativeTokens: { inputTokens: 0, outputTokens: 0, estimatedCost: 0, sessionCount: 0 },
       currentSessionId: null,
+      currentRuntimeSessionId: null,
+      currentResumeSessionId: null,
       sessionHistory: [],
       provider: provider || null,
       model: model || null,
@@ -213,6 +254,8 @@ class AgentRegistry {
     agent.archivedAt = Date.now();
     agent.enabled = false;
     agent.currentSessionId = null;
+    agent.currentRuntimeSessionId = null;
+    agent.currentResumeSessionId = null;
     this._save();
     this.debugLog(`[Registry] Archived: ${registryId.slice(0, 8)}`);
     return true;
@@ -260,10 +303,20 @@ class AgentRegistry {
     return null;
   }
 
-  linkSession(registryId, sessionId, transcriptPath) {
+  linkSession(registryId, sessionId, transcriptPath, options = {}) {
     const agent = this.agents.get(registryId);
     if (!agent) return;
-    agent.currentSessionId = sessionId;
+    const runtimeSessionId = options.runtimeSessionId !== undefined
+      ? options.runtimeSessionId
+      : sessionId;
+    const resumeSessionId = options.resumeSessionId !== undefined
+      ? options.resumeSessionId
+      : sessionId;
+    const resolvedSessionId = sessionId || resumeSessionId || runtimeSessionId || null;
+
+    agent.currentSessionId = resolvedSessionId;
+    agent.currentRuntimeSessionId = runtimeSessionId || null;
+    agent.currentResumeSessionId = resumeSessionId || null;
     agent.lastActiveAt = Date.now();
 
     // Ensure sessionHistory array exists (backward compat with old data)
@@ -272,20 +325,28 @@ class AgentRegistry {
     }
 
     // Add to history if not already present
-    const existing = agent.sessionHistory.find(h => h.sessionId === sessionId);
+    const existing = agent.sessionHistory.find((entry) => sessionEntryMatches(entry, resolvedSessionId)
+      || sessionEntryMatches(entry, runtimeSessionId)
+      || sessionEntryMatches(entry, resumeSessionId));
     if (!existing) {
-      agent.sessionHistory.push({
-        sessionId,
-        transcriptPath: transcriptPath || null,
+      agent.sessionHistory.push(buildSessionHistoryEntry({
+        sessionId: resolvedSessionId,
+        runtimeSessionId,
+        resumeSessionId,
+        transcriptPath,
         startedAt: Date.now(),
-        endedAt: null,
-      });
-    } else if (transcriptPath && !existing.transcriptPath) {
-      existing.transcriptPath = transcriptPath;
+      }));
+    } else {
+      existing.sessionId = existing.sessionId || resolvedSessionId;
+      existing.runtimeSessionId = existing.runtimeSessionId || runtimeSessionId || resolvedSessionId;
+      existing.resumeSessionId = existing.resumeSessionId || resumeSessionId || resolvedSessionId;
+      if (transcriptPath && !existing.transcriptPath) {
+        existing.transcriptPath = transcriptPath;
+      }
     }
 
     this._save();
-    this.debugLog(`[Registry] Linked session: ${registryId.slice(0, 8)} ← ${sessionId.slice(0, 8)}`);
+    this.debugLog(`[Registry] Linked session: ${registryId.slice(0, 8)} ← ${(resolvedSessionId || '').slice(0, 8)}`);
   }
 
   unlinkSession(registryId) {
@@ -294,13 +355,17 @@ class AgentRegistry {
 
     // Mark current session as ended in history
     if (agent.currentSessionId && Array.isArray(agent.sessionHistory)) {
-      const entry = agent.sessionHistory.find(h => h.sessionId === agent.currentSessionId);
+      const entry = agent.sessionHistory.find((item) => sessionEntryMatches(item, agent.currentSessionId)
+        || sessionEntryMatches(item, agent.currentRuntimeSessionId)
+        || sessionEntryMatches(item, agent.currentResumeSessionId));
       if (entry && !entry.endedAt) {
         entry.endedAt = Date.now();
       }
     }
 
     agent.currentSessionId = null;
+    agent.currentRuntimeSessionId = null;
+    agent.currentResumeSessionId = null;
     agent.lastActiveAt = Date.now();
     this._save();
     this.debugLog(`[Registry] Unlinked session: ${registryId.slice(0, 8)}`);
@@ -312,20 +377,29 @@ class AgentRegistry {
   updateSessionTranscriptPath(registryId, sessionId, transcriptPath) {
     const agent = this.agents.get(registryId);
     if (!agent || !Array.isArray(agent.sessionHistory)) return;
-    const entry = agent.sessionHistory.find(h => h.sessionId === sessionId);
+    const entry = agent.sessionHistory.find((item) => sessionEntryMatches(item, sessionId));
     if (entry && !entry.transcriptPath && transcriptPath) {
       entry.transcriptPath = transcriptPath;
       this._save();
     }
   }
 
-  replaceSessionId(registryId, previousSessionId, nextSessionId, transcriptPath = null) {
+  replaceSessionId(registryId, previousSessionId, nextSessionId, transcriptPath = null, options = {}) {
     const agent = this.agents.get(registryId);
     if (!agent || !previousSessionId || !nextSessionId) return false;
+    const runtimeSessionId = options.runtimeSessionId !== undefined
+      ? options.runtimeSessionId
+      : previousSessionId;
+    const resumeSessionId = options.resumeSessionId !== undefined
+      ? options.resumeSessionId
+      : nextSessionId;
+    const resolvedSessionId = nextSessionId || resumeSessionId || runtimeSessionId || previousSessionId;
     if (previousSessionId === nextSessionId) {
       if (transcriptPath) {
         this.updateSessionTranscriptPath(registryId, nextSessionId, transcriptPath);
       }
+      if (agent.currentRuntimeSessionId == null) agent.currentRuntimeSessionId = runtimeSessionId || null;
+      if (agent.currentResumeSessionId == null) agent.currentResumeSessionId = resumeSessionId || null;
       return true;
     }
 
@@ -333,29 +407,42 @@ class AgentRegistry {
       agent.sessionHistory = [];
     }
 
-    const previousEntry = agent.sessionHistory.find((entry) => entry.sessionId === previousSessionId) || null;
-    const nextEntry = agent.sessionHistory.find((entry) => entry.sessionId === nextSessionId) || null;
+    const previousEntry = agent.sessionHistory.find((entry) => sessionEntryMatches(entry, previousSessionId)) || null;
+    const nextEntry = agent.sessionHistory.find((entry) => sessionEntryMatches(entry, nextSessionId)) || null;
 
-    if (agent.currentSessionId === previousSessionId) {
-      agent.currentSessionId = nextSessionId;
+    if (agent.currentSessionId === previousSessionId || agent.currentSessionId === runtimeSessionId) {
+      agent.currentSessionId = resolvedSessionId;
     }
+    agent.currentRuntimeSessionId = agent.currentRuntimeSessionId || runtimeSessionId || previousSessionId;
+    agent.currentResumeSessionId = resumeSessionId || nextSessionId || agent.currentResumeSessionId || null;
 
     if (previousEntry && nextEntry && previousEntry !== nextEntry) {
+      nextEntry.sessionId = nextEntry.sessionId || resolvedSessionId;
+      nextEntry.runtimeSessionId = nextEntry.runtimeSessionId || previousEntry.runtimeSessionId || runtimeSessionId || previousSessionId;
+      nextEntry.resumeSessionId = nextEntry.resumeSessionId || previousEntry.resumeSessionId || resumeSessionId || nextSessionId;
       nextEntry.transcriptPath = nextEntry.transcriptPath || previousEntry.transcriptPath || transcriptPath || null;
       nextEntry.startedAt = Math.min(nextEntry.startedAt || Infinity, previousEntry.startedAt || Infinity);
       if (!Number.isFinite(nextEntry.startedAt)) nextEntry.startedAt = previousEntry.startedAt || null;
       nextEntry.endedAt = nextEntry.endedAt || previousEntry.endedAt || null;
       agent.sessionHistory = agent.sessionHistory.filter((entry) => entry !== previousEntry);
     } else if (previousEntry) {
-      previousEntry.sessionId = nextSessionId;
+      previousEntry.sessionId = resolvedSessionId;
+      previousEntry.runtimeSessionId = previousEntry.runtimeSessionId || runtimeSessionId || previousSessionId;
+      previousEntry.resumeSessionId = resumeSessionId || nextSessionId || previousEntry.resumeSessionId || null;
       previousEntry.transcriptPath = previousEntry.transcriptPath || transcriptPath || null;
     } else if (!nextEntry) {
-      agent.sessionHistory.push({
-        sessionId: nextSessionId,
-        transcriptPath: transcriptPath || null,
+      agent.sessionHistory.push(buildSessionHistoryEntry({
+        sessionId: resolvedSessionId,
+        runtimeSessionId,
+        resumeSessionId,
+        transcriptPath,
         startedAt: Date.now(),
-        endedAt: null,
-      });
+      }));
+    } else {
+      nextEntry.sessionId = nextEntry.sessionId || resolvedSessionId;
+      nextEntry.runtimeSessionId = nextEntry.runtimeSessionId || runtimeSessionId || previousSessionId;
+      nextEntry.resumeSessionId = nextEntry.resumeSessionId || resumeSessionId || nextSessionId;
+      nextEntry.transcriptPath = nextEntry.transcriptPath || transcriptPath || null;
     }
 
     this._save();
@@ -369,7 +456,16 @@ class AgentRegistry {
   getSessionHistory(registryId) {
     const agent = this.agents.get(registryId);
     if (!agent) return [];
-    return Array.isArray(agent.sessionHistory) ? [...agent.sessionHistory] : [];
+    return Array.isArray(agent.sessionHistory)
+      ? agent.sessionHistory.map((entry) => buildSessionHistoryEntry(entry))
+      : [];
+  }
+
+  findSessionHistoryEntry(registryId, sessionId) {
+    const agent = this.agents.get(registryId);
+    if (!agent || !Array.isArray(agent.sessionHistory) || !sessionId) return null;
+    const entry = agent.sessionHistory.find((item) => sessionEntryMatches(item, sessionId));
+    return entry ? buildSessionHistoryEntry(entry) : null;
   }
 
   getArchivedAgents() {
@@ -400,6 +496,8 @@ class AgentRegistry {
     agent.enabled = !!enabled;
     if (!enabled) {
       agent.currentSessionId = null;
+      agent.currentRuntimeSessionId = null;
+      agent.currentResumeSessionId = null;
     }
     this._save();
     this.debugLog(`[Registry] ${enabled ? 'Enabled' : 'Disabled'}: ${registryId.slice(0, 8)}`);

@@ -485,13 +485,12 @@ function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowM
     });
 
     ipcMain.handle('registry:conversation', async (event, registryId, sessionId, options) => {
-      const history = agentRegistry.getSessionHistory(registryId);
-      const entry = history.find(h => h.sessionId === sessionId);
+      const entry = agentRegistry.findSessionHistoryEntry(registryId, sessionId);
 
       let transcriptPath = entry ? entry.transcriptPath : null;
       if (!transcriptPath) {
         const agent = agentManager?.getAgent(registryId);
-        if (agent && agent.sessionId === sessionId && agent.jsonlPath) {
+        if (agent && (agent.sessionId === sessionId || agent.runtimeSessionId === sessionId || agent.resumeSessionId === sessionId) && agent.jsonlPath) {
           transcriptPath = agent.jsonlPath;
         }
       }
@@ -507,20 +506,21 @@ function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowM
 
       const agent = agentRegistry.getAgent(registryId);
       if (!agent) return { success: false, error: 'Agent not found' };
-      const history = agentRegistry.getSessionHistory(registryId);
-      const entry = history.find((item) => item.sessionId === sessionId);
+      const entry = agentRegistry.findSessionHistoryEntry(registryId, sessionId);
 
       let transcriptPath = entry?.transcriptPath || null;
       if (!transcriptPath) {
         const liveAgent = agentManager?.getAgent(registryId);
-        if (liveAgent?.sessionId === sessionId && liveAgent?.jsonlPath) {
+        if (liveAgent && (liveAgent.sessionId === sessionId || liveAgent.runtimeSessionId === sessionId || liveAgent.resumeSessionId === sessionId) && liveAgent.jsonlPath) {
           transcriptPath = liveAgent.jsonlPath;
         }
       }
 
+      const requestedResumeSessionId = entry?.resumeSessionId || sessionId;
+
       const resolvedSessionId = resolveResumeSessionId({
         provider: agent.provider,
-        requestedSessionId: sessionId,
+        requestedSessionId: requestedResumeSessionId,
         transcriptPath,
       });
 

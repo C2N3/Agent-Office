@@ -153,6 +153,8 @@ function recoverExistingSessions({ agentManager, sessionPids, firstPreToolUseDon
       agentManager.updateAgent({
         registryId: restoredRegistryId,
         sessionId: restoredSessionId,
+        runtimeSessionId: agent.runtimeSessionId,
+        resumeSessionId: agent.resumeSessionId,
         projectPath: agent.projectPath,
         displayName: agent.displayName,
         state: agent.state,

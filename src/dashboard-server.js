@@ -491,14 +491,13 @@ function handleGetConversation(req, res, registryId, sessionId, url) {
     res.end(JSON.stringify({ error: 'Agent registry not available' }));
     return;
   }
-  const history = agentRegistryRef.getSessionHistory(registryId);
-  const entry = history.find(h => h.sessionId === sessionId);
+  const entry = agentRegistryRef.findSessionHistoryEntry(registryId, sessionId);
 
   // Also check current agent's jsonlPath as fallback
   let transcriptPath = entry ? entry.transcriptPath : null;
   if (!transcriptPath && agentManager) {
     const agent = agentManager.getAgent(registryId);
-    if (agent && agent.sessionId === sessionId && agent.jsonlPath) {
+    if (agent && (agent.sessionId === sessionId || agent.runtimeSessionId === sessionId || agent.resumeSessionId === sessionId) && agent.jsonlPath) {
       transcriptPath = agent.jsonlPath;
     }
   }

@@ -111,6 +111,12 @@ class AgentManager extends EventEmitter {
       isRegistered,
       role: entry.role || (existingAgent ? existingAgent.role : null),
       sessionId: entry.sessionId || (existingAgent ? existingAgent.sessionId : null),
+      runtimeSessionId: entry.runtimeSessionId !== undefined
+        ? entry.runtimeSessionId
+        : (existingAgent ? existingAgent.runtimeSessionId : (entry.sessionId || null)),
+      resumeSessionId: entry.resumeSessionId !== undefined
+        ? entry.resumeSessionId
+        : (existingAgent ? existingAgent.resumeSessionId : (entry.sessionId || null)),
       agentId: entry.agentId,
       slug: entry.slug,
       nickname,
@@ -234,6 +240,12 @@ class AgentManager extends EventEmitter {
       ...current,
       id: nextId,
       sessionId: fields.sessionId || current.sessionId || nextId,
+      runtimeSessionId: fields.runtimeSessionId !== undefined
+        ? fields.runtimeSessionId
+        : (current.runtimeSessionId || current.sessionId || currentId),
+      resumeSessionId: fields.resumeSessionId !== undefined
+        ? fields.resumeSessionId
+        : (fields.sessionId || current.resumeSessionId || current.sessionId || nextId),
     };
 
     if (existingTarget) {
@@ -294,6 +306,8 @@ class AgentManager extends EventEmitter {
       state: 'Offline',
       currentTool: null,
       sessionId: null,
+      runtimeSessionId: null,
+      resumeSessionId: null,
       jsonlPath: null,
       lastActivity: Date.now(),
     };

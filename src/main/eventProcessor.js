@@ -159,7 +159,11 @@ function createEventProcessor({
         registryId,
         previousCanonical,
         nextCanonical,
-        sessionContext.get(nextCanonical)?.meta?.jsonlPath || null
+        sessionContext.get(nextCanonical)?.meta?.jsonlPath || null,
+        {
+          runtimeSessionId: previousSessionId,
+          resumeSessionId: nextCanonical,
+        }
       );
 
       const registeredAgent = agentManager?.getAgent(registryId);
@@ -167,11 +171,15 @@ function createEventProcessor({
         agentManager.updateAgent({
           ...registeredAgent,
           sessionId: nextCanonical,
+          runtimeSessionId: registeredAgent.runtimeSessionId || previousSessionId,
+          resumeSessionId: nextCanonical,
         }, updateSource);
       }
     } else if (agentManager?.getAgent(previousCanonical)) {
       agentManager.rekeyAgent(previousCanonical, nextCanonical, {
         sessionId: nextCanonical,
+        runtimeSessionId: previousSessionId,
+        resumeSessionId: nextCanonical,
       });
     }
 
@@ -218,6 +226,8 @@ function createEventProcessor({
     rememberSessionContext(sessionId, event.cwd || '', {
       provider: event.provider || null,
       jsonlPath: event.transcriptPath || null,
+      runtimeSessionId: event.runtimeSessionId,
+      resumeSessionId: event.resumeSessionId,
       model: event.model || null,
       permissionMode: event.permissionMode || null,
       source: event.source || null,
@@ -248,6 +258,8 @@ function createEventProcessor({
           meta: {
             provider: event.provider || cached.meta.provider || null,
             jsonlPath: event.transcriptPath || cached.meta.jsonlPath || null,
+            runtimeSessionId: event.runtimeSessionId !== undefined ? event.runtimeSessionId : cached.meta.runtimeSessionId,
+            resumeSessionId: event.resumeSessionId !== undefined ? event.resumeSessionId : cached.meta.resumeSessionId,
             model: event.model || cached.meta.model || null,
             permissionMode: event.permissionMode || cached.meta.permissionMode || null,
             source: event.source || cached.meta.source || null,
@@ -265,6 +277,8 @@ function createEventProcessor({
         const sessionMeta = {
           provider: event.provider || null,
           jsonlPath: event.transcriptPath || null,
+          runtimeSessionId: event.runtimeSessionId,
+          resumeSessionId: event.resumeSessionId,
           model: event.model || null,
           permissionMode: event.permissionMode || null,
           source: sessionSource,
@@ -277,6 +291,8 @@ function createEventProcessor({
             const compactUpdate = {
               ...existing,
               sessionId,
+              runtimeSessionId: event.runtimeSessionId !== undefined ? event.runtimeSessionId : existing.runtimeSessionId,
+              resumeSessionId: event.resumeSessionId !== undefined ? event.resumeSessionId : existing.resumeSessionId,
               state: 'Waiting',
               jsonlPath: sessionMeta.jsonlPath || existing.jsonlPath,
               model: sessionMeta.model || existing.model,
@@ -545,12 +561,17 @@ function createEventProcessor({
     const registeredAgent = agentRegistry ? agentRegistry.findByProjectPath(resolvedCwd) : null;
     if (registeredAgent && canBindRegistryAgent(registeredAgent)) {
       // Link session to registered agent
-      agentRegistry.linkSession(registeredAgent.id, sessionId, resolvedMeta.jsonlPath || null);
+      agentRegistry.linkSession(registeredAgent.id, sessionId, resolvedMeta.jsonlPath || null, {
+        runtimeSessionId: resolvedMeta.runtimeSessionId,
+        resumeSessionId: resolvedMeta.resumeSessionId,
+      });
       sessionToRegistry.set(sessionId, registeredAgent.id);
 
       agentManager.updateAgent({
         registryId: registeredAgent.id,
         sessionId,
+        runtimeSessionId: resolvedMeta.runtimeSessionId !== undefined ? resolvedMeta.runtimeSessionId : sessionId,
+        resumeSessionId: resolvedMeta.resumeSessionId,
         projectPath: resolvedCwd,
         displayName: registeredAgent.name,
         role: registeredAgent.role,
@@ -574,6 +595,8 @@ function createEventProcessor({
       const displayName = resolvedCwd ? path.basename(resolvedCwd) : 'Agent';
       agentManager.updateAgent({
         sessionId,
+        runtimeSessionId: resolvedMeta.runtimeSessionId !== undefined ? resolvedMeta.runtimeSessionId : sessionId,
+        resumeSessionId: resolvedMeta.resumeSessionId,
         projectPath: resolvedCwd,
         displayName,
         state: initialState,
@@ -692,7 +715,10 @@ function createEventProcessor({
     if (!matched) return null;
 
     const sessionId = matched.sessionId;
-    agentRegistry.linkSession(registryAgent.id, sessionId, matched.jsonlPath || null);
+    agentRegistry.linkSession(registryAgent.id, sessionId, matched.jsonlPath || null, {
+      runtimeSessionId: matched.runtimeSessionId !== undefined ? matched.runtimeSessionId : matched.sessionId,
+      resumeSessionId: matched.resumeSessionId,
+    });
     sessionToRegistry.set(sessionId, registryAgent.id);
 
     agentManager.removeAgent(matched.id);
@@ -700,6 +726,8 @@ function createEventProcessor({
       ...matched,
       registryId: registryAgent.id,
       sessionId,
+      runtimeSessionId: matched.runtimeSessionId !== undefined ? matched.runtimeSessionId : matched.sessionId,
+      resumeSessionId: matched.resumeSessionId,
       displayName: registryAgent.name,
       role: registryAgent.role,
       projectPath: registryAgent.projectPath,

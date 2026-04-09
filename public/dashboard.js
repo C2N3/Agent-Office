@@ -1230,16 +1230,17 @@ async function resumeLatestRegisteredSession(registryId, label) {
         .filter((entry) => !!entry?.sessionId)
         .sort((a, b) => Math.max(b.startedAt || 0, b.endedAt || 0) - Math.max(a.startedAt || 0, a.endedAt || 0))[0];
 
-    if (!latest?.sessionId) {
+    const latestResumeSessionId = latest?.resumeSessionId || latest?.sessionId;
+    if (!latestResumeSessionId) {
       return { attempted: false, success: false, error: 'No resumable session found' };
     }
 
-    const result = await resumeRegisteredSession(registryId, latest.sessionId, label);
+    const result = await resumeRegisteredSession(registryId, latestResumeSessionId, label);
     return {
       attempted: true,
       success: !!result?.success,
       error: result?.error || null,
-      sessionId: latest.sessionId,
+      sessionId: latestResumeSessionId,
     };
   } catch (error) {
     console.error('[Terminal] Auto-resume failed:', error);
@@ -2117,12 +2118,14 @@ document.addEventListener('DOMContentLoaded', initApp);
 
   let currentRegistryId = null;
   let currentSessionId = null;
+  let currentResumeSessionId = null;
   let currentAgentName = null;
 
   function closeModal() {
     overlay.style.display = 'none';
     currentRegistryId = null;
     currentSessionId = null;
+    currentResumeSessionId = null;
   }
 
   closeBtn.addEventListener('click', closeModal);
@@ -2132,13 +2135,14 @@ document.addEventListener('DOMContentLoaded', initApp);
     chatPanel.style.display = 'none';
     sessionListEl.style.display = '';
     currentSessionId = null;
+    currentResumeSessionId = null;
   });
 
   resumeBtn.addEventListener('click', async () => {
-    if (!currentRegistryId || !currentSessionId) return;
+    if (!currentRegistryId || !(currentResumeSessionId || currentSessionId)) return;
     if (typeof dashboardAPI !== 'undefined' && dashboardAPI.resumeSession) {
       const regId = currentRegistryId;
-      const sessId = currentSessionId;
+      const sessId = currentResumeSessionId || currentSessionId;
       const label = currentAgentName;
       closeModal();
 
@@ -2154,6 +2158,7 @@ document.addEventListener('DOMContentLoaded', initApp);
   window.openSessionHistory = async function (registryId, agentName) {
     currentRegistryId = registryId;
     currentSessionId = null;
+    currentResumeSessionId = null;
     currentAgentName = agentName || 'Agent';
     titleEl.textContent = currentAgentName + ' — Session History';
     sessionListEl.style.display = '';
@@ -2183,10 +2188,13 @@ document.addEventListener('DOMContentLoaded', initApp);
         const ended = h.endedAt ? new Date(h.endedAt).toLocaleString() : 'Active';
         const msgCount = h.summary ? h.summary.messageCount : '?';
         const hasTranscript = !!h.transcriptPath;
+        const conversationSessionId = h.sessionId || h.resumeSessionId || h.runtimeSessionId || '';
+        const resumeSessionId = h.resumeSessionId || h.sessionId || h.runtimeSessionId || '';
+        const labelSessionId = resumeSessionId || conversationSessionId;
         return `
-          <div class="conv-session-item ${hasTranscript ? '' : 'no-transcript'}" data-session-id="${h.sessionId}" data-has-transcript="${hasTranscript}">
+          <div class="conv-session-item ${hasTranscript ? '' : 'no-transcript'}" data-session-id="${conversationSessionId}" data-resume-session-id="${resumeSessionId}" data-has-transcript="${hasTranscript}">
             <div class="conv-session-main">
-              <span class="conv-session-id-label">${h.sessionId.slice(0, 12)}...</span>
+              <span class="conv-session-id-label">${labelSessionId.slice(0, 12)}...</span>
               <span class="conv-session-msgs">${msgCount} messages${hasTranscript ? '' : ' · transcript unavailable'}</span>
             </div>
             <div class="conv-session-dates">
@@ -2201,7 +2209,7 @@ document.addEventListener('DOMContentLoaded', initApp);
       // Any recorded session can be resumed; transcript availability only affects preview.
       sessionListEl.querySelectorAll('.conv-session-item').forEach(item => {
         item.addEventListener('click', () => {
-          openConversation(registryId, item.dataset.sessionId);
+          openConversation(registryId, item.dataset.sessionId, item.dataset.resumeSessionId || item.dataset.sessionId);
         });
       });
 
@@ -2211,11 +2219,12 @@ document.addEventListener('DOMContentLoaded', initApp);
     }
   };
 
-  async function openConversation(registryId, sessionId) {
+  async function openConversation(registryId, sessionId, resumeSessionId) {
     currentSessionId = sessionId;
+    currentResumeSessionId = resumeSessionId || sessionId;
     sessionListEl.style.display = 'none';
     chatPanel.style.display = '';
-    chatSessionId.textContent = sessionId.slice(0, 16) + '...';
+    chatSessionId.textContent = (currentResumeSessionId || sessionId).slice(0, 16) + '...';
     chatMessages.innerHTML = '<div class="conv-loading">Loading conversation...</div>';
 
     try {

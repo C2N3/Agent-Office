@@ -219,7 +219,10 @@ describe('codexProcessor', () => {
     });
 
     expect(agentRegistry.findByProjectPath).toHaveBeenCalledWith('/workspace/app');
-    expect(agentRegistry.linkSession).toHaveBeenCalledWith('registry-1', 'thread-1234', null);
+    expect(agentRegistry.linkSession).toHaveBeenCalledWith('registry-1', 'thread-1234', null, {
+      runtimeSessionId: 'thread-1234',
+      resumeSessionId: null,
+    });
     expect(agentManager.updateAgent).toHaveBeenCalledWith(
       expect.objectContaining({
         registryId: 'registry-1',
@@ -281,7 +284,10 @@ describe('codexProcessor', () => {
     });
 
     expect(attachedSessionId).toBe('thread-1234');
-    expect(agentRegistry.linkSession).toHaveBeenCalledWith('registry-1', 'thread-1234', null);
+    expect(agentRegistry.linkSession).toHaveBeenCalledWith('registry-1', 'thread-1234', null, {
+      runtimeSessionId: 'thread-1234',
+      resumeSessionId: null,
+    });
     expect(agentManager.removeAgent).toHaveBeenCalledWith('thread-1234');
     expect(agentManager.getAgent('registry-1')).toEqual(expect.objectContaining({
       registryId: 'registry-1',
@@ -460,11 +466,15 @@ describe('codexProcessor', () => {
 
     expect(agentManager.rekeyAgent).toHaveBeenCalledWith('thread-1234', 'session-9999', {
       sessionId: 'session-9999',
+      runtimeSessionId: 'thread-1234',
+      resumeSessionId: 'session-9999',
     });
     expect(agentManager.getAgent('thread-1234')).toBeNull();
     expect(agentManager.getAgent('session-9999')).toEqual(expect.objectContaining({
       id: 'session-9999',
       sessionId: 'session-9999',
+      runtimeSessionId: 'thread-1234',
+      resumeSessionId: 'session-9999',
       projectPath: '/workspace/app',
     }));
   });
@@ -508,10 +518,16 @@ describe('codexProcessor', () => {
       'registry-1',
       'thread-1234',
       'session-9999',
-      '/tmp/codex.jsonl'
+      '/tmp/codex.jsonl',
+      {
+        runtimeSessionId: 'thread-1234',
+        resumeSessionId: 'session-9999',
+      }
     );
     expect(agentManager.getAgent('registry-1')).toEqual(expect.objectContaining({
       sessionId: 'session-9999',
+      runtimeSessionId: 'thread-1234',
+      resumeSessionId: 'session-9999',
       isRegistered: true,
     }));
   });

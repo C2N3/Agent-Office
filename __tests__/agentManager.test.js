@@ -48,6 +48,8 @@ describe('AgentManager', () => {
       expect(result.id).toBe('test-1');
       expect(result.state).toBe('Working');
       expect(result.displayName).toBe('Test Agent');
+      expect(result.runtimeSessionId).toBe('test-1');
+      expect(result.resumeSessionId).toBe('test-1');
     });
 
     test('updates existing agent state', () => {
@@ -191,11 +193,17 @@ describe('AgentManager', () => {
     test('moves an ephemeral agent to a new canonical id', () => {
       manager.updateAgent({ sessionId: 'thread-1', state: 'Working', projectPath: '/workspace/app' });
 
-      const result = manager.rekeyAgent('thread-1', 'session-1', { sessionId: 'session-1' });
+      const result = manager.rekeyAgent('thread-1', 'session-1', {
+        sessionId: 'session-1',
+        runtimeSessionId: 'thread-1',
+        resumeSessionId: 'session-1',
+      });
 
       expect(result).toEqual(expect.objectContaining({
         id: 'session-1',
         sessionId: 'session-1',
+        runtimeSessionId: 'thread-1',
+        resumeSessionId: 'session-1',
         projectPath: '/workspace/app',
       }));
       expect(manager.getAgent('thread-1')).toBeNull();
@@ -208,11 +216,17 @@ describe('AgentManager', () => {
       manager.updateAgent({ sessionId: 'thread-1', state: 'Working', currentTool: 'Command' });
       manager.updateAgent({ sessionId: 'session-1', state: 'Waiting', jsonlPath: '/tmp/codex.jsonl' });
 
-      const result = manager.rekeyAgent('thread-1', 'session-1', { sessionId: 'session-1' });
+      const result = manager.rekeyAgent('thread-1', 'session-1', {
+        sessionId: 'session-1',
+        runtimeSessionId: 'thread-1',
+        resumeSessionId: 'session-1',
+      });
 
       expect(result).toEqual(expect.objectContaining({
         id: 'session-1',
         sessionId: 'session-1',
+        runtimeSessionId: 'thread-1',
+        resumeSessionId: 'session-1',
         currentTool: 'Command',
         jsonlPath: '/tmp/codex.jsonl',
       }));

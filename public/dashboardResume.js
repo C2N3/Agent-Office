@@ -27,7 +27,7 @@
     let latestScore = -1;
 
     history.forEach((entry, index) => {
-      if (!entry?.sessionId) return;
+      if (!(entry?.resumeSessionId || entry?.sessionId)) return;
       const score = getSessionRecency(entry, index);
       if (!latest || score > latestScore) {
         latest = entry;

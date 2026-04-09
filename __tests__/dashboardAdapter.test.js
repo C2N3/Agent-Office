@@ -81,6 +81,8 @@ describe('dashboardAdapter', () => {
 
       expect(result.id).toBe('sess-123');
       expect(result.sessionId).toBe('sess-123');
+      expect(result.runtimeSessionId).toBe('sess-123');
+      expect(result.resumeSessionId).toBe('sess-123');
       expect(result.name).toBe('my-app');
       expect(result.project).toBe('my-app');
       expect(result.status).toBe('working');
@@ -96,6 +98,8 @@ describe('dashboardAdapter', () => {
         branch: 'feature/test',
         repositoryName: 'root',
       }));
+      expect(result.metadata.runtimeSessionId).toBe('sess-123');
+      expect(result.metadata.resumeSessionId).toBe('sess-123');
       expect(result.metadata.source).toBe('agent-office');
       expect(result.timing.elapsed).toBeGreaterThan(0);
       expect(result.timing.active).toBe(true);
@@ -134,6 +138,21 @@ describe('dashboardAdapter', () => {
     test('uses id over sessionId when both present', () => {
       const result = adaptAgentToDashboard({ id: 'id-1', sessionId: 'sess-1', state: 'Done' });
       expect(result.id).toBe('id-1');
+    });
+
+    test('preserves split runtime and resume session ids', () => {
+      const result = adaptAgentToDashboard({
+        id: 'registry-1',
+        sessionId: 'session-1',
+        runtimeSessionId: 'thread-1',
+        resumeSessionId: 'session-1',
+        state: 'Done',
+      });
+
+      expect(result.runtimeSessionId).toBe('thread-1');
+      expect(result.resumeSessionId).toBe('session-1');
+      expect(result.metadata.runtimeSessionId).toBe('thread-1');
+      expect(result.metadata.resumeSessionId).toBe('session-1');
     });
 
     test('timing.active is false for non-working states', () => {

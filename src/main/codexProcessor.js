@@ -12,6 +12,8 @@ function normalizeCodexEvent(data) {
   const sessionId = data.session_id || data.sessionId || data.thread_id;
   const base = {
     sessionId,
+    runtimeSessionId: data.thread_id || data.session_id || data.sessionId || null,
+    resumeSessionId: data.session_id || data.sessionId || null,
     cwd: getCodexWorkspacePath(data),
     model: data.model || 'codex',
     provider: 'codex',
@@ -179,6 +181,8 @@ function processSessionEntry(entry, context = {}) {
           raw: entry,
           provider: 'codex',
           sessionId,
+          runtimeSessionId: context.runtimeSessionId || null,
+          resumeSessionId: sessionId,
           cwd: getCodexWorkspacePath(payload),
           transcriptPath,
           model: payload.model || payload.model_slug || 'codex',
@@ -207,6 +211,8 @@ function processSessionEntry(entry, context = {}) {
                 raw: entry,
                 provider: 'codex',
                 sessionId,
+                runtimeSessionId: aliasSessionId || sessionId,
+                resumeSessionId: canonicalFromPayload || contextSessionId || null,
                 transcriptPath,
               });
             }
@@ -221,6 +227,8 @@ function processSessionEntry(entry, context = {}) {
                 raw: entry,
                 provider: 'codex',
                 sessionId: inferredSessionId,
+                runtimeSessionId: aliasSessionId || inferredSessionId,
+                resumeSessionId: canonicalFromPayload || contextSessionId || inferredSessionId,
                 transcriptPath,
                 text: payload.message || '',
               });
@@ -245,6 +253,8 @@ function processSessionEntry(entry, context = {}) {
                 raw: entry,
                 provider: 'codex',
                 sessionId: inferredSessionId,
+                runtimeSessionId: aliasSessionId || inferredSessionId,
+                resumeSessionId: canonicalFromPayload || contextSessionId || inferredSessionId,
                 transcriptPath,
                 tokenUsage: latestTokenUsageBySession.get(inferredSessionId) || null,
                 lastAssistantMessage: payload.last_agent_message || null,

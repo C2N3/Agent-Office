@@ -84,6 +84,8 @@ function adaptAgentToDashboard(pixelAgent) {
   return {
     id: pixelAgent.id || pixelAgent.sessionId,
     sessionId: pixelAgent.sessionId,
+    runtimeSessionId: pixelAgent.runtimeSessionId || pixelAgent.sessionId || null,
+    resumeSessionId: pixelAgent.resumeSessionId || pixelAgent.sessionId || null,
     name: pixelAgent.displayName || 'Agent',
     nickname: pixelAgent.nickname || null,
     isRegistered: pixelAgent.isRegistered || false,
@@ -109,6 +111,8 @@ function adaptAgentToDashboard(pixelAgent) {
       teamName: pixelAgent.teamName || null,
       endReason: pixelAgent.endReason || null,
       provider: pixelAgent.provider || null,
+      runtimeSessionId: pixelAgent.runtimeSessionId || pixelAgent.sessionId || null,
+      resumeSessionId: pixelAgent.resumeSessionId || pixelAgent.sessionId || null,
       source: 'agent-office'
     },
     timing: {

@@ -2,7 +2,12 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { resolveResumeSessionId, readCodexSessionIdFromTranscript } = require('../src/main/sessionIdResolver');
+const {
+  resolveResumeSessionId,
+  readCodexSessionIdFromTranscript,
+  findCodexSessionIdFromRoots,
+  extractCodexSessionIdFromTranscriptPath,
+} = require('../src/main/sessionIdResolver');
 
 describe('sessionIdResolver', () => {
   let tempDir;
@@ -43,6 +48,75 @@ describe('sessionIdResolver', () => {
       provider: 'codex',
       requestedSessionId: 'thread-session',
       transcriptPath: path.join(tempDir, 'missing.jsonl'),
+    })).toBe('thread-session');
+  });
+
+  test('extracts the codex session id from the transcript filename when the file is unavailable', () => {
+    const transcriptPath = '~/.codex/sessions/2026/04/09/rollout-2026-04-09T09-37-33-019d6fac-41ae-78f0-acfc-4113d1f614d1.jsonl';
+
+    expect(extractCodexSessionIdFromTranscriptPath(transcriptPath)).toBe('019d6fac-41ae-78f0-acfc-4113d1f614d1');
+    expect(resolveResumeSessionId({
+      provider: 'codex',
+      requestedSessionId: 'thread-session',
+      transcriptPath,
+    })).toBe('019d6fac-41ae-78f0-acfc-4113d1f614d1');
+  });
+
+  test('falls back to codex session roots when the requested id matches a real run id', () => {
+    const sessionRoot = path.join(tempDir, '.codex', 'sessions', '2026', '04', '09');
+    fs.mkdirSync(sessionRoot, { recursive: true });
+
+    const filePath = path.join(
+      sessionRoot,
+      'rollout-2026-04-09T09-37-33-019d6fac-41ae-78f0-acfc-4113d1f614d1.jsonl'
+    );
+    fs.writeFileSync(filePath, [
+      JSON.stringify({
+        type: 'session_meta',
+        payload: {
+          id: '019d6fac-41ae-78f0-acfc-4113d1f614d1',
+          cwd: 'D:\\workspace\\Agent-Office',
+        },
+      }),
+      JSON.stringify({ type: 'event_msg', payload: { type: 'task_started' } }),
+    ].join('\n'));
+
+    expect(findCodexSessionIdFromRoots({
+      requestedSessionId: '019d6fac-41ae-78f0-acfc-4113d1f614d1',
+      sessionRoots: [path.join(tempDir, '.codex', 'sessions')],
+    })).toBe('019d6fac-41ae-78f0-acfc-4113d1f614d1');
+
+    expect(resolveResumeSessionId({
+      provider: 'codex',
+      requestedSessionId: '019d6fac-41ae-78f0-acfc-4113d1f614d1',
+      transcriptPath: path.join(tempDir, 'missing.jsonl'),
+      sessionRoots: [path.join(tempDir, '.codex', 'sessions')],
+    })).toBe('019d6fac-41ae-78f0-acfc-4113d1f614d1');
+  });
+
+  test('does not guess a different run from project path alone', () => {
+    const sessionRoot = path.join(tempDir, '.codex', 'sessions', '2026', '04', '09');
+    fs.mkdirSync(sessionRoot, { recursive: true });
+
+    const filePath = path.join(
+      sessionRoot,
+      'rollout-2026-04-09T09-37-33-019d6fac-41ae-78f0-acfc-4113d1f614d1.jsonl'
+    );
+    fs.writeFileSync(filePath, [
+      JSON.stringify({
+        type: 'session_meta',
+        payload: {
+          id: '019d6fac-41ae-78f0-acfc-4113d1f614d1',
+          cwd: 'D:\\workspace\\Agent-Office',
+        },
+      }),
+    ].join('\n'));
+
+    expect(resolveResumeSessionId({
+      provider: 'codex',
+      requestedSessionId: 'thread-session',
+      transcriptPath: path.join(tempDir, 'missing.jsonl'),
+      sessionRoots: [path.join(tempDir, '.codex', 'sessions')],
     })).toBe('thread-session');
   });
 });

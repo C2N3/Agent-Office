@@ -31,20 +31,27 @@ describe('agentRegistry.normalizePath', () => {
 });
 
 describe('agentRegistry.replaceSessionId', () => {
-  test('updates current session and history entries to the canonical id', () => {
+  test('updates current session ids while preserving runtime and resume identifiers', () => {
     const registry = new AgentRegistry(() => {});
     const agent = registry.createAgent({ name: 'Codex', projectPath: '/workspace/app', provider: 'codex' });
 
     registry.linkSession(agent.id, 'thread-1', '/tmp/codex.jsonl');
-    const replaced = registry.replaceSessionId(agent.id, 'thread-1', 'session-1');
+    const replaced = registry.replaceSessionId(agent.id, 'thread-1', 'session-1', '/tmp/codex.jsonl', {
+      runtimeSessionId: 'thread-1',
+      resumeSessionId: 'session-1',
+    });
 
     expect(replaced).toBe(true);
 
     const updated = registry.getAgent(agent.id);
     expect(updated.currentSessionId).toBe('session-1');
+    expect(updated.currentRuntimeSessionId).toBe('thread-1');
+    expect(updated.currentResumeSessionId).toBe('session-1');
     expect(updated.sessionHistory).toEqual([
       expect.objectContaining({
         sessionId: 'session-1',
+        runtimeSessionId: 'thread-1',
+        resumeSessionId: 'session-1',
         transcriptPath: '/tmp/codex.jsonl',
       }),
     ]);
