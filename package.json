@@ -1,6 +1,6 @@
 {
   "name": "agent-office",
-  "version": "2.0.0",
+  "version": "0.1.0",
   "description": "Visualize multi-agent Claude and Codex CLI sessions as pixel avatars in real time",
   "main": "src/main.js",
   "scripts": {
@@ -29,15 +29,15 @@
     "multi-agent",
     "jsonl"
   ],
-  "author": "Mgpixelart",
-  "homepage": "https://github.com/Mgpixelart/agent-office",
+  "author": "C2N3",
+  "homepage": "https://github.com/C2N3/Agent-Office",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Mgpixelart/agent-office.git"
+    "url": "https://github.com/C2N3/Agent-Office.git"
   },
   "license": "MIT",
   "build": {
-    "appId": "com.mgpixelart.agent-office",
+    "appId": "com.c2n3.agent-office",
     "productName": "Agent-Office",
     "npmRebuild": false,
     "directories": {
@@ -58,12 +58,6 @@
       "target": [
         {
           "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        },
-        {
-          "target": "portable",
           "arch": [
             "x64"
           ]
@@ -101,7 +95,8 @@
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "Agent-Office.${version}.${ext}"
     }
   },
   "devDependencies": {
