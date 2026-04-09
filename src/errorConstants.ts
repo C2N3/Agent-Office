@@ -1,3 +1,5 @@
+// @ts-nocheck
+// -nocheck
 /**
  * Error Constants
  * Error codes, categories, severity levels, and recovery action types

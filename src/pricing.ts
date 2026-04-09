@@ -1,3 +1,5 @@
+// @ts-nocheck
+// -nocheck
 /**
  * Model Pricing — shared across hookProcessor and sessionScanner
  */

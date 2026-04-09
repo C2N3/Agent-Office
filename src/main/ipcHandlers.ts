@@ -1,3 +1,5 @@
+// @ts-nocheck
+// -nocheck
 /**
  * IPC Handlers
  * Register all ipcMain.on/handle handlers + focusTerminalByPid

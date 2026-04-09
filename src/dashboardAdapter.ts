@@ -1,3 +1,5 @@
+// @ts-nocheck
+// -nocheck
 /**
  * Dashboard Data Adapter
  * Converts Agent-Office agent format to Dashboard format

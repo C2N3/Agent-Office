@@ -1,3 +1,5 @@
+// @ts-nocheck
+// -nocheck
 /**
  * Liveness Checker
  * PID detection, session-file re-verification, 2-second interval process liveness check

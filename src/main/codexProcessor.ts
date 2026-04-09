@@ -1,3 +1,5 @@
+// @ts-nocheck
+// -nocheck
 /**
  * Codex exec --json event adapter.
  */

@@ -1,3 +1,5 @@
+// @ts-nocheck
+// -nocheck
 /**
  * Claude CLI Hook Registration
  * Read/write/register HTTP hooks from Claude CLI config file

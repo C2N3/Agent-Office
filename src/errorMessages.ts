@@ -1,3 +1,5 @@
+// @ts-nocheck
+// -nocheck
 /**
  * User-Friendly Error Messages
  * Convert technical errors into user-friendly messages

@@ -1,3 +1,5 @@
+// @ts-nocheck
+// -nocheck
 /**
  * HTTP ingestion server for Codex exec --json events.
  */

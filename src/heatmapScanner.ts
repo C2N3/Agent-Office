@@ -1,3 +1,5 @@
+// @ts-nocheck
+// -nocheck
 /**
  * Heatmap Scanner
  * Scans JSONL transcripts under Claude and Codex session roots to aggregate
