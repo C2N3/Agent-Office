@@ -13,7 +13,6 @@
     "start": "node scripts/run-electron.js",
     "dev": "node scripts/dev-runtime.js",
     "typecheck": "node node_modules/@typescript/native-preview/bin/tsgo.js -p tsconfig.json --noEmit",
-    "pretest": "npm run build:dist",
     "test": "jest",
     "test:coverage": "jest --coverage",
     "test:watch": "jest --watch",
