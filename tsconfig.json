@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false,
+    "noEmit": true,
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "types": ["node", "electron", "jest"]
+  },
+  "include": [
+    "src/**/*.js",
+    "public/**/*.js",
+    "__tests__/**/*.js",
+    "scripts/**/*.js",
+    "*.js"
+  ],
+  "exclude": [
+    "node_modules",
+    "release",
+    "dist"
+  ]
+}

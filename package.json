@@ -8,6 +8,7 @@
     "rebuild": "electron-rebuild -f -w node-pty",
     "start": "node scripts/run-electron.js",
     "dev": "node scripts/run-electron.js --dev",
+    "typecheck": "node node_modules/typescript/bin/tsc -p tsconfig.json --noEmit",
     "test": "jest",
     "test:coverage": "jest --coverage",
     "test:watch": "jest --watch",
@@ -107,12 +108,15 @@
   "devDependencies": {
     "@electron/rebuild": "^3.6.0",
     "@eslint/js": "^9.0.0",
+    "@types/electron": "^1.6.12",
     "@types/jest": "^30.0.0",
+    "@types/node": "^25.5.2",
     "electron": "^32.0.0",
     "electron-builder": "^25.1.0",
     "eslint": "^9.0.0",
     "jest": "^30.2.0",
-    "prettier": "^3.0.0"
+    "prettier": "^3.0.0",
+    "typescript": "^6.0.2"
   },
   "dependencies": {
     "@xterm/addon-fit": "^0.10.0",
