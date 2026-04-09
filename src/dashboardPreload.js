@@ -1,112 +1,68 @@
-/**
- * Dashboard Dashboard Preload Script
- * Provides secure IPC bridge for Dashboard window
- */
-
-const { contextBridge, ipcRenderer } = require('electron');
-
-// Expose secure API to Dashboard window
-contextBridge.exposeInMainWorld('dashboardAPI', {
-  // Request initial agents
-  getInitialAgents: () => {
-    ipcRenderer.send('get-dashboard-agents');
-    return new Promise(resolve => {
-      const listener = (event, data) => {
-        ipcRenderer.removeListener('dashboard-agents-response', listener);
-        resolve(data);
-      };
-      ipcRenderer.on('dashboard-agents-response', listener);
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const electron_1 = require("electron");
+function listen(channel, callback) {
+    const listener = (_event, data) => callback(data);
+    electron_1.ipcRenderer.on(channel, listener);
+    return () => electron_1.ipcRenderer.removeListener(channel, listener);
+}
+function listenTuple(channel, callback) {
+    const listener = (_event, ...args) => callback(...args);
+    electron_1.ipcRenderer.on(channel, listener);
+    return () => electron_1.ipcRenderer.removeListener(channel, listener);
+}
+function requestResponse(requestChannel, responseChannel) {
+    electron_1.ipcRenderer.send(requestChannel);
+    return new Promise((resolve) => {
+        const listener = (_event, data) => {
+            electron_1.ipcRenderer.removeListener(responseChannel, listener);
+            resolve(data);
+        };
+        electron_1.ipcRenderer.on(responseChannel, listener);
     });
-  },
-
-  // Listen for initial data
-  onInitialData: (callback) => {
-    const listener = (event, data) => callback(data);
-    ipcRenderer.on('dashboard-initial-data', listener);
-    return () => ipcRenderer.removeListener('dashboard-initial-data', listener);
-  },
-
-  // Agent event listeners
-  onAgentAdded: (callback) => {
-    const listener = (event, data) => callback(data);
-    ipcRenderer.on('dashboard-agent-added', listener);
-    return () => ipcRenderer.removeListener('dashboard-agent-added', listener);
-  },
-
-  onAgentUpdated: (callback) => {
-    const listener = (event, data) => callback(data);
-    ipcRenderer.on('dashboard-agent-updated', listener);
-    return () => ipcRenderer.removeListener('dashboard-agent-updated', listener);
-  },
-
-  onAgentRemoved: (callback) => {
-    const listener = (event, data) => callback(data);
-    ipcRenderer.on('dashboard-agent-removed', listener);
-    return () => ipcRenderer.removeListener('dashboard-agent-removed', listener);
-  },
-
-  // Send commands to Agent-Office
-  focusAgent: (agentId) => {
-    ipcRenderer.send('dashboard-focus-agent', agentId);
-  },
-
-  // PiP
-  togglePip: () => ipcRenderer.invoke('toggle-pip'),
-  onPipStateChanged: (callback) => {
-    const listener = (event, isOpen) => callback(isOpen);
-    ipcRenderer.on('pip-state-changed', listener);
-    return () => ipcRenderer.removeListener('pip-state-changed', listener);
-  },
-
-  // ─── Agent Registry ───
-  createRegisteredAgent: (data) => ipcRenderer.invoke('registry:create', data),
-  inspectWorkspaceRepo: (repoPath) => ipcRenderer.invoke('workspace:inspect-repo', repoPath),
-  createWorkspaceAgent: (data) => ipcRenderer.invoke('workspace:create', data),
-  mergeWorkspaceAgent: (registryId) => ipcRenderer.invoke('workspace:merge-cleanup', registryId),
-  removeWorkspaceAgent: (registryId) => ipcRenderer.invoke('workspace:remove', registryId),
-  listRegisteredAgents: () => ipcRenderer.invoke('registry:list'),
-  listArchivedAgents: () => ipcRenderer.invoke('registry:list-archived'),
-  listArchivedWorkspaceAgents: () => ipcRenderer.invoke('registry:list-archived-workspaces'),
-  updateRegisteredAgent: (id, fields) => ipcRenderer.invoke('registry:update', id, fields),
-  toggleRegisteredAgent: (id, enabled) => ipcRenderer.invoke('registry:toggle', id, enabled),
-  archiveRegisteredAgent: (id) => ipcRenderer.invoke('registry:archive', id),
-  deleteRegisteredAgent: (id) => ipcRenderer.invoke('registry:delete', id),
-  clearInactiveUnregisteredAgents: () => ipcRenderer.invoke('agents:clear-inactive-unregistered'),
-
-  // ─── Session History / Conversation ───
-  getSessionHistory: (registryId) => ipcRenderer.invoke('registry:session-history', registryId),
-  getConversation: (registryId, sessionId, options) => ipcRenderer.invoke('registry:conversation', registryId, sessionId, options),
-  resumeSession: (registryId, sessionId) => ipcRenderer.invoke('registry:resume-session', registryId, sessionId),
-
-  // ─── Nickname ───
-  setNickname: (agentId, nickname) => ipcRenderer.invoke('nickname:set', agentId, nickname),
-  getNickname: (agentId) => ipcRenderer.invoke('nickname:get', agentId),
-  removeNickname: (agentId) => ipcRenderer.invoke('nickname:remove', agentId),
-
-  // ─── Terminal ───
-  getTerminalProfiles: () => ipcRenderer.invoke('terminal:profiles'),
-  setDefaultTerminalProfile: (profileId) => ipcRenderer.invoke('terminal:default-profile:set', profileId),
-  createTerminal: (agentId, options) => ipcRenderer.invoke('terminal:create', agentId, options),
-  writeTerminal: (agentId, data) => ipcRenderer.invoke('terminal:write', agentId, data),
-  resizeTerminal: (agentId, cols, rows) => ipcRenderer.invoke('terminal:resize', agentId, cols, rows),
-  destroyTerminal: (agentId) => ipcRenderer.invoke('terminal:destroy', agentId),
-  onTerminalData: (callback) => {
-    const listener = (event, agentId, data) => callback(agentId, data);
-    ipcRenderer.on('terminal:data', listener);
-    return () => ipcRenderer.removeListener('terminal:data', listener);
-  },
-  onTerminalExit: (callback) => {
-    const listener = (event, agentId, exitCode) => callback(agentId, exitCode);
-    ipcRenderer.on('terminal:exit', listener);
-    return () => ipcRenderer.removeListener('terminal:exit', listener);
-  },
-
-  // ─── PowerShell Policy ───
-  onPsPolicyBlocked: (callback) => {
-    const listener = () => callback();
-    ipcRenderer.on('powershell:policy-blocked', listener);
-    return () => ipcRenderer.removeListener('powershell:policy-blocked', listener);
-  },
-  openPsPolicyTerminal: () => ipcRenderer.invoke('powershell:open-policy-terminal'),
-
+}
+electron_1.contextBridge.exposeInMainWorld('dashboardAPI', {
+    getInitialAgents: () => requestResponse('get-dashboard-agents', 'dashboard-agents-response'),
+    onInitialData: (callback) => listen('dashboard-initial-data', callback),
+    onAgentAdded: (callback) => listen('dashboard-agent-added', callback),
+    onAgentUpdated: (callback) => listen('dashboard-agent-updated', callback),
+    onAgentRemoved: (callback) => listen('dashboard-agent-removed', callback),
+    focusAgent: (agentId) => {
+        electron_1.ipcRenderer.send('dashboard-focus-agent', agentId);
+    },
+    togglePip: () => electron_1.ipcRenderer.invoke('toggle-pip'),
+    onPipStateChanged: (callback) => listen('pip-state-changed', callback),
+    createRegisteredAgent: (data) => electron_1.ipcRenderer.invoke('registry:create', data),
+    inspectWorkspaceRepo: (repoPath) => electron_1.ipcRenderer.invoke('workspace:inspect-repo', repoPath),
+    createWorkspaceAgent: (data) => electron_1.ipcRenderer.invoke('workspace:create', data),
+    mergeWorkspaceAgent: (registryId) => electron_1.ipcRenderer.invoke('workspace:merge-cleanup', registryId),
+    removeWorkspaceAgent: (registryId) => electron_1.ipcRenderer.invoke('workspace:remove', registryId),
+    listRegisteredAgents: () => electron_1.ipcRenderer.invoke('registry:list'),
+    listArchivedAgents: () => electron_1.ipcRenderer.invoke('registry:list-archived'),
+    listArchivedWorkspaceAgents: () => electron_1.ipcRenderer.invoke('registry:list-archived-workspaces'),
+    updateRegisteredAgent: (id, fields) => electron_1.ipcRenderer.invoke('registry:update', id, fields),
+    toggleRegisteredAgent: (id, enabled) => electron_1.ipcRenderer.invoke('registry:toggle', id, enabled),
+    archiveRegisteredAgent: (id) => electron_1.ipcRenderer.invoke('registry:archive', id),
+    deleteRegisteredAgent: (id) => electron_1.ipcRenderer.invoke('registry:delete', id),
+    clearInactiveUnregisteredAgents: () => electron_1.ipcRenderer.invoke('agents:clear-inactive-unregistered'),
+    getSessionHistory: (registryId) => electron_1.ipcRenderer.invoke('registry:session-history', registryId),
+    getConversation: (registryId, sessionId, options) => electron_1.ipcRenderer.invoke('registry:conversation', registryId, sessionId, options),
+    resumeSession: (registryId, sessionId) => electron_1.ipcRenderer.invoke('registry:resume-session', registryId, sessionId),
+    setNickname: (agentId, nickname) => electron_1.ipcRenderer.invoke('nickname:set', agentId, nickname),
+    getNickname: (agentId) => electron_1.ipcRenderer.invoke('nickname:get', agentId),
+    removeNickname: (agentId) => electron_1.ipcRenderer.invoke('nickname:remove', agentId),
+    getTerminalProfiles: () => electron_1.ipcRenderer.invoke('terminal:profiles'),
+    setDefaultTerminalProfile: (profileId) => electron_1.ipcRenderer.invoke('terminal:default-profile:set', profileId),
+    createTerminal: (agentId, options) => electron_1.ipcRenderer.invoke('terminal:create', agentId, options),
+    writeTerminal: (agentId, data) => electron_1.ipcRenderer.invoke('terminal:write', agentId, data),
+    resizeTerminal: (agentId, cols, rows) => electron_1.ipcRenderer.invoke('terminal:resize', agentId, cols, rows),
+    destroyTerminal: (agentId) => electron_1.ipcRenderer.invoke('terminal:destroy', agentId),
+    onTerminalData: (callback) => listenTuple('terminal:data', callback),
+    onTerminalExit: (callback) => listenTuple('terminal:exit', callback),
+    onPsPolicyBlocked: (callback) => {
+        const listener = () => callback();
+        electron_1.ipcRenderer.on('powershell:policy-blocked', listener);
+        return () => electron_1.ipcRenderer.removeListener('powershell:policy-blocked', listener);
+    },
+    openPsPolicyTerminal: () => electron_1.ipcRenderer.invoke('powershell:open-policy-terminal'),
 });
