@@ -1,5 +1,4 @@
 // @ts-nocheck
-// -nocheck
 /**
  * Multi-Agent Manager
  * - P2-10: Only emit events on state changes

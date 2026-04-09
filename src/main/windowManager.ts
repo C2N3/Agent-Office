@@ -1,5 +1,4 @@
 // @ts-nocheck
-// -nocheck
 /**
  * Window Manager
  * Main window, dashboard window, keep-alive, resize, dashboard server management
@@ -284,7 +283,7 @@ function createWindowManager({ agentManager, agentRegistry, sessionScanner, heat
     debugLog('[Dashboard] Starting server...');
 
     try {
-      const serverModule = require('../dashboard-server.js');
+      const serverModule = require('../dashboardServer/index.js');
 
       if (agentManager) {
         serverModule.setAgentManager(agentManager);

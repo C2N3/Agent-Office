@@ -1,5 +1,4 @@
 // @ts-nocheck
-// -nocheck
 /**
  * Terminal Profile Service
  * Detects available shell profiles and persists the user's default profile.

@@ -1,5 +1,4 @@
 // @ts-nocheck
-// -nocheck
 /**
  * HTTP Hook Server
  * HTTP hook server that receives POST requests directly from Claude CLI (with schema validation)

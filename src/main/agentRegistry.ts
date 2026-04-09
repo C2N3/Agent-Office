@@ -1,5 +1,4 @@
 // @ts-nocheck
-// -nocheck
 /**
  * Agent Registry
  * Persistent role-based agent management.

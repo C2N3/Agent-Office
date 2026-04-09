@@ -1,5 +1,4 @@
 // @ts-nocheck
-// -nocheck
 /**
  * Conversation Parser
  * Parses Claude and Codex JSONL transcript files into a structured conversation message array.

@@ -1,10 +1,17 @@
+// @ts-nocheck
 /**
  * Provider-agnostic event processor.
  * Normalizes Claude/Codex events into a shared session lifecycle model.
  */
 
-const { createSessionState } = require('../../dist/src/main/eventProcessor/sessionState');
-const { createEventHandlers } = require('../../dist/src/main/eventProcessor/handlers');
+const path = require('path');
+
+const isDistRuntime = __dirname.split(path.sep).includes('dist');
+const eventProcessorBase = isDistRuntime
+  ? './eventProcessor'
+  : '../../dist/src/main/eventProcessor';
+const { createSessionState } = require(`${eventProcessorBase}/sessionState`);
+const { createEventHandlers } = require(`${eventProcessorBase}/handlers`);
 
 function createEventProcessor({
   agentManager,

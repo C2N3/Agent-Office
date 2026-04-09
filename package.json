@@ -2,7 +2,7 @@
   "name": "agent-office",
   "version": "2.0.0",
   "description": "Visualize multi-agent Claude and Codex CLI sessions as pixel avatars in real time",
-  "main": "src/main.js",
+  "main": "dist/src/main.js",
   "scripts": {
     "postinstall": "node src/install.js",
     "rebuild": "electron-rebuild -f -w node-pty",
@@ -18,7 +18,7 @@
     "test:coverage": "jest --coverage",
     "test:watch": "jest --watch",
     "predashboard": "npm run build:dist",
-    "dashboard": "node src/dashboard-server.js",
+    "dashboard": "node dist/src/dashboardServer/index.js",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
     "format": "prettier --write \"src/**/*.js\" \"__tests__/**/*.js\"",

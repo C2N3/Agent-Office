@@ -1,5 +1,4 @@
 // @ts-nocheck
-// -nocheck
 /**
  * Nickname Store
  * Persists agent nicknames to ~/.agent-office/nicknames.json

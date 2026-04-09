@@ -1,5 +1,4 @@
 // @ts-nocheck
-// -nocheck
 /**
  * Central Error Handler
  * Captures, classifies, logs, and forwards all errors to the UI

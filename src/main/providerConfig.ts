@@ -1,5 +1,4 @@
 // @ts-nocheck
-// -nocheck
 /**
  * Runtime provider selection.
  */

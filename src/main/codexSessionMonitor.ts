@@ -1,5 +1,4 @@
 // @ts-nocheck
-// -nocheck
 /**
  * Codex session file monitor.
  * Watches ~/.codex/sessions JSONL files and feeds live session updates into the Codex processor.

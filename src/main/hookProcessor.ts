@@ -1,5 +1,4 @@
 // @ts-nocheck
-// -nocheck
 /**
  * Claude hook event adapter.
  * Maintains the existing hookProcessor API while delegating to the shared event processor.

@@ -1,5 +1,4 @@
 // @ts-nocheck
-// -nocheck
 /**
  * Terminal Manager
  * Manages node-pty instances for embedded terminals

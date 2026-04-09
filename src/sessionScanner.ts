@@ -1,5 +1,4 @@
 // @ts-nocheck
-// -nocheck
 /**
  * Session Scanner
  * Parses JSONL transcripts to extract token/cost/session statistics and

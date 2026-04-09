@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * PiP Preload Script
  * Provides secure IPC bridge for PiP window
