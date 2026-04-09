@@ -6,6 +6,7 @@ import {
   getDashboardAPI,
   state,
 } from './shared.js';
+import { officeCharacters } from '../office/index.js';
 
 export function setupNicknameEdit() {
   const panel = document.getElementById('agentPanel');
@@ -376,8 +377,8 @@ export function setupAvatarPicker(updateAgentUI) {
         await dashboardAPI.updateRegisteredAgent(currentRegistryId, { avatarIndex: index });
       }
 
-      if (currentAgentId && globalThis.officeCharacters) {
-        const character = globalThis.officeCharacters.characters.get(currentAgentId);
+      if (currentAgentId) {
+        const character = officeCharacters.characters.get(currentAgentId);
         if (character) {
           character.avatarFile = file;
           character.skinIndex = index;

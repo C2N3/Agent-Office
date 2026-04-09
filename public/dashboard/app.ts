@@ -29,6 +29,7 @@ import {
   refreshTerminalProfiles,
   resumeRegisteredSession,
 } from './terminal.js';
+import { initOffice } from '../office/index.js';
 import {
   setupAgentModal,
   setupAvatarPicker,
@@ -228,12 +229,10 @@ function initApp() {
   refreshTerminalProfiles().catch((error: DashboardUiError) => console.error('[Terminal Profiles]', error));
   initResizableHandles?.();
 
-  if (typeof globalThis.initOffice === 'function') {
-    setTimeout(() => {
-      globalThis.initOffice?.();
-      setupOfficeClickHandler(openTerminalForAgent);
-    }, 100);
-  }
+  setTimeout(() => {
+    initOffice().catch((error: DashboardUiError) => console.error('[Office Init]', error));
+    setupOfficeClickHandler(openTerminalForAgent);
+  }, 100);
 
   initAgentPanelEvents();
   initArchiveEvents();

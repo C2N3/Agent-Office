@@ -8,6 +8,11 @@ import {
   formatNum,
   getDashboardAPI,
 } from './shared.js';
+import {
+  officeOnAgentCreated,
+  officeOnAgentRemoved,
+  officeOnAgentUpdated,
+} from '../office/index.js';
 
 let sseDelay = 1000;
 let sseSource: EventSource | null = null;
@@ -73,23 +78,17 @@ export function connectSSE() {
   eventSource.addEventListener('agent.created', (event: MessageEvent) => {
     const data = JSON.parse(event.data) as { data: DashboardAgent };
     updateAgent(data.data);
-    if (typeof globalThis.officeOnAgentCreated === 'function') {
-      globalThis.officeOnAgentCreated(data.data);
-    }
+    officeOnAgentCreated(data.data);
   });
   eventSource.addEventListener('agent.updated', (event: MessageEvent) => {
     const data = JSON.parse(event.data) as { data: DashboardAgent };
     updateAgent(data.data);
-    if (typeof globalThis.officeOnAgentUpdated === 'function') {
-      globalThis.officeOnAgentUpdated(data.data);
-    }
+    officeOnAgentUpdated(data.data);
   });
   eventSource.addEventListener('agent.removed', (event: MessageEvent) => {
     const data = JSON.parse(event.data) as { data: { id: string } };
     removeAgent(data.data.id);
-    if (typeof globalThis.officeOnAgentRemoved === 'function') {
-      globalThis.officeOnAgentRemoved(data.data);
-    }
+    officeOnAgentRemoved(data.data);
   });
 }
 
@@ -183,14 +182,10 @@ function updateFilterUI() {
 function renderOfficeRoster() {
   for (const agent of state.agents.values()) {
     if (shouldDisplayAgent(agent)) {
-      if (typeof globalThis.officeOnAgentCreated === 'function') {
-        globalThis.officeOnAgentCreated(agent);
-      }
+      officeOnAgentCreated(agent);
       continue;
     }
-    if (typeof globalThis.officeOnAgentRemoved === 'function') {
-      globalThis.officeOnAgentRemoved({ id: agent.id });
-    }
+    officeOnAgentRemoved({ id: agent.id });
   }
 }
 
@@ -264,6 +259,13 @@ export function getStateColor(status: string) {
   return map[status] || 'var(--color-state-waiting)';
 }
 
+function formatWorkspaceTypeLabel(type: string | null | undefined) {
+  const trimmed = String(type || '').trim();
+  if (!trimmed) return 'workspace';
+  if (trimmed === 'git-worktree') return 'worktree';
+  return trimmed.replace(/[_-]+/g, ' ');
+}
+
 export function updateAgentUI(agent: DashboardAgent) {
   if (!shouldDisplayAgent(agent)) {
     const existingHidden = DOM.agentPanel.querySelector(`[data-id="${agent.id}"]`) as HTMLElement | null;
@@ -300,24 +302,39 @@ export function updateAgentUI(agent: DashboardAgent) {
         : 'ctx-low';
   const contextValueText = hasContext ? `~${contextPercent}%` : '--';
   const workspaceMeta = agent.metadata?.workspace || null;
+  const workspaceType = formatWorkspaceTypeLabel(workspaceMeta?.type);
   const workspaceBranch = workspaceMeta?.branch || '';
   const workspaceRepo = workspaceMeta?.repositoryName || '';
-  const workspaceBadge = workspaceBranch
-    ? `<span class="mc-type-badge workspace" title="${escapeText(workspaceRepo || 'worktree')}">WT ${escapeText(workspaceBranch)}</span>`
+  const workspaceBadge = workspaceMeta
+    ? `<span class="mc-type-badge workspace" title="${escapeText(workspaceType)}">${escapeText(workspaceType)}</span>`
     : '';
   const workspaceSummary = workspaceBranch
-    ? `<div class="mc-agent-workspace">${escapeText(workspaceRepo || agent.project || 'workspace')} · ${escapeText(workspaceBranch)}</div>`
+    ? `<div class="mc-agent-workspace" title="${escapeText(`${workspaceRepo || agent.project || 'workspace'} - ${workspaceBranch}`)}"><span class="mc-agent-workspace-repo">${escapeText(workspaceRepo || agent.project || 'workspace')}</span><span class="mc-agent-workspace-branch">${escapeText(workspaceBranch)}</span></div>`
     : '';
-  const workspaceActions = agent.isRegistered && agent.registryId && workspaceBranch
-    ? `
-        <button class="agent-workspace-btn merge" data-workspace-merge-id="${agent.registryId}" data-branch="${escapeText(workspaceBranch)}" title="Merge branch and clean up workspace">
+  const actionButtons = [
+    agent.isRegistered && agent.registryId
+      ? `<button class="agent-history-btn" data-history-id="${agent.registryId}" data-agent-name="${agent.nickname || agent.name || 'Agent'}" title="Session History"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg></button>`
+      : '',
+    agent.isRegistered && agent.registryId && workspaceBranch
+      ? `<button class="agent-workspace-btn merge" data-workspace-merge-id="${agent.registryId}" data-branch="${escapeText(workspaceBranch)}" title="Merge branch and clean up workspace">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="M8 6h8"/><path d="M6 8v4c0 2 2 4 4 4h2"/><path d="M18 8v4c0 2-2 4-4 4h-2"/></svg>
-        </button>
-        <button class="agent-workspace-btn remove" data-workspace-remove-id="${agent.registryId}" data-branch="${escapeText(workspaceBranch)}" title="Remove workspace and delete branch without merge">
+        </button>`
+      : '',
+    agent.isRegistered && agent.registryId && workspaceBranch
+      ? `<button class="agent-workspace-btn remove" data-workspace-remove-id="${agent.registryId}" data-branch="${escapeText(workspaceBranch)}" title="Remove workspace and delete branch without merge">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
-        </button>
-      `
-    : '';
+        </button>`
+      : '',
+    agent.isRegistered && agent.registryId
+      ? `<button class="agent-avatar-btn" data-avatar-id="${agent.registryId}" data-agent-id="${agent.id}" title="Change avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M5 20c0-4 3.5-7 7-7s7 3 7 7"/></svg></button>`
+      : '',
+    agent.isRegistered && agent.registryId
+      ? `<button class="agent-unregister-btn" data-archive-id="${agent.registryId}" title="Unregister agent and move record to Archive">Unregister</button>`
+      : '',
+    agent.isRegistered && agent.registryId
+      ? `<button class="agent-delete-btn agent-delete-inline" data-delete-id="${agent.registryId}" title="Delete agent record permanently">Delete</button>`
+      : '',
+  ].filter(Boolean).join('');
 
   const history = state.agentHistory.get(agent.id) || [];
   let timelineHtml = '';
@@ -339,18 +356,20 @@ export function updateAgentUI(agent: DashboardAgent) {
 
   const html = `
     <div class="mc-agent-header">
-      <div class="mc-agent-name"><div class="mc-agent-avatar" style="background-image:url('./public/characters/${avatarFile}')"></div><span class="agent-display-name" data-agent-id="${agent.id}" title="Double-click to rename">${agent.nickname || agent.name || 'Agent'}</span> ${typeHtml} ${workspaceBadge}</div>
-      <div style="display:flex;align-items:center;gap:6px;">
-        <div class="mc-agent-status ${statusClass}">${statusText}</div>
-        ${agent.isRegistered && agent.registryId ? `<button class="agent-history-btn" data-history-id="${agent.registryId}" data-agent-name="${agent.nickname || agent.name || 'Agent'}" title="Session History"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg></button>` : ''}
-        ${workspaceActions}
-        ${agent.isRegistered && agent.registryId ? `<button class="agent-avatar-btn" data-avatar-id="${agent.registryId}" data-agent-id="${agent.id}" title="Change avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M5 20c0-4 3.5-7 7-7s7 3 7 7"/></svg></button>` : ''}
-        ${agent.isRegistered && agent.registryId ? `<button class="agent-unregister-btn" data-archive-id="${agent.registryId}" title="Unregister agent and move record to Archive">Unregister</button>` : ''}
-        ${agent.isRegistered && agent.registryId ? `<button class="agent-delete-btn agent-delete-inline" data-delete-id="${agent.registryId}" title="Delete agent record permanently">Delete</button>` : ''}
+      <div class="mc-agent-identity">
+        <div class="mc-agent-title-row">
+          <div class="mc-agent-avatar" style="background-image:url('./public/characters/${avatarFile}')"></div>
+          <div class="mc-agent-name">
+            <span class="agent-display-name" data-agent-id="${agent.id}" title="Double-click to rename">${agent.nickname || agent.name || 'Agent'}</span>
+          </div>
+        </div>
+        <div class="mc-agent-badges">${typeHtml}${workspaceBadge}</div>
       </div>
+      <div class="mc-agent-status ${statusClass}">${statusText}</div>
     </div>
     ${agent.role ? `<div class="mc-agent-role">${agent.role}</div>` : ''}
     ${workspaceSummary}
+    ${actionButtons ? `<div class="mc-agent-actions">${actionButtons}</div>` : ''}
     <div class="mc-agent-activity">CMD> ${activityText}</div>
     ${timelineHtml}
     <div class="mc-agent-metrics">

@@ -13,6 +13,8 @@ function createWindowManager({ agentManager, agentRegistry, sessionScanner, heat
   let pipWindow = null;
   let keepAliveInterval = null;
   let dashboardServer = null;
+  const dashboardClientUrl = process.env.DASHBOARD_DEV_SERVER_URL || 'http://localhost:3000';
+  const dashboardRootUrl = process.argv.includes('--dev') ? dashboardClientUrl : 'http://localhost:3000';
 
   function resizeWindowForAgents(agentsOrCount) {
     if (!mainWindow || mainWindow.isDestroyed()) return;
@@ -146,7 +148,7 @@ function createWindowManager({ agentManager, agentRegistry, sessionScanner, heat
       });
 
       // Load via HTTP server (instead of file://) — needed for serving office module static files
-      dashboardWindow.loadURL('http://localhost:3000/');
+      dashboardWindow.loadURL(`${dashboardRootUrl}/`);
 
       dashboardWindow.webContents.setWindowOpenHandler(({ url }) => {
         shell.openExternal(url);
@@ -234,7 +236,7 @@ function createWindowManager({ agentManager, agentRegistry, sessionScanner, heat
       debugLog('[PiP] Window shown');
     });
 
-    pipWindow.loadURL('http://localhost:3000/pip');
+    pipWindow.loadURL(`${dashboardRootUrl}/pip`);
 
     pipWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
       debugLog(`[PiP] Failed to load: ${errorCode} - ${errorDescription}`);

@@ -229,16 +229,25 @@ export async function openTerminalForAgent(agentId, openOptions = {}) {
 
   const dashboardAPI = getDashboardAPI();
   const isActive = ['working', 'thinking', 'waiting', 'help'].includes(agentStatus);
+  let focusResult = null;
   if (isActive) {
-    if (dashboardAPI?.focusAgent) dashboardAPI.focusAgent(agentId);
-    return;
+    if (!dashboardAPI?.focusAgent) return;
+    focusResult = await dashboardAPI.focusAgent(agentId);
+    if (focusResult?.success) return;
+    if (focusResult?.reason !== 'stale-session') {
+      return;
+    }
   }
 
   const shouldAutoResume = dashboardResumeUtils.shouldAutoResumeRegisteredAgent
     ? dashboardResumeUtils.shouldAutoResumeRegisteredAgent(agent, openOptions)
     : (!openOptions.skipAutoResume && isRegistered && registryId && agentStatus === 'offline');
+  const shouldRecoverStaleSession = !openOptions.skipAutoResume
+    && isRegistered
+    && registryId
+    && focusResult?.reason === 'stale-session';
 
-  if (shouldAutoResume) {
+  if (shouldAutoResume || shouldRecoverStaleSession) {
     const resumeResult = await resumeLatestRegisteredSession(
       registryId,
       openOptions.label || agent?.nickname || agent?.name || 'Terminal'

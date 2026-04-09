@@ -1,3 +1,5 @@
+import * as dashboardResumeUtilsModule from '../dashboardResume.js';
+
 export const REGISTERED_FILTER_STORAGE_KEY = 'mc-filter-registered-only';
 
 export const SHARED_AVATAR_FILES = ['avatar_0.webp', 'avatar_1.webp', 'avatar_2.webp', 'avatar_3.webp'] as const;
@@ -272,7 +274,7 @@ export type DashboardAPI = {
   onAgentRemoved?: (callback: (data: DashboardAgentRemoval) => void) => CleanupFn | void;
   togglePip?: () => Promise<DashboardWindowActionResult> | void;
   onPipStateChanged?: (callback: (isOpen: boolean) => void) => CleanupFn | void;
-  focusAgent?: (agentId: string) => void;
+  focusAgent?: (agentId: string) => Promise<DashboardRecoveryActionResult>;
   createRegisteredAgent?: (data: Partial<DashboardAgentRecord> & { name: string; projectPath: string }) => Promise<(DashboardActionResult & { agent?: DashboardAgentRecord }) | undefined>;
   inspectWorkspaceRepo?: (repoPath: string) => Promise<DashboardRepoInspectionResult | undefined>;
   createWorkspaceAgent?: (data: DashboardOpenOptions & {
@@ -488,7 +490,7 @@ export const DOM = {
   archiveRefreshBtn: getElementById('archiveRefreshBtn') as HTMLButtonElement,
 };
 
-export const dashboardResumeUtils: DashboardResumeUtils = globalThis.dashboardResumeUtils || {};
+export const dashboardResumeUtils: DashboardResumeUtils = dashboardResumeUtilsModule;
 
 export function getDashboardAPI(): DashboardAPI | undefined {
   return globalThis.dashboardAPI;

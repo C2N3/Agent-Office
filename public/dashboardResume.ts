@@ -1,66 +1,51 @@
 // @ts-nocheck
-(function attachDashboardResumeUtils(root, factory) {
-  const api = factory();
 
-  if (typeof module !== 'undefined' && module.exports) {
-    module.exports = api;
-  }
+function toTimestamp(value) {
+  return Number.isFinite(value) ? value : 0;
+}
 
-  root.dashboardResumeUtils = api;
-}(typeof globalThis !== 'undefined' ? globalThis : this, function createDashboardResumeUtils() {
-  function toTimestamp(value) {
-    return Number.isFinite(value) ? value : 0;
-  }
+function getSessionRecency(entry, index) {
+  if (!entry || typeof entry !== 'object') return index;
+  return Math.max(
+    toTimestamp(entry.startedAt),
+    toTimestamp(entry.endedAt),
+    index
+  );
+}
 
-  function getSessionRecency(entry, index) {
-    if (!entry || typeof entry !== 'object') return index;
-    return Math.max(
-      toTimestamp(entry.startedAt),
-      toTimestamp(entry.endedAt),
-      index
-    );
-  }
+export function findLatestResumableSession(history) {
+  if (!Array.isArray(history) || history.length === 0) return null;
 
-  function findLatestResumableSession(history) {
-    if (!Array.isArray(history) || history.length === 0) return null;
+  let latest = null;
+  let latestScore = -1;
 
-    let latest = null;
-    let latestScore = -1;
+  history.forEach((entry, index) => {
+    if (!(entry?.resumeSessionId || entry?.sessionId)) return;
+    const score = getSessionRecency(entry, index);
+    if (!latest || score > latestScore) {
+      latest = entry;
+      latestScore = score;
+    }
+  });
 
-    history.forEach((entry, index) => {
-      if (!(entry?.resumeSessionId || entry?.sessionId)) return;
-      const score = getSessionRecency(entry, index);
-      if (!latest || score > latestScore) {
-        latest = entry;
-        latestScore = score;
-      }
-    });
+  return latest;
+}
 
-    return latest;
-  }
+export function shouldAutoResumeRegisteredAgent(agent, openOptions = {}) {
+  if (openOptions.skipAutoResume) return false;
+  if (!agent || !agent.isRegistered || !agent.registryId) return false;
+  return agent.status === 'offline';
+}
 
-  function shouldAutoResumeRegisteredAgent(agent, openOptions = {}) {
-    if (openOptions.skipAutoResume) return false;
-    if (!agent || !agent.isRegistered || !agent.registryId) return false;
-    return agent.status === 'offline';
-  }
+export function getDirectResumeSessionId(agent, openOptions = {}) {
+  if (openOptions.skipAutoResume) return null;
+  if (!agent || typeof agent !== 'object') return null;
 
-  function getDirectResumeSessionId(agent, openOptions = {}) {
-    if (openOptions.skipAutoResume) return null;
-    if (!agent || typeof agent !== 'object') return null;
+  const provider = agent?.metadata?.provider || agent?.provider || null;
+  if (provider !== 'codex') return null;
 
-    const provider = agent?.metadata?.provider || agent?.provider || null;
-    if (provider !== 'codex') return null;
+  const status = agent?.status || '';
+  if (!['offline', 'completed'].includes(status)) return null;
 
-    const status = agent?.status || '';
-    if (!['offline', 'completed'].includes(status)) return null;
-
-    return agent?.resumeSessionId || agent?.sessionId || null;
-  }
-
-  return {
-    findLatestResumableSession,
-    getDirectResumeSessionId,
-    shouldAutoResumeRegisteredAgent,
-  };
-}));
+  return agent?.resumeSessionId || agent?.sessionId || null;
+}

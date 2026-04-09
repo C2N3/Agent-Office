@@ -564,11 +564,14 @@ body {
 /* Agent List: horizontal scroll layout */
 .agent-list-panel .panel-body {
   max-height: 100%;
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 8px;
-  overflow-x: auto;
-  overflow-y: hidden;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 220px);
+  grid-auto-rows: max-content;
+  align-content: start;
+  justify-content: start;
+  gap: 10px;
+  overflow-x: hidden;
+  overflow-y: auto;
   padding: 10px 16px;
 }
 
@@ -600,9 +603,11 @@ body {
 }
 
 .standby-state {
+  grid-column: 1 / -1;
   text-align: center;
   color: var(--color-text-dark);
-  margin-top: 40px;
+  margin-top: 0;
+  padding-top: 40px;
   font-size: 0.8rem;
 }
 
@@ -616,8 +621,12 @@ body {
   flex-direction: column;
   gap: 10px;
   transition: border-color 0.2s;
+  width: 220px;
   min-width: 220px;
+  max-width: 220px;
+  box-sizing: border-box;
   flex-shrink: 0;
+  overflow: hidden;
 }
 
 .mc-agent-card:hover {
@@ -625,17 +634,45 @@ body {
 }
 
 .mc-agent-header {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.mc-agent-identity {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mc-agent-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
 .mc-agent-name {
   font-weight: 600;
   font-size: 0.85rem;
+  min-width: 0;
+}
+
+.agent-display-name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mc-agent-badges {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
 }
 
 .mc-type-badge {
@@ -647,6 +684,11 @@ body {
   text-transform: uppercase;
   font-weight: 700;
   letter-spacing: 0.05em;
+  line-height: 1.25;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .mc-type-badge.main {
@@ -667,6 +709,8 @@ body {
   font-weight: 600;
   text-transform: uppercase;
   border: 1px solid transparent;
+  justify-self: end;
+  align-self: start;
 }
 
 .mc-agent-status.working {
@@ -1699,18 +1743,41 @@ body {
 .mc-agent-role {
   font-size: 0.65rem;
   color: var(--color-text-dark);
-  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .mc-agent-workspace {
   font-size: 0.68rem;
   color: var(--color-warning);
   font-family: var(--font-mono);
-  white-space: nowrap;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.mc-agent-workspace-repo,
+.mc-agent-workspace-branch {
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.mc-agent-workspace-repo {
+  color: var(--color-text-muted);
+}
+
+.mc-agent-workspace-branch {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.mc-agent-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
 }
 
 .agent-delete-btn {
