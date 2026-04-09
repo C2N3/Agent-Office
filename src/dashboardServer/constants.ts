@@ -1,7 +1,15 @@
 import path from 'path';
 
 export const PORT = 3000;
-export const HTML_FILE = path.join(__dirname, '..', '..', 'dashboard.html');
+
+const runtimeRoot = path.resolve(__dirname, '..', '..');
+
+export const PROJECT_ROOT = path.basename(runtimeRoot) === 'dist'
+  ? path.resolve(runtimeRoot, '..')
+  : runtimeRoot;
+
+export const HTML_FILE = path.join(PROJECT_ROOT, 'dashboard.html');
+export const PIP_FILE = path.join(PROJECT_ROOT, 'pip.html');
 
 export const MIME_TYPES: Record<string, string> = {
   '.html': 'text/html',

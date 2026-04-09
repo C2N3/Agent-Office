@@ -13,6 +13,18 @@ const watchTargets = [
   path.join(projectRoot, 'tsconfig.json'),
   path.join(projectRoot, 'tsconfig.emit.json'),
 ];
+const browserGlobalTargets = [
+  'dist/public/dashboardResume.js',
+  'dist/src/office/office-character.js',
+  'dist/src/office/office-config.js',
+  'dist/src/office/office-coords.js',
+  'dist/src/office/office-init.js',
+  'dist/src/office/office-layers.js',
+  'dist/src/office/office-pathfinder.js',
+  'dist/src/office/office-renderer.js',
+  'dist/src/office/office-sprite.js',
+  'dist/src/office/office-ui.js',
+];
 
 let buildRunning = false;
 let queuedBuild = false;
@@ -54,6 +66,22 @@ function copyTargetsToDist() {
   }
 }
 
+function sanitizeBrowserGlobalOutputs() {
+  for (const relativePath of browserGlobalTargets) {
+    const outputPath = path.join(projectRoot, relativePath);
+    if (!fs.existsSync(outputPath)) continue;
+
+    const original = fs.readFileSync(outputPath, 'utf8');
+    const sanitized = original
+      .replace(/^Object\.defineProperty\(exports,\s*"__esModule",\s*\{\s*value:\s*true\s*\}\);\r?\n/m, '')
+      .replace(/\r?\nexport \{\};\s*$/, '\n');
+
+    if (sanitized !== original) {
+      fs.writeFileSync(outputPath, sanitized, 'utf8');
+    }
+  }
+}
+
 function buildOnce() {
   if (!roots.some(hasTypeScriptSource)) {
     return 0;
@@ -80,6 +108,7 @@ function buildOnce() {
 
   if ((result.status ?? 1) === 0) {
     copyTargetsToDist();
+    sanitizeBrowserGlobalOutputs();
   }
 
   return result.status ?? 0;

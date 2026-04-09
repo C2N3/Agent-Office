@@ -12,7 +12,7 @@ const { getConversationSummary, parseConversation } = require('../main/conversat
   getConversationSummary: (transcriptPath: string) => any;
   parseConversation: (transcriptPath: string, options?: { limit?: number; offset?: number }) => any;
 };
-import { HTML_FILE, MIME_TYPES } from './constants.js';
+import { HTML_FILE, MIME_TYPES, PIP_FILE, PROJECT_ROOT } from './constants.js';
 import { calculateStats } from './stats.js';
 import { getClients, getRefs } from './context.js';
 
@@ -61,8 +61,7 @@ function handleRequest(req: RequestLike, res: ResponseLike): void {
   }
 
   if (pathname === '/pip') {
-    const pipFile = path.join(__dirname, '..', '..', 'pip.html');
-    fs.readFile(pipFile, (err, data) => {
+    fs.readFile(PIP_FILE, (err, data) => {
       if (err) {
         res.writeHead(500, { 'Content-Type': 'text/plain' });
         res.end('Internal Server Error');
@@ -83,8 +82,7 @@ function handleRequest(req: RequestLike, res: ResponseLike): void {
     };
     const mapped = libMap[pathname];
     if (mapped) {
-      const baseDir = path.resolve(__dirname, '..', '..');
-      const filePath = path.join(baseDir, mapped);
+      const filePath = path.join(PROJECT_ROOT, mapped);
       const ext = path.extname(filePath);
       const mime = MIME_TYPES[ext] || 'application/octet-stream';
       fs.readFile(filePath, (err, data) => {
@@ -101,10 +99,9 @@ function handleRequest(req: RequestLike, res: ResponseLike): void {
   }
 
   if (pathname.startsWith('/dist/') || pathname.startsWith('/public/') || pathname.startsWith('/src/office/')) {
-    const baseDir = path.resolve(__dirname, '..', '..');
     const decoded = decodeURIComponent(pathname);
-    const resolved = path.resolve(baseDir, decoded.slice(1));
-    const rel = path.relative(baseDir, resolved);
+    const resolved = path.resolve(PROJECT_ROOT, decoded.slice(1));
+    const rel = path.relative(PROJECT_ROOT, resolved);
     if (rel.startsWith('..') || path.isAbsolute(rel)) {
       res.writeHead(403, { 'Content-Type': 'text/plain' });
       res.end('Forbidden');
@@ -281,7 +278,7 @@ function handleGetHealth(req: RequestLike, res: ResponseLike): void {
 }
 
 function handleGetAvatars(req: RequestLike, res: ResponseLike): void {
-  const charDir = path.join(__dirname, '..', '..', 'public', 'characters');
+  const charDir = path.join(PROJECT_ROOT, 'public', 'characters');
   try {
     const files = fs.readdirSync(charDir)
       .filter((f) => /\.(webp|png|jpg|jpeg|gif)$/i.test(f))
