@@ -224,6 +224,21 @@ function startRendererDevServer({
       return;
     }
 
+    if (pathname === '/overlay') {
+      fs.readFile(path.join(projectRoot, 'overlay.html'), 'utf8', (error, html) => {
+        if (error) {
+          writeNotFound(res);
+          return;
+        }
+        res.writeHead(200, {
+          'Cache-Control': 'no-cache',
+          'Content-Type': 'text/html; charset=utf-8',
+        });
+        res.end(injectDevClient(html));
+      });
+      return;
+    }
+
     if (pathname.startsWith('/api/') || pathname.startsWith('/lib/')) {
       proxyHttpRequest(req, res);
       return;

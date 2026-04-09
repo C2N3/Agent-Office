@@ -11,6 +11,7 @@ function createWindowManager({ agentManager, agentRegistry, sessionScanner, heat
   let mainWindow = null;
   let dashboardWindow = null;
   let pipWindow = null;
+  let overlayWindow = null;
   let keepAliveInterval = null;
   let dashboardServer = null;
   const dashboardClientUrl = process.env.DASHBOARD_DEV_SERVER_URL || 'http://localhost:3000';
@@ -87,9 +88,6 @@ function createWindowManager({ agentManager, agentRegistry, sessionScanner, heat
     // Main window (avatar) closed -> close dashboard and quit app
     mainWindow.on('closed', () => {
       mainWindow = null;
-      closeDashboardWindow();
-      const { app } = require('electron');
-      app.quit();
     });
 
     startKeepAlive();
@@ -176,6 +174,14 @@ function createWindowManager({ agentManager, agentRegistry, sessionScanner, heat
         debugLog('[MissionControl] Window closed');
         dashboardWindow = null;
         closePipWindow();
+        // Auto-show overlay when dashboard closes (if active agents exist and no overlay open)
+        if (agentManager) {
+          const activeAgents = agentManager.getAllAgents().filter(a => a.state !== 'Offline');
+          if (activeAgents.length > 0 && (!overlayWindow || overlayWindow.isDestroyed())) {
+            createOverlayWindow();
+            debugLog(`[Overlay] Auto-shown with ${activeAgents.length} active agent(s)`);
+          }
+        }
       });
 
       debugLog('[MissionControl] Window created');
@@ -260,6 +266,91 @@ function createWindowManager({ agentManager, agentRegistry, sessionScanner, heat
     pipWindow = null;
   }
 
+  // ─── Overlay Window ───
+  function createOverlayWindow() {
+    if (overlayWindow && !overlayWindow.isDestroyed()) {
+      overlayWindow.focus();
+      return;
+    }
+
+    const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+    const ovW = 80;  // small initial size, auto-resized by renderer
+    const ovH = 150;
+
+    overlayWindow = new BrowserWindow({
+      width: ovW,
+      height: ovH,
+      x: width - ovW - 30,
+      y: height - ovH - 30,
+      transparent: true,
+      frame: false,
+      hasShadow: false,
+      backgroundColor: '#00000000',
+      alwaysOnTop: true,
+      skipTaskbar: false,
+      resizable: false,
+      movable: true,
+      show: false,
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        sandbox: false,
+        preload: path.join(__dirname, '..', 'overlayPreload.js')
+      }
+    });
+
+    overlayWindow.once('ready-to-show', () => {
+      if (!overlayWindow || overlayWindow.isDestroyed()) return;
+      overlayWindow.show();
+      overlayWindow.setAlwaysOnTop(true, 'floating');
+      debugLog('[Overlay] Window shown');
+    });
+
+    overlayWindow.loadURL(`${dashboardRootUrl}/overlay`);
+
+    overlayWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+      debugLog(`[Overlay] Failed to load: ${errorCode} - ${errorDescription}`);
+      if (overlayWindow && !overlayWindow.isDestroyed()) overlayWindow.destroy();
+      overlayWindow = null;
+    });
+
+    overlayWindow.on('closed', () => {
+      overlayWindow = null;
+      notifyDashboardOverlayState(false);
+      debugLog('[Overlay] Window closed');
+    });
+
+    notifyDashboardOverlayState(true);
+    debugLog('[Overlay] Window created');
+  }
+
+  function closeOverlayWindow() {
+    if (overlayWindow && !overlayWindow.isDestroyed()) {
+      overlayWindow.close();
+    }
+    overlayWindow = null;
+  }
+
+  function toggleOverlayWindow() {
+    if (overlayWindow && !overlayWindow.isDestroyed()) {
+      closeOverlayWindow();
+    } else {
+      createOverlayWindow();
+    }
+  }
+
+  function resizeOverlayWindow(width, height) {
+    if (overlayWindow && !overlayWindow.isDestroyed()) {
+      overlayWindow.setSize(Math.round(width), Math.round(height));
+    }
+  }
+
+  function notifyDashboardOverlayState(isOpen) {
+    if (dashboardWindow && !dashboardWindow.isDestroyed()) {
+      dashboardWindow.webContents.send('overlay-state-changed', isOpen);
+    }
+  }
+
   function focusDashboardWindow() {
     if (dashboardWindow && !dashboardWindow.isDestroyed()) {
       if (dashboardWindow.isMinimized()) dashboardWindow.restore();
@@ -326,6 +417,7 @@ function createWindowManager({ agentManager, agentRegistry, sessionScanner, heat
     get mainWindow() { return mainWindow; },
     get dashboardWindow() { return dashboardWindow; },
     get pipWindow() { return pipWindow; },
+    get overlayWindow() { return overlayWindow; },
     createWindow,
     startKeepAlive,
     stopKeepAlive,
@@ -333,6 +425,10 @@ function createWindowManager({ agentManager, agentRegistry, sessionScanner, heat
     closeDashboardWindow,
     createPipWindow,
     closePipWindow,
+    createOverlayWindow,
+    closeOverlayWindow,
+    toggleOverlayWindow,
+    resizeOverlayWindow,
     focusDashboardWindow,
     startDashboardServer,
     stopDashboardServer,

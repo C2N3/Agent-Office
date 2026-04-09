@@ -24,6 +24,8 @@ export function initTerminals() {
       const terminal = termState.terminals.get(agentId);
       if (terminal) {
         terminal.xterm.writeln(`\r\n\x1b[90m[Process exited with code ${exitCode}]\x1b[0m`);
+        // Auto-close the terminal tab after process exits so stale content doesn't linger
+        setTimeout(() => closeTerminal(agentId), 600);
       }
     });
   }

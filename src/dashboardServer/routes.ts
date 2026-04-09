@@ -12,7 +12,7 @@ const { getConversationSummary, parseConversation } = require('../main/conversat
   getConversationSummary: (transcriptPath: string) => any;
   parseConversation: (transcriptPath: string, options?: { limit?: number; offset?: number }) => any;
 };
-import { HTML_FILE, MIME_TYPES, PIP_FILE, PROJECT_ROOT } from './constants.js';
+import { HTML_FILE, MIME_TYPES, OVERLAY_FILE, PIP_FILE, PROJECT_ROOT } from './constants.js';
 import { calculateStats } from './stats.js';
 import { getClients, getRefs } from './context.js';
 
@@ -62,6 +62,19 @@ function handleRequest(req: RequestLike, res: ResponseLike): void {
 
   if (pathname === '/pip') {
     fs.readFile(PIP_FILE, (err, data) => {
+      if (err) {
+        res.writeHead(500, { 'Content-Type': 'text/plain' });
+        res.end('Internal Server Error');
+        return;
+      }
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(data);
+    });
+    return;
+  }
+
+  if (pathname === '/overlay') {
+    fs.readFile(OVERLAY_FILE, (err, data) => {
       if (err) {
         res.writeHead(500, { 'Content-Type': 'text/plain' });
         res.end('Internal Server Error');

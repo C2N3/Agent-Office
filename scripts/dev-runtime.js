@@ -109,6 +109,9 @@ function getReloadPath(targetPath) {
   if (relativePath === 'pip.html') {
     return '/pip';
   }
+  if (relativePath === 'overlay.html') {
+    return '/overlay';
+  }
   if (relativePath.startsWith('public/')) {
     return `/${relativePath}`;
   }

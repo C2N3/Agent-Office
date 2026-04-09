@@ -42,6 +42,8 @@ const dashboardAPI: DashboardAPI = {
   focusAgent: (agentId: string) => ipcRenderer.invoke('focus-terminal', agentId),
   togglePip: () => ipcRenderer.invoke('toggle-pip'),
   onPipStateChanged: (callback: (isOpen: boolean) => void) => listen('pip-state-changed', callback),
+  toggleOverlay: () => ipcRenderer.invoke('toggle-overlay'),
+  onOverlayStateChanged: (callback: (isOpen: boolean) => void) => listen('overlay-state-changed', callback),
   createRegisteredAgent: (data: Partial<DashboardAgentRecord> & { name: string; projectPath: string }) => ipcRenderer.invoke('registry:create', data),
   inspectWorkspaceRepo: (repoPath: string) => ipcRenderer.invoke('workspace:inspect-repo', repoPath),
   createWorkspaceAgent: (data) => ipcRenderer.invoke('workspace:create', data),

@@ -22,7 +22,7 @@ class ClaudeAdapter {
     const args = [
       '--print',
       '--verbose',
-      '--permission-mode', 'dontAsk',
+      '--dangerously-skip-permissions',
       '--max-turns', String(options.maxTurns || 30),
     ];
     if (options.model) {

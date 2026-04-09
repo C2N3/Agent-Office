@@ -511,6 +511,36 @@ function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowM
     windowManager.focusDashboardWindow();
   });
 
+  // ─── Overlay ───
+  ipcMain.handle('toggle-overlay', async () => {
+    try {
+      const ow = windowManager.overlayWindow;
+      if (ow && !ow.isDestroyed()) {
+        windowManager.closeOverlayWindow();
+        return { success: true, action: 'closed' };
+      } else {
+        windowManager.createOverlayWindow();
+        return { success: true, action: 'opened' };
+      }
+    } catch (error) {
+      debugLog(`[Overlay] Error: ${error.message}`);
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.on('overlay-close', () => {
+    windowManager.closeOverlayWindow();
+  });
+
+  ipcMain.on('overlay-back-to-dashboard', () => {
+    windowManager.closeOverlayWindow();
+    windowManager.focusDashboardWindow();
+  });
+
+  ipcMain.on('overlay-resize', (_event, { width, height }) => {
+    windowManager.resizeOverlayWindow(width, height);
+  });
+
   // ─── Nickname ───
   if (nicknameStore) {
     ipcMain.handle('nickname:set', async (event, agentId, nickname) => {

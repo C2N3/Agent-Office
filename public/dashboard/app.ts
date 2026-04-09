@@ -70,6 +70,21 @@ function initPipControls() {
   }
 }
 
+function initOverlayControls() {
+  const overlayBtn = document.getElementById('overlayToggleBtn');
+  const dashboardAPI = getDashboardAPI();
+  if (overlayBtn) {
+    overlayBtn.addEventListener('click', () => {
+      dashboardAPI?.toggleOverlay?.();
+    });
+  }
+  if (dashboardAPI?.onOverlayStateChanged) {
+    dashboardAPI.onOverlayStateChanged((isOpen: boolean) => {
+      if (overlayBtn) overlayBtn.classList.toggle('active', isOpen);
+    });
+  }
+}
+
 function initInitialView() {
   document.querySelectorAll('.nav-item').forEach((item) => item.classList.remove('active'));
   let button = document.querySelector(`[data-view="${state.currentView}"]`) as HTMLButtonElement | null;
@@ -232,6 +247,7 @@ function initApp() {
   initFilterControls();
   initViewControls();
   initPipControls();
+  initOverlayControls();
   initInitialView();
 
   connectSSE();

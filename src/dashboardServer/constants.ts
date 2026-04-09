@@ -10,6 +10,7 @@ export const PROJECT_ROOT = path.basename(runtimeRoot) === 'dist'
 
 export const HTML_FILE = path.join(PROJECT_ROOT, 'dashboard.html');
 export const PIP_FILE = path.join(PROJECT_ROOT, 'pip.html');
+export const OVERLAY_FILE = path.join(PROJECT_ROOT, 'overlay.html');
 
 export const MIME_TYPES: Record<string, string> = {
   '.html': 'text/html',

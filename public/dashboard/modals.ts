@@ -450,7 +450,7 @@ export function setupAssignTaskModal() {
           provider,
           model,
           maxTurns,
-          repositoryPath: currentAgent.projectPath || currentAgent.workspace?.worktreePath || '',
+          repositoryPath: currentAgent.metadata?.projectPath || currentAgent.projectPath || currentAgent.workspace?.worktreePath || '',
           priority,
           autoMergeOnSuccess,
           agentRegistryId: currentAgent.registryId || currentAgent.id,

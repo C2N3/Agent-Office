@@ -47,7 +47,7 @@ class TerminalManager {
     const profile = (!options.command && !options.shell && this.terminalProfileService)
       ? this.terminalProfileService.resolveProfile(options.profileId)
       : null;
-    const command = options.command || options.shell || profile?.command || (process.platform === 'win32'
+    let command = options.command || options.shell || profile?.command || (process.platform === 'win32'
       ? 'powershell.exe'
       : process.env.SHELL || '/bin/bash');
     const args = options.args || profile?.args || [];
@@ -55,6 +55,15 @@ class TerminalManager {
     let cwd = resolveProjectPathForPlatform(options.cwd) || os.homedir();
     const cols = options.cols || 120;
     const rows = options.rows || 30;
+
+    // On Windows, node-pty needs resolved command path for non-shell executables
+    if (process.platform === 'win32' && options.command && !options.command.includes('\\') && !options.command.includes('/')) {
+      try {
+        const { execFileSync } = require('child_process');
+        const resolved = execFileSync('where', [options.command], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim().split(/\r?\n/)[0];
+        if (resolved) command = resolved;
+      } catch {}
+    }
 
     try {
       if (!fs.existsSync(cwd) || !fs.statSync(cwd).isDirectory()) {

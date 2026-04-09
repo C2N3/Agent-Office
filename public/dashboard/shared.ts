@@ -267,6 +267,8 @@ export type DashboardAPI = {
   onAgentRemoved?: (callback: (data: DashboardAgentRemoval) => void) => CleanupFn | void;
   togglePip?: () => Promise<DashboardWindowActionResult> | void;
   onPipStateChanged?: (callback: (isOpen: boolean) => void) => CleanupFn | void;
+  toggleOverlay?: () => Promise<DashboardWindowActionResult> | void;
+  onOverlayStateChanged?: (callback: (isOpen: boolean) => void) => CleanupFn | void;
   focusAgent?: (agentId: string) => Promise<DashboardRecoveryActionResult>;
   createRegisteredAgent?: (data: Partial<DashboardAgentRecord> & { name: string; projectPath: string }) => Promise<(DashboardActionResult & { agent?: DashboardAgentRecord }) | undefined>;
   inspectWorkspaceRepo?: (repoPath: string) => Promise<DashboardRepoInspectionResult | undefined>;
