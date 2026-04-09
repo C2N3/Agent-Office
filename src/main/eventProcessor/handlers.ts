@@ -247,7 +247,7 @@ export function createEventHandlers({
     }
 
     if (registryId && agentRegistry) {
-      agentRegistry.accumulateTokens?.(registryId, agent.tokenUsage as Record<string, unknown> | null | undefined);
+      agentRegistry.accumulateTokens?.(registryId, agent.tokenUsage as AggregateTokenUsage | null | undefined);
       agentRegistry.unlinkSession?.(registryId);
       if (agentManager.transitionToOffline) {
         agentManager.transitionToOffline(agentKey);

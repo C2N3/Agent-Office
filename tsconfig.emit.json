@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "allowJs": false,
+    "checkJs": false,
+    "noEmit": false,
+    "declaration": false,
+    "sourceMap": false
+  },
+  "include": [
+    "src/main/eventProcessor/**/*.ts",
+    "src/main/eventProcessor/**/*.d.ts",
+    "src/dashboardServer/**/*.ts",
+    "src/dashboardServer/**/*.d.ts"
+  ]
+}

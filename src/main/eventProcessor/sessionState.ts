@@ -1,3 +1,5 @@
+import type { AggregateTokenUsage } from './tokenUsage.js';
+
 export type SessionContext = {
   cwd: string;
   meta: Record<string, unknown>;
@@ -22,7 +24,7 @@ export type AgentLike = {
   isRegistered?: boolean;
   sessionId?: string | null;
   state?: string | null;
-  tokenUsage?: Record<string, unknown> | null;
+  tokenUsage?: AggregateTokenUsage | null;
   role?: string | null;
   avatarIndex?: number | null;
   workspace?: unknown;
@@ -61,7 +63,7 @@ export type AgentRegistryLike = {
   linkSession?(registryId: string, sessionId: string, jsonlPath: string | null, updates?: Record<string, unknown>): void;
   getActiveAgents?(): AgentLike[];
   findByProjectPath?(projectPath: string): AgentLike | null | undefined;
-  accumulateTokens?(registryId: string, tokenUsage: Record<string, unknown> | null | undefined): void;
+  accumulateTokens?(registryId: string, tokenUsage: AggregateTokenUsage | null | undefined): void;
   unlinkSession?(registryId: string): void;
   updateSessionTranscriptPath?(registryId: string, sessionId: string, transcriptPath: string): void;
 };
