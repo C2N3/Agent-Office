@@ -23,13 +23,6 @@ export type AgentStatus =
   | 'help'
   | 'idle';
 
-export type DashboardTokenUsage = {
-  inputTokens?: number;
-  outputTokens?: number;
-  estimatedCost?: number;
-  contextPercent?: number | null;
-};
-
 export type DashboardWorkspace = {
   type?: string | null;
   repositoryPath?: string | null;
@@ -78,7 +71,7 @@ export type DashboardAgent = {
   resumeSessionId?: string | null;
   runtimeSessionId?: string | null;
   sessionId?: string | null;
-  tokenUsage?: DashboardTokenUsage | null;
+  tokenUsage?: any | null;
   metadata?: DashboardAgentMetadata | null;
   enabled?: boolean;
   type?: 'main' | 'subagent' | 'teammate' | string;
@@ -105,7 +98,7 @@ export type DashboardArchiveItem = {
     startedAt?: number | string | null;
     endedAt?: number | string | null;
   }>;
-  cumulativeTokens?: DashboardTokenUsage | null;
+  cumulativeTokens?: any | null;
 };
 
 export type DashboardDayStats = {
@@ -114,7 +107,7 @@ export type DashboardDayStats = {
   outputTokens?: number;
   estimatedCost?: number;
   toolUses?: number;
-  byModel?: Record<string, DashboardTokenUsage>;
+  byModel?: Record<string, any>;
 };
 
 export type DashboardHistoryResponse = {
@@ -176,7 +169,7 @@ export type DashboardAgentRecord = {
   currentSessionId?: string | null;
   enabled?: boolean;
   archived?: boolean;
-  cumulativeTokens?: DashboardTokenUsage | null;
+  cumulativeTokens?: any | null;
 };
 
 export type DashboardRepoInspection = {
@@ -410,8 +403,6 @@ export type DashboardState = {
     total: number;
     active: number;
     completed: number;
-    totalTokens: number;
-    totalCost: number;
     errorCount: number;
   };
   connected: boolean;
@@ -443,7 +434,7 @@ export type TermState = {
 export const state: DashboardState = {
   agents: new Map(),
   agentHistory: new Map(),
-  stats: { total: 0, active: 0, completed: 0, totalTokens: 0, totalCost: 0, errorCount: 0 },
+  stats: { total: 0, active: 0, completed: 0, errorCount: 0 },
   connected: false,
   currentView: localStorage.getItem('mc-view') || 'office',
   filters: {
@@ -478,8 +469,6 @@ export const DOM = {
   standbyMessage: getElementById('standbyMessage') as HTMLElement,
   kpiActiveAgents: getElementById('kpiActiveAgents') as HTMLElement,
   kpiTotalAgents: getElementById('kpiTotalAgents') as HTMLElement,
-  kpiTokens: getElementById('kpiTokens') as HTMLElement,
-  kpiCost: getElementById('kpiCost') as HTMLElement,
   kpiErrors: getElementById('kpiErrors') as HTMLElement,
   officeFilterBadge: getElementById('officeFilterBadge') as HTMLElement,
   agentListFilterBadge: getElementById('agentListFilterBadge') as HTMLElement,

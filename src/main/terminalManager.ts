@@ -15,6 +15,10 @@ class TerminalManager {
     this.terminalProfileService = terminalProfileService || null;
     /** @type {Map<string, { pty: import('node-pty').IPty, cols: number, rows: number }>} */
     this.terminals = new Map();
+    /** @type {Map<string, Array<(data: string) => void>>} */
+    this.outputTaps = new Map();
+    /** @type {Map<string, Array<(exitCode: number) => void>>} */
+    this.exitTaps = new Map();
     // Prevent duplicate policy-blocked notifications
     this._policyBlockedNotified = false;
   }
@@ -98,6 +102,14 @@ class TerminalManager {
             }
           }
         }
+
+        // Notify output taps (used by Orchestrator)
+        const taps = this.outputTaps.get(agentId);
+        if (taps) {
+          for (const tap of taps) {
+            try { tap(data); } catch {}
+          }
+        }
       });
 
       ptyProcess.onExit(({ exitCode }) => {
@@ -107,6 +119,16 @@ class TerminalManager {
         if (win && !win.isDestroyed()) {
           win.webContents.send('terminal:exit', agentId, exitCode);
         }
+
+        // Notify exit taps (used by Orchestrator)
+        const exitTapList = this.exitTaps.get(agentId);
+        if (exitTapList) {
+          for (const tap of exitTapList) {
+            try { tap(exitCode); } catch {}
+          }
+          this.exitTaps.delete(agentId);
+        }
+        this.outputTaps.delete(agentId);
       });
 
       this.debugLog(`[Terminal] Created: ${agentId.slice(0, 8)} cmd=${command} profile=${profile?.id || 'custom'} cwd=${cwd}`);
@@ -160,6 +182,42 @@ class TerminalManager {
 
   hasTerminal(agentId) {
     return this.terminals.has(agentId);
+  }
+
+  /**
+   * Register a callback to receive terminal output data.
+   * Returns a cleanup function to unregister.
+   */
+  tapOutput(agentId, callback) {
+    if (!this.outputTaps.has(agentId)) {
+      this.outputTaps.set(agentId, []);
+    }
+    this.outputTaps.get(agentId).push(callback);
+    return () => {
+      const taps = this.outputTaps.get(agentId);
+      if (taps) {
+        const idx = taps.indexOf(callback);
+        if (idx >= 0) taps.splice(idx, 1);
+      }
+    };
+  }
+
+  /**
+   * Register a callback to receive terminal exit events.
+   * Returns a cleanup function to unregister.
+   */
+  tapExit(agentId, callback) {
+    if (!this.exitTaps.has(agentId)) {
+      this.exitTaps.set(agentId, []);
+    }
+    this.exitTaps.get(agentId).push(callback);
+    return () => {
+      const taps = this.exitTaps.get(agentId);
+      if (taps) {
+        const idx = taps.indexOf(callback);
+        if (idx >= 0) taps.splice(idx, 1);
+      }
+    };
   }
 }
 

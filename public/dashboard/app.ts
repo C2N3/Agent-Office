@@ -32,6 +32,7 @@ import {
 import { initOffice } from '../office/index.js';
 import {
   setupAgentModal,
+  setupAssignTaskModal,
   setupAvatarPicker,
   setupConversationViewer,
   setupNicknameEdit,
@@ -93,6 +94,16 @@ function initAgentPanelEvents() {
   agentPanel.addEventListener('click', (event) => {
     const target = event.target as HTMLElement | null;
     if (!target) return;
+
+    const assignBtn = target.closest('.agent-assign-task-btn') as HTMLButtonElement | null;
+    if (assignBtn?.dataset.agentId) {
+      event.stopPropagation();
+      const agent = state.agents.get(assignBtn.dataset.agentId);
+      if (agent) {
+        (globalThis as any).openAssignTaskModal?.(agent);
+      }
+      return;
+    }
 
     const historyBtn = target.closest('.agent-history-btn') as HTMLButtonElement | null;
     if (historyBtn?.dataset.historyId) {
@@ -238,6 +249,7 @@ function initApp() {
   initArchiveEvents();
   setupNicknameEdit();
   setupAgentModal(openTerminalForAgent);
+  setupAssignTaskModal();
   setupAvatarPicker(updateAgentUI);
   setupConversationViewer(resumeRegisteredSession);
 

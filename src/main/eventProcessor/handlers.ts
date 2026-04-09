@@ -1,5 +1,4 @@
 import * as path from 'node:path';
-import { computeTokenUsage } from './tokenUsage.js';
 import type {
   AgentLike,
   AgentManagerLike,
@@ -7,7 +6,6 @@ import type {
   SessionPidsMap,
   SessionStateOptions,
 } from './sessionState.js';
-import type { AggregateTokenUsage, NumericTokenUsage } from './tokenUsage.js';
 import type { PendingSessionStart } from './sessionState.js';
 
 type SessionState = ReturnType<typeof import('./sessionState.js').createSessionState>;
@@ -38,7 +36,7 @@ type EventLike = {
   text?: string;
   toolName?: string | null;
   toolInput?: { command?: string } | null;
-  tokenUsage?: NumericTokenUsage | null;
+  tokenUsage?: any;
   lastAssistantMessage?: string;
   state?: string;
   suppressIfFirst?: boolean;
@@ -63,7 +61,7 @@ type UpdateAgentPayload = Partial<AgentLike> & {
   sessionId?: string | null;
   runtimeSessionId?: string | null;
   resumeSessionId?: string | null;
-  tokenUsage?: Partial<AggregateTokenUsage> | null;
+  tokenUsage?: any;
 };
 
 export function createEventHandlers({
@@ -249,7 +247,6 @@ export function createEventHandlers({
     }
 
     if (registryId && agentRegistry) {
-      agentRegistry.accumulateTokens?.(registryId, agent.tokenUsage as AggregateTokenUsage | null | undefined);
       agentRegistry.unlinkSession?.(registryId);
       if (agentManager.transitionToOffline) {
         agentManager.transitionToOffline(agentKey);
@@ -345,9 +342,6 @@ export function createEventHandlers({
               source: sessionSource,
               provider: sessionMeta.provider || existing.provider || null,
             };
-            if (sessionSource === 'compact') {
-              compactUpdate.tokenUsage = { ...(existing.tokenUsage || {}), contextPercent: 0 };
-            }
             agentManager.updateAgent(compactUpdate, updateSource);
             debugLog(`[${logPrefix}] SessionStart (${sessionSource}) -> updated existing agent ${sessionId.slice(0, 8)}`);
             break;
@@ -383,32 +377,18 @@ export function createEventHandlers({
         if (agentManager) {
           const agent = agentManager.getAgent(resolveAgentId(sessionId) || sessionId);
           if (agent) {
-            const updatedUsage = computeTokenUsage(agent as { model?: string | null; tokenUsage?: Partial<AggregateTokenUsage> | null }, event.tokenUsage);
             agentManager.updateAgent({
               ...agent,
               sessionId,
               state: 'Done',
               currentTool: null,
               lastMessage: event.lastAssistantMessage !== undefined ? event.lastAssistantMessage : agent.lastMessage,
-              ...(updatedUsage && { tokenUsage: updatedUsage }),
             }, updateSource);
           }
         }
         break;
       case 'usage.update':
-        if (agentManager) {
-          const agent = agentManager.getAgent(resolveAgentId(sessionId) || sessionId);
-          if (agent) {
-            const updatedUsage = computeTokenUsage(agent as { model?: string | null; tokenUsage?: Partial<AggregateTokenUsage> | null }, event.tokenUsage);
-            if (updatedUsage) {
-              agentManager.updateAgent({
-                ...agent,
-                sessionId,
-                tokenUsage: updatedUsage,
-              }, updateSource);
-            }
-          }
-        }
+        // Token tracking removed
         break;
       case 'message':
         if (agentManager && event.text !== undefined) {
@@ -437,13 +417,11 @@ export function createEventHandlers({
         if (agentManager && firstToolUseDone.has(sessionId)) {
           const agent = agentManager.getAgent(resolveAgentId(sessionId) || sessionId);
           if (agent) {
-            const updatedUsage = computeTokenUsage(agent as { model?: string | null; tokenUsage?: Partial<AggregateTokenUsage> | null }, event.tokenUsage);
             agentManager.updateAgent({
               ...agent,
               sessionId,
               state: 'Thinking',
               currentTool: null,
-              ...(updatedUsage && { tokenUsage: updatedUsage }),
             }, updateSource);
           }
         }

@@ -1,0 +1,556 @@
+// @ts-nocheck
+const EventEmitter = require('events');
+const crypto = require('crypto');
+const { canTransition, transitionTask, isTerminalStatus } = require('./taskStateMachine');
+const { createCLIAdapter } = require('./cliAdapter');
+const { OutputParser } = require('./outputParser');
+const { detectContextExhaustion } = require('./contextDetector');
+
+const TICK_INTERVAL_MS = 2000;
+const STDIN_DELAY_MS = 500;
+const MAX_CONCURRENT_TASKS = 5;
+
+class Orchestrator extends EventEmitter {
+  constructor(options) {
+    super();
+    this.taskStore = options.taskStore;
+    this.terminalManager = options.terminalManager;
+    this.workspaceManager = options.workspaceManager;
+    this.agentRegistry = options.agentRegistry;
+    this.agentManager = options.agentManager;
+    this.debugLog = options.debugLog || (() => {});
+    this.maxConcurrentTasks = options.maxConcurrentTasks || MAX_CONCURRENT_TASKS;
+
+    // Runtime maps
+    this.outputParsers = new Map();   // taskId -> OutputParser
+    this.cleanupFns = new Map();      // taskId -> [cleanup functions]
+    this.repoLocks = new Map();       // repoPath -> Promise
+
+    this.tickInterval = null;
+  }
+
+  // === Lifecycle ===
+
+  start() {
+    if (this.tickInterval) return;
+    this.tickInterval = setInterval(() => this.tick(), TICK_INTERVAL_MS);
+    this.debugLog('[Orchestrator] Started');
+  }
+
+  stop() {
+    if (this.tickInterval) {
+      clearInterval(this.tickInterval);
+      this.tickInterval = null;
+    }
+    // Clean up all output taps
+    for (const [taskId, fns] of this.cleanupFns) {
+      for (const fn of fns) {
+        try { fn(); } catch {}
+      }
+    }
+    this.cleanupFns.clear();
+    this.outputParsers.clear();
+    this.debugLog('[Orchestrator] Stopped');
+  }
+
+  // === Task Management API ===
+
+  submitTask(input) {
+    const task = this.taskStore.createTask(input);
+
+    // Wire parent-child relationship
+    if (task.parentTaskId) {
+      const parent = this.taskStore.getTask(task.parentTaskId);
+      if (parent && !parent.childTaskIds.includes(task.id)) {
+        this.taskStore.updateTask(task.parentTaskId, {
+          childTaskIds: [...parent.childTaskIds, task.id],
+        });
+      }
+    }
+
+    this.emit('task:created', task);
+    this.emit('task:updated', task);
+    this.debugLog(`[Orchestrator] Task submitted: ${task.id} "${task.title}"`);
+    return task;
+  }
+
+  cancelTask(taskId) {
+    const task = this.taskStore.getTask(taskId);
+    if (!task) throw new Error(`Task not found: ${taskId}`);
+
+    if (task.status === 'running' || task.status === 'provisioning') {
+      this._cleanupTaskRuntime(taskId);
+    }
+
+    const updated = transitionTask(task, 'cancelled');
+    this.taskStore.updateTask(taskId, updated);
+    this.emit('task:cancelled', updated);
+    this.emit('task:updated', updated);
+    return updated;
+  }
+
+  retryTask(taskId) {
+    const task = this.taskStore.getTask(taskId);
+    if (!task) throw new Error(`Task not found: ${taskId}`);
+
+    const updated = transitionTask(task, 'ready', {
+      attempt: 0,
+      currentProvider: null,
+      exitCode: null,
+      errorMessage: null,
+      lastOutput: null,
+      completedAt: null,
+    });
+    this.taskStore.updateTask(taskId, updated);
+    this.emit('task:updated', updated);
+    return updated;
+  }
+
+  pauseTask(taskId) {
+    const task = this.taskStore.getTask(taskId);
+    if (!task) throw new Error(`Task not found: ${taskId}`);
+
+    const updated = transitionTask(task, 'paused');
+    this.taskStore.updateTask(taskId, updated);
+    this.emit('task:updated', updated);
+    return updated;
+  }
+
+  resumeTask(taskId) {
+    const task = this.taskStore.getTask(taskId);
+    if (!task) throw new Error(`Task not found: ${taskId}`);
+
+    const updated = transitionTask(task, 'running');
+    this.taskStore.updateTask(taskId, updated);
+    this.emit('task:updated', updated);
+    return updated;
+  }
+
+  getTask(taskId) {
+    return this.taskStore.getTask(taskId);
+  }
+
+  getAllTasks() {
+    return this.taskStore.getAllTasks();
+  }
+
+  getTasksByStatus(status) {
+    return this.taskStore.getTasksByStatus(status);
+  }
+
+  deleteTask(taskId) {
+    const task = this.taskStore.getTask(taskId);
+    if (!task) throw new Error(`Task not found: ${taskId}`);
+    if (task.status === 'running' || task.status === 'provisioning') {
+      this._cleanupTaskRuntime(taskId);
+    }
+    return this.taskStore.deleteTask(taskId);
+  }
+
+  // === Internal Tick Loop ===
+
+  tick() {
+    try {
+      this._resolveDependencies();
+      this._dispatchReadyTasks();
+    } catch (e) {
+      this.debugLog(`[Orchestrator] Tick error: ${e.message}`);
+    }
+  }
+
+  _resolveDependencies() {
+    const pending = this.taskStore.getPendingTasks();
+    for (const task of pending) {
+      if (!task.dependsOn || task.dependsOn.length === 0) {
+        this.taskStore.updateTask(task.id, { status: 'ready', updatedAt: Date.now() });
+        this.emit('task:ready', this.taskStore.getTask(task.id));
+        continue;
+      }
+
+      const allDepsSucceeded = task.dependsOn.every((depId) => {
+        const dep = this.taskStore.getTask(depId);
+        return dep && dep.status === 'succeeded';
+      });
+
+      if (allDepsSucceeded) {
+        this.taskStore.updateTask(task.id, { status: 'ready', updatedAt: Date.now() });
+        this.emit('task:ready', this.taskStore.getTask(task.id));
+      }
+    }
+  }
+
+  _dispatchReadyTasks() {
+    const runningCount = this.taskStore.getRunningTasks().length
+      + this.taskStore.getTasksByStatus('provisioning').length;
+    const available = this.maxConcurrentTasks - runningCount;
+    if (available <= 0) return;
+
+    const ready = this.taskStore.getReadyTasks().slice(0, available);
+    for (const task of ready) {
+      this._dispatchTask(task).catch((e) => {
+        this.debugLog(`[Orchestrator] Dispatch error for ${task.id}: ${e.message}`);
+        this.taskStore.updateTask(task.id, {
+          status: 'failed',
+          errorMessage: e.message,
+          completedAt: Date.now(),
+          updatedAt: Date.now(),
+        });
+        this.emit('task:failed', this.taskStore.getTask(task.id));
+        this.emit('task:updated', this.taskStore.getTask(task.id));
+      });
+    }
+  }
+
+  async _dispatchTask(task) {
+    // Transition to provisioning
+    this.taskStore.updateTask(task.id, { status: 'provisioning', updatedAt: Date.now() });
+    this.emit('task:updated', this.taskStore.getTask(task.id));
+
+    // Determine CLI adapter
+    const provider = task.currentProvider || task.provider;
+    const adapter = createCLIAdapter(provider);
+
+    // Create worktree (if not already created from previous attempt)
+    let workspacePath = task.workspacePath;
+    if (!workspacePath && task.repositoryPath) {
+      const branchName = task.branchName || `task/${task.id.slice(0, 8)}`;
+      await this._withRepoLock(task.repositoryPath, async () => {
+        const result = this.workspaceManager.createWorkspace({
+          name: task.title.replace(/[^a-z0-9]+/gi, '-').toLowerCase().slice(0, 40),
+          repoPath: task.repositoryPath,
+          branchName,
+          baseBranch: task.baseBranch || undefined,
+          workspaceParent: task.workspaceParent || undefined,
+          copyPaths: task.copyPaths || [],
+          symlinkPaths: task.symlinkPaths || [],
+          bootstrapCommand: task.bootstrapCommand || '',
+        });
+        workspacePath = result.workspacePath;
+
+        // If dependent on parent, squash-merge parent branch
+        if (task.parentTaskId) {
+          const parent = this.taskStore.getTask(task.parentTaskId);
+          if (parent && parent.workspacePath) {
+            try {
+              const parentBranch = parent.branchName || `task/${parent.id.slice(0, 8)}`;
+              this.workspaceManager.runGit(workspacePath, ['merge', '--squash', parentBranch]);
+              this.workspaceManager.runGit(workspacePath, ['commit', '-m', `Inherit changes from parent task: ${parent.title}`, '--allow-empty']);
+            } catch (e) {
+              this.debugLog(`[Orchestrator] Parent merge warning: ${e.message}`);
+            }
+          }
+        }
+      });
+    }
+
+    this.taskStore.updateTask(task.id, {
+      workspacePath,
+      currentProvider: provider,
+    });
+
+    // Create agent in registry
+    let agentRegistryId = task.agentRegistryId;
+    if (!agentRegistryId) {
+      const agent = this.agentRegistry.createAgent(
+        task.title,
+        'autonomous',
+        workspacePath || task.repositoryPath,
+        undefined,
+        provider,
+        task.model || null,
+        null
+      );
+      agentRegistryId = agent.id;
+      this.taskStore.updateTask(task.id, { agentRegistryId });
+    }
+
+    // Update agent state — preserve existing name if agent was pre-registered
+    const existingAgent = this.agentRegistry.getAgent(agentRegistryId);
+    this.agentManager.updateAgent({
+      registryId: agentRegistryId,
+      displayName: existingAgent?.name || task.title,
+      role: existingAgent?.role || 'autonomous',
+      projectPath: workspacePath || task.repositoryPath,
+      provider,
+      isRegistered: true,
+      state: 'Coding',
+    }, 'orchestrator');
+
+    // Build CLI spawn config
+    const spawnConfig = adapter.buildSpawnConfig({
+      cwd: workspacePath || task.repositoryPath,
+      prompt: task.prompt,
+      model: task.model || null,
+      maxTurns: task.maxTurns,
+    });
+
+    // Spawn terminal
+    const terminalId = agentRegistryId;
+    if (this.terminalManager.hasTerminal(terminalId)) {
+      this.terminalManager.destroyTerminal(terminalId);
+    }
+
+    const termResult = this.terminalManager.createTerminal(terminalId, {
+      cwd: workspacePath || task.repositoryPath,
+      command: spawnConfig.command,
+      args: spawnConfig.args,
+    });
+
+    if (!termResult.success) {
+      throw new Error(`Terminal spawn failed: ${termResult.error}`);
+    }
+
+    this.taskStore.updateTask(task.id, { terminalId });
+
+    // Set up output parser and taps
+    const outputParser = new OutputParser(adapter);
+    this.outputParsers.set(task.id, outputParser);
+
+    const cleanups = [];
+
+    const untapOutput = this.terminalManager.tapOutput(terminalId, (data) => {
+      this._handleTaskOutput(task.id, data, outputParser);
+    });
+    cleanups.push(untapOutput);
+
+    const untapExit = this.terminalManager.tapExit(terminalId, (exitCode) => {
+      this._handleTaskExit(task.id, exitCode);
+    });
+    cleanups.push(untapExit);
+
+    this.cleanupFns.set(task.id, cleanups);
+
+    // If stdin delivery, write prompt after short delay
+    if (spawnConfig.promptDelivery === 'stdin' && adapter.buildStdinPrompt) {
+      setTimeout(() => {
+        const stdinData = adapter.buildStdinPrompt(task.prompt);
+        this.terminalManager.writeToTerminal(terminalId, stdinData);
+      }, STDIN_DELAY_MS);
+    }
+
+    // Transition to running
+    this.taskStore.updateTask(task.id, {
+      status: 'running',
+      startedAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+    this.emit('task:running', this.taskStore.getTask(task.id));
+    this.emit('task:updated', this.taskStore.getTask(task.id));
+    this.debugLog(`[Orchestrator] Task running: ${task.id} provider=${provider}`);
+  }
+
+  _handleTaskOutput(taskId, data, outputParser) {
+    const task = this.taskStore.getTask(taskId);
+    if (!task || task.status !== 'running') return;
+
+    const events = outputParser.feed(data);
+
+    // Update lastOutput
+    this.taskStore.updateTask(taskId, {
+      lastOutput: outputParser.getRecentOutput(500),
+    });
+
+    // Check for context exhaustion
+    if (outputParser.isContextExhausted()) {
+      this._handleContextExhaustion(taskId);
+      return;
+    }
+
+    // Process parsed events
+    for (const evt of events) {
+      if (evt.type === 'context_exhaustion') {
+        this._handleContextExhaustion(taskId);
+        return;
+      }
+    }
+  }
+
+  _handleTaskExit(taskId, exitCode) {
+    const task = this.taskStore.getTask(taskId);
+    if (!task || isTerminalStatus(task.status)) return;
+
+    this._cleanupTaskRuntime(taskId);
+    this.taskStore.updateTask(taskId, { exitCode });
+
+    if (exitCode === 0) {
+      this._handleTaskSuccess(taskId);
+    } else {
+      // Check if context exhaustion was the cause
+      const parser = this.outputParsers.get(taskId);
+      if (parser && parser.isContextExhausted()) {
+        this._handleContextExhaustion(taskId);
+      } else {
+        this._handleTaskFailure(taskId, `CLI exited with code ${exitCode}`);
+      }
+    }
+  }
+
+  _handleTaskSuccess(taskId) {
+    const task = this.taskStore.getTask(taskId);
+    if (!task) return;
+
+    this.taskStore.updateTask(taskId, {
+      status: 'succeeded',
+      completedAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    // Auto-merge if configured
+    if (task.autoMergeOnSuccess && task.agentRegistryId) {
+      try {
+        const regAgent = this.agentRegistry.getAgent(task.agentRegistryId);
+        if (regAgent && regAgent.workspace) {
+          this.workspaceManager.mergeWorkspace(regAgent.workspace);
+          this.debugLog(`[Orchestrator] Auto-merged task ${taskId}`);
+        }
+      } catch (e) {
+        this.debugLog(`[Orchestrator] Auto-merge failed for ${taskId}: ${e.message}`);
+      }
+    }
+
+    // Transition agent to Offline
+    if (task.agentRegistryId) {
+      this.agentManager.updateAgent({
+        registryId: task.agentRegistryId,
+        state: 'Offline',
+      }, 'orchestrator');
+    }
+
+    // Auto-chain: check dependent tasks
+    const allTasks = this.taskStore.getAllTasks();
+    for (const candidate of allTasks) {
+      if (candidate.status !== 'pending') continue;
+      if (!candidate.dependsOn || !candidate.dependsOn.includes(taskId)) continue;
+
+      const allDepsSucceeded = candidate.dependsOn.every((depId) => {
+        const dep = this.taskStore.getTask(depId);
+        return dep && dep.status === 'succeeded';
+      });
+
+      if (allDepsSucceeded) {
+        this.taskStore.updateTask(candidate.id, { status: 'ready', updatedAt: Date.now() });
+        this.emit('task:ready', this.taskStore.getTask(candidate.id));
+      }
+    }
+
+    const updated = this.taskStore.getTask(taskId);
+    this.emit('task:succeeded', updated);
+    this.emit('task:updated', updated);
+    this.debugLog(`[Orchestrator] Task succeeded: ${taskId}`);
+  }
+
+  _handleTaskFailure(taskId, errorMessage) {
+    const task = this.taskStore.getTask(taskId);
+    if (!task) return;
+
+    // Check if we can retry with fallback
+    if (task.attempt < task.maxAttempts - 1 && task.fallbackProviders.length > 0) {
+      this._handleRetry(taskId, errorMessage);
+      return;
+    }
+
+    this.taskStore.updateTask(taskId, {
+      status: 'failed',
+      errorMessage,
+      completedAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    if (task.agentRegistryId) {
+      this.agentManager.updateAgent({
+        registryId: task.agentRegistryId,
+        state: 'Offline',
+      }, 'orchestrator');
+    }
+
+    const updated = this.taskStore.getTask(taskId);
+    this.emit('task:failed', updated);
+    this.emit('task:updated', updated);
+    this.debugLog(`[Orchestrator] Task failed: ${taskId} — ${errorMessage}`);
+  }
+
+  _handleContextExhaustion(taskId) {
+    const task = this.taskStore.getTask(taskId);
+    if (!task || task.status !== 'running') return;
+
+    this._cleanupTaskRuntime(taskId);
+
+    const nextAttempt = task.attempt + 1;
+    const nextProvider = task.fallbackProviders[task.attempt] || null;
+
+    if (!nextProvider || nextAttempt >= task.maxAttempts) {
+      this._handleTaskFailure(taskId, 'Context exhausted, no fallback available');
+      return;
+    }
+
+    this.taskStore.updateTask(taskId, {
+      status: 'retrying',
+      attempt: nextAttempt,
+      currentProvider: nextProvider,
+      updatedAt: Date.now(),
+    });
+
+    const updated = this.taskStore.getTask(taskId);
+    this.emit('task:retrying', updated);
+    this.emit('task:updated', updated);
+    this.debugLog(`[Orchestrator] Context exhausted for ${taskId}, retrying with ${nextProvider}`);
+
+    // Re-dispatch with new provider (reuse worktree)
+    this.taskStore.updateTask(taskId, { status: 'ready', updatedAt: Date.now() });
+  }
+
+  _handleRetry(taskId, errorMessage) {
+    const task = this.taskStore.getTask(taskId);
+    if (!task) return;
+
+    const nextAttempt = task.attempt + 1;
+    const nextProvider = task.fallbackProviders[task.attempt] || task.provider;
+
+    this.taskStore.updateTask(taskId, {
+      status: 'retrying',
+      attempt: nextAttempt,
+      currentProvider: nextProvider,
+      errorMessage,
+      updatedAt: Date.now(),
+    });
+
+    const updated = this.taskStore.getTask(taskId);
+    this.emit('task:retrying', updated);
+    this.emit('task:updated', updated);
+    this.debugLog(`[Orchestrator] Retrying task ${taskId} (attempt ${nextAttempt}) with ${nextProvider}`);
+
+    // Queue for re-dispatch
+    this.taskStore.updateTask(taskId, { status: 'ready', updatedAt: Date.now() });
+  }
+
+  // === Cleanup ===
+
+  _cleanupTaskRuntime(taskId) {
+    // Remove output taps
+    const fns = this.cleanupFns.get(taskId);
+    if (fns) {
+      for (const fn of fns) {
+        try { fn(); } catch {}
+      }
+      this.cleanupFns.delete(taskId);
+    }
+    this.outputParsers.delete(taskId);
+
+    // Kill terminal
+    const task = this.taskStore.getTask(taskId);
+    if (task && task.terminalId && this.terminalManager.hasTerminal(task.terminalId)) {
+      this.terminalManager.destroyTerminal(task.terminalId);
+    }
+  }
+
+  // === Repo Lock ===
+
+  async _withRepoLock(repoPath, fn) {
+    const existing = this.repoLocks.get(repoPath) || Promise.resolve();
+    const next = existing.then(fn, fn);
+    this.repoLocks.set(repoPath, next);
+    await next;
+  }
+}
+
+module.exports = { Orchestrator };

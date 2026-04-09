@@ -11,7 +11,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { getCodexSessionRoots } = require('./main/codexPaths');
-const { roundCost, calculateTokenCost, normalizeModelName } = require('./pricing');
+// pricing module removed
 
 function resolveTranscriptPath(filePath) {
     if (!filePath) return null;
@@ -68,30 +68,7 @@ function getEntryTimestamp(entry) {
 }
 
 function normalizeTokenUsage(rawUsage) {
-    if (!rawUsage) return null;
-
-    const input = rawUsage.input_tokens
-        ?? rawUsage.inputTokens
-        ?? rawUsage.input
-        ?? 0;
-    const output = rawUsage.output_tokens
-        ?? rawUsage.outputTokens
-        ?? rawUsage.output
-        ?? 0;
-    const cacheRead = rawUsage.cache_read_input_tokens
-        ?? rawUsage.cached_input_tokens
-        ?? rawUsage.cacheRead
-        ?? 0;
-    const cacheCreate = rawUsage.cache_creation_input_tokens
-        ?? rawUsage.cacheCreate
-        ?? 0;
-
-    return {
-        input,
-        output,
-        cacheRead,
-        cacheCreate,
-    };
+    return null;
 }
 
 function makeEmptyStats() {
@@ -132,12 +109,6 @@ function detectSessionFormat(entries, filePath) {
 }
 
 function finalizeCost(stats) {
-    stats.estimatedCost = roundCost(calculateTokenCost({
-        input: stats.inputTokens - stats.cacheReadTokens - stats.cacheCreationTokens,
-        cacheRead: stats.cacheReadTokens,
-        cacheCreate: stats.cacheCreationTokens,
-        output: stats.outputTokens,
-    }, normalizeModelName(stats.model)));
     return stats;
 }
 

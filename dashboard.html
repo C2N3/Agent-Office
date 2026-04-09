@@ -43,14 +43,6 @@
           </svg>
           Activity Mesh
         </button>
-        <button class="nav-item" data-view="usage">
-          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="18" y1="20" x2="18" y2="10"></line>
-            <line x1="12" y1="20" x2="12" y2="4"></line>
-            <line x1="6" y1="20" x2="6" y2="14"></line>
-          </svg>
-          Token Usage
-        </button>
         <button class="nav-item" data-view="archive">
           <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M3 7h18"></path>
@@ -98,14 +90,6 @@
               <div class="kpi-value blue" id="kpiActiveAgents">0 <span
                   style="font-size:0.8rem;color:var(--color-text-dark)">/ <span id="kpiTotalAgents">0</span></span>
               </div>
-            </div>
-            <div class="kpi-card panel">
-              <div class="kpi-title">Token Burn (Session)</div>
-              <div class="kpi-value purple" id="kpiTokens">0</div>
-            </div>
-            <div class="kpi-card panel">
-              <div class="kpi-title">Est. Cost Lifecycle</div>
-              <div class="kpi-value" id="kpiCost">$0.00</div>
             </div>
             <div class="kpi-card panel">
               <div class="kpi-title">Errors (24h)</div>
@@ -235,47 +219,7 @@
           </div>
         </div>
 
-        <!-- =================== USAGE VIEW =================== -->
-        <div id="usageView" class="view-section">
-          <div class="usage-controls">
-            <button class="usage-btn active" data-umode="weeks">Last 12 Weeks</button>
-            <button class="usage-btn" data-umode="months">Last 12 Months</button>
-          </div>
-
-          <div class="kpi-grid">
-            <div class="panel kpi-card">
-              <div class="kpi-title">Total Indexed Tokens</div>
-              <div class="kpi-value blue" id="uTotalTokens">0</div>
-            </div>
-            <div class="panel kpi-card">
-              <div class="kpi-title">Total Lifetime Spend</div>
-              <div class="kpi-value orange" id="uTotalCost">$0.00</div>
-            </div>
-            <div class="panel kpi-card">
-              <div class="kpi-title">Total Tool Executions</div>
-              <div class="kpi-value" id="uTotalTools">0</div>
-            </div>
-            <div class="panel kpi-card">
-              <div class="kpi-title">Total Connected Sessions</div>
-              <div class="kpi-value purple" id="uTotalSessions">0</div>
-            </div>
-          </div>
-
-          <div class="panel" style="margin-bottom:24px;">
-            <div class="panel-header">Token Volume</div>
-            <div class="panel-body" id="chartTokensRoot" style="padding-top:0;"></div>
-          </div>
-
-          <div class="panel">
-            <div class="panel-header">Cost Impact ($)</div>
-            <div class="panel-body" id="chartCostRoot" style="padding-top:0;"></div>
-          </div>
-
-          <div class="panel model-breakdown" id="modelBreakdownRoot" style="display:none;">
-            <div class="panel-header">Model Breakdown</div>
-            <div class="panel-body" id="modelBreakdownBody"></div>
-          </div>
-        </div>
+        <!-- Usage View removed -->
 
         <div id="archiveView" class="view-section">
           <div class="panel archive-panel">
@@ -309,6 +253,7 @@
           <div class="provider-select" id="createModeSelect">
             <button type="button" class="provider-btn active" data-mode="existing">Existing Path</button>
             <button type="button" class="provider-btn" data-mode="worktree">Git Worktree</button>
+            <button type="button" class="provider-btn" data-mode="autonomous">Autonomous</button>
           </div>
         </label>
         <label class="modal-label">Name<input type="text" id="agentNameInput" class="modal-input" placeholder="e.g. Stock Monitor Agent" required></label>
@@ -350,16 +295,63 @@
             <span>Open embedded terminal after create</span>
           </label>
         </div>
+        <div id="autonomousAgentFields" style="display:none;">
+          <label class="modal-label">Repository Path<input type="text" id="autoRepoPathInput" class="modal-input" placeholder="e.g. D:\projects\stock-monitor"></label>
+          <span class="modal-help">Tasks can be assigned later by clicking the agent card.</span>
+        </div>
         <label class="modal-label">Provider
           <div class="provider-select" id="providerSelect">
             <button type="button" class="provider-btn active" data-provider="claude">Claude</button>
             <button type="button" class="provider-btn" data-provider="codex">Codex</button>
+            <button type="button" class="provider-btn" data-provider="gemini">Gemini</button>
           </div>
         </label>
         <div class="modal-error" id="createAgentError"></div>
         <div class="modal-actions">
           <button type="button" class="btn-secondary" id="cancelCreateBtn">Cancel</button>
           <button type="submit" class="btn-primary">Create</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Assign Task Modal -->
+  <div class="modal-overlay" id="assignTaskModal" style="display:none;">
+    <div class="modal-content create-agent-modal">
+      <div class="modal-header">Assign Task — <span id="assignTaskAgentName"></span></div>
+      <form id="assignTaskForm">
+        <label class="modal-label">Task Prompt
+          <textarea id="taskPromptInput" class="modal-input modal-textarea" rows="4" placeholder="What should this agent do?" required></textarea>
+        </label>
+        <div class="modal-input-row">
+          <label class="modal-label">Provider
+            <input type="text" id="taskProviderDisplay" class="modal-input" readonly>
+          </label>
+          <label class="modal-label">Model
+            <select id="taskModelInput" class="modal-input">
+              <option value="">Default</option>
+            </select>
+          </label>
+        </div>
+        <div class="modal-input-row">
+          <label class="modal-label">Max Turns<input type="number" id="taskMaxTurnsInput" class="modal-input" value="30" min="1" max="200"></label>
+          <label class="modal-label">Priority
+            <select id="taskPriorityInput" class="modal-input">
+              <option value="low">Low</option>
+              <option value="normal" selected>Normal</option>
+              <option value="high">High</option>
+              <option value="critical">Critical</option>
+            </select>
+          </label>
+        </div>
+        <label class="modal-checkbox">
+          <input type="checkbox" id="taskAutoMergeInput">
+          <span>Auto-merge branch on success</span>
+        </label>
+        <div class="modal-error" id="assignTaskError"></div>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" id="cancelAssignTaskBtn">Cancel</button>
+          <button type="submit" class="btn-primary">Assign Task</button>
         </div>
       </form>
     </div>

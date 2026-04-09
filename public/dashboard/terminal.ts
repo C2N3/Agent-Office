@@ -230,7 +230,7 @@ export async function openTerminalForAgent(agentId, openOptions = {}) {
   const dashboardAPI = getDashboardAPI();
   const isActive = ['working', 'thinking', 'waiting', 'help'].includes(agentStatus);
   let focusResult = null;
-  if (isActive) {
+  if (isActive && !openOptions.forceTerminalTab) {
     if (!dashboardAPI?.focusAgent) return;
     focusResult = await dashboardAPI.focusAgent(agentId);
     if (focusResult?.success) return;

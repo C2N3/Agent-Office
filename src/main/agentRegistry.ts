@@ -200,7 +200,6 @@ class AgentRegistry {
       lastActiveAt: null,
       archived: false,
       archivedAt: null,
-      cumulativeTokens: { inputTokens: 0, outputTokens: 0, estimatedCost: 0, sessionCount: 0 },
       currentSessionId: null,
       currentRuntimeSessionId: null,
       currentResumeSessionId: null,
@@ -478,17 +477,6 @@ class AgentRegistry {
   getArchivedWorkspaceAgents() {
     return this.getArchivedAgents()
       .filter((agent) => agent.workspace);
-  }
-
-  accumulateTokens(registryId, sessionTokenUsage) {
-    const agent = this.agents.get(registryId);
-    if (!agent || !sessionTokenUsage) return;
-    const cum = agent.cumulativeTokens;
-    cum.inputTokens += sessionTokenUsage.inputTokens || 0;
-    cum.outputTokens += sessionTokenUsage.outputTokens || 0;
-    cum.estimatedCost += sessionTokenUsage.estimatedCost || 0;
-    cum.sessionCount += 1;
-    this._save();
   }
 
   setEnabled(registryId, enabled) {

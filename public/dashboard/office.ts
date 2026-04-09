@@ -71,11 +71,6 @@ function showOfficePopover(
   const project = (agent && agent.metadata && agent.metadata.projectSlug) || character.metadata?.project || '-';
   const tool = (agent && agent.currentTool) || character.metadata?.tool || '-';
   const model = (agent && agent.model) || '-';
-  const inputTokens = (agent && agent.tokenUsage?.inputTokens) || 0;
-  const outputTokens = (agent && agent.tokenUsage?.outputTokens) || 0;
-  const cost = (agent && agent.tokenUsage?.estimatedCost) || 0;
-  const contextPercent = agent && agent.tokenUsage?.contextPercent;
-  const contextText = contextPercent != null ? `~${contextPercent}%` : '-';
   const workspaceMeta = agent?.metadata?.workspace || null;
   const branch = escapeText(workspaceMeta?.branch || '-');
   const repository = escapeText(workspaceMeta?.repositoryName || '-');
@@ -90,9 +85,6 @@ function showOfficePopover(
     <div class="pop-row"><span>Branch</span><span class="pop-val">${branch}</span></div>
     <div class="pop-row"><span>Tool</span><span class="pop-val">${tool}</span></div>
     <div class="pop-row"><span>Model</span><span class="pop-val">${model}</span></div>
-    <div class="pop-row"><span>Tokens</span><span class="pop-val">${formatNum(inputTokens + outputTokens)}</span></div>
-    <div class="pop-row"><span>Cost</span><span class="pop-val">$${cost.toFixed(4)}</span></div>
-    <div class="pop-row"><span>Context</span><span class="pop-val">${contextText}</span></div>
     <button class="pop-terminal-btn" data-action="rename">Rename</button>
     <button class="pop-terminal-btn" data-action="open-terminal">Open Terminal</button>
   `;

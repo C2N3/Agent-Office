@@ -60,6 +60,19 @@ export function attachAgentManagerBroadcasts(manager: any): void {
   });
 }
 
+export function attachOrchestratorBroadcasts(orchestrator: any): void {
+  if (!orchestrator) return;
+
+  const events = ['task:created', 'task:updated', 'task:running', 'task:succeeded', 'task:failed', 'task:retrying', 'task:cancelled'];
+  for (const event of events) {
+    const sseType = event.replace(':', '.');
+    orchestrator.on(event, (task: any) => {
+      broadcastSSE(sseType, task);
+      broadcastUpdate(event, task);
+    });
+  }
+}
+
 export function getAgentManager(): any {
   return getRefs().agentManager;
 }

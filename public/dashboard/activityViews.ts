@@ -50,53 +50,8 @@ function getModelDisplayName(modelName: string | null | undefined): string {
   return modelName;
 }
 
-function renderModelBreakdown(days: Record<string, DashboardDayStats>): void {
-  const root = document.getElementById('modelBreakdownRoot');
-  const body = document.getElementById('modelBreakdownBody');
-  if (!root || !body) return;
-
-  const totals: Record<string, { inputTokens: number; outputTokens: number; estimatedCost: number }> = {};
-  for (const dayStats of Object.values(days)) {
-    if (!dayStats.byModel) continue;
-    for (const [model, modelStats] of Object.entries(dayStats.byModel)) {
-      if (!totals[model]) {
-        totals[model] = { inputTokens: 0, outputTokens: 0, estimatedCost: 0 };
-      }
-      totals[model].inputTokens += modelStats.inputTokens || 0;
-      totals[model].outputTokens += modelStats.outputTokens || 0;
-      totals[model].estimatedCost += modelStats.estimatedCost || 0;
-    }
-  }
-
-  const models = Object.keys(totals);
-  if (models.length === 0) {
-    root.style.display = 'none';
-    return;
-  }
-
-  root.style.display = 'block';
-  const totalCost = models.reduce((sum, model) => sum + totals[model].estimatedCost, 0);
-  const barSegments = models.map((model) => {
-    return `<div class="model-seg" style="flex-grow:${Math.max(totals[model].estimatedCost, 0.001)};background:${getModelColor(model)}" title="${getModelDisplayName(model)}: $${totals[model].estimatedCost.toFixed(2)}"></div>`;
-  }).join('');
-  const legendItems = models
-    .sort((left, right) => totals[right].estimatedCost - totals[left].estimatedCost)
-    .map((model) => {
-      const tokenCount = formatNum(totals[model].inputTokens + totals[model].outputTokens);
-      return `<div class="model-legend-item">
-        <div class="model-legend-dot" style="background:${getModelColor(model)}"></div>
-        <span>${getModelDisplayName(model)}</span>
-        <span class="model-legend-val">${tokenCount} tok</span>
-        <span class="model-legend-val">$${totals[model].estimatedCost.toFixed(2)}</span>
-      </div>`;
-    }).join('');
-
-  body.innerHTML = `
-    <div class="model-bar-container">${barSegments}</div>
-    <div class="model-legend">${legendItems}</div>
-  `;
-
-  void totalCost;
+function renderModelBreakdown(_days: Record<string, DashboardDayStats>): void {
+  // Token/cost breakdown removed
 }
 
 async function fetchHistory(): Promise<void> {
@@ -114,9 +69,7 @@ function showTooltip(element: HTMLElement, dateString: string, data?: DashboardD
   const bounds = element.getBoundingClientRect();
   tooltip.innerHTML = `<div class="tt-head">${dateString}</div>`;
   if (data) {
-    tooltip.innerHTML += `<div class="tt-row"><span>Sessions</span><span class="tt-val">${data.sessions}</span></div>
-                     <div class="tt-row"><span>Tokens</span><span class="tt-val">${formatNum((data.inputTokens || 0) + (data.outputTokens || 0))}</span></div>
-                     <div class="tt-row"><span>Cost</span><span class="tt-val">$${(data.estimatedCost || 0).toFixed(2)}</span></div>`;
+    tooltip.innerHTML += `<div class="tt-row"><span>Sessions</span><span class="tt-val">${data.sessions}</span></div>`;
   } else {
     tooltip.innerHTML += '<div style="opacity:0.6;font-style:italic">No activity detected.</div>';
   }
@@ -270,40 +223,7 @@ export async function renderHeatmapView(): Promise<void> {
 }
 
 export async function renderUsageView(): Promise<void> {
-  await fetchHistory();
-  const days = historyState.data?.days || {};
-  const mode = historyState.mode;
-
-  let totalTokens = 0;
-  let totalCost = 0;
-  let totalTools = 0;
-  let totalSessions = 0;
-  Object.values(days).forEach((day) => {
-    totalTokens += (day.inputTokens || 0) + (day.outputTokens || 0);
-    totalCost += day.estimatedCost || 0;
-    totalTools += day.toolUses || 0;
-    totalSessions += day.sessions || 0;
-  });
-
-  const totalTokensEl = document.getElementById('uTotalTokens');
-  const totalCostEl = document.getElementById('uTotalCost');
-  const totalToolsEl = document.getElementById('uTotalTools');
-  const totalSessionsEl = document.getElementById('uTotalSessions');
-  if (!totalTokensEl || !totalCostEl || !totalToolsEl || !totalSessionsEl) return;
-  totalTokensEl.textContent = formatNum(totalTokens);
-  totalCostEl.textContent = `$${totalCost.toFixed(2)}`;
-  totalToolsEl.textContent = formatNum(totalTools);
-  totalSessionsEl.textContent = formatNum(totalSessions);
-
-  const tokenChart = aggregateChart(days, mode, (day) => (day.inputTokens || 0) + (day.outputTokens || 0));
-  const costChart = aggregateChart(days, mode, (day) => day.estimatedCost || 0);
-
-  const chartTokensRoot = document.getElementById('chartTokensRoot');
-  const chartCostRoot = document.getElementById('chartCostRoot');
-  if (!chartTokensRoot || !chartCostRoot) return;
-  chartTokensRoot.innerHTML = buildBars(tokenChart, 'tokens');
-  chartCostRoot.innerHTML = buildBars(costChart, 'cost', true);
-  renderModelBreakdown(days);
+  // Token/cost usage view removed
 }
 
 export async function fetchArchivedAgents(force = false): Promise<DashboardArchiveItem[]> {
@@ -347,8 +267,6 @@ export async function renderArchiveView(force = false): Promise<void> {
     const lastSession = sessionHistory.length > 0
       ? [...sessionHistory].sort((left, right) => toMillis(right.startedAt) - toMillis(left.startedAt))[0]
       : null;
-    const tokenUsage = item.cumulativeTokens || {};
-    const totalTokens = (tokenUsage.inputTokens || 0) + (tokenUsage.outputTokens || 0);
     const subtitle = workspace
       ? (workspace.repositoryName || item.projectPath || '-')
       : (item.projectPath || item.role || '-');
@@ -370,7 +288,6 @@ export async function renderArchiveView(force = false): Promise<void> {
           <div><span>Archived</span><strong>${escapeText(formatDateTime(item.archivedAt))}</strong></div>
           <div><span>Last Start</span><strong>${escapeText(formatDateTime(lastSession?.startedAt))}</strong></div>
           <div><span>Last End</span><strong>${escapeText(formatDateTime(lastSession?.endedAt))}</strong></div>
-          <div><span>Totals</span><strong>${escapeText(formatNum(totalTokens))} tok / $${(tokenUsage.estimatedCost || 0).toFixed(2)}</strong></div>
         </div>
         <div class="archive-card-actions">
           <button class="agent-history-btn" data-history-id="${item.id}" data-agent-name="${escapeText(item.name || 'Workspace')}">History</button>

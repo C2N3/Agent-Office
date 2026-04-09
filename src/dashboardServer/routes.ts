@@ -153,6 +153,26 @@ function handleAPIRequest(req: RequestLike, res: ResponseLike, url: URL): void {
     return;
   }
 
+  // Task routes: /api/tasks/:id and /api/tasks/:id/:action
+  if (url.pathname.startsWith('/api/tasks/') && url.pathname !== '/api/tasks/') {
+    const parts = url.pathname.replace('/api/tasks/', '').split('/').filter(Boolean);
+    const taskId = parts[0];
+    const action = parts[1];
+
+    if (req.method === 'GET' && !action) {
+      handleGetTask(req, res, taskId);
+      return;
+    }
+    if (req.method === 'POST' && action) {
+      handleTaskAction(req, res, taskId, action);
+      return;
+    }
+    if (req.method === 'DELETE' && !action) {
+      handleDeleteTask(req, res, taskId);
+      return;
+    }
+  }
+
   if (url.pathname.startsWith('/api/agents/') && req.method === 'GET') {
     const agentSubParts = url.pathname.replace('/api/agents/', '').split('/');
     if (agentSubParts.length === 2 && agentSubParts[1] === 'history') {
@@ -379,6 +399,109 @@ function handleGetConversation(req: RequestLike, res: ResponseLike, registryId: 
   res.end(JSON.stringify(result));
 }
 
+// === Task API helpers ===
+
+function collectBody(req: any): Promise<string> {
+  return new Promise((resolve) => {
+    const chunks: Buffer[] = [];
+    req.on('data', (chunk: Buffer) => chunks.push(chunk));
+    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')));
+  });
+}
+
+async function handleCreateTask(req: RequestLike, res: ResponseLike): Promise<void> {
+  const { orchestrator } = getRefs();
+  if (!orchestrator) {
+    res.writeHead(503, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Orchestrator not available' }));
+    return;
+  }
+  try {
+    const body = JSON.parse(await collectBody(req));
+    const task = orchestrator.submitTask(body);
+    res.writeHead(201, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(task));
+  } catch (e: any) {
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: e.message }));
+  }
+}
+
+function handleListTasks(req: RequestLike, res: ResponseLike, url: URL): void {
+  const { orchestrator } = getRefs();
+  if (!orchestrator) {
+    res.writeHead(503, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Orchestrator not available' }));
+    return;
+  }
+  const status = url.searchParams.get('status');
+  const tasks = status ? orchestrator.getTasksByStatus(status) : orchestrator.getAllTasks();
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(tasks));
+}
+
+function handleTaskAction(req: RequestLike, res: ResponseLike, taskId: string, action: string): void {
+  const { orchestrator } = getRefs();
+  if (!orchestrator) {
+    res.writeHead(503, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Orchestrator not available' }));
+    return;
+  }
+
+  try {
+    let task;
+    switch (action) {
+      case 'cancel':  task = orchestrator.cancelTask(taskId); break;
+      case 'retry':   task = orchestrator.retryTask(taskId); break;
+      case 'pause':   task = orchestrator.pauseTask(taskId); break;
+      case 'resume':  task = orchestrator.resumeTask(taskId); break;
+      default:
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: `Unknown action: ${action}` }));
+        return;
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(task));
+  } catch (e: any) {
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: e.message }));
+  }
+}
+
+function handleGetTask(req: RequestLike, res: ResponseLike, taskId: string): void {
+  const { orchestrator } = getRefs();
+  if (!orchestrator) {
+    res.writeHead(503, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Orchestrator not available' }));
+    return;
+  }
+  const task = orchestrator.getTask(taskId);
+  if (!task) {
+    res.writeHead(404, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Task not found' }));
+    return;
+  }
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(task));
+}
+
+function handleDeleteTask(req: RequestLike, res: ResponseLike, taskId: string): void {
+  const { orchestrator } = getRefs();
+  if (!orchestrator) {
+    res.writeHead(503, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Orchestrator not available' }));
+    return;
+  }
+  try {
+    orchestrator.deleteTask(taskId);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ success: true }));
+  } catch (e: any) {
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: e.message }));
+  }
+}
+
 const apiRoutes = {
   'GET /api/events': handleSSE,
   'GET /api/agents': handleGetAgents,
@@ -390,6 +513,8 @@ const apiRoutes = {
   'GET /api/health': handleGetHealth,
   'GET /api/office-layout': handleGetOfficeLayout,
   'GET /api/avatars': handleGetAvatars,
+  'GET /api/tasks': handleListTasks,
+  'POST /api/tasks': handleCreateTask,
 } as const;
 
 export {

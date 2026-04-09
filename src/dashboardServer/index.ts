@@ -1,10 +1,11 @@
 import http from 'http';
 import { PORT } from './constants.js';
-import { attachAgentManagerBroadcasts, broadcastSSE, broadcastUpdate } from './broadcast.js';
+import { attachAgentManagerBroadcasts, attachOrchestratorBroadcasts, broadcastSSE, broadcastUpdate } from './broadcast.js';
 import {
   getRefs,
   setAgentManager as setAgentManagerRef,
   setAgentRegistry as setAgentRegistryRef,
+  setOrchestrator as setOrchestratorRef,
   setDashboardWindow as setDashboardWindowRef,
   setHeatmapScanner as setHeatmapScannerRef,
   setSessionScanner as setSessionScannerRef,
@@ -31,6 +32,11 @@ export function setHeatmapScanner(scanner: any): void {
 
 export function setAgentRegistry(registry: any): void {
   setAgentRegistryRef(registry);
+}
+
+export function setOrchestrator(orch: any): void {
+  setOrchestratorRef(orch);
+  attachOrchestratorBroadcasts(orch);
 }
 
 export function setDashboardWindow(window: any): void {

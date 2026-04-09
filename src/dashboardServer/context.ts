@@ -3,6 +3,7 @@ export interface DashboardRefs {
   sessionScanner: any;
   heatmapScanner: any;
   agentRegistryRef: any;
+  orchestrator: any;
   missionControlWindow: any;
 }
 
@@ -16,6 +17,7 @@ export const refs: DashboardRefs = {
   sessionScanner: null,
   heatmapScanner: null,
   agentRegistryRef: null,
+  orchestrator: null,
   missionControlWindow: null,
 };
 
@@ -38,6 +40,10 @@ export function setHeatmapScanner(scanner: any): void {
 
 export function setAgentRegistry(registry: any): void {
   refs.agentRegistryRef = registry;
+}
+
+export function setOrchestrator(orchestrator: any): void {
+  refs.orchestrator = orchestrator;
 }
 
 export function setDashboardWindow(window: any): void {

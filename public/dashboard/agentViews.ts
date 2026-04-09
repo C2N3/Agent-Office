@@ -21,15 +21,8 @@ function recalcStats() {
   const arr = Array.from(state.agents.values()) as DashboardAgent[];
   state.stats.total = arr.length;
   state.stats.active = arr.filter((agent) => ['working', 'thinking'].includes(agent.status)).length;
-  state.stats.totalTokens = arr.reduce((sum, agent) => {
-    return sum + ((agent.tokenUsage?.inputTokens || 0) + (agent.tokenUsage?.outputTokens || 0));
-  }, 0);
-  state.stats.totalCost = arr.reduce((sum, agent) => sum + (agent.tokenUsage?.estimatedCost || 0), 0);
-
   DOM.kpiActiveAgents.innerHTML =
     `${state.stats.active} <span style="font-size:0.8rem;color:var(--color-text-dark)">/ ${state.stats.total}</span>`;
-  DOM.kpiTokens.textContent = formatNum(state.stats.totalTokens);
-  DOM.kpiCost.textContent = `$${state.stats.totalCost.toFixed(2)}`;
   DOM.kpiErrors.textContent = state.stats.errorCount.toString();
   if (state.stats.errorCount > 0) {
     DOM.kpiErrors.className = 'kpi-value error';
@@ -89,6 +82,20 @@ export function connectSSE() {
     const data = JSON.parse(event.data) as { data: { id: string } };
     removeAgent(data.data.id);
     officeOnAgentRemoved(data.data);
+  });
+  eventSource.addEventListener('task.running', (event: MessageEvent) => {
+    try {
+      const data = JSON.parse(event.data) as { data: { agentRegistryId?: string; terminalId?: string; title?: string } };
+      const task = data.data;
+      if (task.terminalId && typeof (globalThis as any).openTerminalForAgent === 'function') {
+        (globalThis as any).openTerminalForAgent(task.terminalId, {
+          forceTerminalTab: true,
+          skipProviderBoot: true,
+          skipAutoResume: true,
+          label: task.title || 'Task',
+        });
+      }
+    } catch {}
   });
 }
 
@@ -289,18 +296,6 @@ export function updateAgentUI(agent: DashboardAgent) {
   const activityText = agent.currentTool
     ? `<span class="hl">${agent.currentTool}</span>`
     : (isActive ? statusText : 'Idling...');
-  const tokens = formatNum((agent.tokenUsage?.inputTokens || 0) + (agent.tokenUsage?.outputTokens || 0));
-  const cost = (agent.tokenUsage?.estimatedCost || 0).toFixed(4);
-  const contextPercent = agent.tokenUsage?.contextPercent;
-  const hasContext = contextPercent != null;
-  const contextColor = !hasContext
-    ? ''
-    : contextPercent > 85
-      ? 'ctx-high'
-      : contextPercent > 60
-        ? 'ctx-mid'
-        : 'ctx-low';
-  const contextValueText = hasContext ? `~${contextPercent}%` : '--';
   const workspaceMeta = agent.metadata?.workspace || null;
   const workspaceType = formatWorkspaceTypeLabel(workspaceMeta?.type);
   const workspaceBranch = workspaceMeta?.branch || '';
@@ -314,6 +309,9 @@ export function updateAgentUI(agent: DashboardAgent) {
   const actionButtons = [
     agent.isRegistered && agent.registryId
       ? `<button class="agent-history-btn" data-history-id="${agent.registryId}" data-agent-name="${agent.nickname || agent.name || 'Agent'}" title="Session History"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg></button>`
+      : '',
+    agent.isRegistered
+      ? `<button class="agent-assign-task-btn" data-agent-id="${agent.id}" title="Assign Task"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></button>`
       : '',
     agent.isRegistered && agent.registryId && workspaceBranch
       ? `<button class="agent-workspace-btn merge" data-workspace-merge-id="${agent.registryId}" data-branch="${escapeText(workspaceBranch)}" title="Merge branch and clean up workspace">
@@ -372,15 +370,6 @@ export function updateAgentUI(agent: DashboardAgent) {
     ${actionButtons ? `<div class="mc-agent-actions">${actionButtons}</div>` : ''}
     <div class="mc-agent-activity">CMD> ${activityText}</div>
     ${timelineHtml}
-    <div class="mc-agent-metrics">
-      <span>TX: <span class="mc-metric-val">${tokens}</span> tok</span>
-      <span>$<span class="mc-metric-val">${cost}</span></span>
-    </div>
-    <div class="mc-context-gauge" title="Approximate context window usage (estimated from input tokens)">
-      <span class="ctx-label">~ctx</span>
-      <div class="ctx-track"><div class="ctx-fill ${contextColor}" style="width:${hasContext ? contextPercent : 0}%"></div></div>
-      <span class="ctx-val">${contextValueText}</span>
-    </div>
   `;
 
   if (existing) {

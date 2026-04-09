@@ -1,4 +1,3 @@
-import type { AggregateTokenUsage } from './tokenUsage.js';
 
 type SessionMetaValue = string | number | boolean | null | string[];
 type SessionMeta = {
@@ -53,7 +52,7 @@ export type AgentLike = {
   isRegistered?: boolean;
   sessionId?: string | null;
   state?: string | null;
-  tokenUsage?: Partial<AggregateTokenUsage> | null;
+  tokenUsage?: any;
   role?: string | null;
   avatarIndex?: number | null;
   workspace?: WorkspaceLike | null;
@@ -100,7 +99,6 @@ export type AgentRegistryLike = {
   linkSession?(registryId: string, sessionId: string, jsonlPath: string | null, updates?: Partial<AgentLike>): void;
   getActiveAgents?(): AgentLike[];
   findByProjectPath?(projectPath: string): AgentLike | null | undefined;
-  accumulateTokens?(registryId: string, tokenUsage: AggregateTokenUsage | null | undefined): void;
   unlinkSession?(registryId: string): void;
   updateSessionTranscriptPath?(registryId: string, sessionId: string, transcriptPath: string): void;
 };

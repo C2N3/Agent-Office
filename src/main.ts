@@ -31,6 +31,8 @@ const { TerminalManager } = require('./main/terminalManager');
 const { TerminalProfileService } = require('./main/terminalProfileService');
 const { AgentRegistry } = require('./main/agentRegistry');
 const { WorkspaceManager } = require('./main/workspaceManager');
+const { TaskStore } = require('./main/orchestrator/taskStore');
+const { Orchestrator } = require('./main/orchestrator/index');
 
 // =====================================================
 // Save error logs to file
@@ -97,6 +99,8 @@ let codexSessionMonitor = null;
 let terminalManager = null;
 let terminalProfileService = null;
 let workspaceManager = null;
+let taskStore = null;
+let orchestrator = null;
 let livenessIntervals = null;
 let agentListeners = null;
 let hookServer = null;
@@ -222,6 +226,18 @@ app.whenReady().then(() => {
     terminalProfileService,
   });
 
+  // 4.6. Create orchestrator
+  taskStore = new TaskStore(debugLog);
+  orchestrator = new Orchestrator({
+    taskStore,
+    terminalManager,
+    workspaceManager,
+    agentRegistry,
+    agentManager,
+    debugLog,
+    maxConcurrentTasks: 5,
+  });
+
   // 5. Register IPC handlers
   registerIpcHandlers({
     agentManager,
@@ -232,6 +248,7 @@ app.whenReady().then(() => {
     terminalProfileService,
     workspaceManager,
     nicknameStore,
+    orchestrator,
     debugLog,
     adaptAgentToDashboard,
     errorHandler,
@@ -263,6 +280,23 @@ app.whenReady().then(() => {
     codexSessionMonitor.start();
   }
   windowManager.startDashboardServer();
+
+  // Wire orchestrator into dashboard server
+  if (orchestrator) {
+    try {
+      const serverModule = require('./dashboardServer/index.js');
+      serverModule.setOrchestrator(orchestrator);
+    } catch (e) {
+      debugLog(`[Main] Failed to wire orchestrator to dashboard: ${e.message}`);
+    }
+  }
+
+  // 6.5. Start orchestrator
+  if (orchestrator) {
+    orchestrator.start();
+    debugLog('[Main] Orchestrator started');
+  }
+
   if (enabledProviders.some((provider) => provider === 'claude' || provider === 'codex')) {
     livenessIntervals = startLivenessChecker({ agentManager, agentRegistry, debugLog });
   }
@@ -300,7 +334,6 @@ app.whenReady().then(() => {
       workspace: regAgent.workspace || null,
       isRegistered: true,
       state: 'Offline',
-      tokenUsage: regAgent.cumulativeTokens || { inputTokens: 0, outputTokens: 0, estimatedCost: 0 },
     }, 'registry');
   }
   debugLog(`[Main] ${agentRegistry.getActiveAgents().length} registered agent(s) loaded`);
@@ -408,6 +441,12 @@ app.on('before-quit', () => {
   if (codexSessionMonitor) {
     codexSessionMonitor.stop();
     codexSessionMonitor = null;
+  }
+
+  // Stop orchestrator
+  if (orchestrator) {
+    orchestrator.stop();
+    debugLog('[Main] Orchestrator stopped');
   }
 
   // Clean up terminals

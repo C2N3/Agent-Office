@@ -97,7 +97,6 @@ function adaptAgentToDashboard(pixelAgent) {
     status: mapPixelStateToDashboardState(pixelAgent.state),
     type: determineAgentType(pixelAgent),
     model: pixelAgent.model || null,
-    tokenUsage: pixelAgent.tokenUsage || { inputTokens: 0, outputTokens: 0, estimatedCost: 0 },
     currentTool: pixelAgent.currentTool || null,
     lastMessage: pixelAgent.lastMessage || null,
     avatarIndex: pixelAgent.avatarIndex !== undefined ? pixelAgent.avatarIndex : null,

@@ -65,6 +65,7 @@ export function setupAgentModal(openTerminalForAgent) {
   const modeBtns = document.querySelectorAll('#createModeSelect .provider-btn');
   const existingFields = document.getElementById('existingAgentFields');
   const worktreeFields = document.getElementById('worktreeAgentFields');
+  const autonomousFields = document.getElementById('autonomousAgentFields');
   const repoPathInput = document.getElementById('agentRepoPathInput');
   const branchInput = document.getElementById('agentBranchInput');
   const baseBranchInput = document.getElementById('agentBaseBranchInput');
@@ -72,7 +73,7 @@ export function setupAgentModal(openTerminalForAgent) {
   const branchModeInput = document.getElementById('agentBranchModeInput');
   const startPointInput = document.getElementById('agentStartPointInput');
   const inspectStatusEl = document.getElementById('agentRepoInspectStatus');
-  if (!modal || !form || !openBtn || !existingFields || !worktreeFields) return;
+  if (!modal || !form || !openBtn || !existingFields || !worktreeFields || !autonomousFields) return;
 
   let createMode = 'existing';
   let selectedProvider = 'claude';
@@ -94,10 +95,11 @@ export function setupAgentModal(openTerminalForAgent) {
   });
 
   function setCreateMode(nextMode) {
-    createMode = nextMode === 'worktree' ? 'worktree' : 'existing';
+    createMode = nextMode === 'worktree' ? 'worktree' : nextMode === 'autonomous' ? 'autonomous' : 'existing';
     modeBtns.forEach((btn) => btn.classList.toggle('active', btn.dataset.mode === createMode));
     existingFields.style.display = createMode === 'existing' ? '' : 'none';
     worktreeFields.style.display = createMode === 'worktree' ? '' : 'none';
+    autonomousFields.style.display = createMode === 'autonomous' ? '' : 'none';
   }
 
   function resetProviderSelection() {
@@ -276,6 +278,30 @@ export function setupAgentModal(openTerminalForAgent) {
       return;
     }
 
+    if (createMode === 'autonomous') {
+      const repoPath = (document.getElementById('autoRepoPathInput') as HTMLInputElement).value.trim();
+      if (!repoPath) {
+        if (errorEl) errorEl.textContent = 'Repository path is required.';
+        return;
+      }
+
+      if (dashboardAPI?.createRegisteredAgent) {
+        const result = await dashboardAPI.createRegisteredAgent({
+          name,
+          role: role || 'autonomous',
+          projectPath: repoPath,
+          provider: selectedProvider,
+        });
+        if (result?.success) {
+          closeModal();
+          resetFormState();
+        } else if (errorEl) {
+          errorEl.textContent = result?.error || 'Failed to register agent.';
+        }
+      }
+      return;
+    }
+
     if (createMode === 'worktree') {
       const repoPath = document.getElementById('agentRepoPathInput').value.trim();
       if (!repoPath) {
@@ -344,6 +370,115 @@ export function setupAgentModal(openTerminalForAgent) {
       }
     }
   });
+}
+
+export function setupAssignTaskModal() {
+  const modal = document.getElementById('assignTaskModal');
+  const form = document.getElementById('assignTaskForm');
+  const cancelBtn = document.getElementById('cancelAssignTaskBtn');
+  const errorEl = document.getElementById('assignTaskError');
+  const agentNameEl = document.getElementById('assignTaskAgentName');
+  const providerDisplay = document.getElementById('taskProviderDisplay') as HTMLInputElement | null;
+  const modelSelect = document.getElementById('taskModelInput') as HTMLSelectElement | null;
+  if (!modal || !form) return;
+
+  const MODELS_BY_PROVIDER: Record<string, { value: string; label: string }[]> = {
+    claude: [
+      { value: '', label: 'Default' },
+      { value: 'claude-opus-4-6', label: 'Claude Opus 4.6' },
+      { value: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6' },
+      { value: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5' },
+    ],
+    codex: [
+      { value: '', label: 'Default' },
+      { value: 'o4-mini', label: 'o4-mini' },
+      { value: 'o3', label: 'o3' },
+      { value: 'gpt-4.1', label: 'GPT-4.1' },
+    ],
+    gemini: [
+      { value: '', label: 'Default' },
+      { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
+      { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
+    ],
+  };
+
+  let currentAgent: any = null;
+
+  function populateModels(provider: string) {
+    if (!modelSelect) return;
+    const models = MODELS_BY_PROVIDER[provider] || [{ value: '', label: 'Default' }];
+    modelSelect.innerHTML = models
+      .map((m) => `<option value="${m.value}">${m.label}</option>`)
+      .join('');
+  }
+
+  function closeModal() {
+    modal.style.display = 'none';
+    if (errorEl) errorEl.textContent = '';
+    currentAgent = null;
+  }
+
+  cancelBtn?.addEventListener('click', closeModal);
+  modal.addEventListener('click', (event) => {
+    if (event.target === modal) closeModal();
+  });
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (errorEl) errorEl.textContent = '';
+    if (!currentAgent) return;
+
+    const prompt = (document.getElementById('taskPromptInput') as HTMLTextAreaElement).value.trim();
+    if (!prompt) {
+      if (errorEl) errorEl.textContent = 'Task prompt is required.';
+      return;
+    }
+
+    const provider = currentAgent.provider || 'claude';
+    const model = modelSelect?.value || null;
+    const maxTurns = parseInt((document.getElementById('taskMaxTurnsInput') as HTMLInputElement).value, 10) || 30;
+    const priority = (document.getElementById('taskPriorityInput') as HTMLSelectElement).value || 'normal';
+    const autoMergeOnSuccess = !!(document.getElementById('taskAutoMergeInput') as HTMLInputElement).checked;
+
+    try {
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: `${currentAgent.displayName || currentAgent.name}: ${prompt.slice(0, 50)}`,
+          prompt,
+          provider,
+          model,
+          maxTurns,
+          repositoryPath: currentAgent.projectPath || currentAgent.workspace?.worktreePath || '',
+          priority,
+          autoMergeOnSuccess,
+          agentRegistryId: currentAgent.registryId || currentAgent.id,
+        }),
+      });
+      const result = await response.json();
+      if (result.error) {
+        if (errorEl) errorEl.textContent = result.error;
+        return;
+      }
+      closeModal();
+      (form as HTMLFormElement).reset();
+    } catch (e: any) {
+      if (errorEl) errorEl.textContent = `Failed: ${e.message}`;
+    }
+  });
+
+  (globalThis as any).openAssignTaskModal = function (agent: any) {
+    currentAgent = agent;
+    const provider = agent.provider || 'claude';
+    if (agentNameEl) agentNameEl.textContent = agent.displayName || agent.name || 'Agent';
+    if (providerDisplay) providerDisplay.value = provider.charAt(0).toUpperCase() + provider.slice(1);
+    populateModels(provider);
+    (form as HTMLFormElement).reset();
+    if (providerDisplay) providerDisplay.value = provider.charAt(0).toUpperCase() + provider.slice(1);
+    if (errorEl) errorEl.textContent = '';
+    modal.style.display = '';
+  };
 }
 
 export function setupAvatarPicker(updateAgentUI) {
@@ -527,10 +662,7 @@ export function setupConversationViewer(resumeRegisteredSession) {
       const toolHtml = message.toolUses && message.toolUses.length > 0
         ? `<div class="conv-msg-tools">${message.toolUses.map((tool) => `<span class="conv-tool-tag">${escapeHtml(tool.name)}</span>`).join('')}</div>`
         : '';
-      const tokenHtml = message.tokens
-        ? `<span class="conv-msg-tokens">in:${message.tokens.input} out:${message.tokens.output}</span>`
-        : '';
-      return `<div class="conv-msg conv-msg-assistant"><span class="conv-msg-badge">ASSISTANT</span>${toolHtml}<div class="conv-msg-content">${escapeHtml(message.content)}</div><div class="conv-msg-meta">${message.model ? `<span class="conv-msg-model">${message.model}</span>` : ''}${tokenHtml}${message.timestamp ? `<span class="conv-msg-time">${formatTime(message.timestamp)}</span>` : ''}</div></div>`;
+      return `<div class="conv-msg conv-msg-assistant"><span class="conv-msg-badge">ASSISTANT</span>${toolHtml}<div class="conv-msg-content">${escapeHtml(message.content)}</div><div class="conv-msg-meta">${message.model ? `<span class="conv-msg-model">${message.model}</span>` : ''}${message.timestamp ? `<span class="conv-msg-time">${formatTime(message.timestamp)}</span>` : ''}</div></div>`;
     }
     return '';
   }

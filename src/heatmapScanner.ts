@@ -12,7 +12,10 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { getCodexSessionRoots } = require('./main/codexPaths');
-const { roundCost, calculateTokenCost, normalizeModelName } = require('./pricing');
+// pricing module removed — stub functions for compatibility
+function roundCost(v) { return 0; }
+function calculateTokenCost() { return 0; }
+function normalizeModelName(m) { return m || ''; }
 
 const MAX_AGE_DAYS = 400;
 

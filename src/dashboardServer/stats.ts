@@ -5,11 +5,6 @@ export interface DashboardAgent {
   projectPath?: string | null;
   isSubagent?: boolean;
   isTeammate?: boolean;
-  tokenUsage?: {
-    inputTokens?: number;
-    outputTokens?: number;
-    estimatedCost?: number;
-  } | null;
 }
 
 export interface AgentManagerLike {
@@ -75,24 +70,6 @@ export function calculateStats(agentManager: AgentManagerLike | null) {
       stats.byType.main++;
     }
   }
-
-  let totalInputTokens = 0;
-  let totalOutputTokens = 0;
-  let totalEstimatedCost = 0;
-  for (const agent of agents) {
-    const usage = agent.tokenUsage;
-    if (usage) {
-      totalInputTokens += usage.inputTokens || 0;
-      totalOutputTokens += usage.outputTokens || 0;
-      totalEstimatedCost += usage.estimatedCost || 0;
-    }
-  }
-  stats.tokens = {
-    input: totalInputTokens,
-    output: totalOutputTokens,
-    total: totalInputTokens + totalOutputTokens,
-    estimatedCost: Math.round(totalEstimatedCost * 10000) / 10000,
-  };
 
   return stats;
 }

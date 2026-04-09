@@ -135,7 +135,6 @@ class AgentManager extends EventEmitter {
       endReason: m('endReason'),
       teammateName: m('teammateName'),
       teamName: m('teamName'),
-      tokenUsage: m('tokenUsage', { inputTokens: 0, outputTokens: 0, estimatedCost: 0 }),
       avatarIndex: resolvedAvatar,
       isSubagent: entry.isSubagent || (existingAgent ? existingAgent.isSubagent : false),
       isTeammate: entry.isTeammate || (existingAgent ? existingAgent.isTeammate : false),

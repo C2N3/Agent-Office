@@ -120,7 +120,7 @@ function findLatestResumableSessionEntry(history = []) {
   return latest;
 }
 
-function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowManager, terminalManager, terminalProfileService, workspaceManager, nicknameStore, debugLog, adaptAgentToDashboard, errorHandler, attachRegisteredAgent }) {
+function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowManager, terminalManager, terminalProfileService, workspaceManager, nicknameStore, orchestrator, debugLog, adaptAgentToDashboard, errorHandler, attachRegisteredAgent }) {
   function isMainWindowSender(event) {
     const senderId = event?.sender?.id;
     const mainWindow = windowManager?.mainWindow;
@@ -849,6 +849,69 @@ function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowM
       }, 800);
 
       return { ...result, terminalId: registryId, sessionId: resolvedSessionId };
+    });
+  }
+
+  // === Orchestrator IPC ===
+  if (orchestrator) {
+    ipcMain.handle('orchestrator:submit-task', async (event, input) => {
+      try {
+        return { success: true, task: orchestrator.submitTask(input) };
+      } catch (e) {
+        return { success: false, error: e.message };
+      }
+    });
+
+    ipcMain.handle('orchestrator:cancel-task', async (event, taskId) => {
+      try {
+        return { success: true, task: orchestrator.cancelTask(taskId) };
+      } catch (e) {
+        return { success: false, error: e.message };
+      }
+    });
+
+    ipcMain.handle('orchestrator:retry-task', async (event, taskId) => {
+      try {
+        return { success: true, task: orchestrator.retryTask(taskId) };
+      } catch (e) {
+        return { success: false, error: e.message };
+      }
+    });
+
+    ipcMain.handle('orchestrator:pause-task', async (event, taskId) => {
+      try {
+        return { success: true, task: orchestrator.pauseTask(taskId) };
+      } catch (e) {
+        return { success: false, error: e.message };
+      }
+    });
+
+    ipcMain.handle('orchestrator:resume-task', async (event, taskId) => {
+      try {
+        return { success: true, task: orchestrator.resumeTask(taskId) };
+      } catch (e) {
+        return { success: false, error: e.message };
+      }
+    });
+
+    ipcMain.handle('orchestrator:get-task', async (event, taskId) => {
+      return orchestrator.getTask(taskId);
+    });
+
+    ipcMain.handle('orchestrator:list-tasks', async (event, filters) => {
+      if (filters && filters.status) {
+        return orchestrator.getTasksByStatus(filters.status);
+      }
+      return orchestrator.getAllTasks();
+    });
+
+    ipcMain.handle('orchestrator:delete-task', async (event, taskId) => {
+      try {
+        orchestrator.deleteTask(taskId);
+        return { success: true };
+      } catch (e) {
+        return { success: false, error: e.message };
+      }
     });
   }
 }
