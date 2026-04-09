@@ -1,6 +1,7 @@
 import {
   DOM,
   archiveState,
+  type DisplayValue,
   getDashboardAPI,
   state,
 } from './shared.js';
@@ -34,6 +35,8 @@ import {
   setupConversationViewer,
   setupNicknameEdit,
 } from './modals.js';
+
+type DashboardUiError = Error | { message?: string } | DisplayValue;
 
 function initPipControls() {
   const pipBtn = document.getElementById('pipToggleBtn');
@@ -222,7 +225,7 @@ function initApp() {
   connectSSE();
   initTerminals();
   initTerminalProfileMenu();
-  refreshTerminalProfiles().catch((error: unknown) => console.error('[Terminal Profiles]', error));
+  refreshTerminalProfiles().catch((error: DashboardUiError) => console.error('[Terminal Profiles]', error));
   initResizableHandles?.();
 
   if (typeof globalThis.initOffice === 'function') {

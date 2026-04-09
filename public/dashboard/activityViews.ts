@@ -321,7 +321,7 @@ export async function fetchArchivedAgents(force = false): Promise<DashboardArchi
       items = (await response.json()) as DashboardArchiveItem[];
     }
     archiveState.items = Array.isArray(items) ? items : [];
-  } catch (error: unknown) {
+  } catch (error) {
     console.error('[Archive]', error);
     archiveState.items = [];
   } finally {

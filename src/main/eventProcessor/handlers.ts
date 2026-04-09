@@ -7,10 +7,12 @@ import type {
   SessionPidsMap,
   SessionStateOptions,
 } from './sessionState.js';
-import type { AggregateTokenUsage } from './tokenUsage.js';
+import type { AggregateTokenUsage, NumericTokenUsage } from './tokenUsage.js';
 import type { PendingSessionStart } from './sessionState.js';
 
 type SessionState = ReturnType<typeof import('./sessionState.js').createSessionState>;
+type EventRawValue = string | number | boolean | null | EventRawValue[] | { [key: string]: EventRawValue | undefined };
+type EventRawData = { [key: string]: EventRawValue | undefined };
 
 type EventLike = {
   sessionId?: string | null;
@@ -36,13 +38,13 @@ type EventLike = {
   text?: string;
   toolName?: string | null;
   toolInput?: { command?: string } | null;
-  tokenUsage?: Record<string, unknown> | null;
+  tokenUsage?: NumericTokenUsage | null;
   lastAssistantMessage?: string;
   state?: string;
   suppressIfFirst?: boolean;
   subagentId?: string;
   trigger?: string;
-  raw?: unknown;
+  raw?: EventRawData | null;
 };
 
 type EventHandlerOptions = {
@@ -57,11 +59,11 @@ type EventHandlerOptions = {
   state: SessionState;
 };
 
-type UpdateAgentPayload = Record<string, unknown> & {
+type UpdateAgentPayload = Partial<AgentLike> & {
   sessionId?: string | null;
   runtimeSessionId?: string | null;
   resumeSessionId?: string | null;
-  tokenUsage?: AggregateTokenUsage | Record<string, unknown> | null;
+  tokenUsage?: Partial<AggregateTokenUsage> | null;
 };
 
 export function createEventHandlers({
@@ -138,7 +140,7 @@ export function createEventHandlers({
     } = options;
 
     if (!agentManager) {
-      enqueueSessionStart({ sessionId, cwd, pid, isTeammate, isSubagent, initialState, parentId, meta: meta as Record<string, unknown> });
+      enqueueSessionStart({ sessionId, cwd, pid, isTeammate, isSubagent, initialState, parentId, meta });
       debugLog(`[${logPrefix}] SessionStart queued: ${sessionId.slice(0, 8)}`);
       return;
     }

@@ -1,5 +1,6 @@
 import {
   type OfficeCharacter,
+  type DashboardOpenOptions,
   escapeText,
   formatNum,
   getDashboardAPI,
@@ -62,7 +63,7 @@ async function promptRenameAgent(agentId: string) {
 function showOfficePopover(
   canvas: HTMLCanvasElement,
   character: OfficeCharacter,
-  openTerminalForAgent: (agentId: string) => Promise<unknown> | void
+  openTerminalForAgent: (agentId: string, openOptions?: DashboardOpenOptions) => Promise<void> | void
 ) {
   if (!popoverEl) return;
   const agent = state.agents.get(character.id);
@@ -132,7 +133,7 @@ function hideOfficePopover() {
   popoverEl.style.display = 'none';
 }
 
-export function setupOfficeClickHandler(openTerminalForAgent: (agentId: string) => Promise<unknown> | void) {
+export function setupOfficeClickHandler(openTerminalForAgent: (agentId: string, openOptions?: DashboardOpenOptions) => Promise<void> | void) {
   const canvasEl = document.getElementById('office-canvas');
   if (!(canvasEl instanceof HTMLCanvasElement)) return;
   const canvas = canvasEl;

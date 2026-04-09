@@ -1,8 +1,37 @@
 import type { AggregateTokenUsage } from './tokenUsage.js';
 
+type SessionMetaValue = string | number | boolean | null | string[];
+type SessionMeta = {
+  jsonlPath?: string | null;
+  runtimeSessionId?: string | null;
+  resumeSessionId?: string | null;
+  provider?: string | null;
+  model?: string | null;
+  permissionMode?: string | null;
+  source?: string | null;
+  agentType?: string | null;
+  teammateName?: string | null;
+  teamName?: string | null;
+  [key: string]: SessionMetaValue | undefined;
+};
+
+type WorkspaceLike = {
+  type?: string | null;
+  repositoryPath?: string | null;
+  branch?: string | null;
+  repositoryName?: string | null;
+  worktreePath?: string | null;
+  workspaceParent?: string | null;
+  startPoint?: string | null;
+  baseBranch?: string | null;
+  copyPaths?: string[];
+  symlinkPaths?: string[];
+  bootstrapCommand?: string | null;
+};
+
 export type SessionContext = {
   cwd: string;
-  meta: Record<string, unknown>;
+  meta: SessionMeta;
 };
 
 export type PendingSessionStart = {
@@ -13,7 +42,7 @@ export type PendingSessionStart = {
   isSubagent: boolean;
   initialState: string;
   parentId: string | null;
-  meta: Record<string, unknown>;
+  meta: SessionMeta;
 };
 
 export type SessionPidsMap = Map<string, number>;
@@ -24,16 +53,24 @@ export type AgentLike = {
   isRegistered?: boolean;
   sessionId?: string | null;
   state?: string | null;
-  tokenUsage?: AggregateTokenUsage | null;
+  tokenUsage?: Partial<AggregateTokenUsage> | null;
   role?: string | null;
   avatarIndex?: number | null;
-  workspace?: unknown;
+  workspace?: WorkspaceLike | null;
   model?: string | null;
+  currentTool?: string | null;
   lastMessage?: string | null;
   firstSeen?: number | null;
   displayName?: string | null;
+  registryId?: string | null;
   teammateName?: string | null;
   teamName?: string | null;
+  permissionMode?: string | null;
+  source?: string | null;
+  agentType?: string | null;
+  isTeammate?: boolean;
+  isSubagent?: boolean;
+  parentId?: string | null;
   runtimeSessionId?: string | null;
   resumeSessionId?: string | null;
   jsonlPath?: string | null;
@@ -46,8 +83,8 @@ export type AgentLike = {
 export type AgentManagerLike = {
   getAgent(id: string): AgentLike | null | undefined;
   getAllAgents?(): AgentLike[];
-  updateAgent(agent: Record<string, unknown>, source: string): void;
-  rekeyAgent?(fromId: string, toId: string, fields?: Record<string, unknown>): void;
+  updateAgent(agent: Partial<AgentLike>, source: string): void;
+  rekeyAgent?(fromId: string, toId: string, fields?: Partial<AgentLike>): void;
   removeAgent?(id: string): void;
   transitionToOffline?(id: string): void;
 };
@@ -58,9 +95,9 @@ export type AgentRegistryLike = {
     previousSessionId: string,
     nextSessionId: string,
     jsonlPath: string | null,
-    updates?: Record<string, unknown>
+    updates?: Partial<AgentLike>
   ): void;
-  linkSession?(registryId: string, sessionId: string, jsonlPath: string | null, updates?: Record<string, unknown>): void;
+  linkSession?(registryId: string, sessionId: string, jsonlPath: string | null, updates?: Partial<AgentLike>): void;
   getActiveAgents?(): AgentLike[];
   findByProjectPath?(projectPath: string): AgentLike | null | undefined;
   accumulateTokens?(registryId: string, tokenUsage: AggregateTokenUsage | null | undefined): void;
@@ -108,7 +145,7 @@ export function createSessionState({
     return sessionToRegistry.get(canonicalSessionId) || canonicalSessionId;
   }
 
-  function rememberSessionContext(sessionId: string | null | undefined, cwd: string, meta: Record<string, unknown> = {}) {
+  function rememberSessionContext(sessionId: string | null | undefined, cwd: string, meta: SessionMeta = {}) {
     const canonicalSessionId = resolveSessionId(sessionId);
     if (!canonicalSessionId) return;
     const existing = sessionContext.get(canonicalSessionId) || { cwd: '', meta: {} };

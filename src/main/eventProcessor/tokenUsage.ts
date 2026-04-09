@@ -1,4 +1,4 @@
-type NumericTokenUsage = {
+export type NumericTokenUsage = {
   input_tokens?: number;
   cached_input_tokens?: number;
   cache_read_input_tokens?: number;
@@ -6,9 +6,11 @@ type NumericTokenUsage = {
   output_tokens?: number;
 };
 
+type TokenUsageSnapshot = Partial<AggregateTokenUsage> & Partial<NumericTokenUsage>;
+
 export type AgentUsageLike = {
   model?: string | null;
-  tokenUsage?: Partial<AggregateTokenUsage> | Record<string, unknown> | null;
+  tokenUsage?: TokenUsageSnapshot | null;
 };
 
 export type AggregateTokenUsage = {

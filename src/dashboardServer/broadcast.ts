@@ -3,9 +3,17 @@ const { adaptAgentToDashboard } = require('../dashboardAdapter.js') as {
 };
 import { getClients, getRefs } from './context.js';
 
+type SerializableValue =
+  | string
+  | number
+  | boolean
+  | null
+  | SerializableValue[]
+  | { [key: string]: SerializableValue | undefined };
+
 const wiredManagers = new WeakSet<object>();
 
-export function broadcastSSE(type: string, data: unknown): void {
+export function broadcastSSE(type: string, data: SerializableValue): void {
   const { sseClients } = getClients();
   const payload = `event: ${type}\ndata: ${JSON.stringify({ type, data, timestamp: Date.now() })}\n\n`;
   for (const res of sseClients) {
@@ -17,7 +25,7 @@ export function broadcastSSE(type: string, data: unknown): void {
   }
 }
 
-export function broadcastUpdate(type: string, data: unknown): void {
+export function broadcastUpdate(type: string, data: SerializableValue): void {
   const { wsClients } = getClients();
   const message = JSON.stringify({ type, data, timestamp: Date.now() });
 

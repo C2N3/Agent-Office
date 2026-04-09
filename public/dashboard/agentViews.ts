@@ -105,7 +105,7 @@ export async function fetchInitialData() {
     }
     recalcStats();
     renderAgentList();
-  } catch (error: unknown) {
+  } catch (error) {
     console.error('Data fetch error:', error);
   }
 }
@@ -242,7 +242,7 @@ export async function clearUnregisteredAgents(): Promise<void> {
     if (result?.success) {
       clearedCount = result.clearedCount || 0;
     }
-  } catch (error: unknown) {
+  } catch (error) {
     console.error('[Clear Unregistered]', error);
   }
 
