@@ -11,7 +11,7 @@ npm install
 npm start
 ```
 
-`npm start`, `npm run dev`, `npm run dashboard`, and `npm test` all build the current TypeScript runtime into `dist/` before they run. If you need to refresh the emitted runtime manually, use `npm run build:dist`.
+`npm start`, `npm run dashboard`, and `npm test` build the current TypeScript runtime into `dist/` before they run. `npm run dev` watches `src/`, `public/`, HTML/CSS, and tsconfig files, rebuilds `dist/` when needed, and restarts Electron automatically. If you need to refresh the emitted runtime manually, use `npm run build:dist`.
 
 ### Running Tests
 
