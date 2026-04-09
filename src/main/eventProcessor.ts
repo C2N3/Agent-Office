@@ -4,14 +4,8 @@
  * Normalizes Claude/Codex events into a shared session lifecycle model.
  */
 
-const path = require('path');
-
-const isDistRuntime = __dirname.split(path.sep).includes('dist');
-const eventProcessorBase = isDistRuntime
-  ? './eventProcessor'
-  : '../../dist/src/main/eventProcessor';
-const { createSessionState } = require(`${eventProcessorBase}/sessionState`);
-const { createEventHandlers } = require(`${eventProcessorBase}/handlers`);
+const { createSessionState } = require('./eventProcessor/sessionState');
+const { createEventHandlers } = require('./eventProcessor/handlers');
 
 function createEventProcessor({
   agentManager,
