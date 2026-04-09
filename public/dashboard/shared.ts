@@ -1,3 +1,5 @@
+import * as dashboardResumeUtilsModule from '../dashboardResume.js';
+
 export const REGISTERED_FILTER_STORAGE_KEY = 'mc-filter-registered-only';
 
 export const SHARED_AVATAR_FILES = ['avatar_0.webp', 'avatar_1.webp', 'avatar_2.webp', 'avatar_3.webp'] as const;
@@ -488,7 +490,7 @@ export const DOM = {
   archiveRefreshBtn: getElementById('archiveRefreshBtn') as HTMLButtonElement,
 };
 
-export const dashboardResumeUtils: DashboardResumeUtils = globalThis.dashboardResumeUtils || {};
+export const dashboardResumeUtils: DashboardResumeUtils = dashboardResumeUtilsModule;
 
 export function getDashboardAPI(): DashboardAPI | undefined {
   return globalThis.dashboardAPI;

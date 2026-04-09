@@ -6,16 +6,15 @@ import {
   getDashboardAPI,
   state,
 } from './shared.js';
+import { OFFICE, officeCharacters, officeRenderer } from '../office/index.js';
 
 const popoverEl = document.getElementById('officePopover') as HTMLDivElement | null;
 
 function hitTestOfficeCharacter(canvas: HTMLCanvasElement, event: MouseEvent): OfficeCharacter | null {
-  const officeCharacters = globalThis.officeCharacters;
   if (!officeCharacters) return null;
 
   let canvasX;
   let canvasY;
-  const officeRenderer = globalThis.officeRenderer;
   if (officeRenderer?.screenToWorld) {
     const world = officeRenderer.screenToWorld(event.clientX, event.clientY);
     canvasX = world.x;
@@ -30,9 +29,8 @@ function hitTestOfficeCharacter(canvas: HTMLCanvasElement, event: MouseEvent): O
 
   const characters = officeCharacters.getCharacterArray();
   const sorted = [...characters].sort((left, right) => right.y - left.y);
-  const officeConfig = globalThis.OFFICE || {};
-  const frameWidth = officeConfig.FRAME_W || 106;
-  const frameHeight = officeConfig.FRAME_H || 140;
+  const frameWidth = OFFICE.FRAME_W || 106;
+  const frameHeight = OFFICE.FRAME_H || 140;
 
   for (const character of sorted) {
     const left = character.x - frameWidth / 2;
@@ -108,9 +106,8 @@ function showOfficePopover(
   });
 
   const rect = canvas.getBoundingClientRect();
-  const officeConfig = globalThis.OFFICE || {};
-  const frameWidth = officeConfig.FRAME_W || 106;
-  const frameHeight = officeConfig.FRAME_H || 140;
+  const frameWidth = OFFICE.FRAME_W || 106;
+  const frameHeight = OFFICE.FRAME_H || 140;
   const scaleX = rect.width / canvas.width;
   const scaleY = rect.height / canvas.height;
   const screenX = rect.left + (character.x - frameWidth / 2) * scaleX;
