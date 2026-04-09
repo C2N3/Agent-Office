@@ -3,8 +3,8 @@
  * Normalizes Claude/Codex events into a shared session lifecycle model.
  */
 
-const { createSessionState } = require('./eventProcessor/sessionState');
-const { createEventHandlers } = require('./eventProcessor/handlers');
+const { createSessionState } = require('../../dist/src/main/eventProcessor/sessionState');
+const { createEventHandlers } = require('../../dist/src/main/eventProcessor/handlers');
 
 function createEventProcessor({
   agentManager,
@@ -25,7 +25,7 @@ function createEventProcessor({
     updateSource,
   });
 
-  const handlers = createEventHandlers({
+  return createEventHandlers({
     agentManager,
     agentRegistry,
     sessionPids,
@@ -36,8 +36,6 @@ function createEventProcessor({
     updateSource,
     state,
   });
-
-  return handlers;
 }
 
 module.exports = { createEventProcessor };

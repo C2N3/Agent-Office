@@ -1,1 +1,1 @@
-import './dashboard/app.js';
+import '/dist/public/dashboard.js';

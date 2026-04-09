@@ -5,7 +5,9 @@
     "checkJs": false,
     "noEmit": false,
     "declaration": false,
-    "sourceMap": false
+    "sourceMap": false,
+    "rootDir": ".",
+    "outDir": "dist"
   },
   "include": [
     "src/**/*.ts",

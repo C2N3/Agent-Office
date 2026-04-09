@@ -1,1 +1,1 @@
-module.exports = require('./dashboardServer');
+module.exports = require('../dist/src/dashboardServer');

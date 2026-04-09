@@ -100,7 +100,7 @@ function handleRequest(req: RequestLike, res: ResponseLike): void {
     }
   }
 
-  if (pathname.startsWith('/public/') || pathname.startsWith('/src/office/')) {
+  if (pathname.startsWith('/dist/') || pathname.startsWith('/public/') || pathname.startsWith('/src/office/')) {
     const baseDir = path.resolve(__dirname, '..', '..');
     const decoded = decodeURIComponent(pathname);
     const resolved = path.resolve(baseDir, decoded.slice(1));
