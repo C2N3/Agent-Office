@@ -319,6 +319,50 @@ class AgentRegistry {
     }
   }
 
+  replaceSessionId(registryId, previousSessionId, nextSessionId, transcriptPath = null) {
+    const agent = this.agents.get(registryId);
+    if (!agent || !previousSessionId || !nextSessionId) return false;
+    if (previousSessionId === nextSessionId) {
+      if (transcriptPath) {
+        this.updateSessionTranscriptPath(registryId, nextSessionId, transcriptPath);
+      }
+      return true;
+    }
+
+    if (!Array.isArray(agent.sessionHistory)) {
+      agent.sessionHistory = [];
+    }
+
+    const previousEntry = agent.sessionHistory.find((entry) => entry.sessionId === previousSessionId) || null;
+    const nextEntry = agent.sessionHistory.find((entry) => entry.sessionId === nextSessionId) || null;
+
+    if (agent.currentSessionId === previousSessionId) {
+      agent.currentSessionId = nextSessionId;
+    }
+
+    if (previousEntry && nextEntry && previousEntry !== nextEntry) {
+      nextEntry.transcriptPath = nextEntry.transcriptPath || previousEntry.transcriptPath || transcriptPath || null;
+      nextEntry.startedAt = Math.min(nextEntry.startedAt || Infinity, previousEntry.startedAt || Infinity);
+      if (!Number.isFinite(nextEntry.startedAt)) nextEntry.startedAt = previousEntry.startedAt || null;
+      nextEntry.endedAt = nextEntry.endedAt || previousEntry.endedAt || null;
+      agent.sessionHistory = agent.sessionHistory.filter((entry) => entry !== previousEntry);
+    } else if (previousEntry) {
+      previousEntry.sessionId = nextSessionId;
+      previousEntry.transcriptPath = previousEntry.transcriptPath || transcriptPath || null;
+    } else if (!nextEntry) {
+      agent.sessionHistory.push({
+        sessionId: nextSessionId,
+        transcriptPath: transcriptPath || null,
+        startedAt: Date.now(),
+        endedAt: null,
+      });
+    }
+
+    this._save();
+    this.debugLog(`[Registry] Session rekeyed: ${previousSessionId.slice(0, 8)} → ${nextSessionId.slice(0, 8)}`);
+    return true;
+  }
+
   /**
    * Get session history for a registered agent
    */

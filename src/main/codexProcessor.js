@@ -9,7 +9,7 @@ function getCodexWorkspacePath(data) {
 }
 
 function normalizeCodexEvent(data) {
-  const sessionId = data.thread_id || data.session_id || data.sessionId;
+  const sessionId = data.session_id || data.sessionId || data.thread_id;
   const base = {
     sessionId,
     cwd: getCodexWorkspacePath(data),
@@ -127,6 +127,35 @@ function createCodexProcessor({ agentManager, agentRegistry, sessionPids, debugL
   const pendingFunctionCalls = new Map(); // callId -> { sessionId, name, args }
   const latestTokenUsageBySession = new Map();
 
+  function resolveCodexSessionId(sessionId) {
+    return processor.resolveSessionId ? processor.resolveSessionId(sessionId) : sessionId;
+  }
+
+  function adoptCanonicalSessionId(previousSessionId, nextSessionId) {
+    const canonicalSessionId = processor.adoptSessionIdentity
+      ? processor.adoptSessionIdentity(previousSessionId, nextSessionId)
+      : nextSessionId;
+
+    if (!previousSessionId || !canonicalSessionId || previousSessionId === canonicalSessionId) {
+      return canonicalSessionId;
+    }
+
+    const previousCanonical = resolveCodexSessionId(previousSessionId);
+    if (latestTokenUsageBySession.has(previousCanonical) && !latestTokenUsageBySession.has(canonicalSessionId)) {
+      latestTokenUsageBySession.set(canonicalSessionId, latestTokenUsageBySession.get(previousCanonical));
+    }
+    latestTokenUsageBySession.delete(previousSessionId);
+    latestTokenUsageBySession.delete(previousCanonical);
+
+    for (const info of pendingFunctionCalls.values()) {
+      if (info.sessionId === previousSessionId || info.sessionId === previousCanonical) {
+        info.sessionId = canonicalSessionId;
+      }
+    }
+
+    return canonicalSessionId;
+  }
+
   function processCodexEvent(data) {
     const events = normalizeCodexEvent(data);
     for (const event of events) {
@@ -136,7 +165,7 @@ function createCodexProcessor({ agentManager, agentRegistry, sessionPids, debugL
 
 function processSessionEntry(entry, context = {}) {
     if (!entry || !entry.type) return { sessionId: null };
-    const contextSessionId = context.sessionId || null;
+    const contextSessionId = resolveCodexSessionId(context.sessionId || null);
     const transcriptPath = context.transcriptPath || null;
 
     switch (entry.type) {
@@ -161,7 +190,13 @@ function processSessionEntry(entry, context = {}) {
 
       case 'event_msg': {
         const payload = entry.payload || {};
-        const sessionId = entry.payload?.id || entry.payload?.thread_id || contextSessionId || null;
+        const canonicalFromPayload = payload.id || contextSessionId || null;
+        const aliasSessionId = payload.thread_id || null;
+        const sessionId = canonicalFromPayload || resolveCodexSessionId(aliasSessionId) || null;
+
+        if (aliasSessionId && sessionId && aliasSessionId !== sessionId) {
+          adoptCanonicalSessionId(aliasSessionId, sessionId);
+        }
 
         switch (payload.type) {
           case 'task_started':
@@ -299,7 +334,7 @@ function processSessionEntry(entry, context = {}) {
     const agents = agentManager ? agentManager.getAllAgents().filter((agent) => agent.provider === 'codex') : [];
     if (agents.length === 0) return null;
     agents.sort((a, b) => (b.lastActivity || 0) - (a.lastActivity || 0));
-    return agents[0].id;
+    return agents[0].sessionId || agents[0].id;
   }
 
   function endSession(sessionId, reason = 'ended') {

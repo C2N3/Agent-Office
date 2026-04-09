@@ -7,6 +7,7 @@ const { ipcMain, screen } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { parseConversation, getConversationSummary } = require('./conversationParser');
+const { resolveResumeSessionId } = require('./sessionIdResolver');
 const { resolveProjectPathForPlatform } = require('../utils');
 
 function focusTerminalByPid(pid, label, debugLog) {
@@ -73,7 +74,8 @@ if ($hwnd -ne [IntPtr]::Zero) {
 
 function buildResumeCommand(provider, sessionId) {
   if (!sessionId) return null;
-  return provider === 'codex'
+  const normalizedProvider = String(provider || '').trim().toLowerCase();
+  return normalizedProvider === 'codex'
     ? `codex resume ${sessionId}\r`
     : `claude --resume ${sessionId}\r`;
 }
@@ -505,7 +507,24 @@ function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowM
 
       const agent = agentRegistry.getAgent(registryId);
       if (!agent) return { success: false, error: 'Agent not found' };
-      const resumeCommand = buildResumeCommand(agent.provider, sessionId);
+      const history = agentRegistry.getSessionHistory(registryId);
+      const entry = history.find((item) => item.sessionId === sessionId);
+
+      let transcriptPath = entry?.transcriptPath || null;
+      if (!transcriptPath) {
+        const liveAgent = agentManager?.getAgent(registryId);
+        if (liveAgent?.sessionId === sessionId && liveAgent?.jsonlPath) {
+          transcriptPath = liveAgent.jsonlPath;
+        }
+      }
+
+      const resolvedSessionId = resolveResumeSessionId({
+        provider: agent.provider,
+        requestedSessionId: sessionId,
+        transcriptPath,
+      });
+
+      const resumeCommand = buildResumeCommand(agent.provider, resolvedSessionId);
       if (!resumeCommand) return { success: false, error: 'Session not found' };
 
       // Use the agent's own ID — destroy existing terminal first
@@ -528,7 +547,7 @@ function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowM
         terminalManager.writeToTerminal(registryId, resumeCommand);
       }, 800);
 
-      return { ...result, terminalId: registryId };
+      return { ...result, terminalId: registryId, sessionId: resolvedSessionId };
     });
   }
 }

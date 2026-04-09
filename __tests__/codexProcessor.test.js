@@ -14,6 +14,21 @@ function createMockAgentManager() {
       agents.set(id, { ...data, id, firstSeen: data.firstSeen || Date.now() });
       return agents.get(id);
     }),
+    rekeyAgent: jest.fn((currentId, nextId, fields = {}) => {
+      const current = agents.get(currentId);
+      const target = agents.get(nextId) || null;
+      if (!current) return null;
+      const merged = {
+        ...(target || {}),
+        ...current,
+        ...fields,
+        id: nextId,
+        sessionId: fields.sessionId || current.sessionId || nextId,
+      };
+      agents.delete(currentId);
+      agents.set(nextId, merged);
+      return merged;
+    }),
     removeAgent: jest.fn((id) => { agents.delete(id); }),
     getAllAgents: jest.fn(() => Array.from(agents.values())),
     getAgentCount: jest.fn(() => agents.size),
@@ -25,6 +40,7 @@ function createMockAgentRegistry() {
   return {
     findByProjectPath: jest.fn(() => null),
     linkSession: jest.fn(),
+    replaceSessionId: jest.fn(),
     updateSessionTranscriptPath: jest.fn(),
     accumulateTokens: jest.fn(),
     unlinkSession: jest.fn(),
@@ -415,6 +431,89 @@ describe('codexProcessor', () => {
       }),
       'codex'
     );
+  });
+
+  test('transcript canonical id rekeys a live codex thread id', () => {
+    processor.processCodexEvent({
+      type: 'thread.started',
+      thread_id: 'thread-1234',
+      cwd: '/workspace/app',
+      model: 'gpt-5-codex',
+    });
+
+    const metaResult = processor.processSessionEntry({
+      type: 'session_meta',
+      payload: {
+        id: 'session-9999',
+        workspacePath: '/workspace/app',
+        model_slug: 'gpt-5-codex',
+      },
+    }, { transcriptPath: '/tmp/codex.jsonl' });
+
+    processor.processSessionEntry({
+      type: 'event_msg',
+      payload: {
+        type: 'task_started',
+        thread_id: 'thread-1234',
+      },
+    }, { sessionId: metaResult.sessionId, transcriptPath: '/tmp/codex.jsonl' });
+
+    expect(agentManager.rekeyAgent).toHaveBeenCalledWith('thread-1234', 'session-9999', {
+      sessionId: 'session-9999',
+    });
+    expect(agentManager.getAgent('thread-1234')).toBeNull();
+    expect(agentManager.getAgent('session-9999')).toEqual(expect.objectContaining({
+      id: 'session-9999',
+      sessionId: 'session-9999',
+      projectPath: '/workspace/app',
+    }));
+  });
+
+  test('registered codex agents rekey their saved session history to the canonical id', () => {
+    processor.processCodexEvent({
+      type: 'thread.started',
+      thread_id: 'thread-1234',
+      cwd: '/workspace/app',
+      model: 'gpt-5-codex',
+    });
+
+    const attachedSessionId = processor.attachRegisteredAgent({
+      id: 'registry-1',
+      name: 'Desktop Agent',
+      role: 'Implementer',
+      projectPath: '/workspace/app',
+      avatarIndex: 3,
+      provider: 'codex',
+    });
+
+    expect(attachedSessionId).toBe('thread-1234');
+
+    const metaResult = processor.processSessionEntry({
+      type: 'session_meta',
+      payload: {
+        id: 'session-9999',
+        workspacePath: '/workspace/app',
+      },
+    }, { transcriptPath: '/tmp/codex.jsonl' });
+
+    processor.processSessionEntry({
+      type: 'event_msg',
+      payload: {
+        type: 'task_started',
+        thread_id: 'thread-1234',
+      },
+    }, { sessionId: metaResult.sessionId, transcriptPath: '/tmp/codex.jsonl' });
+
+    expect(agentRegistry.replaceSessionId).toHaveBeenCalledWith(
+      'registry-1',
+      'thread-1234',
+      'session-9999',
+      '/tmp/codex.jsonl'
+    );
+    expect(agentManager.getAgent('registry-1')).toEqual(expect.objectContaining({
+      sessionId: 'session-9999',
+      isRegistered: true,
+    }));
   });
 });
 

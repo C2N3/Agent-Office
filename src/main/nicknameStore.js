@@ -74,6 +74,21 @@ class NicknameStore {
     }
     return null;
   }
+
+  rekeyNickname(fromSessionId, toSessionId) {
+    if (!fromSessionId || !toSessionId || fromSessionId === toSessionId) {
+      return this.getNickname(toSessionId || fromSessionId);
+    }
+
+    const nickname = this.nicknames.get(fromSessionId);
+    if (!nickname) return this.getNickname(toSessionId);
+
+    this.nicknames.set(toSessionId, nickname);
+    this.nicknames.delete(fromSessionId);
+    this._save();
+    this.debugLog(`[NicknameStore] Rekeyed: ${fromSessionId.slice(0, 8)} → ${toSessionId.slice(0, 8)}`);
+    return nickname;
+  }
 }
 
 module.exports = { NicknameStore };

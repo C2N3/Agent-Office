@@ -37,6 +37,8 @@ const DOM = {
   archiveRefreshBtn: document.getElementById('archiveRefreshBtn'),
 };
 
+const dashboardResumeUtils = window.dashboardResumeUtils || {};
+
 // ─── SSE CONNECTION ───
 let sseDelay = 1000;
 let sseSource = null;
@@ -1156,12 +1158,21 @@ async function openTerminalForAgent(agentId, openOptions = {}) {
     return;
   }
 
-  if (!openOptions.skipAutoResume && provider === 'codex' && isRegistered && registryId && agentStatus === 'offline') {
-    const resumed = await resumeLatestRegisteredSession(
+  const shouldAutoResume = dashboardResumeUtils.shouldAutoResumeRegisteredAgent
+    ? dashboardResumeUtils.shouldAutoResumeRegisteredAgent(agent, openOptions)
+    : (!openOptions.skipAutoResume && isRegistered && registryId && agentStatus === 'offline');
+
+  if (shouldAutoResume) {
+    const resumeResult = await resumeLatestRegisteredSession(
       registryId,
       openOptions.label || agent?.nickname || agent?.name || 'Terminal'
     );
-    if (resumed) return;
+    if (resumeResult?.success) return;
+    if (resumeResult?.attempted) {
+      console.error('[Terminal] Resume failed:', resumeResult.error || 'unknown');
+      alert('Failed to resume the latest session: ' + (resumeResult.error || 'unknown'));
+      return;
+    }
   }
 
   if (typeof dashboardAPI === 'undefined' || !dashboardAPI.createTerminal) return;
@@ -1203,23 +1214,36 @@ async function resumeRegisteredSession(registryId, sessionId, label) {
 }
 
 async function resumeLatestRegisteredSession(registryId, label) {
-  if (typeof dashboardAPI === 'undefined' || !dashboardAPI.getSessionHistory) return false;
+  if (typeof dashboardAPI === 'undefined' || !dashboardAPI.getSessionHistory) {
+    return { attempted: false, success: false, error: 'Session history is unavailable' };
+  }
 
   try {
     const history = await dashboardAPI.getSessionHistory(registryId);
-    if (!Array.isArray(history) || history.length === 0) return false;
+    if (!Array.isArray(history) || history.length === 0) {
+      return { attempted: false, success: false, error: 'No session history found' };
+    }
 
-    const latest = history
-      .filter((entry) => !!entry?.sessionId)
-      .sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0))[0];
+    const latest = dashboardResumeUtils.findLatestResumableSession
+      ? dashboardResumeUtils.findLatestResumableSession(history)
+      : history
+        .filter((entry) => !!entry?.sessionId)
+        .sort((a, b) => Math.max(b.startedAt || 0, b.endedAt || 0) - Math.max(a.startedAt || 0, a.endedAt || 0))[0];
 
-    if (!latest?.sessionId) return false;
+    if (!latest?.sessionId) {
+      return { attempted: false, success: false, error: 'No resumable session found' };
+    }
 
     const result = await resumeRegisteredSession(registryId, latest.sessionId, label);
-    return !!result?.success;
+    return {
+      attempted: true,
+      success: !!result?.success,
+      error: result?.error || null,
+      sessionId: latest.sessionId,
+    };
   } catch (error) {
     console.error('[Terminal] Auto-resume failed:', error);
-    return false;
+    return { attempted: true, success: false, error: error?.message || 'unknown' };
   }
 }
 

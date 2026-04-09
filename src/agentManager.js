@@ -213,6 +213,75 @@ class AgentManager extends EventEmitter {
     return true;
   }
 
+  rekeyAgent(currentId, nextId, fields = {}) {
+    if (!currentId || !nextId) return null;
+
+    const current = this.agents.get(currentId);
+    if (!current) return null;
+
+    if (currentId === nextId) {
+      const updated = { ...current, ...fields, id: nextId };
+      this.agents.set(nextId, updated);
+      this.emit('agent-updated', this.getAgentWithEffectiveState(nextId));
+      return updated;
+    }
+
+    this._cancelPendingEmit(currentId);
+    this._cancelPendingEmit(nextId);
+
+    const existingTarget = this.agents.get(nextId) || null;
+    const merged = {
+      ...current,
+      id: nextId,
+      sessionId: fields.sessionId || current.sessionId || nextId,
+    };
+
+    if (existingTarget) {
+      for (const [key, value] of Object.entries(existingTarget)) {
+        if (merged[key] === undefined || merged[key] === null) {
+          merged[key] = value;
+        }
+      }
+    }
+
+    for (const [key, value] of Object.entries(fields)) {
+      if (value !== undefined) {
+        merged[key] = value;
+      }
+    }
+
+    this.agents.delete(currentId);
+    this.agents.set(nextId, merged);
+
+    for (const [agentId, agent] of this.agents.entries()) {
+      if (agent.parentId === currentId) {
+        this.agents.set(agentId, { ...agent, parentId: nextId });
+      }
+    }
+
+    if (this._nicknameStore) {
+      const nickname = this._nicknameStore.rekeyNickname(currentId, nextId);
+      if (nickname) {
+        merged.nickname = nickname;
+        this.agents.set(nextId, merged);
+      }
+    }
+
+    this.emit('agent-removed', { id: currentId, displayName: current.displayName });
+    if (existingTarget) {
+      this.emit('agent-updated', this.getAgentWithEffectiveState(nextId));
+    } else {
+      this.emit('agent-added', this.getAgentWithEffectiveState(nextId));
+    }
+
+    if (merged.parentId) {
+      this.reEvaluateParentState(merged.parentId);
+    }
+
+    console.log(`[AgentManager] Rekeyed: ${currentId} → ${nextId}`);
+    return merged;
+  }
+
   /**
    * Transition a registered agent to Offline state instead of removing it.
    */

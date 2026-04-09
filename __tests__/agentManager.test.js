@@ -187,6 +187,40 @@ describe('AgentManager', () => {
     });
   });
 
+  describe('rekeyAgent', () => {
+    test('moves an ephemeral agent to a new canonical id', () => {
+      manager.updateAgent({ sessionId: 'thread-1', state: 'Working', projectPath: '/workspace/app' });
+
+      const result = manager.rekeyAgent('thread-1', 'session-1', { sessionId: 'session-1' });
+
+      expect(result).toEqual(expect.objectContaining({
+        id: 'session-1',
+        sessionId: 'session-1',
+        projectPath: '/workspace/app',
+      }));
+      expect(manager.getAgent('thread-1')).toBeNull();
+      expect(manager.getAgent('session-1')).toEqual(expect.objectContaining({
+        id: 'session-1',
+      }));
+    });
+
+    test('merges into an existing canonical agent when the target already exists', () => {
+      manager.updateAgent({ sessionId: 'thread-1', state: 'Working', currentTool: 'Command' });
+      manager.updateAgent({ sessionId: 'session-1', state: 'Waiting', jsonlPath: '/tmp/codex.jsonl' });
+
+      const result = manager.rekeyAgent('thread-1', 'session-1', { sessionId: 'session-1' });
+
+      expect(result).toEqual(expect.objectContaining({
+        id: 'session-1',
+        sessionId: 'session-1',
+        currentTool: 'Command',
+        jsonlPath: '/tmp/codex.jsonl',
+      }));
+      expect(manager.getAgentCount()).toBe(1);
+      expect(manager.getAgent('thread-1')).toBeNull();
+    });
+  });
+
   describe('getAgent', () => {
     test('returns agent by ID', () => {
       manager.updateAgent({ sessionId: 'get-1', state: 'Working' });

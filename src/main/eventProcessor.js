@@ -88,16 +88,102 @@ function createEventProcessor({
   const firstToolUseDone = new Map();
   const sessionToRegistry = new Map(); // sessionId → registryId
   const sessionContext = new Map(); // sessionId -> { cwd, meta }
+  const sessionAliases = new Map(); // aliasSessionId -> canonicalSessionId
+
+  function resolveSessionId(sessionId) {
+    if (!sessionId) return null;
+    let current = sessionId;
+    const seen = new Set();
+    while (sessionAliases.has(current) && !seen.has(current)) {
+      seen.add(current);
+      current = sessionAliases.get(current);
+    }
+    return current;
+  }
 
   /** Resolve a sessionId to a registryId if linked, else return sessionId */
   function resolveAgentId(sessionId) {
-    return sessionToRegistry.get(sessionId) || sessionId;
+    const canonicalSessionId = resolveSessionId(sessionId);
+    return sessionToRegistry.get(canonicalSessionId) || canonicalSessionId;
+  }
+
+  function adoptSessionIdentity(previousSessionId, nextSessionId) {
+    const previousCanonical = resolveSessionId(previousSessionId);
+    const nextCanonical = resolveSessionId(nextSessionId);
+
+    if (!previousCanonical || !nextCanonical) return nextCanonical || previousCanonical || null;
+    if (previousCanonical === nextCanonical) {
+      if (previousSessionId !== nextCanonical) {
+        sessionAliases.set(previousSessionId, nextCanonical);
+      }
+      return nextCanonical;
+    }
+
+    sessionAliases.set(previousSessionId, nextCanonical);
+    sessionAliases.set(previousCanonical, nextCanonical);
+
+    const previousContext = sessionContext.get(previousCanonical) || null;
+    const nextContext = sessionContext.get(nextCanonical) || null;
+    if (previousContext) {
+      sessionContext.set(nextCanonical, {
+        cwd: nextContext?.cwd || previousContext.cwd || '',
+        meta: {
+          ...(previousContext.meta || {}),
+          ...(nextContext?.meta || {}),
+        },
+      });
+      sessionContext.delete(previousCanonical);
+    }
+
+    if (firstToolUseDone.has(previousCanonical) && !firstToolUseDone.has(nextCanonical)) {
+      firstToolUseDone.set(nextCanonical, firstToolUseDone.get(previousCanonical));
+    }
+    firstToolUseDone.delete(previousCanonical);
+
+    if (sessionPids.has(previousCanonical) && !sessionPids.has(nextCanonical)) {
+      sessionPids.set(nextCanonical, sessionPids.get(previousCanonical));
+    }
+    sessionPids.delete(previousCanonical);
+
+    for (const pending of pendingSessionStarts) {
+      if (pending.sessionId === previousCanonical) {
+        pending.sessionId = nextCanonical;
+      }
+    }
+
+    const registryId = sessionToRegistry.get(previousCanonical) || null;
+    if (registryId) {
+      sessionToRegistry.delete(previousCanonical);
+      sessionToRegistry.set(nextCanonical, registryId);
+      agentRegistry?.replaceSessionId(
+        registryId,
+        previousCanonical,
+        nextCanonical,
+        sessionContext.get(nextCanonical)?.meta?.jsonlPath || null
+      );
+
+      const registeredAgent = agentManager?.getAgent(registryId);
+      if (registeredAgent) {
+        agentManager.updateAgent({
+          ...registeredAgent,
+          sessionId: nextCanonical,
+        }, updateSource);
+      }
+    } else if (agentManager?.getAgent(previousCanonical)) {
+      agentManager.rekeyAgent(previousCanonical, nextCanonical, {
+        sessionId: nextCanonical,
+      });
+    }
+
+    debugLog(`[${logPrefix}] Session alias adopted: ${previousCanonical.slice(0, 8)} → ${nextCanonical.slice(0, 8)}`);
+    return nextCanonical;
   }
 
   function rememberSessionContext(sessionId, cwd, meta = {}) {
-    if (!sessionId) return;
-    const existing = sessionContext.get(sessionId) || { cwd: '', meta: {} };
-    sessionContext.set(sessionId, {
+    const canonicalSessionId = resolveSessionId(sessionId);
+    if (!canonicalSessionId) return;
+    const existing = sessionContext.get(canonicalSessionId) || { cwd: '', meta: {} };
+    sessionContext.set(canonicalSessionId, {
       cwd: cwd || existing.cwd || '',
       meta: {
         ...existing.meta,
@@ -107,7 +193,7 @@ function createEventProcessor({
   }
 
   function getSessionContext(sessionId) {
-    return sessionContext.get(sessionId) || { cwd: '', meta: {} };
+    return sessionContext.get(resolveSessionId(sessionId)) || { cwd: '', meta: {} };
   }
 
   function canBindRegistryAgent(registryAgent) {
@@ -123,7 +209,7 @@ function createEventProcessor({
   function processEvent(event) {
     if (!event) return;
 
-    const sessionId = event.sessionId;
+    const sessionId = resolveSessionId(event.sessionId);
     const rawType = event.rawType || event.type;
     if (!sessionId) return;
 
@@ -151,8 +237,8 @@ function createEventProcessor({
     if (agentManager && event.type !== 'session.start' && event.type !== 'session.end') {
       const agentKey = resolveAgentId(sessionId);
       const existing = agentManager.getAgent(agentKey);
-      if (!existing) {
-        debugLog(`[${logPrefix}] Auto-create from ${rawType}: ${sessionId.slice(0, 8)}`);
+        if (!existing) {
+          debugLog(`[${logPrefix}] Auto-create from ${rawType}: ${sessionId.slice(0, 8)}`);
         const cached = getSessionContext(sessionId);
         handleSessionStart(sessionId, event.cwd || cached.cwd || '', event.pid || 0, {
           isTeammate: !!event.isTeammate,
@@ -432,6 +518,7 @@ function createEventProcessor({
   }
 
   function handleSessionStart(sessionId, cwd, pid = 0, options = {}) {
+    sessionId = resolveSessionId(sessionId);
     const {
       isTeammate = false,
       isSubagent = false,
@@ -531,12 +618,19 @@ function createEventProcessor({
   }
 
   function cleanupAgentResources(sessionId) {
+    sessionId = resolveSessionId(sessionId);
     firstToolUseDone.delete(sessionId);
     sessionPids.delete(sessionId);
+    for (const [alias, canonical] of Array.from(sessionAliases.entries())) {
+      if (alias === sessionId || canonical === sessionId) {
+        sessionAliases.delete(alias);
+      }
+    }
     debugLog(`[Cleanup] Resources cleared for ${sessionId.slice(0, 8)}`);
   }
 
   function handleSessionEnd(sessionId) {
+    sessionId = resolveSessionId(sessionId);
     const registryId = sessionToRegistry.get(sessionId);
     const agentKey = registryId || sessionId;
 
@@ -624,9 +718,11 @@ function createEventProcessor({
     handleSessionStart,
     handleSessionEnd,
     attachRegisteredAgent,
+    adoptSessionIdentity,
     flushPendingStarts,
     cleanup,
     get firstToolUseDone() { return firstToolUseDone; },
+    resolveSessionId,
   };
 }
 
