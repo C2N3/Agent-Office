@@ -3,11 +3,20 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const { createRecursiveWatcher } = require('./watch-utils');
 
-const roots = [
-  path.join(__dirname, '..', 'src'),
-  path.join(__dirname, '..', 'public'),
+const projectRoot = path.join(__dirname, '..');
+const roots = ['src', 'public'].map((segment) => path.join(projectRoot, segment));
+const watchMode = process.argv.includes('--watch');
+const watchTargets = [
+  ...roots,
+  path.join(projectRoot, 'tsconfig.json'),
+  path.join(projectRoot, 'tsconfig.emit.json'),
 ];
+
+let buildRunning = false;
+let queuedBuild = false;
+let watcher = null;
 
 function hasTypeScriptSource(dir) {
   if (!fs.existsSync(dir)) return false;
@@ -26,44 +35,97 @@ function hasTypeScriptSource(dir) {
   return false;
 }
 
-if (!roots.some(hasTypeScriptSource)) {
+function copyTargetsToDist() {
+  const copyTargets = [
+    'src/dashboardAdapter.js',
+    'src/officeLayout.js',
+    'src/utils.js',
+    'src/pricing.js',
+    'src/main/agentRegistry.js',
+    'src/main/conversationParser.js',
+  ];
+
+  for (const relativePath of copyTargets) {
+    const sourcePath = path.join(projectRoot, relativePath);
+    const destinationPath = path.join(projectRoot, 'dist', relativePath);
+    if (!fs.existsSync(sourcePath)) continue;
+    fs.mkdirSync(path.dirname(destinationPath), { recursive: true });
+    fs.writeFileSync(destinationPath, fs.readFileSync(sourcePath));
+  }
+}
+
+function buildOnce() {
+  if (!roots.some(hasTypeScriptSource)) {
+    return 0;
+  }
+
+  const tsgoPath = path.join(
+    projectRoot,
+    'node_modules',
+    '@typescript',
+    'native-preview',
+    'bin',
+    'tsgo.js',
+  );
+
+  const result = spawnSync(process.execPath, [tsgoPath, '-p', 'tsconfig.emit.json'], {
+    stdio: 'inherit',
+    cwd: projectRoot,
+  });
+
+  if (result.error) {
+    console.error('[build-types] Failed to execute tsgo:', result.error);
+    return 1;
+  }
+
+  if ((result.status ?? 1) === 0) {
+    copyTargetsToDist();
+  }
+
+  return result.status ?? 0;
+}
+
+function runWatchedBuild(triggerPath = 'initial build') {
+  if (buildRunning) {
+    queuedBuild = true;
+    return;
+  }
+
+  buildRunning = true;
+  const status = buildOnce();
+  if (status === 0) {
+    console.log(`[build-types] Build complete: ${triggerPath}`);
+  }
+  buildRunning = false;
+
+  if (queuedBuild) {
+    queuedBuild = false;
+    runWatchedBuild('queued changes');
+  }
+}
+
+function shutdown() {
+  if (watcher) {
+    watcher.close();
+  }
   process.exit(0);
 }
 
-const tsgoPath = path.join(
-  __dirname,
-  '..',
-  'node_modules',
-  '@typescript',
-  'native-preview',
-  'bin',
-  'tsgo.js',
-);
-const result = spawnSync(process.execPath, [tsgoPath, '-p', 'tsconfig.emit.json'], {
-  stdio: 'inherit',
-  cwd: path.join(__dirname, '..'),
+if (!watchMode) {
+  process.exit(buildOnce());
+}
+
+runWatchedBuild();
+
+watcher = createRecursiveWatcher({
+  paths: watchTargets,
+  onChange: (changedPath) => {
+    const relativePath = path.relative(projectRoot, changedPath).replace(/\\/g, '/');
+    runWatchedBuild(relativePath || '.');
+  },
 });
 
-if (result.error) {
-  console.error('[build-types] Failed to execute tsgo:', result.error);
-  process.exit(1);
-}
+console.log('[build-types] Watching src/, public/, and tsconfig files');
 
-const copyTargets = [
-  'src/dashboardAdapter.js',
-  'src/officeLayout.js',
-  'src/utils.js',
-  'src/pricing.js',
-  'src/main/agentRegistry.js',
-  'src/main/conversationParser.js',
-];
-
-for (const relativePath of copyTargets) {
-  const sourcePath = path.join(__dirname, '..', relativePath);
-  const destinationPath = path.join(__dirname, '..', 'dist', relativePath);
-  if (!fs.existsSync(sourcePath)) continue;
-  fs.mkdirSync(path.dirname(destinationPath), { recursive: true });
-  fs.writeFileSync(destinationPath, fs.readFileSync(sourcePath));
-}
-
-process.exit(result.status ?? 0);
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);

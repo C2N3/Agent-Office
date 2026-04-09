@@ -7,13 +7,12 @@
     "postinstall": "node src/install.js",
     "rebuild": "electron-rebuild -f -w node-pty",
     "build:dist": "node scripts/build-types.js",
+    "build:dist:watch": "node scripts/build-types.js --watch",
     "build:types": "npm run build:dist",
     "prestart": "npm run build:dist",
     "start": "node scripts/run-electron.js",
-    "predev": "npm run build:dist",
-    "dev": "node scripts/run-electron.js --dev",
+    "dev": "node scripts/dev-runtime.js",
     "typecheck": "node node_modules/@typescript/native-preview/bin/tsgo.js -p tsconfig.json --noEmit",
-    "pretest": "npm run build:dist",
     "test": "jest",
     "test:coverage": "jest --coverage",
     "test:watch": "jest --watch",
@@ -43,7 +42,7 @@
     "url": "https://github.com/Mgpixelart/agent-office.git"
   },
   "license": "MIT",
-    "build": {
+  "build": {
     "appId": "com.mgpixelart.agent-office",
     "productName": "Agent-Office",
     "npmRebuild": false,

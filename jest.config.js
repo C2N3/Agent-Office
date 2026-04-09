@@ -22,8 +22,18 @@ module.exports = {
   moduleNameMapper: {
     '^electron$': '<rootDir>/__mocks__/electron.js'
   },
+  moduleFileExtensions: [
+    'js',
+    'ts',
+    'json',
+    'node'
+  ],
   testMatch: [
     '**/__tests__/**/*.test.js'
   ],
+  transform: {
+    '^.+\\.js$': 'babel-jest',
+    '^.+\\.ts$': '<rootDir>/scripts/jest-ts-transform.js'
+  },
   verbose: true
 };
