@@ -1,6 +1,6 @@
-// @ts-nocheck
-
 import {
+  type DashboardArchiveItem,
+  type DashboardDayStats,
   DOM,
   archiveState,
   createDiv,
@@ -18,9 +18,16 @@ const MODEL_COLORS = {
   haiku: '#3fb950',
 };
 
-const tooltip = document.getElementById('mcTooltip');
+const tooltip = document.getElementById('mcTooltip') as HTMLDivElement | null;
+type BarDatum = { label: string; value: number };
 
-function getModelFamily(modelName) {
+function toMillis(value: number | string | Date | null | undefined): number {
+  if (value == null) return 0;
+  const ts = new Date(value).getTime();
+  return Number.isFinite(ts) ? ts : 0;
+}
+
+function getModelFamily(modelName: string | null | undefined): 'opus' | 'sonnet' | 'haiku' | null {
   if (!modelName) return null;
   const lower = modelName.toLowerCase();
   if (lower.includes('opus')) return 'opus';
@@ -29,12 +36,12 @@ function getModelFamily(modelName) {
   return null;
 }
 
-function getModelColor(modelName) {
+function getModelColor(modelName: string | null | undefined): string {
   const family = getModelFamily(modelName);
   return (family && MODEL_COLORS[family]) || '#8b949e';
 }
 
-function getModelDisplayName(modelName) {
+function getModelDisplayName(modelName: string | null | undefined): string {
   if (!modelName) return 'Unknown';
   const match = modelName.match(/claude-(\w+)-(\d+)-(\d+)/);
   if (match) {
@@ -43,12 +50,12 @@ function getModelDisplayName(modelName) {
   return modelName;
 }
 
-function renderModelBreakdown(days) {
+function renderModelBreakdown(days: Record<string, DashboardDayStats>): void {
   const root = document.getElementById('modelBreakdownRoot');
   const body = document.getElementById('modelBreakdownBody');
   if (!root || !body) return;
 
-  const totals = {};
+  const totals: Record<string, { inputTokens: number; outputTokens: number; estimatedCost: number }> = {};
   for (const dayStats of Object.values(days)) {
     if (!dayStats.byModel) continue;
     for (const [model, modelStats] of Object.entries(dayStats.byModel)) {
@@ -92,17 +99,18 @@ function renderModelBreakdown(days) {
   void totalCost;
 }
 
-async function fetchHistory() {
+async function fetchHistory(): Promise<void> {
   if (historyState.data) return;
   try {
     const response = await fetch('/api/heatmap?days=365');
-    historyState.data = await response.json();
+    historyState.data = await response.json() as { days: Record<string, DashboardDayStats> };
   } catch {
     historyState.data = { days: {} };
   }
 }
 
-function showTooltip(element, dateString, data) {
+function showTooltip(element: HTMLElement, dateString: string, data?: DashboardDayStats) {
+  if (!tooltip) return;
   const bounds = element.getBoundingClientRect();
   tooltip.innerHTML = `<div class="tt-head">${dateString}</div>`;
   if (data) {
@@ -119,11 +127,16 @@ function showTooltip(element, dateString, data) {
 }
 
 function hideTooltip() {
+  if (!tooltip) return;
   tooltip.style.display = 'none';
 }
 
-function aggregateChart(days, mode, valueFn) {
-  const result = [];
+function aggregateChart(
+  days: Record<string, DashboardDayStats>,
+  mode: 'weeks' | 'months',
+  valueFn: (day: DashboardDayStats) => number
+): Array<{ label: string; value: number }> {
+  const result: Array<{ label: string; value: number }> = [];
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -159,7 +172,7 @@ function aggregateChart(days, mode, valueFn) {
   return result;
 }
 
-function buildBars(data, colorClass, isMoney = false) {
+function buildBars(data: BarDatum[], colorClass: string, isMoney = false): string {
   const max = Math.max(...data.map((entry) => entry.value), 1);
   const bars = data.map((entry) => {
     const height = entry.value > 0 ? Math.max(4, Math.round((entry.value / max) * 100)) : 0;
@@ -175,9 +188,9 @@ function buildBars(data, colorClass, isMoney = false) {
   return `<div class="chart-box">${bars}</div>`;
 }
 
-export async function renderHeatmapView() {
+export async function renderHeatmapView(): Promise<void> {
   await fetchHistory();
-  const days = historyState.data.days || {};
+  const days = historyState.data?.days || {};
 
   let totalSessions = 0;
   let activeDays = 0;
@@ -196,13 +209,16 @@ export async function renderHeatmapView() {
     }
   }
 
-  document.getElementById('hmStatsRoot').innerHTML = `
+  const statsRoot = document.getElementById('hmStatsRoot');
+  if (!statsRoot) return;
+  statsRoot.innerHTML = `
     <div class="hm-stat"><span class="hm-stat-lbl">Record Sessions</span><span class="hm-stat-val">${formatNum(totalSessions)}</span></div>
     <div class="hm-stat"><span class="hm-stat-lbl">Active Days</span><span class="hm-stat-val">${activeDays}</span></div>
     <div class="hm-stat"><span class="hm-stat-lbl">Longest Streak</span><span class="hm-stat-val">${bestStreak} d</span></div>
   `;
 
   const grid = document.getElementById('heatmapGrid');
+  if (!grid) return;
   grid.innerHTML = '';
 
   const today = new Date();
@@ -210,8 +226,8 @@ export async function renderHeatmapView() {
   const start = new Date(today);
   start.setDate(today.getDate() - (52 * 7 + today.getDay()));
 
-  const values = [];
-  const cells = [];
+  const values: number[] = [];
+  const cells: Array<{ dateString: string; value: number; dayOfWeek: number }> = [];
   const cursor = new Date(start);
   while (cursor <= today) {
     const dateString = cursor.toISOString().slice(0, 10);
@@ -222,7 +238,7 @@ export async function renderHeatmapView() {
   }
 
   const nonZeroValues = values.filter((value) => value > 0).sort((left, right) => left - right);
-  const getLevel = (value) => {
+  const getLevel = (value: number) => {
     if (value === 0 || nonZeroValues.length === 0) return 0;
     if (value <= nonZeroValues[Math.floor(nonZeroValues.length * 0.25)] || 1) return 1;
     if (value <= nonZeroValues[Math.floor(nonZeroValues.length * 0.5)] || 1) return 2;
@@ -247,15 +263,15 @@ export async function renderHeatmapView() {
     }
     const dayCell = createDiv(`hm-cell l${getLevel(cell.value)}`, '');
     dayCell.dataset.ds = cell.dateString;
-    dayCell.onmouseenter = (event) => showTooltip(event.target, cell.dateString, days[cell.dateString]);
+    dayCell.onmouseenter = (event) => showTooltip(event.currentTarget as HTMLElement, cell.dateString, days[cell.dateString]);
     dayCell.onmouseleave = hideTooltip;
     grid.appendChild(dayCell);
   });
 }
 
-export async function renderUsageView() {
+export async function renderUsageView(): Promise<void> {
   await fetchHistory();
-  const days = historyState.data.days || {};
+  const days = historyState.data?.days || {};
   const mode = historyState.mode;
 
   let totalTokens = 0;
@@ -269,45 +285,53 @@ export async function renderUsageView() {
     totalSessions += day.sessions || 0;
   });
 
-  document.getElementById('uTotalTokens').textContent = formatNum(totalTokens);
-  document.getElementById('uTotalCost').textContent = `$${totalCost.toFixed(2)}`;
-  document.getElementById('uTotalTools').textContent = formatNum(totalTools);
-  document.getElementById('uTotalSessions').textContent = formatNum(totalSessions);
+  const totalTokensEl = document.getElementById('uTotalTokens');
+  const totalCostEl = document.getElementById('uTotalCost');
+  const totalToolsEl = document.getElementById('uTotalTools');
+  const totalSessionsEl = document.getElementById('uTotalSessions');
+  if (!totalTokensEl || !totalCostEl || !totalToolsEl || !totalSessionsEl) return;
+  totalTokensEl.textContent = formatNum(totalTokens);
+  totalCostEl.textContent = `$${totalCost.toFixed(2)}`;
+  totalToolsEl.textContent = formatNum(totalTools);
+  totalSessionsEl.textContent = formatNum(totalSessions);
 
   const tokenChart = aggregateChart(days, mode, (day) => (day.inputTokens || 0) + (day.outputTokens || 0));
   const costChart = aggregateChart(days, mode, (day) => day.estimatedCost || 0);
 
-  document.getElementById('chartTokensRoot').innerHTML = buildBars(tokenChart, 'tokens');
-  document.getElementById('chartCostRoot').innerHTML = buildBars(costChart, 'cost', true);
+  const chartTokensRoot = document.getElementById('chartTokensRoot');
+  const chartCostRoot = document.getElementById('chartCostRoot');
+  if (!chartTokensRoot || !chartCostRoot) return;
+  chartTokensRoot.innerHTML = buildBars(tokenChart, 'tokens');
+  chartCostRoot.innerHTML = buildBars(costChart, 'cost', true);
   renderModelBreakdown(days);
 }
 
-export async function fetchArchivedAgents(force = false) {
+export async function fetchArchivedAgents(force = false): Promise<DashboardArchiveItem[]> {
   if (archiveState.loading) return archiveState.items || [];
   if (archiveState.items && !force) return archiveState.items;
 
   archiveState.loading = true;
   try {
-    let items = [];
+    let items: DashboardArchiveItem[] = [];
     const dashboardAPI = getDashboardAPI();
     if (dashboardAPI?.listArchivedAgents) {
-      items = await dashboardAPI.listArchivedAgents();
+      items = (await dashboardAPI.listArchivedAgents()) || [];
     } else {
       const response = await fetch('/api/archived-agents');
-      items = await response.json();
+      items = (await response.json()) as DashboardArchiveItem[];
     }
     archiveState.items = Array.isArray(items) ? items : [];
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('[Archive]', error);
     archiveState.items = [];
   } finally {
     archiveState.loading = false;
   }
 
-  return archiveState.items;
+  return archiveState.items || [];
 }
 
-export async function renderArchiveView(force = false) {
+export async function renderArchiveView(force = false): Promise<void> {
   if (!DOM.archiveGrid) return;
   DOM.archiveGrid.innerHTML = '<div class="standby-state">Loading archived agent records...</div>';
   const items = await fetchArchivedAgents(force);
@@ -319,8 +343,9 @@ export async function renderArchiveView(force = false) {
 
   DOM.archiveGrid.innerHTML = items.map((item) => {
     const workspace = item.workspace || null;
-    const lastSession = Array.isArray(item.sessionHistory) && item.sessionHistory.length > 0
-      ? [...item.sessionHistory].sort((left, right) => (right.startedAt || 0) - (left.startedAt || 0))[0]
+    const sessionHistory = item.sessionHistory || [];
+    const lastSession = sessionHistory.length > 0
+      ? [...sessionHistory].sort((left, right) => toMillis(right.startedAt) - toMillis(left.startedAt))[0]
       : null;
     const tokenUsage = item.cumulativeTokens || {};
     const totalTokens = (tokenUsage.inputTokens || 0) + (tokenUsage.outputTokens || 0);
@@ -357,19 +382,19 @@ export async function renderArchiveView(force = false) {
 }
 
 export function initViewControls() {
-  document.querySelectorAll('.usage-btn').forEach((button) => {
+  document.querySelectorAll<HTMLButtonElement>('.usage-btn').forEach((button) => {
     button.onclick = () => {
-      document.querySelectorAll('.usage-btn').forEach((item) => item.classList.remove('active'));
+      document.querySelectorAll<HTMLButtonElement>('.usage-btn').forEach((item) => item.classList.remove('active'));
       button.classList.add('active');
-      historyState.mode = button.dataset.umode;
+      historyState.mode = button.dataset.umode === 'months' ? 'months' : 'weeks';
       renderUsageView();
     };
   });
 
-  document.querySelectorAll('.nav-item').forEach((button) => {
+  document.querySelectorAll<HTMLButtonElement>('.nav-item').forEach((button) => {
     button.onclick = () => {
-      const target = button.dataset.view;
-      document.querySelectorAll('.nav-item').forEach((item) => item.classList.remove('active'));
+      const target: string = button.dataset.view ?? 'office';
+      document.querySelectorAll<HTMLButtonElement>('.nav-item').forEach((item) => item.classList.remove('active'));
       button.classList.add('active');
 
       document.querySelectorAll('.view-section').forEach((view) => view.classList.remove('active'));

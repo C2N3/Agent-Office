@@ -1,6 +1,5 @@
-// @ts-nocheck
-
 import {
+  type DashboardAgent,
   DOM,
   REGISTERED_FILTER_STORAGE_KEY,
   SHARED_AVATAR_FILES,
@@ -11,10 +10,10 @@ import {
 } from './shared.js';
 
 let sseDelay = 1000;
-let sseSource = null;
+let sseSource: EventSource | null = null;
 
 function recalcStats() {
-  const arr = Array.from(state.agents.values());
+  const arr = Array.from(state.agents.values()) as DashboardAgent[];
   state.stats.total = arr.length;
   state.stats.active = arr.filter((agent) => ['working', 'thinking'].includes(agent.status)).length;
   state.stats.totalTokens = arr.reduce((sum, agent) => {
@@ -32,7 +31,7 @@ function recalcStats() {
   }
 }
 
-function updateConnectionStatus(up) {
+function updateConnectionStatus(up: boolean) {
   const banner = document.getElementById('disconnectBanner');
   if (up) {
     DOM.statusIndicator.className = 'status-dot connected';
@@ -71,25 +70,25 @@ export function connectSSE() {
   };
 
   eventSource.addEventListener('connected', () => fetchInitialData());
-  eventSource.addEventListener('agent.created', (event) => {
-    const data = JSON.parse(event.data).data;
-    updateAgent(data);
+  eventSource.addEventListener('agent.created', (event: MessageEvent) => {
+    const data = JSON.parse(event.data) as { data: DashboardAgent };
+    updateAgent(data.data);
     if (typeof globalThis.officeOnAgentCreated === 'function') {
-      globalThis.officeOnAgentCreated(data);
+      globalThis.officeOnAgentCreated(data.data);
     }
   });
-  eventSource.addEventListener('agent.updated', (event) => {
-    const data = JSON.parse(event.data).data;
-    updateAgent(data);
+  eventSource.addEventListener('agent.updated', (event: MessageEvent) => {
+    const data = JSON.parse(event.data) as { data: DashboardAgent };
+    updateAgent(data.data);
     if (typeof globalThis.officeOnAgentUpdated === 'function') {
-      globalThis.officeOnAgentUpdated(data);
+      globalThis.officeOnAgentUpdated(data.data);
     }
   });
-  eventSource.addEventListener('agent.removed', (event) => {
-    const data = JSON.parse(event.data).data;
-    removeAgent(data.id);
+  eventSource.addEventListener('agent.removed', (event: MessageEvent) => {
+    const data = JSON.parse(event.data) as { data: { id: string } };
+    removeAgent(data.data.id);
     if (typeof globalThis.officeOnAgentRemoved === 'function') {
-      globalThis.officeOnAgentRemoved(data);
+      globalThis.officeOnAgentRemoved(data.data);
     }
   });
 }
@@ -97,7 +96,7 @@ export function connectSSE() {
 export async function fetchInitialData() {
   try {
     const response = await fetch('/api/agents');
-    const agents = await response.json();
+    const agents = (await response.json()) as DashboardAgent[];
     for (const agent of agents) {
       state.agents.set(agent.id, agent);
       if (!state.agentHistory.has(agent.id)) {
@@ -106,12 +105,12 @@ export async function fetchInitialData() {
     }
     recalcStats();
     renderAgentList();
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Data fetch error:', error);
   }
 }
 
-export function updateAgent(agent) {
+export function updateAgent(agent: DashboardAgent) {
   if (agent.status === 'error') state.stats.errorCount++;
   state.agents.set(agent.id, agent);
 
@@ -126,7 +125,7 @@ export function updateAgent(agent) {
   updateAgentUI(agent);
 }
 
-export function removeAgent(id) {
+export function removeAgent(id: string) {
   state.agents.delete(id);
   state.agentHistory.delete(id);
   recalcStats();
@@ -141,7 +140,7 @@ export function isRegisteredOnlyFilterEnabled() {
   return !!state.filters.registeredOnly;
 }
 
-export function shouldDisplayAgent(agent) {
+export function shouldDisplayAgent(agent: DashboardAgent) {
   return !isRegisteredOnlyFilterEnabled() || !!agent.isRegistered;
 }
 
@@ -150,7 +149,7 @@ export function getVisibleAgents() {
 }
 
 export function getClearableUnregisteredAgents() {
-  return [...state.agents.values()].filter((agent) => {
+  return [...state.agents.values()].filter((agent: DashboardAgent) => {
     return !agent.isRegistered && (agent.status === 'offline' || agent.status === 'completed');
   });
 }
@@ -195,7 +194,7 @@ function renderOfficeRoster() {
   }
 }
 
-export function setRegisteredOnlyFilter(enabled) {
+export function setRegisteredOnlyFilter(enabled: boolean) {
   state.filters.registeredOnly = !!enabled;
   localStorage.setItem(REGISTERED_FILTER_STORAGE_KEY, enabled ? 'true' : 'false');
   updateFilterUI();
@@ -222,7 +221,7 @@ export function renderAgentList() {
   renderOfficeRoster();
 }
 
-export async function clearUnregisteredAgents() {
+export async function clearUnregisteredAgents(): Promise<void> {
   const agents = getClearableUnregisteredAgents();
   if (agents.length === 0) {
     alert('No inactive unregistered agents are available to clear.');
@@ -243,7 +242,7 @@ export async function clearUnregisteredAgents() {
     if (result?.success) {
       clearedCount = result.clearedCount || 0;
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('[Clear Unregistered]', error);
   }
 
@@ -253,8 +252,8 @@ export async function clearUnregisteredAgents() {
   }
 }
 
-export function getStateColor(status) {
-  const map = {
+export function getStateColor(status: string) {
+  const map: Record<string, string> = {
     working: 'var(--color-state-working)',
     thinking: 'var(--color-state-thinking)',
     waiting: 'var(--color-state-waiting)',
@@ -265,15 +264,15 @@ export function getStateColor(status) {
   return map[status] || 'var(--color-state-waiting)';
 }
 
-export function updateAgentUI(agent) {
+export function updateAgentUI(agent: DashboardAgent) {
   if (!shouldDisplayAgent(agent)) {
-    const existingHidden = DOM.agentPanel.querySelector(`[data-id="${agent.id}"]`);
+    const existingHidden = DOM.agentPanel.querySelector(`[data-id="${agent.id}"]`) as HTMLElement | null;
     if (existingHidden) existingHidden.remove();
     return;
   }
 
   DOM.standbyMessage.style.display = 'none';
-  const existing = DOM.agentPanel.querySelector(`[data-id="${agent.id}"]`);
+  const existing = DOM.agentPanel.querySelector(`[data-id="${agent.id}"]`) as HTMLElement | null;
 
   const statusClass = ['working', 'thinking', 'error', 'done', 'completed', 'offline'].includes(agent.status)
     ? agent.status

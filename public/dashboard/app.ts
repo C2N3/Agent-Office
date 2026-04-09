@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 import {
   DOM,
   archiveState,
@@ -43,7 +41,7 @@ function initPipControls() {
   const pipStopBtn = document.getElementById('pipStopBtn');
   const officeCanvas = document.getElementById('office-canvas');
 
-  function setPipState(isOpen) {
+  function setPipState(isOpen: boolean) {
     if (pipBtn) pipBtn.classList.toggle('active', isOpen);
     if (pipPlaceholder) pipPlaceholder.style.display = isOpen ? 'flex' : 'none';
     if (officeCanvas) officeCanvas.style.display = isOpen ? 'none' : 'block';
@@ -61,7 +59,7 @@ function initPipControls() {
     });
   }
   if (dashboardAPI?.onPipStateChanged) {
-    dashboardAPI.onPipStateChanged((isOpen) => {
+    dashboardAPI.onPipStateChanged((isOpen: boolean) => {
       setPipState(isOpen);
     });
   }
@@ -69,8 +67,9 @@ function initPipControls() {
 
 function initInitialView() {
   document.querySelectorAll('.nav-item').forEach((item) => item.classList.remove('active'));
-  let button = document.querySelector(`[data-view="${state.currentView}"]`);
-  if (!button) button = document.querySelector('[data-view="office"]');
+  let button = document.querySelector(`[data-view="${state.currentView}"]`) as HTMLButtonElement | null;
+  if (!button) button = document.querySelector('[data-view="office"]') as HTMLButtonElement | null;
+  if (!button) return;
   button.classList.add('active');
 
   const target = button.dataset.view;
@@ -88,19 +87,23 @@ function initAgentPanelEvents() {
   if (!agentPanel) return;
 
   agentPanel.addEventListener('click', (event) => {
-    const historyBtn = event.target.closest('.agent-history-btn');
+    const target = event.target as HTMLElement | null;
+    if (!target) return;
+
+    const historyBtn = target.closest('.agent-history-btn') as HTMLButtonElement | null;
     if (historyBtn?.dataset.historyId) {
       event.stopPropagation();
       globalThis.openSessionHistory?.(historyBtn.dataset.historyId, historyBtn.dataset.agentName || 'Agent');
       return;
     }
 
-    const mergeBtn = event.target.closest('.agent-workspace-btn.merge');
+    const mergeBtn = target.closest('.agent-workspace-btn.merge') as HTMLButtonElement | null;
     if (mergeBtn?.dataset.workspaceMergeId) {
       event.stopPropagation();
       if (confirm(`Merge branch "${mergeBtn.dataset.branch || ''}" and archive this workspace agent?`)) {
         const dashboardAPI = getDashboardAPI();
-        dashboardAPI?.mergeWorkspaceAgent?.(mergeBtn.dataset.workspaceMergeId).then((result) => {
+        const mergeResult = dashboardAPI?.mergeWorkspaceAgent?.(mergeBtn.dataset.workspaceMergeId);
+        mergeResult?.then((result) => {
           if (!result?.success) {
             alert(result?.error || 'Workspace merge failed.');
           } else {
@@ -112,12 +115,13 @@ function initAgentPanelEvents() {
       return;
     }
 
-    const removeWorkspaceBtn = event.target.closest('.agent-workspace-btn.remove');
+    const removeWorkspaceBtn = target.closest('.agent-workspace-btn.remove') as HTMLButtonElement | null;
     if (removeWorkspaceBtn?.dataset.workspaceRemoveId) {
       event.stopPropagation();
       if (confirm(`Remove workspace branch "${removeWorkspaceBtn.dataset.branch || ''}" without merge and archive this agent?`)) {
         const dashboardAPI = getDashboardAPI();
-        dashboardAPI?.removeWorkspaceAgent?.(removeWorkspaceBtn.dataset.workspaceRemoveId).then((result) => {
+        const removeResult = dashboardAPI?.removeWorkspaceAgent?.(removeWorkspaceBtn.dataset.workspaceRemoveId);
+        removeResult?.then((result) => {
           if (!result?.success) {
             alert(result?.error || 'Workspace removal failed.');
           } else {
@@ -129,12 +133,13 @@ function initAgentPanelEvents() {
       return;
     }
 
-    const unregisterBtn = event.target.closest('.agent-unregister-btn');
+    const unregisterBtn = target.closest('.agent-unregister-btn') as HTMLButtonElement | null;
     if (unregisterBtn?.dataset.archiveId) {
       event.stopPropagation();
       if (confirm('Unregister this agent and move its record to Archive?')) {
         const dashboardAPI = getDashboardAPI();
-        dashboardAPI?.archiveRegisteredAgent?.(unregisterBtn.dataset.archiveId).then(() => {
+        const archiveResult = dashboardAPI?.archiveRegisteredAgent?.(unregisterBtn.dataset.archiveId);
+        archiveResult?.then(() => {
           archiveState.items = null;
           if (state.currentView === 'archive') renderArchiveView(true);
         });
@@ -142,12 +147,13 @@ function initAgentPanelEvents() {
       return;
     }
 
-    const deleteBtn = event.target.closest('.agent-delete-btn');
+    const deleteBtn = target.closest('.agent-delete-btn') as HTMLButtonElement | null;
     if (deleteBtn?.dataset.deleteId) {
       event.stopPropagation();
       if (confirm('Delete this agent record permanently? This cannot be undone.')) {
         const dashboardAPI = getDashboardAPI();
-        dashboardAPI?.deleteRegisteredAgent?.(deleteBtn.dataset.deleteId).then(() => {
+        const deleteResult = dashboardAPI?.deleteRegisteredAgent?.(deleteBtn.dataset.deleteId);
+        deleteResult?.then(() => {
           archiveState.items = null;
           if (state.currentView === 'archive') renderArchiveView(true);
         });
@@ -155,9 +161,9 @@ function initAgentPanelEvents() {
       return;
     }
 
-    if (event.target.closest('.nickname-input') || event.target.closest('.agent-display-name')) return;
+    if (target.closest('.nickname-input') || target.closest('.agent-display-name')) return;
 
-    const card = event.target.closest('.mc-agent-card');
+    const card = target.closest('.mc-agent-card') as HTMLDivElement | null;
     if (card?.dataset.id) {
       openTerminalForAgent(card.dataset.id);
     }
@@ -180,19 +186,23 @@ function initArchiveEvents() {
 
   if (!DOM.archiveGrid) return;
   DOM.archiveGrid.addEventListener('click', (event) => {
-    const historyBtn = event.target.closest('.agent-history-btn');
+    const target = event.target as HTMLElement | null;
+    if (!target) return;
+
+    const historyBtn = target.closest('.agent-history-btn') as HTMLButtonElement | null;
     if (historyBtn?.dataset.historyId) {
       event.stopPropagation();
       globalThis.openSessionHistory?.(historyBtn.dataset.historyId, historyBtn.dataset.agentName || 'Workspace');
       return;
     }
 
-    const deleteBtn = event.target.closest('.archive-delete-btn');
+    const deleteBtn = target.closest('.archive-delete-btn') as HTMLButtonElement | null;
     if (deleteBtn?.dataset.deleteId) {
       event.stopPropagation();
       if (confirm('Delete this archived agent record permanently? This cannot be undone.')) {
         const dashboardAPI = getDashboardAPI();
-        dashboardAPI?.deleteRegisteredAgent?.(deleteBtn.dataset.deleteId).then(() => {
+        const deleteResult = dashboardAPI?.deleteRegisteredAgent?.(deleteBtn.dataset.deleteId);
+        deleteResult?.then(() => {
           archiveState.items = null;
           renderArchiveView(true);
         });
@@ -212,12 +222,12 @@ function initApp() {
   connectSSE();
   initTerminals();
   initTerminalProfileMenu();
-  refreshTerminalProfiles().catch((error) => console.error('[Terminal Profiles]', error));
-  initResizableHandles();
+  refreshTerminalProfiles().catch((error: unknown) => console.error('[Terminal Profiles]', error));
+  initResizableHandles?.();
 
   if (typeof globalThis.initOffice === 'function') {
     setTimeout(() => {
-      globalThis.initOffice();
+      globalThis.initOffice?.();
       setupOfficeClickHandler(openTerminalForAgent);
     }, 100);
   }

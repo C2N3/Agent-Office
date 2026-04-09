@@ -1,15 +1,14 @@
-// @ts-nocheck
-
 import {
+  type OfficeCharacter,
   escapeText,
   formatNum,
   getDashboardAPI,
   state,
 } from './shared.js';
 
-const popoverEl = document.getElementById('officePopover');
+const popoverEl = document.getElementById('officePopover') as HTMLDivElement | null;
 
-function hitTestOfficeCharacter(canvas, event) {
+function hitTestOfficeCharacter(canvas: HTMLCanvasElement, event: MouseEvent): OfficeCharacter | null {
   const officeCharacters = globalThis.officeCharacters;
   if (!officeCharacters) return null;
 
@@ -44,7 +43,7 @@ function hitTestOfficeCharacter(canvas, event) {
   return null;
 }
 
-async function promptRenameAgent(agentId) {
+async function promptRenameAgent(agentId: string) {
   const agent = state.agents.get(agentId);
   const currentName = (agent && (agent.nickname || agent.name)) || 'Agent';
   const nextName = window.prompt('Rename agent', currentName);
@@ -53,14 +52,19 @@ async function promptRenameAgent(agentId) {
 
   const trimmed = nextName.trim();
   if (trimmed) {
-    await dashboardAPI.setNickname(agentId, trimmed);
+    await dashboardAPI.setNickname?.(agentId, trimmed);
   } else {
-    await dashboardAPI.removeNickname(agentId);
+    await dashboardAPI.removeNickname?.(agentId);
   }
   hideOfficePopover();
 }
 
-function showOfficePopover(canvas, character, openTerminalForAgent) {
+function showOfficePopover(
+  canvas: HTMLCanvasElement,
+  character: OfficeCharacter,
+  openTerminalForAgent: (agentId: string) => Promise<unknown> | void
+) {
+  if (!popoverEl) return;
   const agent = state.agents.get(character.id);
   const name = character.role || (agent && agent.name) || 'Agent';
   const status = (agent && agent.status) || character.agentState || 'idle';
@@ -124,12 +128,14 @@ function showOfficePopover(canvas, character, openTerminalForAgent) {
 }
 
 function hideOfficePopover() {
+  if (!popoverEl) return;
   popoverEl.style.display = 'none';
 }
 
-export function setupOfficeClickHandler(openTerminalForAgent) {
-  const canvas = document.getElementById('office-canvas');
-  if (!canvas) return;
+export function setupOfficeClickHandler(openTerminalForAgent: (agentId: string) => Promise<unknown> | void) {
+  const canvasEl = document.getElementById('office-canvas');
+  if (!(canvasEl instanceof HTMLCanvasElement)) return;
+  const canvas = canvasEl;
 
   canvas.addEventListener('click', (event) => {
     const character = hitTestOfficeCharacter(canvas, event);
@@ -141,7 +147,10 @@ export function setupOfficeClickHandler(openTerminalForAgent) {
   });
 
   document.addEventListener('click', (event) => {
-    if (!popoverEl.contains(event.target) && event.target.id !== 'office-canvas') {
+    if (!popoverEl) return;
+    const target = event.target as Node | null;
+    const targetElement = event.target as HTMLElement | null;
+    if (target && !popoverEl.contains(target) && targetElement?.id !== 'office-canvas') {
       hideOfficePopover();
     }
   });
