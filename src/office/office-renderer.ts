@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Office Renderer — Canvas render loop, layer compositing, effects
  * Ported from pixel_office renderer.ts (rendering parts)
@@ -5,7 +6,7 @@
 
 /* eslint-disable no-unused-vars */
 
-var officeRenderer = {
+var officeRenderer: any = {
   canvas: null,
   ctx: null,
   rafId: 0,
@@ -45,13 +46,13 @@ var officeRenderer = {
     const promises = [loadAllOfficeSkins()];
     directions.forEach(function (d) {
       const states = laptopStates[d] || {};
-      promises.push(new Promise(function (resolve) {
+      promises.push(new Promise<void>(function (resolve) {
         const img = new Image();
         img.src = cacheBust(states.closed || '');
         img.onload = function () { self.laptopImages[d] = img; resolve(); };
         img.onerror = function () { resolve(); };
       }));
-      promises.push(new Promise(function (resolve) {
+      promises.push(new Promise<void>(function (resolve) {
         const img = new Image();
         img.src = cacheBust(states.open || '');
         img.onload = function () { self.laptopOpenImages[d] = img; resolve(); };

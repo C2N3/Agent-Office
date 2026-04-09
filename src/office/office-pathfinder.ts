@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Office Pathfinder — A* pathfinding on collision map
  * Ported from pixel_office pathfinding.ts (simplified — zone/flow/accessibility removed)
@@ -5,7 +6,7 @@
 
 /* eslint-disable no-unused-vars */
 
-var officePathfinder = {
+var officePathfinder: any = {
   grid: [],
   gridW: 0,
   gridH: 0,
@@ -79,22 +80,22 @@ var officePathfinder = {
     if (sgx === egx && sgy === egy) return [{ x: endX, y: endY }];
 
     // A* search
-    const openSet = [];
-    const closedSet = {};
+    const openSet: any[] = [];
+    const closedSet: Record<string, boolean> = {};
     const h0 = Math.abs(sgx - egx) + Math.abs(sgy - egy);
     openSet.push({ x: sgx, y: sgy, g: 0, h: h0, f: h0, parent: null });
 
-    const dirs = [[0,-1],[0,1],[-1,0],[1,0],[-1,-1],[1,-1],[-1,1],[1,1]];
+    const dirs: Array<[number, number]> = [[0,-1],[0,1],[-1,0],[1,0],[-1,-1],[1,-1],[-1,1],[1,1]];
 
     while (openSet.length > 0) {
       openSet.sort(function (a, b) { return a.f - b.f; });
-      const current = openSet.shift();
+      const current: any = openSet.shift();
       const key = current.x + ',' + current.y;
 
       if (current.x === egx && current.y === egy) {
         // reconstruct
-        const path = [];
-        let node = current;
+        const path: any[] = [];
+        let node: any = current;
         while (node) {
           path.unshift({ x: node.x * TILE + Math.floor(TILE / 2), y: node.y * TILE + Math.floor(TILE / 2) });
           node = node.parent;
@@ -118,7 +119,7 @@ var officePathfinder = {
         const h = Math.abs(nx - egx) + Math.abs(ny - egy);
         const f = g + h;
 
-        let existing = null;
+        let existing: any = null;
         for (let j = 0; j < openSet.length; j++) {
           if (openSet[j].x === nx && openSet[j].y === ny) { existing = openSet[j]; break; }
         }

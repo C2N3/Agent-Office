@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Office Config — Constants, sprite frame map, seat configs, state mappings
  * Ported from pixel_office spriteSheet.ts, types.ts, seatConfigs.ts
@@ -24,7 +25,7 @@ const OFFICE = {
 
 // SPRITE_FRAMES — office uses different key names (direction-based) than the raw JSON.
 // Built from sprite-frames.json at init via loadSpriteFrames().
-var SPRITE_FRAMES = {};
+var SPRITE_FRAMES: Record<string, number[]> = {};
 
 /** Fetch sprite frame definitions and build SPRITE_FRAMES + update OFFICE constants. */
 async function loadSpriteFrames() {
@@ -131,7 +132,7 @@ const STATE_COLORS = {
 };
 
 // Loaded from public/shared/avatars.json at init time (single source of truth)
-var AVATAR_FILES = [];
+var AVATAR_FILES: string[] = [];
 
 /** Fetch avatar list from shared JSON. Must be called before office init. */
 async function loadAvatarFiles() {
@@ -166,7 +167,7 @@ const DEFAULT_LAPTOP_ID_MAP = {
   12: 4, 13: 5, 14: 6, 15: 7,
 };
 
-var OFFICE_LAYOUT = {
+var OFFICE_LAYOUT: any = {
   name: 'Default Office',
   mapScale: OFFICE.MAP_SCALE,
   tileSize: OFFICE.TILE_SIZE,

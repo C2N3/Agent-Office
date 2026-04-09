@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Office Coords — Parse office_xy.webp and office_laptop.webp for coordinates
  * Ported from pixel_office coordinateParser.ts
@@ -5,7 +6,7 @@
 
 /* eslint-disable no-unused-vars */
 
-var officeCoords = {
+var officeCoords: any = {
   idle: [],
   desk: [],
   laptopSpots: [],
@@ -30,10 +31,10 @@ async function parseMapCoordinates(bgW, bgH) {
 
   const THRESHOLD = 80;
   const TILE = OFFICE.TILE_SIZE;
-  const tempIdle = [];
-  const tempDesk = [];
-  const tempMeeting = [];
-  const seenGrid = {};
+  const tempIdle: any[] = [];
+  const tempDesk: any[] = [];
+  const tempMeeting: any[] = [];
+  const seenGrid: Record<string, boolean> = {};
 
   function colorMatch(r, g, b, tr, tg, tb) {
     return Math.abs(r - tr) < THRESHOLD && Math.abs(g - tg) < THRESHOLD && Math.abs(b - tb) < THRESHOLD;
@@ -103,8 +104,8 @@ async function parseObjectCoordinates(bgW, bgH) {
 
   const THRESHOLD = 80;
   const TILE = OFFICE.TILE_SIZE;
-  const spots = [];
-  const seenGrid = {};
+  const spots: any[] = [];
+  const seenGrid: Record<string, boolean> = {};
 
   function colorMatch(r, g, b, tr, tg, tb) {
     return Math.abs(r - tr) < THRESHOLD && Math.abs(g - tg) < THRESHOLD && Math.abs(b - tb) < THRESHOLD;

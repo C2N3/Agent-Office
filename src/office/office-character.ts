@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Office Character — Agent ↔ character mapping, movement, state→zone logic
  * Ported from pixel_office renderer.ts (agent management parts)
@@ -5,7 +6,7 @@
 
 /* eslint-disable no-unused-vars */
 
-var officeCharacters = {
+var officeCharacters: any = {
   characters: new Map(),
   seatAssignments: new Map(), // deskIndex → agentId
 
@@ -24,7 +25,7 @@ var officeCharacters = {
       ? agentData.avatarIndex : avatarIndexFromId(agentData.id);
     const avatarFile = AVATAR_FILES[avatarIdx] || AVATAR_FILES[0];
 
-    const char = {
+    const char: any = {
       id: agentData.id,
       x: (officeLayers.width  || 1750) / 2 + (Math.random() - 0.5) * 175,
       y: (officeLayers.height || 1750) / 2 + (Math.random() - 0.5) * 175,
@@ -34,6 +35,7 @@ var officeCharacters = {
       avatarFile: avatarFile,
       skinIndex: avatarIdx, // kept for compat
       deskIndex: undefined,
+      deskOverflow: false,
       currentAnim: 'down_idle',
       animFrame: 0,
       animTimer: 0,
@@ -120,8 +122,8 @@ var officeCharacters = {
 
     // Collect available seats
     const usedDesks = new Set(this.seatAssignments.keys());
-    const deskCoords = officeCoords.desk || [];
-    const available = [];
+    const deskCoords: any[] = officeCoords.desk || [];
+    const available: number[] = [];
     for (let i = 0; i < deskCoords.length; i++) {
       if (!usedDesks.has(i)) available.push(i);
     }
@@ -215,7 +217,7 @@ var officeCharacters = {
     if (isAtIdle) return;
 
     // Find unoccupied idle spot
-    const occupied = {};
+    const occupied: Record<string, boolean> = {};
     const self = this;
     this.characters.forEach(function (a) {
       if (a.id === char.id) return;
@@ -228,7 +230,7 @@ var officeCharacters = {
       occupied[ax + ',' + ay] = true;
     });
 
-    const valid = coords.idle.filter(function (p) {
+    const valid: any[] = coords.idle.filter(function (p: any) {
       return !occupied[Math.floor(p.x) + ',' + Math.floor(p.y)];
     });
 
@@ -244,8 +246,8 @@ var officeCharacters = {
 
     if (isArrived) {
       // Apply seat config
-      const allSpots = (officeCoords.desk || []).concat(officeCoords.idle || []);
-      let currentSpot = null;
+      const allSpots: any[] = (officeCoords.desk || []).concat(officeCoords.idle || []);
+      let currentSpot: any = null;
       for (let i = 0; i < allSpots.length; i++) {
         if (Math.abs(allSpots[i].x - char.x) < 5 && Math.abs(allSpots[i].y - char.y) < 5) {
           currentSpot = allSpots[i];
@@ -255,7 +257,7 @@ var officeCharacters = {
 
       if (char.agentState === 'done' || char.agentState === 'completed') {
         if (currentSpot && currentSpot.type === 'idle') {
-          const idleSeatMap = (typeof OFFICE_LAYOUT !== 'undefined' && OFFICE_LAYOUT.idleSeatMap) || {};
+          const idleSeatMap: Record<string, string> = (typeof OFFICE_LAYOUT !== 'undefined' && OFFICE_LAYOUT.idleSeatMap) || {};
           const entry = idleSeatMap[currentSpot.id];
           char.currentAnim = (entry === 'dance') ? 'dance' : 'sit_' + (entry || 'down');
         } else {
@@ -269,12 +271,12 @@ var officeCharacters = {
         char.currentAnim = 'alert_jump';
       } else if (currentSpot && currentSpot.type === 'idle') {
         // Idle zone: sit based on seat config (stand only for animType:'stand' spots)
-        const idleConfig = getSeatConfig(currentSpot.id);
+        const idleConfig: any = getSeatConfig(currentSpot.id);
         char.facingDir = idleConfig.dir;
         char.currentAnim = idleConfig.animType === 'sit' ? 'sit_' + idleConfig.dir : idleConfig.dir + '_idle';
       } else {
         // Desk spot: use SEAT_MAP direction + sit/work pose
-        const config = currentSpot ? getSeatConfig(currentSpot.id) : { dir: 'down', animType: 'sit' };
+        const config: any = currentSpot ? getSeatConfig(currentSpot.id) : { dir: 'down', animType: 'sit' };
         char.facingDir = config.dir;
         if (config.animType === 'sit') {
           const isWorking = char.agentState === 'working' || char.agentState === 'thinking' ||
@@ -402,7 +404,7 @@ var officeCharacters = {
     avgY /= coords.desk.length;
 
     // Sort idle coords by distance from desk average coordinates
-    const occupied = {};
+    const occupied: Record<string, boolean> = {};
     this.characters.forEach(function (a) {
       if (a.id === char.id) return;
       let ax = Math.floor(a.x), ay = Math.floor(a.y);
@@ -414,7 +416,7 @@ var officeCharacters = {
       occupied[ax + ',' + ay] = true;
     });
 
-    const candidates = coords.idle.filter(function (p) {
+    const candidates: any[] = coords.idle.filter(function (p: any) {
       return !occupied[Math.floor(p.x) + ',' + Math.floor(p.y)];
     }).sort(function (a, b) {
       const da = Math.abs(a.x - avgX) + Math.abs(a.y - avgY);

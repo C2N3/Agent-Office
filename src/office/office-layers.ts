@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Office Layers — Background/foreground image loading
  * Ported from pixel_office layerCache.ts
@@ -6,7 +7,7 @@
 /* eslint-disable no-unused-vars */
 
 function loadOfficeImage(src) {
-  return new Promise(function (resolve) {
+  return new Promise<HTMLImageElement>(function (resolve) {
     const img = new Image();
     img.onload = function () { resolve(img); };
     img.onerror = function () {
@@ -20,7 +21,7 @@ function loadOfficeImage(src) {
   });
 }
 
-var officeLayers = {
+var officeLayers: any = {
   bgImage: null,
   fgImage: null,
   decorBefore: [],

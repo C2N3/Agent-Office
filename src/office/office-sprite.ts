@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Office Sprite — Sprite sheet loading, drawing, animation ticking
  * Ported from pixel_office spriteSheet.ts
@@ -6,18 +7,18 @@
 
 /* eslint-disable no-unused-vars */
 
-var officeSkinImages = {}; // filename → Image
+var officeSkinImages: Record<string, HTMLImageElement> = {}; // filename → Image
 
 function loadAllOfficeSkins() {
   const ts = Date.now();
   officeSkinImages = {};
-  const promises = [];
+  const promises: Promise<void>[] = [];
   for (let i = 0; i < AVATAR_FILES.length; i++) {
     (function (filename) {
       const img = new Image();
       img.src = '/public/characters/' + filename + '?v=' + ts;
       officeSkinImages[filename] = img;
-      promises.push(new Promise(function (resolve) {
+      promises.push(new Promise<void>(function (resolve) {
         if (img.complete) { resolve(); return; }
         img.onload = function () { resolve(); };
         img.onerror = function () {

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Office Init — Entry point: agent sync, render loop start
  * SSE events are received from dashboard's connectSSE() — no separate connection needed.
@@ -8,8 +9,11 @@
 var officeInitialized = false;
 
 function isRegisteredOnlyOfficeFilterEnabled() {
-  if (typeof window.dashboardIsRegisteredOnlyFilterEnabled === 'function') {
-    return !!window.dashboardIsRegisteredOnlyFilterEnabled();
+  const officeWindow = window as Window & {
+    dashboardIsRegisteredOnlyFilterEnabled?: () => boolean;
+  };
+  if (typeof officeWindow.dashboardIsRegisteredOnlyFilterEnabled === 'function') {
+    return !!officeWindow.dashboardIsRegisteredOnlyFilterEnabled();
   }
   try {
     return localStorage.getItem('mc-filter-registered-only') !== 'false';
@@ -31,12 +35,12 @@ async function initOffice() {
   // Load shared config before anything else
   await Promise.all([loadAvatarFiles(), loadSpriteFrames(), loadOfficeLayout()]);
 
-  const canvas = document.getElementById('office-canvas');
+  const canvas = document.getElementById('office-canvas') as HTMLCanvasElement | null;
   if (!canvas) return;
 
   // Show loading indicator
-  const container = canvas.parentElement;
-  let loadingEl = container.querySelector('.office-loading');
+  const container = canvas.parentElement as HTMLElement;
+  let loadingEl = container.querySelector('.office-loading') as HTMLElement | null;
   if (!loadingEl) {
     loadingEl = document.createElement('div');
     loadingEl.className = 'office-loading';
@@ -58,7 +62,7 @@ async function initOffice() {
   try {
     const res = await fetch('/api/agents');
     const agents = await res.json();
-    agents.forEach(function (a) {
+    agents.forEach(function (a: any) {
       if (!shouldDisplayOfficeAgent(a)) return;
       officeCharacters.addCharacter(a);
     });
@@ -73,14 +77,14 @@ async function initOffice() {
 }
 
 /** Called from dashboard SSE agent.created handler */
-function officeOnAgentCreated(data) {
+function officeOnAgentCreated(data: any) {
   if (!officeInitialized) return;
   if (!shouldDisplayOfficeAgent(data)) return;
   officeCharacters.addCharacter(data);
 }
 
 /** Called from dashboard SSE agent.updated handler */
-function officeOnAgentUpdated(data) {
+function officeOnAgentUpdated(data: any) {
   if (!officeInitialized) return;
   if (!shouldDisplayOfficeAgent(data)) {
     officeCharacters.removeCharacter(data.id);
@@ -90,7 +94,7 @@ function officeOnAgentUpdated(data) {
 }
 
 /** Called from dashboard SSE agent.removed handler */
-function officeOnAgentRemoved(data) {
+function officeOnAgentRemoved(data: any) {
   if (officeInitialized) officeCharacters.removeCharacter(data.id);
 }
 
