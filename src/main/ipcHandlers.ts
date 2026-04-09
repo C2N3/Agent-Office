@@ -93,7 +93,41 @@ function isPidAlive(pid) {
   }
 }
 
+function toTimestamp(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : 0;
+}
+
+function findLatestResumableSessionEntry(history = []) {
+  if (!Array.isArray(history) || history.length === 0) return null;
+
+  let latest = null;
+  let latestScore = -1;
+  for (let index = 0; index < history.length; index += 1) {
+    const entry = history[index];
+    if (!(entry?.resumeSessionId || entry?.sessionId || entry?.runtimeSessionId)) continue;
+    const score = Math.max(
+      toTimestamp(entry?.startedAt),
+      toTimestamp(entry?.endedAt),
+      index
+    );
+    if (!latest || score > latestScore) {
+      latest = entry;
+      latestScore = score;
+    }
+  }
+
+  return latest;
+}
+
 function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowManager, terminalManager, terminalProfileService, workspaceManager, nicknameStore, debugLog, adaptAgentToDashboard, errorHandler, attachRegisteredAgent }) {
+  function isMainWindowSender(event) {
+    const senderId = event?.sender?.id;
+    const mainWindow = windowManager?.mainWindow;
+    if (!senderId || !mainWindow || mainWindow.isDestroyed?.()) return false;
+    return mainWindow.webContents?.id === senderId;
+  }
+
   function canRecoverFocusedRegisteredAgent(agent) {
     if (!agent?.isRegistered || !agentRegistry) return false;
 
@@ -162,12 +196,182 @@ function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowM
     return 'stale-session';
   }
 
-  async function focusAgentTerminal(agentId, label) {
+  function resolveRegisteredResumeTarget(agent) {
+    if (!agent?.isRegistered || !agentRegistry) {
+      return { success: false, error: 'Agent is not resumable' };
+    }
+
+    const registryId = agent.registryId || agent.id;
+    const registryAgent = agentRegistry.getAgent?.(registryId);
+    if (!registryAgent) {
+      return { success: false, error: 'Registered agent not found' };
+    }
+
+    const history = agentRegistry.getSessionHistory?.(registryId) || [];
+    const candidateSessionIds = [
+      agent.resumeSessionId,
+      agent.sessionId,
+      agent.runtimeSessionId,
+      registryAgent.currentResumeSessionId,
+      registryAgent.currentSessionId,
+      registryAgent.currentRuntimeSessionId,
+    ].filter(Boolean);
+
+    let entry = null;
+    for (const sessionId of candidateSessionIds) {
+      entry = agentRegistry.findSessionHistoryEntry?.(registryId, sessionId) || null;
+      if (entry) break;
+    }
+
+    if (!entry) {
+      entry = findLatestResumableSessionEntry(history);
+    }
+
+    const transcriptPath = entry?.transcriptPath || agent.jsonlPath || null;
+    const requestedResumeSessionId = entry?.resumeSessionId
+      || entry?.sessionId
+      || entry?.runtimeSessionId
+      || agent.resumeSessionId
+      || agent.sessionId
+      || registryAgent.currentResumeSessionId
+      || registryAgent.currentSessionId
+      || registryAgent.currentRuntimeSessionId
+      || null;
+
+    const provider = registryAgent.provider || agent.provider || null;
+    const resolvedSessionId = resolveResumeSessionId({
+      provider,
+      requestedSessionId: requestedResumeSessionId,
+      transcriptPath,
+    });
+    const resumeCommand = buildResumeCommand(provider, resolvedSessionId);
+    if (!resumeCommand) {
+      return { success: false, error: 'Session not found' };
+    }
+
+    let cwd = resolveProjectPathForPlatform(registryAgent.workspace?.worktreePath || registryAgent.projectPath) || undefined;
+    if (cwd) {
+      try {
+        if (!fs.existsSync(cwd) || !fs.statSync(cwd).isDirectory()) cwd = undefined;
+      } catch {
+        cwd = undefined;
+      }
+    }
+
+    return {
+      success: true,
+      registryId,
+      provider,
+      cwd,
+      sessionId: resolvedSessionId,
+      resumeCommand,
+    };
+  }
+
+  async function launchExternalResumeTerminal({ cwd, resumeCommand }) {
+    const { spawn, execFile } = require('child_process');
+    const trimmedResumeCommand = String(resumeCommand || '').replace(/\r/g, '').trim();
+    if (!trimmedResumeCommand) {
+      return { success: false, error: 'Missing resume command' };
+    }
+
+    if (process.platform === 'win32') {
+      const preferredPowerShell = terminalProfileService?.resolveProfile?.('pwsh')
+        || terminalProfileService?.resolveProfile?.('powershell')
+        || null;
+      const powerShellPath = preferredPowerShell?.command || 'powershell.exe';
+      const powerShellScript = [
+        cwd ? `Set-Location -LiteralPath '${String(cwd).replace(/'/g, "''")}'` : null,
+        trimmedResumeCommand,
+      ].filter(Boolean).join('; ');
+
+      const child = spawn('cmd.exe', ['/c', 'start', '', powerShellPath, '-NoExit', '-Command', powerShellScript], {
+        cwd: cwd || undefined,
+        detached: true,
+        stdio: 'ignore',
+        shell: false,
+      });
+      child.unref();
+      return { success: true };
+    }
+
+    if (process.platform === 'darwin') {
+      const macScript = [
+        'tell application "Terminal"',
+        'activate',
+        `do script ${JSON.stringify(`${cwd ? `cd ${JSON.stringify(cwd)}; ` : ''}${trimmedResumeCommand}`)}`,
+        'end tell',
+      ].join('\n');
+
+      await new Promise((resolve, reject) => {
+        execFile('osascript', ['-e', macScript], { timeout: 5000 }, (error) => {
+          if (error) reject(error);
+          else resolve(null);
+        });
+      });
+      return { success: true };
+    }
+
+    const linuxLaunchers = [
+      ['x-terminal-emulator', ['-e', `${cwd ? `cd ${JSON.stringify(cwd)} && ` : ''}${trimmedResumeCommand}`]],
+      ['gnome-terminal', ['--', 'bash', '-lc', `${cwd ? `cd ${JSON.stringify(cwd)} && ` : ''}${trimmedResumeCommand}; exec bash -l`]],
+      ['konsole', ['-e', 'bash', '-lc', `${cwd ? `cd ${JSON.stringify(cwd)} && ` : ''}${trimmedResumeCommand}; exec bash -l`]],
+      ['xfce4-terminal', ['--command', `bash -lc ${JSON.stringify(`${cwd ? `cd ${JSON.stringify(cwd)} && ` : ''}${trimmedResumeCommand}; exec bash -l`)}`]],
+      ['xterm', ['-e', `${cwd ? `cd ${JSON.stringify(cwd)} && ` : ''}${trimmedResumeCommand}; exec bash -l`]],
+    ];
+
+    for (const [command, args] of linuxLaunchers) {
+      try {
+        const child = spawn(command, args, {
+          cwd: cwd || undefined,
+          detached: true,
+          stdio: 'ignore',
+          shell: false,
+        });
+        child.unref();
+        return { success: true };
+      } catch {
+        // Try the next launcher.
+      }
+    }
+
+    return { success: false, error: 'No supported terminal launcher found' };
+  }
+
+  async function attemptRegisteredAgentResume(event, agentId, agent, label) {
+    if (!isMainWindowSender(event)) {
+      return { success: false, reason: repairStaleFocusedAgent(agentId, label) };
+    }
+
+    const resumeTarget = resolveRegisteredResumeTarget(agent);
+    if (!resumeTarget.success) {
+      debugLog(`[${label}] Resume target error for agent=${agentId.slice(0, 8)}: ${resumeTarget.error}`);
+      return { success: false, reason: 'resume-failed', error: resumeTarget.error };
+    }
+
+    repairStaleFocusedAgent(agentId, label);
+
+    try {
+      const launchResult = await launchExternalResumeTerminal(resumeTarget);
+      if (!launchResult.success) {
+        debugLog(`[${label}] External resume launch failed for agent=${agentId.slice(0, 8)}: ${launchResult.error}`);
+        return { success: false, reason: 'resume-failed', error: launchResult.error || 'unknown' };
+      }
+
+      debugLog(`[${label}] External resume launched for agent=${agentId.slice(0, 8)} session=${resumeTarget.sessionId.slice(0, 8)}`);
+      return { success: true, reason: 'resumed' };
+    } catch (error) {
+      debugLog(`[${label}] External resume error for agent=${agentId.slice(0, 8)}: ${error.message}`);
+      return { success: false, reason: 'resume-failed', error: error.message };
+    }
+  }
+
+  async function focusAgentTerminal(event, agentId, label) {
     const { agent, pid, candidateKeys } = resolveFocusContext(agentId);
     if (!pid) {
       if (canRecoverFocusedRegisteredAgent(agent)) {
         debugLog(`[${label}] Focus: missing PID for recoverable registered agent=${agentId.slice(0, 8)}`);
-        return { success: false, reason: repairStaleFocusedAgent(agentId, label) };
+        return attemptRegisteredAgentResume(event, agentId, agent, label);
       }
       const agentAge = Date.now() - Number(agent?.firstSeen || 0);
       if (agent && agentAge >= STALE_FOCUS_REPAIR_MS) {
@@ -180,6 +384,9 @@ function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowM
     if (!isPidAlive(pid)) {
       candidateKeys.forEach((key) => sessionPids.delete(key));
       debugLog(`[${label}] Focus: dead PID for agent=${agentId.slice(0, 8)} pid=${pid}`);
+      if (canRecoverFocusedRegisteredAgent(agent)) {
+        return attemptRegisteredAgentResume(event, agentId, agent, label);
+      }
       return { success: false, reason: repairStaleFocusedAgent(agentId, label) };
     }
 
@@ -226,7 +433,7 @@ function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowM
   ipcMain.on('get-all-agents', (event) => event.reply('all-agents-response', agentManager?.getAllAgents() ?? []));
 
   ipcMain.handle('focus-terminal', async (event, agentId) => {
-    return focusAgentTerminal(agentId, 'Main');
+    return focusAgentTerminal(event, agentId, 'Main');
   });
 
   // Dashboard IPC Handlers
@@ -243,7 +450,7 @@ function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowM
   ipcMain.handle('execute-recovery-action', async () => ({ success: true }));
 
   ipcMain.on('dashboard-focus-agent', async (event, agentId) => {
-    await focusAgentTerminal(agentId, 'Dashboard');
+    await focusAgentTerminal(event, agentId, 'Dashboard');
   });
 
   ipcMain.on('get-dashboard-agents', (event) => {
