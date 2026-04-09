@@ -1,5 +1,5 @@
 /**
- * dashboard-server.js Tests
+ * dashboard server Tests
  * Stats calculation, API routing, SSE/WebSocket, CORS, path traversal protection
  */
 
@@ -33,7 +33,7 @@ const EventEmitter = require('events');
 const http = require('http');
 
 // Load module ONCE and capture request handler
-const dashboardServer = require('../src/dashboard-server');
+const dashboardServer = require('../dist/src/dashboardServer');
 const handler = http.createServer.mock.calls[0][0];
 
 // Helper: create mock request/response pair

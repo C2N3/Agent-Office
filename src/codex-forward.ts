@@ -1,9 +1,10 @@
 #!/usr/bin/env node
+// @ts-nocheck
 /**
  * Forward `codex exec --json` JSONL output to the local Codex event server.
  *
  * Example:
- *   codex exec --json "summarize the repo" | node src/codex-forward.js
+ *   codex exec --json "summarize the repo" | node dist/src/codex-forward.js
  */
 
 const http = require('http');

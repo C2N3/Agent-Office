@@ -59,7 +59,7 @@ PIXEL_AGENT_PROVIDERS=claude,codex npm start
 `codex exec --json` 실행 결과를 앱으로 전달합니다:
 
 ```bash
-codex exec --json "summarize this repo" | node src/codex-forward.js
+codex exec --json "summarize this repo" | node dist/src/codex-forward.js
 ```
 
 참고:
@@ -106,7 +106,7 @@ codex exec --json "summarize this repo" | node src/codex-forward.js
 
 **아바타가 나타나지 않음**
 - Claude를 쓰는 경우 `~/.claude/settings.json`에 hook이 등록되어 있는지 확인하세요
-- Codex를 쓰는 경우 `~/.codex/sessions` 아래에 세션 파일이 생성되는지, 또는 `codex exec --json ... | node src/codex-forward.js` 경로를 사용 중인지 확인하세요
+- Codex를 쓰는 경우 `~/.codex/sessions` 아래에 세션 파일이 생성되는지, 또는 `codex exec --json ... | node dist/src/codex-forward.js` 경로를 사용 중인지 확인하세요
 - Claude hook 서버가 살아 있는지 확인하려면 `curl http://localhost:47821/hook` 응답이 404면 정상입니다
 
 **유령 아바타가 남아 있음**
