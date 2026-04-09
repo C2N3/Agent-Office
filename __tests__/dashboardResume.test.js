@@ -1,5 +1,6 @@
 const {
   findLatestResumableSession,
+  getDirectResumeSessionId,
   shouldAutoResumeRegisteredAgent,
 } = require('../public/dashboardResume');
 
@@ -68,6 +69,44 @@ describe('dashboardResume utils', () => {
         registryId: null,
         status: 'offline',
       })).toBe(false);
+    });
+  });
+
+  describe('getDirectResumeSessionId', () => {
+    test('returns resumeSessionId for inactive codex agents', () => {
+      expect(getDirectResumeSessionId({
+        status: 'completed',
+        resumeSessionId: 'run-123',
+        metadata: { provider: 'codex' },
+      })).toBe('run-123');
+    });
+
+    test('falls back to sessionId for legacy codex agents', () => {
+      expect(getDirectResumeSessionId({
+        status: 'offline',
+        sessionId: 'run-legacy',
+        metadata: { provider: 'codex' },
+      })).toBe('run-legacy');
+    });
+
+    test('blocks active, skipped, or non-codex agents', () => {
+      expect(getDirectResumeSessionId({
+        status: 'working',
+        resumeSessionId: 'run-123',
+        metadata: { provider: 'codex' },
+      })).toBeNull();
+
+      expect(getDirectResumeSessionId({
+        status: 'completed',
+        resumeSessionId: 'run-123',
+        metadata: { provider: 'claude' },
+      })).toBeNull();
+
+      expect(getDirectResumeSessionId({
+        status: 'completed',
+        resumeSessionId: 'run-123',
+        metadata: { provider: 'codex' },
+      }, { skipAutoResume: true })).toBeNull();
     });
   });
 });

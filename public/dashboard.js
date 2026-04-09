@@ -1148,6 +1148,9 @@ async function openTerminalForAgent(agentId, openOptions = {}) {
   const agentStatus = agent?.status || '';
   const registryId = agent?.registryId || null;
   const isRegistered = !!agent?.isRegistered;
+  const directResumeSessionId = dashboardResumeUtils.getDirectResumeSessionId
+    ? dashboardResumeUtils.getDirectResumeSessionId(agent, openOptions)
+    : null;
 
   // If agent has an active session, focus its external terminal instead of opening a new one
   const isActive = ['working', 'thinking', 'waiting', 'help'].includes(agentStatus);
@@ -1168,7 +1171,7 @@ async function openTerminalForAgent(agentId, openOptions = {}) {
       openOptions.label || agent?.nickname || agent?.name || 'Terminal'
     );
     if (resumeResult?.success) return;
-    if (resumeResult?.attempted) {
+    if (resumeResult?.attempted && !directResumeSessionId) {
       console.error('[Terminal] Resume failed:', resumeResult.error || 'unknown');
       alert('Failed to resume the latest session: ' + (resumeResult.error || 'unknown'));
       return;
@@ -1189,8 +1192,13 @@ async function openTerminalForAgent(agentId, openOptions = {}) {
   createXtermInstance(agentId, openOptions.label || agent?.nickname || agent?.name || result?.profileLabel || 'Terminal');
 
   if (provider === 'codex' && dashboardAPI.writeTerminal && !openOptions.skipProviderBoot) {
-    // Codex agents should boot directly into the Codex CLI instead of a blank shell.
     setTimeout(() => {
+      if (directResumeSessionId) {
+        dashboardAPI.writeTerminal(agentId, `codex resume ${directResumeSessionId}\r`);
+        return;
+      }
+
+      // Codex agents should boot directly into the Codex CLI instead of a blank shell.
       dashboardAPI.writeTerminal(agentId, 'codex\r');
     }, 250);
   }

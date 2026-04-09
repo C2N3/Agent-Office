@@ -44,8 +44,22 @@
     return agent.status === 'offline';
   }
 
+  function getDirectResumeSessionId(agent, openOptions = {}) {
+    if (openOptions.skipAutoResume) return null;
+    if (!agent || typeof agent !== 'object') return null;
+
+    const provider = agent?.metadata?.provider || agent?.provider || null;
+    if (provider !== 'codex') return null;
+
+    const status = agent?.status || '';
+    if (!['offline', 'completed'].includes(status)) return null;
+
+    return agent?.resumeSessionId || agent?.sessionId || null;
+  }
+
   return {
     findLatestResumableSession,
+    getDirectResumeSessionId,
     shouldAutoResumeRegisteredAgent,
   };
 }));
