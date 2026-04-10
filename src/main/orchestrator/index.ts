@@ -605,28 +605,45 @@ class Orchestrator extends EventEmitter {
   /**
    * Remove the git worktree and branch created for a task.
    * Called on failure/cancellation so stale worktrees don't accumulate.
+   * Kills the terminal process first to release file handles on Windows.
    */
   _cleanupTaskWorktree(taskId) {
     const task = this.taskStore.getTask(taskId);
     if (!task || !task.workspacePath) return;
 
+    // Kill the terminal process first so it releases the worktree directory.
+    // The frontend xterm tab remains open (showing the last output).
+    if (task.terminalId && this.terminalManager.hasTerminal(task.terminalId)) {
+      this.terminalManager.destroyTerminal(task.terminalId);
+    }
+
+    const branchName = task.branchName || `task/${taskId.slice(0, 8)}`;
+    let repoRoot;
     try {
-      const branchName = task.branchName || `task/${taskId.slice(0, 8)}`;
-      // Remove the worktree directory
-      this.workspaceManager.runGit(
-        this.workspaceManager.resolveRepositoryRoot(task.repositoryPath),
-        ['worktree', 'remove', '--force', task.workspacePath],
-      );
-      // Delete the branch
+      repoRoot = this.workspaceManager.resolveRepositoryRoot(task.repositoryPath);
+    } catch (e) {
+      this.debugLog(`[Orchestrator] Cannot resolve repo root for ${taskId.slice(0, 8)}: ${e.message}`);
+      return;
+    }
+
+    // Delay cleanup slightly on Windows to let file handles release after process kill.
+    const doCleanup = () => {
       try {
-        this.workspaceManager.runGit(
-          this.workspaceManager.resolveRepositoryRoot(task.repositoryPath),
-          ['branch', '-D', branchName],
-        );
+        this.workspaceManager.runGit(repoRoot, ['worktree', 'remove', '--force', task.workspacePath]);
+      } catch (e) {
+        this.debugLog(`[Workspace] Remove error: ${e.message}`);
+        return;
+      }
+      try {
+        this.workspaceManager.runGit(repoRoot, ['branch', '-D', branchName]);
       } catch {}
       this.debugLog(`[Orchestrator] Cleaned up worktree for ${taskId.slice(0, 8)}`);
-    } catch (e) {
-      this.debugLog(`[Orchestrator] Worktree cleanup failed for ${taskId.slice(0, 8)}: ${e.message}`);
+    };
+
+    if (process.platform === 'win32') {
+      setTimeout(doCleanup, 2000);
+    } else {
+      doCleanup();
     }
   }
 
