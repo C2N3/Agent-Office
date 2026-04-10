@@ -775,8 +775,18 @@ function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowM
         try {
           const agent = agentRegistry.getAgent(registryId);
           if (!agent) return { success: false, error: 'Agent not found' };
-          if (agent.currentSessionId) return { success: false, error: 'Stop the active session before merging this workspace.' };
           if (!agent.workspace) return { success: false, error: 'No managed workspace is attached to this agent.' };
+
+          // Kill terminal and clear session before merge so file handles are released
+          if (terminalManager.hasTerminal(registryId)) {
+            terminalManager.destroyTerminal(registryId);
+          }
+          agentRegistry.unlinkSession(registryId);
+
+          // Wait briefly on Windows for file handles to release
+          if (process.platform === 'win32') {
+            await new Promise((r) => setTimeout(r, 2000));
+          }
 
           const result = workspaceManager.mergeWorkspace(agent.workspace);
           agentRegistry.archiveAgent(registryId);
@@ -796,8 +806,18 @@ function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowM
         try {
           const agent = agentRegistry.getAgent(registryId);
           if (!agent) return { success: false, error: 'Agent not found' };
-          if (agent.currentSessionId) return { success: false, error: 'Stop the active session before removing this workspace.' };
           if (!agent.workspace) return { success: false, error: 'No managed workspace is attached to this agent.' };
+
+          // Kill terminal and clear session before remove so file handles are released
+          if (terminalManager.hasTerminal(registryId)) {
+            terminalManager.destroyTerminal(registryId);
+          }
+          agentRegistry.unlinkSession(registryId);
+
+          // Wait briefly on Windows for file handles to release
+          if (process.platform === 'win32') {
+            await new Promise((r) => setTimeout(r, 2000));
+          }
 
           const result = workspaceManager.removeWorkspace(agent.workspace, { deleteBranch: true });
           agentRegistry.archiveAgent(registryId);
