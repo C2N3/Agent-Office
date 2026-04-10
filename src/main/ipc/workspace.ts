@@ -93,12 +93,19 @@ function registerWorkspaceHandlers({
     try {
       const agent = agentRegistry.getAgent(registryId);
       if (!agent) return { success: false, error: 'Agent not found' };
-      if (!agent.workspace) return { success: false, error: 'No managed workspace is attached to this agent.' };
 
+      // Kill terminal and clear session first
       if (terminalManager?.hasTerminal?.(registryId)) {
         terminalManager.destroyTerminal(registryId);
       }
       agentRegistry.unlinkSession(registryId);
+
+      // If workspace was already cleaned up, just clear metadata
+      if (!agent.workspace) {
+        agentRegistry.updateAgent(registryId, { workspace: null });
+        agentManager.updateAgent({ registryId, state: 'Offline', workspace: null }, 'workspace-merge');
+        return { success: true, result: null };
+      }
 
       if (process.platform === 'win32') {
         await new Promise((resolve) => setTimeout(resolve, 3000));
@@ -123,12 +130,19 @@ function registerWorkspaceHandlers({
     try {
       const agent = agentRegistry.getAgent(registryId);
       if (!agent) return { success: false, error: 'Agent not found' };
-      if (!agent.workspace) return { success: false, error: 'No managed workspace is attached to this agent.' };
 
+      // Kill terminal and clear session first
       if (terminalManager?.hasTerminal?.(registryId)) {
         terminalManager.destroyTerminal(registryId);
       }
       agentRegistry.unlinkSession(registryId);
+
+      // If workspace was already cleaned up (e.g. by orchestrator on failure), just clear metadata
+      if (!agent.workspace) {
+        agentRegistry.updateAgent(registryId, { workspace: null });
+        agentManager.updateAgent({ registryId, state: 'Offline', workspace: null }, 'workspace-remove');
+        return { success: true, result: null };
+      }
 
       if (process.platform === 'win32') {
         await new Promise((resolve) => setTimeout(resolve, 3000));
