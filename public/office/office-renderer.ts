@@ -99,7 +99,7 @@ export const officeRenderer: any = {
       cam.panY = mouseY - (mouseY - cam.panY) * zoomRatio;
     }, { passive: false });
 
-    // Middle-click drag to pan. Left-click is reserved for character
+    // Right-click drag to pan. Left-click is reserved for character
     // interaction (drag/click) and must not move the camera.
     let dragging = false;
     let dragStartX = 0;
@@ -109,7 +109,7 @@ export const officeRenderer: any = {
     let dragMoved = false;
 
     canvas.addEventListener('mousedown', function (e) {
-      if (e.button === 1) {
+      if (e.button === 2) {
         e.preventDefault();
         dragging = true;
         dragMoved = false;
@@ -132,10 +132,15 @@ export const officeRenderer: any = {
     });
 
     window.addEventListener('mouseup', function (e) {
-      if (e.button === 1 && dragging) {
+      if (e.button === 2 && dragging) {
         dragging = false;
         canvas.style.cursor = '';
       }
+    });
+
+    // Suppress the browser context menu so right-click drag can pan freely.
+    canvas.addEventListener('contextmenu', function (e) {
+      e.preventDefault();
     });
 
     // Suppress click event if user was dragging (prevent popover on drag release)

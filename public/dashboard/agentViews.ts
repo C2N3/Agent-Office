@@ -285,6 +285,67 @@ function formatWorkspaceTypeLabel(type: string | null | undefined) {
   return trimmed.replace(/[_-]+/g, ' ');
 }
 
+const TOOL_NAME_MAP: Record<string, string> = {
+  exec_command: 'Command',
+  apply_patch: 'Patch',
+  web_search: 'Web Search',
+  view_image: 'Image',
+  spawn_agent: 'Subagent',
+  send_input: 'Agent Input',
+  wait_agent: 'Waiting',
+  query_docs: 'Docs',
+  read_mcp_resource: 'MCP Resource',
+};
+
+function humanizeToolName(toolName: string): string {
+  if (!toolName) return '';
+  if (TOOL_NAME_MAP[toolName]) return TOOL_NAME_MAP[toolName];
+  return String(toolName)
+    .replace(/[_-]+/g, ' ')
+    .replace(/\b\w/g, (ch) => ch.toUpperCase());
+}
+
+function getActivityIcon(statusClass: string, currentTool: string | null | undefined): string {
+  const tool = (currentTool || '').toLowerCase();
+  // Tool-specific icons take priority when agent is actively using a tool
+  if (tool) {
+    if (tool.includes('read') || tool.includes('view') || tool.includes('glob')) {
+      return '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>';
+    }
+    if (tool.includes('write') || tool.includes('edit') || tool.includes('patch')) {
+      return '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>';
+    }
+    if (tool.includes('bash') || tool.includes('command') || tool.includes('exec') || tool.includes('shell')) {
+      return '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>';
+    }
+    if (tool.includes('grep') || tool.includes('search')) {
+      return '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>';
+    }
+    if (tool.includes('web') || tool.includes('fetch')) {
+      return '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>';
+    }
+    if (tool.includes('agent') || tool.includes('spawn') || tool.includes('task')) {
+      return '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><circle cx="17" cy="7" r="3"/></svg>';
+    }
+    // Generic tool icon
+    return '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>';
+  }
+  if (statusClass === 'thinking') {
+    return '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.7.5 1 1.2 1 2V17h6v-.3c0-.8.3-1.5 1-2A7 7 0 0 0 12 2z"/></svg>';
+  }
+  if (statusClass === 'error') {
+    return '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
+  }
+  if (statusClass === 'done' || statusClass === 'completed') {
+    return '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+  }
+  if (statusClass === 'offline') {
+    return '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>';
+  }
+  // Idle
+  return '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
+}
+
 export function updateAgentUI(agent: DashboardAgent) {
   if (!shouldDisplayAgent(agent)) {
     const existingHidden = DOM.agentPanel.querySelector(`[data-id="${agent.id}"]`) as HTMLElement | null;
@@ -305,9 +366,20 @@ export function updateAgentUI(agent: DashboardAgent) {
       ? '<span class="mc-type-badge" style="background:var(--color-info-dim);color:var(--color-info)">REG</span>'
       : '<span class="mc-type-badge main">MAIN</span>');
   const isActive = ['working', 'thinking'].includes(statusClass);
-  const activityText = agent.currentTool
-    ? `<span class="hl">${agent.currentTool}</span>`
-    : (isActive ? statusText : 'Idling...');
+  const humanizedTool = agent.currentTool ? humanizeToolName(agent.currentTool) : '';
+  const activityIcon = getActivityIcon(statusClass, agent.currentTool);
+  const activityLabel = agent.currentTool
+    ? (statusClass === 'thinking' ? 'Thinking' : 'Running')
+    : (statusClass === 'thinking' ? 'Thinking'
+      : statusClass === 'working' ? 'Working'
+      : statusClass === 'error' ? 'Error'
+      : statusClass === 'done' || statusClass === 'completed' ? 'Done'
+      : statusClass === 'offline' ? 'Offline'
+      : 'Idle');
+  const activityDetail = agent.currentTool
+    ? `<span class="mc-activity-tool">${escapeText(humanizedTool)}</span>`
+    : (isActive ? '<span class="mc-activity-dots"><i></i><i></i><i></i></span>' : '');
+  const activityStateClass = isActive ? `active ${statusClass}` : statusClass;
   const workspaceMeta = agent.metadata?.workspace || null;
   const workspaceType = formatWorkspaceTypeLabel(workspaceMeta?.type);
   const workspaceBranch = workspaceMeta?.branch || '';
@@ -380,7 +452,11 @@ export function updateAgentUI(agent: DashboardAgent) {
     ${agent.role ? `<div class="mc-agent-role">${agent.role}</div>` : ''}
     ${workspaceSummary}
     ${actionButtons ? `<div class="mc-agent-actions">${actionButtons}</div>` : ''}
-    <div class="mc-agent-activity">CMD> ${activityText}</div>
+    <div class="mc-agent-activity ${activityStateClass}">
+      <span class="mc-activity-indicator">${activityIcon}</span>
+      <span class="mc-activity-label">${activityLabel}</span>
+      ${activityDetail}
+    </div>
     ${timelineHtml}
   `;
 
