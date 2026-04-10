@@ -15,7 +15,7 @@ const TICK_INTERVAL_MS = 2000;
 const STDIN_DELAY_MS = 500;
 const MAX_CONCURRENT_TASKS = 5;
 const IDLE_EXIT_MS = 30000; // Send /exit after 30s of no output (interactive mode)
-const IDLE_ARM_BYTES = 2000; // Only arm idle timer after receiving this many bytes of output
+const IDLE_ARM_BYTES = 500; // Only arm idle timer after receiving this many bytes of output
 
 class Orchestrator extends EventEmitter {
   constructor(options) {
