@@ -9,6 +9,8 @@ const { detectContextExhaustion } = require('./contextDetector');
 const TICK_INTERVAL_MS = 2000;
 const STDIN_DELAY_MS = 500;
 const MAX_CONCURRENT_TASKS = 5;
+const IDLE_EXIT_MS = 30000; // Send /exit after 30s of no output (interactive mode)
+const IDLE_ARM_BYTES = 2000; // Only arm idle timer after receiving this many bytes of output
 
 class Orchestrator extends EventEmitter {
   constructor(options) {
@@ -25,6 +27,8 @@ class Orchestrator extends EventEmitter {
     this.outputParsers = new Map();   // taskId -> OutputParser
     this.cleanupFns = new Map();      // taskId -> [cleanup functions]
     this.repoLocks = new Map();       // repoPath -> Promise
+    this.idleTimers = new Map();      // taskId -> setTimeout id
+    this.taskOutputBytes = new Map(); // taskId -> total bytes received
 
     this.tickInterval = null;
   }
@@ -363,6 +367,33 @@ class Orchestrator extends EventEmitter {
         return;
       }
     }
+
+    // Track total output bytes and arm idle timer only after substantial output.
+    // This prevents the timer from firing during Claude's initial API call.
+    const prevBytes = this.taskOutputBytes.get(taskId) || 0;
+    const newBytes = prevBytes + (data ? data.length : 0);
+    this.taskOutputBytes.set(taskId, newBytes);
+
+    if (newBytes >= IDLE_ARM_BYTES) {
+      this._resetIdleTimer(taskId);
+    }
+  }
+
+  _resetIdleTimer(taskId) {
+    const existing = this.idleTimers.get(taskId);
+    if (existing) clearTimeout(existing);
+
+    const timer = setTimeout(() => {
+      this.idleTimers.delete(taskId);
+      const task = this.taskStore.getTask(taskId);
+      if (!task || task.status !== 'running') return;
+      if (task.terminalId && this.terminalManager.hasTerminal(task.terminalId)) {
+        this.debugLog(`[Orchestrator] Idle timeout for ${taskId.slice(0, 8)}, sending /exit`);
+        this.terminalManager.writeToTerminal(task.terminalId, '/exit\n');
+      }
+    }, IDLE_EXIT_MS);
+
+    this.idleTimers.set(taskId, timer);
   }
 
   _handleTaskExit(taskId, exitCode) {
@@ -526,6 +557,14 @@ class Orchestrator extends EventEmitter {
   // === Cleanup ===
 
   _cleanupTaskRuntime(taskId) {
+    // Clear idle timer and output tracking
+    const idleTimer = this.idleTimers.get(taskId);
+    if (idleTimer) {
+      clearTimeout(idleTimer);
+      this.idleTimers.delete(taskId);
+    }
+    this.taskOutputBytes.delete(taskId);
+
     // Remove output taps
     const fns = this.cleanupFns.get(taskId);
     if (fns) {
@@ -536,11 +575,9 @@ class Orchestrator extends EventEmitter {
     }
     this.outputParsers.delete(taskId);
 
-    // Kill terminal
-    const task = this.taskStore.getTask(taskId);
-    if (task && task.terminalId && this.terminalManager.hasTerminal(task.terminalId)) {
-      this.terminalManager.destroyTerminal(task.terminalId);
-    }
+    // Don't destroy the terminal here — let the process exit naturally
+    // so the frontend terminal tab can show the full output and exit message.
+    // The terminal will be cleaned up when the user closes the tab.
   }
 
   // === Repo Lock ===

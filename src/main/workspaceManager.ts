@@ -75,8 +75,11 @@ class WorkspaceManager {
       throw new Error(`Repository path does not exist: ${sanitizedPath}`);
     }
 
-    const root = this.runGit(sanitizedPath, ['rev-parse', '--show-toplevel']);
-    return path.resolve(root);
+    // Use --git-common-dir to always resolve to the main repository root,
+    // even when called from within a git worktree (--show-toplevel returns worktree path).
+    const gitCommonDir = this.runGit(sanitizedPath, ['rev-parse', '--git-common-dir']);
+    const absGitDir = path.resolve(sanitizedPath, gitCommonDir);
+    return path.resolve(absGitDir, '..');
   }
 
   localBranchExists(repoPath, branchName) {

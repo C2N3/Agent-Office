@@ -35,6 +35,16 @@ const { TaskStore } = require('./main/orchestrator/taskStore');
 const { Orchestrator } = require('./main/orchestrator/index');
 
 // =====================================================
+// Fix Windows console codepage for non-ASCII (Korean, etc.)
+// =====================================================
+if (process.platform === 'win32') {
+  try {
+    const { execSync } = require('child_process');
+    execSync('chcp 65001', { stdio: 'ignore' });
+  } catch {}
+}
+
+// =====================================================
 // Save error logs to file
 // =====================================================
 const logDir = app.isPackaged ? app.getPath('userData') : __dirname;
