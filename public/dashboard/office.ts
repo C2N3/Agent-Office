@@ -153,7 +153,10 @@ export function setupOfficeClickHandler(openTerminalForAgent: (agentId: string, 
   const setCharacterPosition = (character: OfficeCharacter, worldX: number, worldY: number) => {
     const mutable = character as OfficeCharacter & {
       x: number; y: number; path?: unknown[]; pathIndex?: number; manualPinned?: boolean;
+      facingDir?: string; currentAnim?: string;
     };
+    const dx = worldX - mutable.x;
+    const dy = worldY - mutable.y;
     mutable.x = worldX;
     mutable.y = worldY;
     // Stop any pathfinding movement in-flight so it doesn't fight the drag.
@@ -162,6 +165,13 @@ export function setupOfficeClickHandler(openTerminalForAgent: (agentId: string, 
     if (Array.isArray(mutable.path)) mutable.path = [];
     mutable.pathIndex = 0;
     mutable.manualPinned = true;
+    // Face the direction of cursor motion and play the matching walk anim so
+    // the held character keeps animating naturally instead of looking frozen.
+    if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+      const dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+      mutable.facingDir = dir;
+      mutable.currentAnim = 'walk_' + dir;
+    }
   };
 
   canvas.addEventListener('mousedown', (event) => {
@@ -212,11 +222,13 @@ export function setupOfficeClickHandler(openTerminalForAgent: (agentId: string, 
     canvas.style.cursor = '';
 
     if (finishedDrag.moved) {
-      // Call directly on the object so `this` is preserved —
-      // pinCharacterAt's body relies on `this.characters`.
+      // Hand off to dropCharacterAt: it unpins, releases the prior desk, and
+      // routes the character to the nearest work/rest spot for its current
+      // state. Called directly on the object so `this` (→ this.characters)
+      // is preserved.
       (officeCharacters as unknown as {
-        pinCharacterAt?: (id: string, x: number, y: number) => void;
-      }).pinCharacterAt?.(
+        dropCharacterAt?: (id: string, x: number, y: number) => void;
+      }).dropCharacterAt?.(
         finishedDrag.character.id,
         finishedDrag.character.x,
         finishedDrag.character.y,
