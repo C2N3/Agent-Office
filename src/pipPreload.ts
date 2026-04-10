@@ -5,8 +5,9 @@
  */
 
 const { contextBridge, ipcRenderer } = require('electron');
+const { dashboardIpcChannels } = require('./shared/contracts/ipc');
 
 contextBridge.exposeInMainWorld('pipAPI', {
-  close: () => ipcRenderer.send('pip-close'),
-  backToDashboard: () => ipcRenderer.send('pip-back-to-dashboard'),
+  close: () => ipcRenderer.send(dashboardIpcChannels.pipClose),
+  backToDashboard: () => ipcRenderer.send(dashboardIpcChannels.pipBackToDashboard),
 });
