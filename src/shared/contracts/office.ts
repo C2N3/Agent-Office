@@ -28,11 +28,14 @@ export type OfficeCharacter = {
   avatarFile?: string;
   skinIndex?: number;
   bubble?: OfficeBubble | null;
+  manualPinned?: boolean;
 };
 
 export type OfficeCharacters = {
   characters: Map<string, OfficeCharacter>;
   getCharacterArray: () => OfficeCharacter[];
+  pinCharacterAt?: (agentId: string, x: number, y: number) => void;
+  unpinCharacter?: (agentId: string) => void;
 };
 
 export type OfficeRenderer = {

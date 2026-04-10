@@ -51,6 +51,7 @@ export const officeCharacters: any = {
       skinIndex: avatarIdx, // kept for compat
       deskIndex: undefined,
       deskOverflow: false,
+      manualPinned: false,
       currentAnim: 'down_idle',
       animFrame: 0,
       animTimer: 0,
@@ -105,10 +106,12 @@ export const officeCharacters: any = {
       const oldZone = STATE_ZONE_MAP[oldState] || 'idle';
       const newZone = STATE_ZONE_MAP[newState] || 'idle';
 
-      if (newZone === 'desk' && char.deskIndex === undefined) {
-        this.assignDesk(agentData.id);
-      } else if (newZone === 'idle' && oldZone === 'desk') {
-        this.releaseDesk(agentData.id);
+      if (!char.manualPinned) {
+        if (newZone === 'desk' && char.deskIndex === undefined) {
+          this.assignDesk(agentData.id);
+        } else if (newZone === 'idle' && oldZone === 'desk') {
+          this.releaseDesk(agentData.id);
+        }
       }
 
       const stateColor = STATE_COLORS[newState] || '#94a3b8';
@@ -163,6 +166,41 @@ export const officeCharacters: any = {
     char.deskOverflow = false;
   },
 
+  /** Pin a character at a specific world coordinate (from user drag).
+   *  Releases any desk assignment so other agents can take it, and clears
+   *  any pending path so auto-routing won't drag the character elsewhere. */
+  pinCharacterAt: function (agentId, x, y) {
+    const char = this.characters.get(agentId);
+    if (!char) return;
+    if (char.deskIndex !== undefined) {
+      this.seatAssignments.delete(char.deskIndex);
+      char.deskIndex = undefined;
+    }
+    char.deskOverflow = false;
+    char.x = x;
+    char.y = y;
+    char.path = [];
+    char.pathIndex = 0;
+    char.manualPinned = true;
+    const dir = char.facingDir || 'down';
+    char.currentAnim = dir + '_idle';
+  },
+
+  /** Remove the manual pin and let the character return to normal
+   *  state-driven routing (desk / idle zone). */
+  unpinCharacter: function (agentId) {
+    const char = this.characters.get(agentId);
+    if (!char) return;
+    char.manualPinned = false;
+    char.path = [];
+    char.pathIndex = 0;
+    // If the character should be at a desk, re-assign one
+    const zone = (STATE_ZONE_MAP as any)[char.agentState] || 'idle';
+    if (zone === 'desk' && char.deskIndex === undefined) {
+      this.assignDesk(agentId);
+    }
+  },
+
   updateAll: function (deltaSec, deltaMs) {
     const self = this;
     this.characters.forEach(function (char) {
@@ -180,6 +218,13 @@ export const officeCharacters: any = {
   _updateTarget: function (char) {
     const coords = officeCoords;
     if (!coords || !coords.desk || !coords.idle) return;
+
+    // Manually pinned by user drag — skip auto-routing entirely
+    if (char.manualPinned) {
+      char.path = [];
+      char.pathIndex = 0;
+      return;
+    }
 
     // WORKING / THINKING / HELP / ERROR → desk
     if (char.agentState === 'working' || char.agentState === 'thinking' ||
@@ -251,6 +296,16 @@ export const officeCharacters: any = {
   },
 
   _updateMovement: function (char, deltaSec) {
+    // Manually pinned — stay put with a plain idle animation in current facing direction
+    if (char.manualPinned) {
+      char.path = [];
+      char.pathIndex = 0;
+      const dir = char.facingDir || 'down';
+      const idleAnim = dir + '_idle';
+      if (char.currentAnim !== idleAnim) char.currentAnim = idleAnim;
+      return;
+    }
+
     const isArrived = char.path.length === 0 || char.pathIndex >= char.path.length;
 
     if (isArrived) {
