@@ -167,8 +167,11 @@ export const officeRenderer: any = {
       const dy = e.clientY - dragStartY;
       if (Math.abs(dx) > 3 || Math.abs(dy) > 3) dragMoved = true;
       const rect = canvas.getBoundingClientRect();
-      cam.panX = panStartX + (dx / rect.width * canvas.width) / cam.zoom;
-      cam.panY = panStartY + (dy / rect.height * canvas.height) / cam.zoom;
+      // Pan is stored in canvas-pixel space (applied before the zoom
+      // scale), so the cursor delta maps 1:1 regardless of zoom level —
+      // dragging by N screen pixels moves the world by N pixels on screen.
+      cam.panX = panStartX + (dx / rect.width) * canvas.width;
+      cam.panY = panStartY + (dy / rect.height) * canvas.height;
     });
 
     window.addEventListener('mouseup', function (e) {
