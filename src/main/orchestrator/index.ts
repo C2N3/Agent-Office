@@ -220,6 +220,7 @@ class Orchestrator extends EventEmitter {
 
     // Create worktree (if not already created from previous attempt)
     let workspacePath = task.workspacePath;
+    let workspaceMetadata = null;
     if (!workspacePath && task.repositoryPath) {
       const branchName = task.branchName || `task/${task.id.slice(0, 8)}`;
       await this._withRepoLock(task.repositoryPath, async () => {
@@ -234,6 +235,7 @@ class Orchestrator extends EventEmitter {
           bootstrapCommand: task.bootstrapCommand || '',
         });
         workspacePath = result.workspacePath;
+        workspaceMetadata = result.workspace;
 
         // If dependent on parent, squash-merge parent branch
         if (task.parentTaskId) {
@@ -274,6 +276,12 @@ class Orchestrator extends EventEmitter {
 
     // Update agent state — preserve existing name if agent was pre-registered
     const existingAgent = this.agentRegistry.getAgent(agentRegistryId);
+
+    // Attach workspace metadata to the registry agent so Merge/Remove buttons appear
+    if (workspaceMetadata && agentRegistryId) {
+      this.agentRegistry.updateAgent(agentRegistryId, { workspace: workspaceMetadata });
+    }
+
     this.agentManager.updateAgent({
       registryId: agentRegistryId,
       displayName: existingAgent?.name || task.title,
@@ -282,6 +290,7 @@ class Orchestrator extends EventEmitter {
       provider,
       isRegistered: true,
       state: 'Coding',
+      workspace: workspaceMetadata || undefined,
     }, 'orchestrator');
 
     // Build CLI spawn config
