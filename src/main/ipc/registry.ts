@@ -148,19 +148,10 @@ function registerRegistryHandlers({
     }
 
     const requestedResumeSessionId = entry?.resumeSessionId || sessionId;
-    const resolvedSessionId = resolveResumeSessionId({
-      provider: agent.provider,
-      requestedSessionId: requestedResumeSessionId,
-      transcriptPath,
-    });
 
-    const resumeCommand = buildResumeCommand(agent.provider, resolvedSessionId);
-    if (!resumeCommand) return { success: false, error: 'Session not found' };
-
-    if (terminalManager.hasTerminal(registryId)) {
-      terminalManager.destroyTerminal(registryId);
-    }
-
+    // Compute cwd up front so the Claude resolver can scope the UUID lookup
+    // to ~/.claude/projects/<encoded-cwd>/ and fall back to the latest session
+    // in that directory if the requested UUID belongs to a previous workspace.
     let cwd = resolveProjectPathForPlatform(agent.workspace?.worktreePath || agent.projectPath) || undefined;
     if (cwd) {
       try {
@@ -168,6 +159,24 @@ function registerRegistryHandlers({
       } catch {
         cwd = undefined;
       }
+    }
+
+    const resolvedSessionId = resolveResumeSessionId({
+      provider: agent.provider,
+      requestedSessionId: requestedResumeSessionId,
+      transcriptPath,
+      cwd,
+    });
+
+    const resumeCommand = buildResumeCommand(agent.provider, resolvedSessionId);
+    if (!resumeCommand) return { success: false, error: 'Session not found' };
+
+    if (resolvedSessionId && requestedResumeSessionId && resolvedSessionId !== requestedResumeSessionId) {
+      debugLog(`[Registry] Resume fallback: ${requestedResumeSessionId.slice(0, 8)} -> ${resolvedSessionId.slice(0, 8)} (cwd: ${cwd || 'none'})`);
+    }
+
+    if (terminalManager.hasTerminal(registryId)) {
+      terminalManager.destroyTerminal(registryId);
     }
 
     const result = terminalManager.createTerminal(registryId, { cwd });

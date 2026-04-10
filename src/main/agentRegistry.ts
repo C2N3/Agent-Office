@@ -239,7 +239,21 @@ class AgentRegistry {
       }
     }
     if (fields.workspace !== undefined) {
-      agent.workspace = sanitizeWorkspace(fields.workspace, agent.projectPath);
+      const previousWorktreePath = normalizePath(agent.workspace?.worktreePath);
+      const nextWorkspace = sanitizeWorkspace(fields.workspace, agent.projectPath);
+      const nextWorktreePath = normalizePath(nextWorkspace?.worktreePath);
+      agent.workspace = nextWorkspace;
+
+      // Claude CLI's --resume is cwd-scoped: if we're moving to a different
+      // worktree, the old session UUID won't be discoverable from the new cwd.
+      // Clear current session tracking so the next launch starts fresh instead
+      // of trying to resume a session that lives under a different project dir.
+      if (previousWorktreePath && nextWorktreePath && previousWorktreePath !== nextWorktreePath) {
+        agent.currentSessionId = null;
+        agent.currentRuntimeSessionId = null;
+        agent.currentResumeSessionId = null;
+        this.debugLog(`[Registry] Workspace moved: cleared current session for ${registryId.slice(0, 8)}`);
+      }
     }
     this.agents.set(registryId, agent);
     this._save();

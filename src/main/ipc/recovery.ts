@@ -234,15 +234,6 @@ function registerRecoveryHandlers({
       || null;
 
     const provider = registryAgent.provider || agent.provider || null;
-    const resolvedSessionId = resolveResumeSessionId({
-      provider,
-      requestedSessionId: requestedResumeSessionId,
-      transcriptPath,
-    });
-    const resumeCommand = buildResumeCommand(provider, resolvedSessionId);
-    if (!resumeCommand) {
-      return { success: false, error: 'Session not found' };
-    }
 
     let cwd = resolveProjectPathForPlatform(registryAgent.workspace?.worktreePath || registryAgent.projectPath) || undefined;
     if (cwd) {
@@ -251,6 +242,21 @@ function registerRecoveryHandlers({
       } catch {
         cwd = undefined;
       }
+    }
+
+    const resolvedSessionId = resolveResumeSessionId({
+      provider,
+      requestedSessionId: requestedResumeSessionId,
+      transcriptPath,
+      cwd,
+    });
+    const resumeCommand = buildResumeCommand(provider, resolvedSessionId);
+    if (!resumeCommand) {
+      return { success: false, error: 'Session not found' };
+    }
+
+    if (resolvedSessionId && requestedResumeSessionId && resolvedSessionId !== requestedResumeSessionId) {
+      debugLog(`[Recovery] Resume fallback: ${requestedResumeSessionId.slice(0, 8)} -> ${resolvedSessionId.slice(0, 8)} (cwd: ${cwd || 'none'})`);
     }
 
     return {

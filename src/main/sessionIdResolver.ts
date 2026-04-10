@@ -171,21 +171,87 @@ function findCodexSessionIdFromRoots({
   return bestMatch?.sessionId || null;
 }
 
-function resolveResumeSessionId({ provider, requestedSessionId, transcriptPath, sessionRoots }) {
+/**
+ * Encode a cwd into the folder name Claude CLI uses under ~/.claude/projects/.
+ * Claude replaces every path separator and dot in the absolute path with '-'.
+ * e.g. 'D:\Coding\Project\Agent-Office' -> 'D--Coding-Project-Agent-Office'
+ */
+function getClaudeProjectDirForCwd(cwd) {
+  if (!cwd || typeof cwd !== 'string') return null;
+  try {
+    const absolute = path.resolve(cwd);
+    const encoded = absolute.replace(/[\\/:.]/g, '-');
+    return path.join(os.homedir(), '.claude', 'projects', encoded);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Resolve a Claude resume session ID against the current cwd's project dir.
+ * Claude CLI's --resume is cwd-scoped: it only finds UUIDs under
+ * ~/.claude/projects/<encoded-cwd>/. If the requested UUID lives there, return
+ * it as-is. Otherwise fall back to the most recently modified .jsonl in that
+ * directory (top-level only; subagent jsonls are nested in subdirs).
+ */
+function findClaudeResumeSessionIdForCwd({ requestedSessionId, cwd }) {
+  const projectDir = getClaudeProjectDirForCwd(cwd);
+  if (!projectDir || !fs.existsSync(projectDir)) return null;
+
+  if (requestedSessionId) {
+    const candidate = path.join(projectDir, `${requestedSessionId}.jsonl`);
+    try {
+      if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+        return requestedSessionId;
+      }
+    } catch {}
+  }
+
+  let latestId = null;
+  let latestMtime = -1;
+  try {
+    const entries = fs.readdirSync(projectDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isFile() || !entry.name.endsWith('.jsonl')) continue;
+      const fullPath = path.join(projectDir, entry.name);
+      try {
+        const stat = fs.statSync(fullPath);
+        if (stat.mtimeMs > latestMtime) {
+          latestMtime = stat.mtimeMs;
+          latestId = entry.name.replace(/\.jsonl$/i, '');
+        }
+      } catch {}
+    }
+  } catch {}
+
+  return latestId;
+}
+
+function resolveResumeSessionId({ provider, requestedSessionId, transcriptPath, sessionRoots, cwd }) {
   const normalizedProvider = String(provider || '').trim().toLowerCase();
-  if (normalizedProvider !== 'codex') return requestedSessionId || null;
 
-  const resolvedFromTranscript = readCodexSessionIdFromTranscript(transcriptPath, null);
-  if (resolvedFromTranscript) return resolvedFromTranscript;
+  if (normalizedProvider === 'codex') {
+    const resolvedFromTranscript = readCodexSessionIdFromTranscript(transcriptPath, null);
+    if (resolvedFromTranscript) return resolvedFromTranscript;
 
-  const resolvedFromTranscriptPath = extractCodexSessionIdFromTranscriptPath(transcriptPath);
-  if (resolvedFromTranscriptPath) return resolvedFromTranscriptPath;
+    const resolvedFromTranscriptPath = extractCodexSessionIdFromTranscriptPath(transcriptPath);
+    if (resolvedFromTranscriptPath) return resolvedFromTranscriptPath;
 
-  const resolvedFromRoots = findCodexSessionIdFromRoots({
-    requestedSessionId,
-    sessionRoots,
-  });
-  if (resolvedFromRoots) return resolvedFromRoots;
+    const resolvedFromRoots = findCodexSessionIdFromRoots({
+      requestedSessionId,
+      sessionRoots,
+    });
+    if (resolvedFromRoots) return resolvedFromRoots;
+
+    return requestedSessionId || null;
+  }
+
+  // Claude (default): scope the UUID to the current cwd so a stale ID from a
+  // previous workspace doesn't produce "No conversation found".
+  if (cwd) {
+    const resolvedForCwd = findClaudeResumeSessionIdForCwd({ requestedSessionId, cwd });
+    if (resolvedForCwd) return resolvedForCwd;
+  }
 
   return requestedSessionId || null;
 }
@@ -195,5 +261,7 @@ module.exports = {
   readCodexSessionIdFromTranscript,
   findCodexSessionIdFromRoots,
   extractCodexSessionIdFromTranscriptPath,
+  getClaudeProjectDirForCwd,
+  findClaudeResumeSessionIdForCwd,
   parseJsonLines,
 };
