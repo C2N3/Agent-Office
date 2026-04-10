@@ -318,8 +318,8 @@ export function setupAgentModal(openTerminalForAgent) {
     modal.style.display = '';
   });
   cancelBtn?.addEventListener('click', closeModal);
-  modal.addEventListener('click', (event) => {
-    if (event.target === modal) closeModal();
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && modal.style.display !== 'none') closeModal();
   });
 
   form.addEventListener('submit', async (event) => {
@@ -454,6 +454,9 @@ export function setupAssignTaskModal() {
   modal.addEventListener('click', (event) => {
     if (event.target === modal) closeModal();
   });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && modal.style.display !== 'none') closeModal();
+  });
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -571,6 +574,9 @@ export function setupAvatarPicker(updateAgentUI) {
   modal.addEventListener('click', (event) => {
     if (event.target === modal) modal.style.display = 'none';
   });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && modal.style.display !== 'none') modal.style.display = 'none';
+  }, { capture: true });
 
   document.addEventListener('click', (event) => {
     const btn = event.target.closest('.agent-avatar-btn');
@@ -586,6 +592,7 @@ export function setupAvatarPicker(updateAgentUI) {
     });
 
     modal.style.display = '';
+    requestAnimationFrame(() => modal.focus());
   });
 }
 
@@ -640,6 +647,9 @@ export function setupConversationViewer(resumeRegisteredSession) {
   closeBtn.addEventListener('click', closeModal);
   overlay.addEventListener('click', (event) => {
     if (event.target === overlay) closeModal();
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && overlay.style.display !== 'none') closeModal();
   });
   backBtn.addEventListener('click', () => {
     chatPanel.style.display = 'none';
