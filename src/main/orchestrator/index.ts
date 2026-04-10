@@ -610,15 +610,14 @@ class Orchestrator extends EventEmitter {
 
   /**
    * Remove the git worktree and branch created for a task.
-   * Called on failure/cancellation so stale worktrees don't accumulate.
-   * Kills the terminal process first to release file handles on Windows.
+   * Kills the terminal process first, then retries removal on Windows
+   * where file handles may linger after process exit.
    */
   _cleanupTaskWorktree(taskId) {
     const task = this.taskStore.getTask(taskId);
     if (!task || !task.workspacePath) return;
 
     // Kill the terminal process first so it releases the worktree directory.
-    // The frontend xterm tab remains open (showing the last output).
     if (task.terminalId && this.terminalManager.hasTerminal(task.terminalId)) {
       this.terminalManager.destroyTerminal(task.terminalId);
     }
@@ -632,12 +631,16 @@ class Orchestrator extends EventEmitter {
       return;
     }
 
-    // Delay cleanup slightly on Windows to let file handles release after process kill.
-    const doCleanup = () => {
+    const attemptRemove = (attempt) => {
       try {
         this.workspaceManager.runGit(repoRoot, ['worktree', 'remove', '--force', task.workspacePath]);
       } catch (e) {
-        this.debugLog(`[Workspace] Remove error: ${e.message}`);
+        if (attempt < 3) {
+          this.debugLog(`[Workspace] Remove attempt ${attempt + 1} failed, retrying in ${(attempt + 1) * 3}s...`);
+          setTimeout(() => attemptRemove(attempt + 1), (attempt + 1) * 3000);
+          return;
+        }
+        this.debugLog(`[Workspace] Remove failed after ${attempt + 1} attempts: ${e.message}`);
         return;
       }
       try {
@@ -646,11 +649,8 @@ class Orchestrator extends EventEmitter {
       this.debugLog(`[Orchestrator] Cleaned up worktree for ${taskId.slice(0, 8)}`);
     };
 
-    if (process.platform === 'win32') {
-      setTimeout(doCleanup, 2000);
-    } else {
-      doCleanup();
-    }
+    // First attempt after delay to let file handles release
+    setTimeout(() => attemptRemove(0), process.platform === 'win32' ? 3000 : 500);
   }
 
   // === Repo Lock ===
