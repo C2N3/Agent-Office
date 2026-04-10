@@ -101,14 +101,20 @@ export function connectSSE() {
     try {
       const data = JSON.parse(event.data) as { data: { id?: string; agentRegistryId?: string } };
       const task = data.data;
+      console.log('[SSE] task.succeeded', task.id, 'agent:', task.agentRegistryId);
       if (task.agentRegistryId && task.id) {
-        // Show report bubble on the office character
         const officeChars = (globalThis as any).officeCharacters;
-        if (officeChars?.setReportBubble) {
-          officeChars.setReportBubble(task.agentRegistryId, task.id);
+        console.log('[SSE] officeCharacters available:', !!officeChars, 'has method:', !!officeChars?.setReportBubble);
+        if (officeChars) {
+          const charExists = officeChars.characters?.has(task.agentRegistryId);
+          console.log('[SSE] character exists for', task.agentRegistryId, ':', charExists);
+          if (officeChars.setReportBubble) {
+            officeChars.setReportBubble(task.agentRegistryId, task.id);
+            console.log('[SSE] setReportBubble called');
+          }
         }
       }
-    } catch {}
+    } catch (e) { console.error('[SSE] task.succeeded error:', e); }
   });
 }
 
