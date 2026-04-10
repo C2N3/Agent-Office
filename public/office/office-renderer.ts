@@ -32,8 +32,11 @@ export const officeRenderer: any = {
 
     // 1. Load layers (bg/fg)
     await buildOfficeLayers();
-    canvas.width = officeLayers.width;
-    canvas.height = officeLayers.height;
+    // Canvas internal buffer follows the panel size so the map renders at
+    // its native resolution and a larger panel reveals more of the world
+    // (instead of stretching the same pixels). _fitCanvasToContainer also
+    // centers the map on the first sizing pass.
+    this._fitCanvasToContainer(true);
 
     // 2. Build pathfinder
     await officePathfinder.init(officeLayers.width, officeLayers.height);
@@ -76,8 +79,45 @@ export const officeRenderer: any = {
     // 6. Setup wheel zoom + middle-click pan
     this._setupCameraControls(canvas);
 
+    // 7. React to panel resizes (window resize, splitter drag, etc.)
+    this._setupResizeObserver(canvas);
+
     this.lastTime = performance.now();
     this.loop(this.lastTime);
+  },
+
+  _fitCanvasToContainer: function (centerCamera) {
+    const canvas = this.canvas;
+    if (!canvas) return;
+    const parent = canvas.parentElement;
+    // Fall back to the canvas's own client size if no parent is available.
+    const w = Math.max(1, Math.round((parent && parent.clientWidth) || canvas.clientWidth || 1));
+    const h = Math.max(1, Math.round((parent && parent.clientHeight) || canvas.clientHeight || 1));
+    if (canvas.width !== w) canvas.width = w;
+    if (canvas.height !== h) canvas.height = h;
+    if (centerCamera) {
+      // Center the world inside the canvas at zoom=1 so the map sits in
+      // the middle and any extra panel space is visible around it.
+      this.camera.panX = (w - officeLayers.width) / 2;
+      this.camera.panY = (h - officeLayers.height) / 2;
+    }
+  },
+
+  _setupResizeObserver: function (canvas) {
+    const self = this;
+    const target = canvas.parentElement || canvas;
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(function () {
+        self._fitCanvasToContainer(false);
+      });
+      ro.observe(target);
+      this._resizeObserver = ro;
+    } else {
+      // Fallback for environments without ResizeObserver.
+      const onResize = function () { self._fitCanvasToContainer(false); };
+      window.addEventListener('resize', onResize);
+      this._onWindowResize = onResize;
+    }
   },
 
   _setupCameraControls: function (canvas) {
@@ -151,11 +191,13 @@ export const officeRenderer: any = {
       }
     }, true);
 
-    // Double-click to reset zoom
+    // Double-click to reset zoom and re-center the world in the canvas.
+    const self = this;
     canvas.addEventListener('dblclick', function () {
       cam.zoom = 1;
-      cam.panX = 0;
-      cam.panY = 0;
+      cam.panX = (canvas.width - officeLayers.width) / 2;
+      cam.panY = (canvas.height - officeLayers.height) / 2;
+      void self;
     });
   },
 
@@ -208,8 +250,8 @@ export const officeRenderer: any = {
     ctx.translate(this.camera.panX, this.camera.panY);
     ctx.scale(this.camera.zoom, this.camera.zoom);
 
-    // 1. Background (scaled to canvas size)
-    ctx.drawImage(officeLayers.bgImage, 0, 0, this.canvas.width, this.canvas.height);
+    // 1. Background (drawn at native world size; camera transform handles fit)
+    ctx.drawImage(officeLayers.bgImage, 0, 0, officeLayers.width, officeLayers.height);
 
     // 2. Static decor behind agents
     this._drawDecorItems(ctx, officeLayers.decorBefore);
@@ -264,9 +306,9 @@ export const officeRenderer: any = {
       if (isOffline) ctx.globalAlpha = 1.0;
     }
 
-    // 5. Foreground (scaled to canvas size)
+    // 5. Foreground (drawn at native world size to match background)
     if (officeLayers.fgImage && officeLayers.fgImage.complete && officeLayers.fgImage.naturalWidth > 0) {
-      ctx.drawImage(officeLayers.fgImage, 0, 0, this.canvas.width, this.canvas.height);
+      ctx.drawImage(officeLayers.fgImage, 0, 0, officeLayers.width, officeLayers.height);
     }
 
     // 6. Static decor above agents
