@@ -380,6 +380,9 @@ class Orchestrator extends EventEmitter {
   }
 
   _resetIdleTimer(taskId) {
+    // If we already sent /exit, stop resetting — avoid spamming /exit repeatedly.
+    if (this._exitSent?.has(taskId)) return;
+
     const existing = this.idleTimers.get(taskId);
     if (existing) clearTimeout(existing);
 
@@ -389,7 +392,9 @@ class Orchestrator extends EventEmitter {
       if (!task || task.status !== 'running') return;
       if (task.terminalId && this.terminalManager.hasTerminal(task.terminalId)) {
         this.debugLog(`[Orchestrator] Idle timeout for ${taskId.slice(0, 8)}, sending /exit`);
-        this.terminalManager.writeToTerminal(task.terminalId, '/exit\n');
+        this.terminalManager.writeToTerminal(task.terminalId, '/exit\r');
+        if (!this._exitSent) this._exitSent = new Set();
+        this._exitSent.add(taskId);
       }
     }, IDLE_EXIT_MS);
 
@@ -564,6 +569,7 @@ class Orchestrator extends EventEmitter {
       this.idleTimers.delete(taskId);
     }
     this.taskOutputBytes.delete(taskId);
+    this._exitSent?.delete(taskId);
 
     // Remove output taps
     const fns = this.cleanupFns.get(taskId);

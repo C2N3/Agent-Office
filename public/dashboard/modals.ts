@@ -65,7 +65,6 @@ export function setupAgentModal(openTerminalForAgent) {
   const modeBtns = document.querySelectorAll('#createModeSelect .provider-btn');
   const existingFields = document.getElementById('existingAgentFields');
   const worktreeFields = document.getElementById('worktreeAgentFields');
-  const autonomousFields = document.getElementById('autonomousAgentFields');
   const repoPathInput = document.getElementById('agentRepoPathInput');
   const branchInput = document.getElementById('agentBranchInput');
   const baseBranchInput = document.getElementById('agentBaseBranchInput');
@@ -73,7 +72,7 @@ export function setupAgentModal(openTerminalForAgent) {
   const branchModeInput = document.getElementById('agentBranchModeInput');
   const startPointInput = document.getElementById('agentStartPointInput');
   const inspectStatusEl = document.getElementById('agentRepoInspectStatus');
-  if (!modal || !form || !openBtn || !existingFields || !worktreeFields || !autonomousFields) return;
+  if (!modal || !form || !openBtn || !existingFields || !worktreeFields) return;
 
   let createMode = 'existing';
   let selectedProvider = 'claude';
@@ -95,11 +94,10 @@ export function setupAgentModal(openTerminalForAgent) {
   });
 
   function setCreateMode(nextMode) {
-    createMode = nextMode === 'worktree' ? 'worktree' : nextMode === 'autonomous' ? 'autonomous' : 'existing';
+    createMode = nextMode === 'worktree' ? 'worktree' : 'existing';
     modeBtns.forEach((btn) => btn.classList.toggle('active', btn.dataset.mode === createMode));
     existingFields.style.display = createMode === 'existing' ? '' : 'none';
     worktreeFields.style.display = createMode === 'worktree' ? '' : 'none';
-    autonomousFields.style.display = createMode === 'autonomous' ? '' : 'none';
   }
 
   function resetProviderSelection() {
@@ -314,13 +312,6 @@ export function setupAgentModal(openTerminalForAgent) {
       if (errorEl) errorEl.textContent = 'Could not open folder picker.';
     });
   });
-  document.getElementById('autoRepoPathBrowseBtn')?.addEventListener('click', () => {
-    pickDirectory({ inputId: 'autoRepoPathInput', title: 'Select repository folder' }).catch((error) => {
-      console.error('[Directory Picker]', error);
-      if (errorEl) errorEl.textContent = 'Could not open folder picker.';
-    });
-  });
-
   openBtn.addEventListener('click', () => {
     resetFormState();
     syncAutoBranch();
@@ -340,30 +331,6 @@ export function setupAgentModal(openTerminalForAgent) {
     const role = document.getElementById('agentRoleInput').value.trim();
     if (!name) {
       if (errorEl) errorEl.textContent = 'Name is required.';
-      return;
-    }
-
-    if (createMode === 'autonomous') {
-      const repoPath = (document.getElementById('autoRepoPathInput') as HTMLInputElement).value.trim();
-      if (!repoPath) {
-        if (errorEl) errorEl.textContent = 'Repository path is required.';
-        return;
-      }
-
-      if (dashboardAPI?.createRegisteredAgent) {
-        const result = await dashboardAPI.createRegisteredAgent({
-          name,
-          role: role || 'autonomous',
-          projectPath: repoPath,
-          provider: selectedProvider,
-        });
-        if (result?.success) {
-          closeModal();
-          resetFormState();
-        } else if (errorEl) {
-          errorEl.textContent = result?.error || 'Failed to register agent.';
-        }
-      }
       return;
     }
 

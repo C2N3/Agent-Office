@@ -256,7 +256,6 @@
           <div class="provider-select" id="createModeSelect">
             <button type="button" class="provider-btn active" data-mode="existing">Existing Path</button>
             <button type="button" class="provider-btn" data-mode="worktree">Git Worktree</button>
-            <button type="button" class="provider-btn" data-mode="autonomous">Autonomous</button>
           </div>
         </label>
         <label class="modal-label">Name<input type="text" id="agentNameInput" class="modal-input" placeholder="e.g. Stock Monitor Agent" required></label>
@@ -312,15 +311,6 @@
             <input type="checkbox" id="workspaceOpenTerminalInput" checked>
             <span>Open embedded terminal after create</span>
           </label>
-        </div>
-        <div id="autonomousAgentFields" style="display:none;">
-          <label class="modal-label">Repository Path
-            <div class="modal-path-field">
-              <input type="text" id="autoRepoPathInput" class="modal-input" placeholder="e.g. D:\projects\stock-monitor">
-              <button type="button" class="btn-secondary modal-browse-btn" id="autoRepoPathBrowseBtn">Browse</button>
-            </div>
-          </label>
-          <span class="modal-help">Tasks can be assigned later by clicking the agent card.</span>
         </div>
         <label class="modal-label">Provider
           <div class="provider-select" id="providerSelect">
