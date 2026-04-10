@@ -88,6 +88,10 @@ class Orchestrator extends EventEmitter {
 
     const updated = transitionTask(task, 'cancelled');
     this.taskStore.updateTask(taskId, updated);
+
+    // Clean up worktree on cancellation
+    this._cleanupTaskWorktree(taskId);
+
     this.emit('task:cancelled', updated);
     this.emit('task:updated', updated);
     return updated;
@@ -492,6 +496,9 @@ class Orchestrator extends EventEmitter {
       updatedAt: Date.now(),
     });
 
+    // Clean up worktree on failure — no useful changes to preserve
+    this._cleanupTaskWorktree(taskId);
+
     if (task.agentRegistryId) {
       this.agentManager.updateAgent({
         registryId: task.agentRegistryId,
@@ -584,6 +591,34 @@ class Orchestrator extends EventEmitter {
     // Don't destroy the terminal here — let the process exit naturally
     // so the frontend terminal tab can show the full output and exit message.
     // The terminal will be cleaned up when the user closes the tab.
+  }
+
+  /**
+   * Remove the git worktree and branch created for a task.
+   * Called on failure/cancellation so stale worktrees don't accumulate.
+   */
+  _cleanupTaskWorktree(taskId) {
+    const task = this.taskStore.getTask(taskId);
+    if (!task || !task.workspacePath) return;
+
+    try {
+      const branchName = task.branchName || `task/${taskId.slice(0, 8)}`;
+      // Remove the worktree directory
+      this.workspaceManager.runGit(
+        this.workspaceManager.resolveRepositoryRoot(task.repositoryPath),
+        ['worktree', 'remove', '--force', task.workspacePath],
+      );
+      // Delete the branch
+      try {
+        this.workspaceManager.runGit(
+          this.workspaceManager.resolveRepositoryRoot(task.repositoryPath),
+          ['branch', '-D', branchName],
+        );
+      } catch {}
+      this.debugLog(`[Orchestrator] Cleaned up worktree for ${taskId.slice(0, 8)}`);
+    } catch (e) {
+      this.debugLog(`[Orchestrator] Worktree cleanup failed for ${taskId.slice(0, 8)}: ${e.message}`);
+    }
   }
 
   // === Repo Lock ===
