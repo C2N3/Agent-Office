@@ -477,7 +477,7 @@ class Orchestrator extends EventEmitter {
       }
     }
 
-    // Transition agent to Offline, clear session, restore original projectPath
+    // Transition agent to done with report, clear session, restore original projectPath
     if (task.agentRegistryId) {
       this.agentRegistry.unlinkSession(task.agentRegistryId);
       const regAgent = this.agentRegistry.getAgent(task.agentRegistryId);
@@ -485,8 +485,9 @@ class Orchestrator extends EventEmitter {
       this.agentRegistry.updateAgent(task.agentRegistryId, { projectPath: originalPath });
       this.agentManager.updateAgent({
         registryId: task.agentRegistryId,
-        state: 'Offline',
+        state: 'done',
         projectPath: originalPath,
+        reportTaskId: task.id,
       }, 'orchestrator');
     }
 

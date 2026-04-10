@@ -149,6 +149,7 @@ function adaptAgentToDashboard(pixelAgent: PixelAgent): DashboardAgent & { token
     model: pixelAgent.model || null,
     tokenUsage: normalizeTokenUsage(pixelAgent.tokenUsage),
     currentTool: pixelAgent.currentTool || null,
+    reportTaskId: pixelAgent.reportTaskId || null,
     lastMessage: pixelAgent.lastMessage || null,
     avatarIndex: pixelAgent.avatarIndex !== undefined ? pixelAgent.avatarIndex : null,
     metadata: {
