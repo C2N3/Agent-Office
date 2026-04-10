@@ -12,10 +12,23 @@ const { detectContextExhaustion } = require('./contextDetector');
 const TASK_OUTPUT_DIR = path.join(os.homedir(), '.agent-office', 'task-output');
 
 const TICK_INTERVAL_MS = 2000;
-const STDIN_DELAY_MS = 500;
+// Claude Code TUI can take 2–4s to initialize on Windows (Electron PTY + cmd
+// wrapper + conpty). If we write stdin before the TUI input loop is live, the
+// keystrokes get swallowed and the prompt silently disappears, leaving the
+// session idle until the /exit idle-timer fires. We now wait for a TUI
+// readiness marker in the output stream before writing, and only fall back to
+// a fixed delay if the marker never appears.
+const STDIN_READY_TIMEOUT_MS = 8000;
+const STDIN_POST_READY_MS = 400;
 const MAX_CONCURRENT_TASKS = 5;
 const IDLE_EXIT_MS = 30000; // Send /exit after 30s of no output (interactive mode)
 const IDLE_ARM_BYTES = 500; // Only arm idle timer after receiving this many bytes of output
+
+// Matches the bottom border of Claude Code's prompt box — reliable signal that
+// the interactive input loop is live and ready to accept keystrokes.
+// ANSI escapes are stripped upstream in tapOutput consumers, but the raw PTY
+// stream still has them, so match the raw box-drawing chars directly.
+const CLAUDE_READY_MARKER = /╰[─━]/;
 
 class Orchestrator extends EventEmitter {
   constructor(options) {
@@ -342,24 +355,60 @@ class Orchestrator extends EventEmitter {
 
     const cleanups = [];
 
+    // For stdin delivery, defer the actual write until the CLI's TUI signals
+    // readiness. We coordinate through this state so the output tap can trip
+    // the writer without racing the idle-timer logic.
+    const stdinState = (spawnConfig.promptDelivery === 'stdin' && adapter.buildStdinPrompt)
+      ? { written: false, fallbackTimer: null, postReadyTimer: null }
+      : null;
+
+    const writePromptOnce = () => {
+      if (!stdinState || stdinState.written) return;
+      stdinState.written = true;
+      if (stdinState.fallbackTimer) {
+        clearTimeout(stdinState.fallbackTimer);
+        stdinState.fallbackTimer = null;
+      }
+      if (stdinState.postReadyTimer) {
+        clearTimeout(stdinState.postReadyTimer);
+        stdinState.postReadyTimer = null;
+      }
+      const stdinData = adapter.buildStdinPrompt(task.prompt);
+      this.terminalManager.writeToTerminal(terminalId, stdinData);
+      this.debugLog(`[Orchestrator] Prompt delivered via stdin: ${task.id.slice(0, 8)}`);
+    };
+
     const untapOutput = this.terminalManager.tapOutput(terminalId, (data) => {
+      // Watch for the TUI readiness marker before we hand the parser the data.
+      if (stdinState && !stdinState.written && !stdinState.postReadyTimer
+          && CLAUDE_READY_MARKER.test(data)) {
+        stdinState.postReadyTimer = setTimeout(writePromptOnce, STDIN_POST_READY_MS);
+      }
       this._handleTaskOutput(task.id, data, outputParser);
     });
     cleanups.push(untapOutput);
 
     const untapExit = this.terminalManager.tapExit(terminalId, (exitCode) => {
+      if (stdinState) {
+        if (stdinState.fallbackTimer) clearTimeout(stdinState.fallbackTimer);
+        if (stdinState.postReadyTimer) clearTimeout(stdinState.postReadyTimer);
+      }
       this._handleTaskExit(task.id, exitCode);
     });
     cleanups.push(untapExit);
 
     this.cleanupFns.set(task.id, cleanups);
 
-    // If stdin delivery, write prompt after short delay
-    if (spawnConfig.promptDelivery === 'stdin' && adapter.buildStdinPrompt) {
-      setTimeout(() => {
-        const stdinData = adapter.buildStdinPrompt(task.prompt);
-        this.terminalManager.writeToTerminal(terminalId, stdinData);
-      }, STDIN_DELAY_MS);
+    // Safety net: if the readiness marker never appears (e.g. a Claude TUI
+    // redesign removes the box border), write anyway after the timeout so the
+    // task still progresses instead of sitting idle until /exit.
+    if (stdinState) {
+      stdinState.fallbackTimer = setTimeout(() => {
+        stdinState.fallbackTimer = null;
+        if (stdinState.written) return;
+        this.debugLog(`[Orchestrator] TUI readiness marker not seen in ${STDIN_READY_TIMEOUT_MS}ms — writing prompt anyway: ${task.id.slice(0, 8)}`);
+        writePromptOnce();
+      }, STDIN_READY_TIMEOUT_MS);
     }
 
     // Transition to running
