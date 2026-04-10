@@ -57,3 +57,40 @@ describe('agentRegistry.replaceSessionId', () => {
     ]);
   });
 });
+
+describe('agentRegistry.findActiveAgentsByRepository', () => {
+  test('matches active agents by workspace repository metadata or resolved project path', () => {
+    const registry = new AgentRegistry(() => {});
+    const worktreeAgent = registry.createAgent({
+      name: 'Worktree Agent',
+      projectPath: '/workspace/app-worktree',
+      workspace: {
+        type: 'git-worktree',
+        repositoryPath: '/workspace/app',
+        worktreePath: '/workspace/app-worktree',
+        branch: 'feature/test',
+      },
+    });
+    const directAgent = registry.createAgent({
+      name: 'Direct Agent',
+      projectPath: '/workspace/app/packages/service',
+    });
+    const archivedAgent = registry.createAgent({
+      name: 'Archived Agent',
+      projectPath: '/workspace/app/legacy',
+    });
+    registry.archiveAgent(archivedAgent.id);
+
+    const matches = registry.findActiveAgentsByRepository('/workspace/app', (candidatePath) => {
+      if (candidatePath.startsWith('/workspace/app/')) {
+        return '/workspace/app';
+      }
+      return candidatePath;
+    });
+
+    expect(matches).toEqual([
+      expect.objectContaining({ id: worktreeAgent.id }),
+      expect.objectContaining({ id: directAgent.id }),
+    ]);
+  });
+});

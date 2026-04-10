@@ -312,6 +312,7 @@ export function updateAgentUI(agent: DashboardAgent) {
   const workspaceType = formatWorkspaceTypeLabel(workspaceMeta?.type);
   const workspaceBranch = workspaceMeta?.branch || '';
   const workspaceRepo = workspaceMeta?.repositoryName || '';
+  const isManagedWorktree = workspaceMeta?.type === 'git-worktree';
   const workspaceBadge = workspaceMeta
     ? `<span class="mc-type-badge workspace" title="${escapeText(workspaceType)}">${escapeText(workspaceType)}</span>`
     : '';
@@ -325,12 +326,12 @@ export function updateAgentUI(agent: DashboardAgent) {
     agent.isRegistered
       ? `<button class="agent-assign-task-btn" data-agent-id="${agent.id}" title="Assign Task"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></button>`
       : '',
-    agent.isRegistered && agent.registryId && workspaceBranch
+    agent.isRegistered && agent.registryId && workspaceBranch && isManagedWorktree
       ? `<button class="agent-workspace-btn merge" data-workspace-merge-id="${agent.registryId}" data-branch="${escapeText(workspaceBranch)}" title="Merge branch and clean up workspace">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="M8 6h8"/><path d="M6 8v4c0 2 2 4 4 4h2"/><path d="M18 8v4c0 2-2 4-4 4h-2"/></svg>
         </button>`
       : '',
-    agent.isRegistered && agent.registryId && workspaceBranch
+    agent.isRegistered && agent.registryId && workspaceBranch && isManagedWorktree
       ? `<button class="agent-workspace-btn remove" data-workspace-remove-id="${agent.registryId}" data-branch="${escapeText(workspaceBranch)}" title="Remove workspace and delete branch without merge">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
         </button>`

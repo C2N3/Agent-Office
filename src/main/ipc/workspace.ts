@@ -1,6 +1,7 @@
 // @ts-nocheck
 const { dialog, ipcMain } = require('electron');
 const { dashboardIpcChannels } = require('../../shared/contracts/ipc');
+const { createWorkspaceRegistrationService } = require('./workspaceRegistration');
 
 function registerWorkspaceHandlers({
   agentManager,
@@ -11,6 +12,13 @@ function registerWorkspaceHandlers({
   debugLog,
   getDashboardSenderWindow,
 }) {
+  const { createRegisteredAgentRecord, resolveRegistrationPreview } = createWorkspaceRegistrationService({
+    agentManager,
+    agentRegistry,
+    workspaceManager,
+    attachRegisteredAgent,
+  });
+
   ipcMain.handle(dashboardIpcChannels.dialogPickDirectory, async (event, options = {}) => {
     const senderWindow = getDashboardSenderWindow(event);
     if (!senderWindow) {
@@ -51,40 +59,98 @@ function registerWorkspaceHandlers({
     }
   });
 
+  ipcMain.handle(dashboardIpcChannels.workspaceResolveRegistration, async (_event, data) => {
+    try {
+      return {
+        success: true,
+        preview: resolveRegistrationPreview(data),
+      };
+    } catch (error) {
+      debugLog(`[Workspace] Resolve registration error: ${error.message}`);
+      return { success: false, error: error.message };
+    }
+  });
+
   ipcMain.handle(dashboardIpcChannels.workspaceCreate, async (_event, data) => {
     try {
       const workspaceResult = workspaceManager.createWorkspace(data);
-      const agent = agentRegistry.createAgent({
+      const agent = createRegisteredAgentRecord({
         name: data.name,
         role: data.role,
         projectPath: workspaceResult.workspacePath,
         provider: data.provider,
         workspace: workspaceResult.workspace,
-      });
-
-      const attachedSessionId = attachRegisteredAgent ? attachRegisteredAgent(agent) : null;
-      if (!attachedSessionId) {
-        agentManager.updateAgent({
-          registryId: agent.id,
-          displayName: agent.name,
-          role: agent.role,
-          projectPath: agent.projectPath,
-          avatarIndex: agent.avatarIndex,
-          provider: agent.provider,
-          workspace: agent.workspace || null,
-          isRegistered: true,
-          state: 'Offline',
-        }, 'workspace');
-      }
+      }, 'workspace');
 
       return {
         success: true,
         agent,
         workspace: workspaceResult.workspace,
         bootstrapCommand: workspaceResult.bootstrapCommand,
+        effectiveStrategy: 'worktree',
+        projectPath: agent.projectPath,
       };
     } catch (error) {
       debugLog(`[Workspace] Create error: ${error.message}`);
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle(dashboardIpcChannels.workspaceCreateFromPath, async (_event, data) => {
+    try {
+      const preview = resolveRegistrationPreview(data);
+
+      if (preview.effectiveStrategy === 'worktree') {
+        if (!preview.isGitRepository || !preview.repositoryPath) {
+          throw new Error('Managed worktree creation requires a Git repository path');
+        }
+
+        const workspaceResult = workspaceManager.createWorkspace({
+          ...data,
+          repoPath: preview.repositoryPath,
+          branchName: String(data.branchName || '').trim() || preview.worktreeDefaults?.branchName,
+          baseBranch: String(data.baseBranch || '').trim() || preview.worktreeDefaults?.baseBranch,
+          workspaceParent: String(data.workspaceParent || '').trim() || preview.worktreeDefaults?.workspaceParent,
+          startPoint: String(data.startPoint || '').trim()
+            || String(data.baseBranch || '').trim()
+            || preview.worktreeDefaults?.startPoint,
+        });
+        const agent = createRegisteredAgentRecord({
+          name: data.name,
+          role: data.role,
+          projectPath: workspaceResult.workspacePath,
+          provider: data.provider,
+          workspace: workspaceResult.workspace,
+        }, 'workspace');
+
+        return {
+          success: true,
+          agent,
+          workspace: workspaceResult.workspace,
+          bootstrapCommand: workspaceResult.bootstrapCommand,
+          effectiveStrategy: 'worktree',
+          projectPath: agent.projectPath,
+        };
+      }
+
+      const agent = createRegisteredAgentRecord({
+        name: data.name,
+        role: data.role,
+        projectPath: preview.normalizedPath,
+        provider: data.provider,
+        workspace: null,
+      }, 'workspace');
+
+      return {
+        success: true,
+        agent,
+        workspace: null,
+        bootstrapCommand: '',
+        effectiveStrategy: 'existing',
+        projectPath: agent.projectPath,
+      };
+    } catch (error) {
+      debugLog(`[Workspace] Create from path error: ${error.message}`);
       return { success: false, error: error.message };
     }
   });

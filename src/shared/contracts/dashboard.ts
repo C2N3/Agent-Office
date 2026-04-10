@@ -171,6 +171,48 @@ export type DashboardRepoInspectionResult = DashboardActionResult & {
   repository?: DashboardRepoInspection;
 };
 
+export type DashboardPathRegistrationStrategy = 'auto' | 'existing' | 'worktree';
+
+export type DashboardRegistrationPreview = {
+  requestedPath?: string | null;
+  normalizedPath?: string | null;
+  isGitRepository?: boolean;
+  repositoryPath?: string | null;
+  repositoryName?: string | null;
+  currentBranch?: string | null;
+  branches?: string[];
+  repositoryInUse?: boolean;
+  recommendedStrategy?: DashboardPathRegistrationStrategy;
+  effectiveStrategy?: Exclude<DashboardPathRegistrationStrategy, 'auto'>;
+  reason?: string | null;
+  summary?: string | null;
+  worktreeDefaults?: {
+    branchName?: string | null;
+    baseBranch?: string | null;
+    startPoint?: string | null;
+    workspaceParent?: string | null;
+  } | null;
+};
+
+export type DashboardRegistrationPreviewResult = DashboardActionResult & {
+  preview?: DashboardRegistrationPreview | null;
+};
+
+export type DashboardCreateFromPathPayload = DashboardOpenOptions & {
+  name: string;
+  role?: string;
+  provider?: string | null;
+  workspacePath: string;
+  strategy?: DashboardPathRegistrationStrategy;
+  branchName?: string;
+  baseBranch?: string;
+  workspaceParent?: string;
+  startPoint?: string;
+  copyPaths?: string[];
+  symlinkPaths?: string[];
+  bootstrapCommand?: string;
+};
+
 export type DashboardDirectoryPickerOptions = {
   title?: string;
   defaultPath?: string | null;
@@ -186,6 +228,8 @@ export type DashboardWorkspaceActionResult = DashboardActionResult & {
   agent?: DashboardAgentRecord;
   workspace?: DashboardWorkspace | null;
   bootstrapCommand?: string;
+  effectiveStrategy?: Exclude<DashboardPathRegistrationStrategy, 'auto'>;
+  projectPath?: string | null;
   result?: JsonObject | null;
 };
 
@@ -262,6 +306,13 @@ export type DashboardAPI = {
   createRegisteredAgent?: (data: Partial<DashboardAgentRecord> & { name: string; projectPath: string }) => Promise<(DashboardActionResult & { agent?: DashboardAgentRecord }) | undefined>;
   pickDirectory?: (options?: DashboardDirectoryPickerOptions) => Promise<DashboardDirectoryPickerResult | undefined>;
   inspectWorkspaceRepo?: (repoPath: string) => Promise<DashboardRepoInspectionResult | undefined>;
+  resolveWorkspaceRegistration?: (data: {
+    workspacePath: string;
+    name?: string;
+    provider?: string | null;
+    strategy?: DashboardPathRegistrationStrategy;
+    branchName?: string;
+  }) => Promise<DashboardRegistrationPreviewResult | undefined>;
   createWorkspaceAgent?: (data: DashboardOpenOptions & {
     name: string;
     role?: string;
@@ -275,6 +326,7 @@ export type DashboardAPI = {
     symlinkPaths?: string[];
     bootstrapCommand?: string;
   }) => Promise<DashboardWorkspaceActionResult | undefined>;
+  createAgentFromPath?: (data: DashboardCreateFromPathPayload) => Promise<DashboardWorkspaceActionResult | undefined>;
   mergeWorkspaceAgent?: (registryId: string) => Promise<DashboardWorkspaceActionResult | undefined>;
   removeWorkspaceAgent?: (registryId: string) => Promise<DashboardWorkspaceActionResult | undefined>;
   listRegisteredAgents?: () => Promise<DashboardAgentRecord[] | undefined>;

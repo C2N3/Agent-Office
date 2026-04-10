@@ -1558,6 +1558,82 @@ body {
   width: 560px;
 }
 
+.create-agent-mode-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.create-agent-mode-copy {
+  min-width: 0;
+}
+
+.create-agent-mode-eyebrow {
+  font-size: 0.64rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-dark);
+}
+
+.create-agent-mode-title {
+  margin-top: 4px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.create-agent-mode-description {
+  margin-top: 4px;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
+
+.create-agent-preview {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--color-text);
+}
+
+.create-agent-advanced {
+  margin-bottom: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.create-agent-advanced summary {
+  padding: 10px 12px;
+  cursor: pointer;
+  font-size: 0.78rem;
+  color: var(--color-text);
+  user-select: none;
+}
+
+.create-agent-advanced-body {
+  padding: 0 12px 12px;
+}
+
+.create-agent-advanced-body .modal-label:last-child,
+.create-agent-advanced-body #worktreeAgentFields > .modal-label:last-child {
+  margin-bottom: 0;
+}
+
+#worktreeAgentFields.is-disabled {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
 .modal-header {
   font-size: 1rem;
   font-weight: 600;
@@ -1680,6 +1756,10 @@ body {
 }
 
 @media (max-width: 640px) {
+  .create-agent-mode-card {
+    flex-direction: column;
+  }
+
   .modal-input-row {
     grid-template-columns: 1fr;
   }

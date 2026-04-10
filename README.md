@@ -92,19 +92,19 @@ Notes:
 
 ## Managed Workspaces
 
-The dashboard `+ New` flow supports two creation modes:
+The dashboard `+ New` flow now starts from a single `Workspace Path` input and auto-decides how to register it.
 
-- `Existing Path` to register an already existing project directory
-- `Git Worktree` to create a new worktree and connect it to Agent-Office immediately
+- non-git folders are registered directly
+- git folders are also registered directly when no other active agent is using the same repository
+- if the same repository is already in use, Agent-Office creates a managed `git worktree` instead
 
-`Git Worktree` mode can:
+Advanced options let you override the strategy and configure worktree-specific settings when needed:
 
-- create or reuse a branch
-- choose a custom worktree parent directory
-- copy setup files such as `.env.local`
-- symlink large directories such as `node_modules`
-- open the embedded terminal immediately
-- queue a bootstrap command such as `npm install`
+- branch name, base branch, and start point
+- custom worktree parent directory
+- copied setup files such as `.env.local`
+- symlinked large directories such as `node_modules`
+- bootstrap commands such as `npm install`
 
 Workspace agents also expose lifecycle actions in the dashboard:
 
