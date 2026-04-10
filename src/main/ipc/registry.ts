@@ -1,0 +1,186 @@
+// @ts-nocheck
+const fs = require('fs');
+const { ipcMain } = require('electron');
+const { parseConversation, getConversationSummary } = require('../conversationParser');
+const { resolveResumeSessionId } = require('../sessionIdResolver');
+const { resolveProjectPathForPlatform } = require('../../utils');
+const { dashboardIpcChannels } = require('../../shared/contracts/ipc');
+
+function registerRegistryHandlers({
+  agentManager,
+  agentRegistry,
+  terminalManager,
+  debugLog,
+  attachRegisteredAgent,
+}) {
+  if (!agentRegistry) {
+    return;
+  }
+
+  function upsertOfflineRegisteredAgent(agent, source) {
+    agentManager.updateAgent({
+      registryId: agent.id,
+      displayName: agent.name,
+      role: agent.role,
+      projectPath: agent.projectPath,
+      avatarIndex: agent.avatarIndex,
+      provider: agent.provider,
+      workspace: agent.workspace || null,
+      isRegistered: true,
+      state: 'Offline',
+    }, source);
+  }
+
+  function buildResumeCommand(provider, sessionId) {
+    if (!sessionId) return null;
+    return String(provider || '').trim().toLowerCase() === 'codex'
+      ? `codex resume ${sessionId}\r`
+      : `claude --resume ${sessionId}\r`;
+  }
+
+  ipcMain.handle(dashboardIpcChannels.registryCreate, async (_event, data) => {
+    const agent = agentRegistry.createAgent(data);
+    const attachedSessionId = attachRegisteredAgent ? attachRegisteredAgent(agent) : null;
+    if (!attachedSessionId) {
+      upsertOfflineRegisteredAgent(agent, 'registry');
+    }
+    return { success: true, agent };
+  });
+
+  ipcMain.handle(dashboardIpcChannels.registryList, async () => {
+    return agentRegistry.getAllAgents();
+  });
+
+  ipcMain.handle(dashboardIpcChannels.registryUpdate, async (_event, registryId, fields) => {
+    const updated = agentRegistry.updateAgent(registryId, fields);
+    if (updated) {
+      const attachedSessionId = attachRegisteredAgent ? attachRegisteredAgent(updated) : null;
+      const existing = agentManager.getAgent(registryId);
+      if (existing) {
+        agentManager.updateAgent({
+          ...existing,
+          registryId,
+          displayName: updated.name,
+          role: updated.role,
+          projectPath: updated.projectPath,
+          avatarIndex: updated.avatarIndex,
+          workspace: updated.workspace || null,
+        }, 'registry');
+      } else if (!attachedSessionId) {
+        upsertOfflineRegisteredAgent(updated, 'registry');
+      }
+    }
+    return { success: !!updated, agent: updated };
+  });
+
+  ipcMain.handle(dashboardIpcChannels.registryListArchivedWorkspaces, async () => {
+    return agentRegistry.getArchivedWorkspaceAgents();
+  });
+
+  ipcMain.handle(dashboardIpcChannels.registryListArchived, async () => {
+    return agentRegistry.getArchivedAgents();
+  });
+
+  ipcMain.handle(dashboardIpcChannels.registryToggle, async (_event, registryId, enabled) => {
+    agentRegistry.setEnabled(registryId, enabled);
+    return { success: true };
+  });
+
+  ipcMain.handle(dashboardIpcChannels.registryArchive, async (_event, registryId) => {
+    const result = agentRegistry.archiveAgent(registryId);
+    if (result) {
+      const existing = agentManager.getAgent(registryId);
+      if (existing && existing.state === 'Offline') {
+        agentManager.removeAgent(registryId);
+      }
+    }
+    return { success: result };
+  });
+
+  ipcMain.handle(dashboardIpcChannels.registryDelete, async (_event, registryId) => {
+    const result = agentRegistry.deleteAgent(registryId);
+    if (result) {
+      agentManager.removeAgent(registryId);
+    }
+    return { success: result };
+  });
+
+  ipcMain.handle(dashboardIpcChannels.registrySessionHistory, async (_event, registryId) => {
+    const history = agentRegistry.getSessionHistory(registryId);
+    return history.map((entry) => {
+      const summary = entry.transcriptPath
+        ? getConversationSummary(entry.transcriptPath)
+        : null;
+      return { ...entry, summary };
+    });
+  });
+
+  ipcMain.handle(dashboardIpcChannels.registryConversation, async (_event, registryId, sessionId, options) => {
+    const entry = agentRegistry.findSessionHistoryEntry(registryId, sessionId);
+
+    let transcriptPath = entry ? entry.transcriptPath : null;
+    if (!transcriptPath) {
+      const agent = agentManager?.getAgent(registryId);
+      if (agent && (agent.sessionId === sessionId || agent.runtimeSessionId === sessionId || agent.resumeSessionId === sessionId) && agent.jsonlPath) {
+        transcriptPath = agent.jsonlPath;
+      }
+    }
+
+    if (!transcriptPath) return { error: 'Transcript not found' };
+    const result = parseConversation(transcriptPath, options || {});
+    if (!result) return { error: 'Could not parse transcript' };
+    return result;
+  });
+
+  ipcMain.handle(dashboardIpcChannels.registryResumeSession, async (_event, registryId, sessionId) => {
+    if (!terminalManager) return { success: false, error: 'Terminal not available' };
+
+    const agent = agentRegistry.getAgent(registryId);
+    if (!agent) return { success: false, error: 'Agent not found' };
+    const entry = agentRegistry.findSessionHistoryEntry(registryId, sessionId);
+
+    let transcriptPath = entry?.transcriptPath || null;
+    if (!transcriptPath) {
+      const liveAgent = agentManager?.getAgent(registryId);
+      if (liveAgent && (liveAgent.sessionId === sessionId || liveAgent.runtimeSessionId === sessionId || liveAgent.resumeSessionId === sessionId) && liveAgent.jsonlPath) {
+        transcriptPath = liveAgent.jsonlPath;
+      }
+    }
+
+    const requestedResumeSessionId = entry?.resumeSessionId || sessionId;
+    const resolvedSessionId = resolveResumeSessionId({
+      provider: agent.provider,
+      requestedSessionId: requestedResumeSessionId,
+      transcriptPath,
+    });
+
+    const resumeCommand = buildResumeCommand(agent.provider, resolvedSessionId);
+    if (!resumeCommand) return { success: false, error: 'Session not found' };
+
+    if (terminalManager.hasTerminal(registryId)) {
+      terminalManager.destroyTerminal(registryId);
+    }
+
+    let cwd = resolveProjectPathForPlatform(agent.workspace?.worktreePath || agent.projectPath) || undefined;
+    if (cwd) {
+      try {
+        if (!fs.existsSync(cwd) || !fs.statSync(cwd).isDirectory()) cwd = undefined;
+      } catch {
+        cwd = undefined;
+      }
+    }
+
+    const result = terminalManager.createTerminal(registryId, { cwd });
+    if (!result.success) return result;
+
+    setTimeout(() => {
+      terminalManager.writeToTerminal(registryId, resumeCommand);
+    }, 800);
+
+    return { ...result, terminalId: registryId, sessionId: resolvedSessionId };
+  });
+}
+
+module.exports = {
+  registerRegistryHandlers,
+};

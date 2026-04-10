@@ -23,9 +23,10 @@
     "format": "prettier --write \"src/**/*.{js,ts}\" \"__tests__/**/*.js\" \"scripts/**/*.js\" \"*.js\"",
     "format:check": "prettier --check \"src/**/*.{js,ts}\" \"__tests__/**/*.js\" \"scripts/**/*.js\" \"*.js\"",
     "dist": "electron-builder",
-    "dist:win": "electron-builder --win",
-    "dist:mac": "electron-builder --mac",
-    "dist:linux": "electron-builder --linux"
+    "dist:win": "npm run build:dist && electron-builder --win --publish never",
+    "dist:mac": "npm run build:dist && electron-builder --mac --publish never",
+    "dist:mac:signed": "node scripts/dist-mac-signed.js",
+    "dist:linux": "npm run build:dist && electron-builder --linux --publish never"
   },
   "keywords": [
     "electron",
@@ -51,11 +52,6 @@
     },
     "files": [
       "dist/**/*",
-      "src/**/*",
-      "public/**/*",
-      "styles.css",
-      "index.html",
-      "dashboard.html",
       "package.json",
       "node_modules/node-pty/**/*",
       "node_modules/@xterm/**/*"
@@ -81,7 +77,15 @@
           ]
         }
       ],
-      "category": "public.app-category.developer-tools"
+      "category": "public.app-category.developer-tools",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.inherit.plist",
+      "notarize": true
+    },
+    "dmg": {
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
     },
     "linux": {
       "target": [

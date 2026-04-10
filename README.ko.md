@@ -12,10 +12,10 @@ Agent-Office는 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) ho
 
 ![Demo](docs/demo.gif)
 
-| | | |
-|---|---|---|
+|                            |                            |                            |
+| -------------------------- | -------------------------- | -------------------------- |
 | ![](docs/screenshot-1.png) | ![](docs/screenshot-2.png) | ![](docs/screenshot-4.png) |
-| ![](docs/screenshot-5.png) | | |
+| ![](docs/screenshot-5.png) |                            |                            |
 
 ## 주요 기능
 
@@ -65,21 +65,67 @@ codex exec --json "summarize this repo" | node dist/src/codex-forward.js
 ```
 
 참고:
+
 - `Codex`도 자동 복구, 세션 스캔, 히트맵, 대화 히스토리 경로를 지원합니다.
 - `Claude`의 sub-agent/team hook 이벤트처럼 원본 이벤트가 따로 있는 기능은 여전히 Claude 경로에만 있습니다.
 - Codex forwarder는 기본적으로 `http://127.0.0.1:47822/codex-event`로 전송합니다. 필요하면 `PIXEL_AGENT_CODEX_PORT`로 변경할 수 있습니다.
 
 ## 스크립트
 
-| 명령어 | 설명 |
-|---------|-------------|
-| `npm run build:dist` | TypeScript 런타임을 `dist/`로 빌드합니다 |
-| `npm run build:dist:watch` | `src/`, `public/`, tsconfig 변경을 감시하며 `dist/`를 다시 빌드합니다 |
-| `npm run typecheck` | `tsgo --noEmit`으로 타입 검사를 실행합니다 |
-| `npm start` | Electron 앱을 실행합니다 |
-| `npm run dev` | source 변경 시 `dist/`를 다시 빌드하고 Electron을 자동 재시작하는 개발 루프를 실행합니다 |
-| `npm run dashboard` | 대시보드 서버를 실행합니다 |
-| `npm test` | source TypeScript 기준으로 Jest 테스트를 실행합니다 |
+| 명령어                     | 설명                                                                                     |
+| -------------------------- | ---------------------------------------------------------------------------------------- |
+| `npm run build:dist`       | TypeScript 런타임을 `dist/`로 빌드합니다                                                 |
+| `npm run build:dist:watch` | `src/`, `public/`, tsconfig 변경을 감시하며 `dist/`를 다시 빌드합니다                    |
+| `npm run typecheck`        | `tsgo --noEmit`으로 타입 검사를 실행합니다                                               |
+| `npm start`                | Electron 앱을 실행합니다                                                                 |
+| `npm run dev`              | source 변경 시 `dist/`를 다시 빌드하고 Electron을 자동 재시작하는 개발 루프를 실행합니다 |
+| `npm run dashboard`        | 대시보드 서버를 실행합니다                                                               |
+| `npm test`                 | source TypeScript 기준으로 Jest 테스트를 실행합니다                                      |
+
+## macOS 정식 배포
+
+이 레포는 이제 macOS 서명/노타라이즈 배포 경로를 포함합니다.
+
+로컬에서 서명된 DMG를 한 번에 만들려면:
+
+```bash
+npm install
+npm run dist:mac:signed
+```
+
+`npm run dist:mac:signed`는 다음을 순서대로 실행합니다.
+
+- `npm run rebuild`
+- `npm run build:dist`
+- `npm run typecheck`
+- `npm test -- --runInBand`
+- notarized macOS DMG 빌드
+
+결과물은 `release/` 아래에 생성됩니다.
+
+로컬 노타라이즈 인증 정보는 다음 둘 중 하나가 필요합니다.
+
+- App Store Connect API key 방식
+  - `APPLE_API_KEY` 또는 `APPLE_API_KEY_BASE64`
+  - `APPLE_API_KEY_ID`
+  - `APPLE_API_ISSUER`
+- Apple ID fallback 방식
+  - `APPLE_ID`
+  - `APPLE_APP_SPECIFIC_PASSWORD`
+  - `APPLE_TEAM_ID`
+
+코드 서명은 다음 둘 중 하나가 필요합니다.
+
+- `CSC_LINK` + `CSC_KEY_PASSWORD`
+- 또는 macOS keychain에 설치된 인증서를 가리키는 `CSC_NAME`
+
+GitHub Actions의 macOS release job은 다음 repository secret을 사용합니다.
+
+- `APPLE_DEVELOPER_ID_APPLICATION_CERT_BASE64`
+- `APPLE_DEVELOPER_ID_APPLICATION_CERT_PASSWORD`
+- `APPLE_API_KEY_BASE64`
+- `APPLE_API_KEY_ID`
+- `APPLE_API_ISSUER`
 
 ## Managed Workspaces
 
@@ -111,15 +157,18 @@ codex exec --json "summarize this repo" | node dist/src/codex-forward.js
 ## 문제 해결
 
 **아바타가 나타나지 않음**
+
 - Claude를 쓰는 경우 `~/.claude/settings.json`에 hook이 등록되어 있는지 확인하세요
 - Codex를 쓰는 경우 `~/.codex/sessions` 아래에 세션 파일이 생성되는지, 또는 `codex exec --json ... | node dist/src/codex-forward.js` 경로를 사용 중인지 확인하세요
 - Claude hook 서버가 살아 있는지 확인하려면 `curl http://localhost:47821/hook` 응답이 404면 정상입니다
 
 **유령 아바타가 남아 있음**
+
 - 보통 Windows에서 PID 감지 또는 session file 정리 지연일 때 발생하며, 일반적으로 30초 안에 자동 정리됩니다
 - 앱을 재시작하면 상태가 모두 초기화됩니다
 
 **대시보드가 열리지 않음**
+
 - 3000번 포트가 비어 있는지 확인하세요
 
 ## 기여

@@ -6,6 +6,10 @@ dist/
 build/
 out/
 release/
+!build/
+build/**
+!build/entitlements.mac.plist
+!build/entitlements.mac.inherit.plist
 
 # OS files
 .DS_Store

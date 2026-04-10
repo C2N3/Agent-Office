@@ -90,7 +90,7 @@ function isRendererOnlyChange(targetPath) {
     return true;
   }
 
-  return relativePath.startsWith('public/') || relativePath.startsWith('src/office/');
+  return relativePath.startsWith('public/');
 }
 
 function getReloadType(targetPath) {

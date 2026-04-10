@@ -14,5 +14,10 @@
     "src/**/*.d.ts",
     "public/**/*.ts",
     "public/**/*.d.ts"
+  ],
+  "exclude": [
+    "__tests__/**/*",
+    "dist/**/*",
+    "release/**/*"
   ]
 }

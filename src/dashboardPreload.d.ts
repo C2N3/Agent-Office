@@ -1,4 +1,4 @@
-import type { DashboardAPI as SharedDashboardAPI } from '../public/dashboard/shared.js';
+import type { DashboardAPI as SharedDashboardAPI } from './shared/contracts/index.js';
 
 export {};
 

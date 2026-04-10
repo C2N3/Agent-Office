@@ -6,6 +6,7 @@ const { spawnSync } = require('child_process');
 const { createRecursiveWatcher } = require('./watch-utils');
 
 const projectRoot = path.join(__dirname, '..');
+const distRoot = path.join(projectRoot, 'dist');
 const roots = ['src', 'public'].map((segment) => path.join(projectRoot, segment));
 const watchMode = process.argv.includes('--watch');
 const watchTargets = [
@@ -15,15 +16,13 @@ const watchTargets = [
 ];
 const browserGlobalTargets = [
   'dist/public/dashboardResume.js',
-  'dist/src/office/office-character.js',
-  'dist/src/office/office-config.js',
-  'dist/src/office/office-coords.js',
-  'dist/src/office/office-init.js',
-  'dist/src/office/office-layers.js',
-  'dist/src/office/office-pathfinder.js',
-  'dist/src/office/office-renderer.js',
-  'dist/src/office/office-sprite.js',
-  'dist/src/office/office-ui.js',
+];
+const runtimeFiles = [
+  'index.html',
+  'dashboard.html',
+  'pip.html',
+  'overlay.html',
+  'styles.css',
 ];
 
 let buildRunning = false;
@@ -59,8 +58,40 @@ function copyTargetsToDist() {
 
   for (const relativePath of copyTargets) {
     const sourcePath = path.join(projectRoot, relativePath);
-    const destinationPath = path.join(projectRoot, 'dist', relativePath);
+    const destinationPath = path.join(distRoot, relativePath);
     if (!fs.existsSync(sourcePath)) continue;
+    fs.mkdirSync(path.dirname(destinationPath), { recursive: true });
+    fs.writeFileSync(destinationPath, fs.readFileSync(sourcePath));
+  }
+}
+
+function copyRuntimeFilesToDist() {
+  for (const relativePath of runtimeFiles) {
+    const sourcePath = path.join(projectRoot, relativePath);
+    if (!fs.existsSync(sourcePath)) continue;
+
+    const destinationPath = path.join(distRoot, relativePath);
+    fs.mkdirSync(path.dirname(destinationPath), { recursive: true });
+    fs.writeFileSync(destinationPath, fs.readFileSync(sourcePath));
+  }
+}
+
+function copyPublicAssetsToDist(sourceDir = path.join(projectRoot, 'public')) {
+  if (!fs.existsSync(sourceDir)) return;
+
+  for (const entry of fs.readdirSync(sourceDir, { withFileTypes: true })) {
+    const sourcePath = path.join(sourceDir, entry.name);
+    const relativePath = path.relative(projectRoot, sourcePath);
+    const destinationPath = path.join(distRoot, relativePath);
+
+    if (entry.isDirectory()) {
+      copyPublicAssetsToDist(sourcePath);
+      continue;
+    }
+
+    if (!entry.isFile()) continue;
+    if (sourcePath.endsWith('.ts') || sourcePath.endsWith('.d.ts')) continue;
+
     fs.mkdirSync(path.dirname(destinationPath), { recursive: true });
     fs.writeFileSync(destinationPath, fs.readFileSync(sourcePath));
   }
@@ -108,6 +139,8 @@ function buildOnce() {
 
   if ((result.status ?? 1) === 0) {
     copyTargetsToDist();
+    copyRuntimeFilesToDist();
+    copyPublicAssetsToDist();
     sanitizeBrowserGlobalOutputs();
   }
 
