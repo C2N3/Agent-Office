@@ -8,6 +8,7 @@ const { canTransition, transitionTask, isTerminalStatus } = require('./taskState
 const { createCLIAdapter } = require('./cliAdapter');
 const { OutputParser } = require('./outputParser');
 const { detectContextExhaustion } = require('./contextDetector');
+const { cleanTerminalOutput } = require('./cleanOutput');
 
 const TASK_OUTPUT_DIR = path.join(os.homedir(), '.agent-office', 'task-output');
 
@@ -667,8 +668,9 @@ class Orchestrator extends EventEmitter {
       const fullOutput = parser.getFullOutput();
       if (!fullOutput) return;
 
-      // Strip ANSI escape codes for readable output
-      const clean = fullOutput.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '');
+      // Strip ANSI escape codes (incl. private-mode like \x1b[?25l) for readable output.
+      const clean = cleanTerminalOutput(fullOutput);
+      if (!clean) return;
 
       fs.mkdirSync(TASK_OUTPUT_DIR, { recursive: true });
       const outputPath = path.join(TASK_OUTPUT_DIR, `${taskId}.txt`);

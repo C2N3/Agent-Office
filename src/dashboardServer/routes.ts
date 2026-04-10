@@ -12,6 +12,12 @@ const { getConversationSummary, parseConversation } = require('../main/conversat
   getConversationSummary: (transcriptPath: string) => any;
   parseConversation: (transcriptPath: string, options?: { limit?: number; offset?: number }) => any;
 };
+const { cleanTerminalOutput } = require('../main/orchestrator/cleanOutput.js') as {
+  cleanTerminalOutput: (input: string) => string;
+};
+const { buildTaskConversationReport } = require('../main/orchestrator/taskReport.js') as {
+  buildTaskConversationReport: (task: any, agentRegistry: any, agentManager: any) => string;
+};
 import { APP_ROOT, HTML_FILE, MIME_TYPES, OVERLAY_FILE, PIP_FILE, PROJECT_ROOT } from './constants.js';
 import { calculateStats } from './stats.js';
 import { getClients, getRefs } from './context.js';
@@ -530,16 +536,27 @@ function handleDeleteTask(req: RequestLike, res: ResponseLike, taskId: string): 
 // === Task Report / Merge / Reject ===
 
 async function handleTaskReport(req: RequestLike, res: ResponseLike, taskId: string): Promise<void> {
-  const { orchestrator, workspaceManager } = getRefs();
+  const { orchestrator, workspaceManager, agentRegistryRef, agentManager } = getRefs();
   if (!orchestrator) { res.writeHead(503, jsonHeader); res.end(JSON.stringify({ error: 'Orchestrator not available' })); return; }
 
   const task = orchestrator.getTask(taskId);
   if (!task) { res.writeHead(404, jsonHeader); res.end(JSON.stringify({ error: 'Task not found' })); return; }
 
-  // Read saved output file or fall back to lastOutput
-  let output = task.lastOutput || '';
-  if (task.outputPath) {
-    try { output = fs.readFileSync(task.outputPath, 'utf-8'); } catch {}
+  // Preferred: pull a clean conversation summary from the agent's JSONL transcript.
+  // The PTY capture is mostly TUI redraw noise (alternate screen buffer), so it
+  // rarely contains the actual assistant work. The transcript is the source of truth.
+  let output = '';
+  try {
+    output = buildTaskConversationReport(task, agentRegistryRef, agentManager) || '';
+  } catch { /* fall through to PTY fallback */ }
+
+  if (!output) {
+    // Fallback: cleaned PTY capture. Better than nothing if the transcript is missing.
+    let raw = task.lastOutput || '';
+    if (task.outputPath) {
+      try { raw = fs.readFileSync(task.outputPath, 'utf-8'); } catch {}
+    }
+    output = cleanTerminalOutput(raw);
   }
 
   // Git diff from worktree
