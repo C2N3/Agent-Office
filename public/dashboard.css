@@ -1585,6 +1585,23 @@ body {
   box-sizing: border-box;
 }
 
+.modal-path-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.modal-path-field .modal-input {
+  margin-top: 0;
+}
+
+.modal-browse-btn {
+  padding-inline: 12px;
+  white-space: nowrap;
+}
+
 .modal-input:focus {
   border-color: var(--color-primary);
 }
@@ -1663,6 +1680,10 @@ body {
 
 @media (max-width: 640px) {
   .modal-input-row {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-path-field {
     grid-template-columns: 1fr;
   }
 

@@ -45,6 +45,7 @@ const dashboardAPI: DashboardAPI = {
   toggleOverlay: () => ipcRenderer.invoke('toggle-overlay'),
   onOverlayStateChanged: (callback: (isOpen: boolean) => void) => listen('overlay-state-changed', callback),
   createRegisteredAgent: (data: Partial<DashboardAgentRecord> & { name: string; projectPath: string }) => ipcRenderer.invoke('registry:create', data),
+  pickDirectory: (options) => ipcRenderer.invoke('dialog:pick-directory', options),
   inspectWorkspaceRepo: (repoPath: string) => ipcRenderer.invoke('workspace:inspect-repo', repoPath),
   createWorkspaceAgent: (data) => ipcRenderer.invoke('workspace:create', data),
   mergeWorkspaceAgent: (registryId: string) => ipcRenderer.invoke('workspace:merge-cleanup', registryId),

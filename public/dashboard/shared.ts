@@ -183,6 +183,17 @@ export type DashboardRepoInspectionResult = DashboardActionResult & {
   repository?: DashboardRepoInspection;
 };
 
+export type DashboardDirectoryPickerOptions = {
+  title?: string;
+  defaultPath?: string | null;
+  buttonLabel?: string;
+};
+
+export type DashboardDirectoryPickerResult = DashboardActionResult & {
+  canceled?: boolean;
+  path?: string | null;
+};
+
 export type DashboardWorkspaceActionResult = DashboardActionResult & {
   agent?: DashboardAgentRecord;
   workspace?: DashboardWorkspace | null;
@@ -271,6 +282,7 @@ export type DashboardAPI = {
   onOverlayStateChanged?: (callback: (isOpen: boolean) => void) => CleanupFn | void;
   focusAgent?: (agentId: string) => Promise<DashboardRecoveryActionResult>;
   createRegisteredAgent?: (data: Partial<DashboardAgentRecord> & { name: string; projectPath: string }) => Promise<(DashboardActionResult & { agent?: DashboardAgentRecord }) | undefined>;
+  pickDirectory?: (options?: DashboardDirectoryPickerOptions) => Promise<DashboardDirectoryPickerResult | undefined>;
   inspectWorkspaceRepo?: (repoPath: string) => Promise<DashboardRepoInspectionResult | undefined>;
   createWorkspaceAgent?: (data: DashboardOpenOptions & {
     name: string;

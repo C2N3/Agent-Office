@@ -4,7 +4,7 @@
  * Register all ipcMain.on/handle handlers + focusTerminalByPid
  */
 
-const { ipcMain, screen } = require('electron');
+const { dialog, ipcMain, screen } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { parseConversation, getConversationSummary } = require('./conversationParser');
@@ -127,6 +127,32 @@ function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowM
     if (!senderId || !mainWindow || mainWindow.isDestroyed?.()) return false;
     return mainWindow.webContents?.id === senderId;
   }
+
+  ipcMain.handle('dialog:pick-directory', async (event, options = {}) => {
+    if (!isMainWindowSender(event)) {
+      return { success: false, error: 'Directory picker is only available from the main dashboard window.' };
+    }
+
+    try {
+      const result = await dialog.showOpenDialog(windowManager?.mainWindow || undefined, {
+        title: typeof options?.title === 'string' ? options.title : 'Select folder',
+        buttonLabel: typeof options?.buttonLabel === 'string' ? options.buttonLabel : 'Select',
+        defaultPath: typeof options?.defaultPath === 'string' && options.defaultPath.trim()
+          ? options.defaultPath.trim()
+          : undefined,
+        properties: ['openDirectory', 'createDirectory'],
+      });
+
+      if (result.canceled || !result.filePaths?.[0]) {
+        return { success: true, canceled: true, path: null };
+      }
+
+      return { success: true, canceled: false, path: result.filePaths[0] };
+    } catch (error) {
+      debugLog(`[Dialog] Directory picker error: ${error.message}`);
+      return { success: false, error: error.message };
+    }
+  });
 
   function canRecoverFocusedRegisteredAgent(agent) {
     if (!agent?.isRegistered || !agentRegistry) return false;

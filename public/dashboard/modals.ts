@@ -130,6 +130,42 @@ export function setupAgentModal(openTerminalForAgent) {
     if (errorEl) errorEl.textContent = '';
   }
 
+  async function pickDirectory({
+    inputId,
+    title,
+    fallbackInputId,
+  }: {
+    inputId: string;
+    title: string;
+    fallbackInputId?: string;
+  }) {
+    const input = document.getElementById(inputId) as HTMLInputElement | null;
+    if (!input) return;
+
+    const fallbackInput = fallbackInputId
+      ? document.getElementById(fallbackInputId) as HTMLInputElement | null
+      : null;
+    const dashboardAPI = getDashboardAPI();
+    if (!dashboardAPI?.pickDirectory) {
+      if (errorEl) errorEl.textContent = 'Folder selection is only available in the Electron app.';
+      return;
+    }
+
+    const result = await dashboardAPI.pickDirectory({
+      title,
+      defaultPath: input.value.trim() || fallbackInput?.value.trim() || undefined,
+    });
+    if (!result?.success) {
+      if (errorEl) errorEl.textContent = result?.error || 'Could not open folder picker.';
+      return;
+    }
+    if (result.canceled || !result.path) return;
+
+    input.value = result.path;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
   function parsePathListValue(inputId) {
     return String(document.getElementById(inputId)?.value || '')
       .split(/\r?\n|,/)
@@ -253,6 +289,35 @@ export function setupAgentModal(openTerminalForAgent) {
     inspectRepository(repoPathInput.value).catch((error) => {
       console.error('[Workspace Inspect]', error);
       if (inspectStatusEl) inspectStatusEl.textContent = 'Could not inspect repository.';
+    });
+  });
+
+  document.getElementById('agentPathBrowseBtn')?.addEventListener('click', () => {
+    pickDirectory({ inputId: 'agentPathInput', title: 'Select project folder' }).catch((error) => {
+      console.error('[Directory Picker]', error);
+      if (errorEl) errorEl.textContent = 'Could not open folder picker.';
+    });
+  });
+  document.getElementById('agentRepoPathBrowseBtn')?.addEventListener('click', () => {
+    pickDirectory({ inputId: 'agentRepoPathInput', title: 'Select repository folder' }).catch((error) => {
+      console.error('[Directory Picker]', error);
+      if (errorEl) errorEl.textContent = 'Could not open folder picker.';
+    });
+  });
+  document.getElementById('agentWorkspaceParentBrowseBtn')?.addEventListener('click', () => {
+    pickDirectory({
+      inputId: 'agentWorkspaceParentInput',
+      title: 'Select workspace parent folder',
+      fallbackInputId: 'agentRepoPathInput',
+    }).catch((error) => {
+      console.error('[Directory Picker]', error);
+      if (errorEl) errorEl.textContent = 'Could not open folder picker.';
+    });
+  });
+  document.getElementById('autoRepoPathBrowseBtn')?.addEventListener('click', () => {
+    pickDirectory({ inputId: 'autoRepoPathInput', title: 'Select repository folder' }).catch((error) => {
+      console.error('[Directory Picker]', error);
+      if (errorEl) errorEl.textContent = 'Could not open folder picker.';
     });
   });
 
