@@ -161,7 +161,7 @@ function getJsonlMtime(jsonlPath) {
 
 // Zombie sweep: compare process count vs main agent count, remove oldest by mtime
 let _zombieSweepRunning = false;
-function zombieSweep(agentManager, agentRegistry, debugLog) {
+function zombieSweep(agentManager, agentRegistry, taskStore, debugLog) {
   if (_zombieSweepRunning) return;
   _zombieSweepRunning = true;
 
@@ -169,6 +169,8 @@ function zombieSweep(agentManager, agentRegistry, debugLog) {
   for (const agent of agentManager.getAllAgents()) {
     if (agent.isSubagent) continue;
     if (agent.isRegistered && agent.state === 'Offline') continue;
+    // Skip agents managed by Orchestrator
+    if (hasActiveOrchestratorTask(taskStore, agent)) continue;
     const provider = KNOWN_PROVIDERS.has(agent.provider) ? agent.provider : 'claude';
     if (!providerAgents.has(provider)) {
       providerAgents.set(provider, []);
@@ -229,9 +231,22 @@ function removeOrOffline(agentManager, agentRegistry, agent, debugLog) {
   }
 }
 
-function startLivenessChecker({ agentManager, agentRegistry, debugLog }) {
+/** Check if an agent has an active task in the Orchestrator */
+function hasActiveOrchestratorTask(taskStore, agent) {
+  if (!taskStore) return false;
+  const registryId = agent.registryId || agent.id;
+  const activeTasks = taskStore.getAllTasks
+    ? taskStore.getAllTasks()
+    : [];
+  return activeTasks.some(t =>
+    t.agentRegistryId === registryId &&
+    (t.status === 'running' || t.status === 'provisioning' || t.status === 'retrying')
+  );
+}
+
+function startLivenessChecker({ agentManager, agentRegistry, taskStore, debugLog }) {
   const zombieSweepId = setInterval(() => {
-    if (agentManager) zombieSweep(agentManager, agentRegistry, debugLog);
+    if (agentManager) zombieSweep(agentManager, agentRegistry, taskStore, debugLog);
   }, ZOMBIE_SWEEP_INTERVAL);
 
   const livenessCheckId = setInterval(async () => {
@@ -248,6 +263,9 @@ function startLivenessChecker({ agentManager, agentRegistry, debugLog }) {
       if (!pid) {
         // Registered agents without a session have no PID — skip, don't penalize
         if (agent.isRegistered && !agent.sessionId) continue;
+
+        // Skip agents managed by the Orchestrator (terminal PID not tracked via Hook)
+        if (hasActiveOrchestratorTask(taskStore, agent)) continue;
 
         retryPidDetection(pidKey, provider, agentManager, debugLog);
         const noPidAge = Date.now() - (agent.firstSeen || 0);
