@@ -783,17 +783,20 @@ function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowM
           }
           agentRegistry.unlinkSession(registryId);
 
-          // Wait briefly on Windows for file handles to release
+          // Wait for file handles to release on Windows
           if (process.platform === 'win32') {
-            await new Promise((r) => setTimeout(r, 2000));
+            await new Promise((r) => setTimeout(r, 3000));
           }
 
           const result = workspaceManager.mergeWorkspace(agent.workspace);
-          agentRegistry.archiveAgent(registryId);
-          const existing = agentManager.getAgent(registryId);
-          if (existing && existing.state === 'Offline') {
-            agentManager.removeAgent(registryId);
-          }
+
+          // Clear workspace from agent but keep the agent registered
+          agentRegistry.updateAgent(registryId, { workspace: null });
+          agentManager.updateAgent({
+            registryId,
+            state: 'Offline',
+            workspace: null,
+          }, 'workspace-merge');
 
           return { success: true, result };
         } catch (error) {
@@ -814,17 +817,20 @@ function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowM
           }
           agentRegistry.unlinkSession(registryId);
 
-          // Wait briefly on Windows for file handles to release
+          // Wait for file handles to release on Windows
           if (process.platform === 'win32') {
-            await new Promise((r) => setTimeout(r, 2000));
+            await new Promise((r) => setTimeout(r, 3000));
           }
 
           const result = workspaceManager.removeWorkspace(agent.workspace, { deleteBranch: true });
-          agentRegistry.archiveAgent(registryId);
-          const existing = agentManager.getAgent(registryId);
-          if (existing && existing.state === 'Offline') {
-            agentManager.removeAgent(registryId);
-          }
+
+          // Clear workspace from agent but keep the agent registered
+          agentRegistry.updateAgent(registryId, { workspace: null });
+          agentManager.updateAgent({
+            registryId,
+            state: 'Offline',
+            workspace: null,
+          }, 'workspace-remove');
 
           return { success: true, result };
         } catch (error) {
