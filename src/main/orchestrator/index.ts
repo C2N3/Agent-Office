@@ -89,9 +89,18 @@ class Orchestrator extends EventEmitter {
     const updated = transitionTask(task, 'cancelled');
     this.taskStore.updateTask(taskId, updated);
 
-    // Clear session and clean up worktree on cancellation
+    // Clear session, restore projectPath, and clean up worktree
     if (task.agentRegistryId) {
       this.agentRegistry.unlinkSession(task.agentRegistryId);
+      const regAgent = this.agentRegistry.getAgent(task.agentRegistryId);
+      const originalPath = regAgent?.workspace?.repositoryPath || task.repositoryPath;
+      this.agentRegistry.updateAgent(task.agentRegistryId, { projectPath: originalPath, workspace: null });
+      this.agentManager.updateAgent({
+        registryId: task.agentRegistryId,
+        state: 'Offline',
+        projectPath: originalPath,
+        workspace: null,
+      }, 'orchestrator');
     }
     this._cleanupTaskWorktree(taskId);
 
@@ -460,12 +469,16 @@ class Orchestrator extends EventEmitter {
       }
     }
 
-    // Transition agent to Offline and clear session so Merge/Remove buttons work
+    // Transition agent to Offline, clear session, restore original projectPath
     if (task.agentRegistryId) {
       this.agentRegistry.unlinkSession(task.agentRegistryId);
+      const regAgent = this.agentRegistry.getAgent(task.agentRegistryId);
+      const originalPath = regAgent?.workspace?.repositoryPath || task.repositoryPath;
+      this.agentRegistry.updateAgent(task.agentRegistryId, { projectPath: originalPath });
       this.agentManager.updateAgent({
         registryId: task.agentRegistryId,
         state: 'Offline',
+        projectPath: originalPath,
       }, 'orchestrator');
     }
 
@@ -512,12 +525,17 @@ class Orchestrator extends EventEmitter {
     // Clean up worktree on failure — no useful changes to preserve
     this._cleanupTaskWorktree(taskId);
 
-    // Clear session so Merge/Remove buttons are not blocked
+    // Clear session and restore original projectPath
     if (task.agentRegistryId) {
       this.agentRegistry.unlinkSession(task.agentRegistryId);
+      const regAgent = this.agentRegistry.getAgent(task.agentRegistryId);
+      const originalPath = regAgent?.workspace?.repositoryPath || task.repositoryPath;
+      this.agentRegistry.updateAgent(task.agentRegistryId, { projectPath: originalPath, workspace: null });
       this.agentManager.updateAgent({
         registryId: task.agentRegistryId,
         state: 'Offline',
+        projectPath: originalPath,
+        workspace: null,
       }, 'orchestrator');
     }
 
