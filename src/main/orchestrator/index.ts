@@ -508,6 +508,13 @@ class Orchestrator extends EventEmitter {
     const task = this.taskStore.getTask(taskId);
     if (!task) return;
 
+    // Safety net: Claude in TUI mode rarely commits on its own, so any
+    // changes the agent made are sitting uncommitted in the worktree. Without
+    // this commit, mergeWorkspace's ensureClean check rejects the merge with
+    // "uncommitted changes" and the user can never apply the work. Snapshot
+    // anything left over so the worktree is clean and merge can succeed.
+    this._autoCommitTaskChanges(task);
+
     this.taskStore.updateTask(taskId, {
       status: 'succeeded',
       completedAt: Date.now(),
@@ -659,6 +666,28 @@ class Orchestrator extends EventEmitter {
   }
 
   // === Output Capture ===
+
+  /**
+   * Commit any leftover changes in the task's worktree so a subsequent
+   * mergeWorkspace doesn't reject with "uncommitted changes". No-op if the
+   * worktree is already clean (Claude committed on its own) or missing.
+   */
+  _autoCommitTaskChanges(task) {
+    if (!task || !task.workspacePath || !this.workspaceManager) return;
+    try {
+      const status = this.workspaceManager.runGit(task.workspacePath, ['status', '--porcelain']);
+      if (!status || !status.trim()) return; // already clean
+      this.workspaceManager.runGit(task.workspacePath, ['add', '-A']);
+      const title = (task.title || 'task').replace(/"/g, '\\"');
+      this.workspaceManager.runGit(task.workspacePath, [
+        'commit',
+        '-m', `task: ${title} (auto-commit)`,
+      ]);
+      this.debugLog(`[Orchestrator] Auto-committed leftover changes for ${task.id.slice(0, 8)}`);
+    } catch (e) {
+      this.debugLog(`[Orchestrator] Auto-commit failed for ${task.id.slice(0, 8)}: ${e.message}`);
+    }
+  }
 
   _saveTaskOutput(taskId) {
     const parser = this.outputParsers.get(taskId);

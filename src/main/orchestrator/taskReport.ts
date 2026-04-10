@@ -15,10 +15,13 @@
 
 'use strict';
 
+const fs = require('fs');
 const path = require('path');
 const { parseConversation } = require('../conversationParser.js');
+const { getClaudeProjectDirForCwd } = require('../sessionIdResolver.js');
 
 const TASK_TIME_BUFFER_MS = 60_000;
+const TRANSCRIPT_MTIME_BUFFER_MS = 15_000;
 const MAX_REPORT_CHARS = 20_000;
 
 function buildTaskConversationReport(task, agentRegistry, agentManager) {
@@ -44,11 +47,26 @@ function buildTaskConversationReport(task, agentRegistry, agentManager) {
 
 /**
  * Pick the JSONL transcript most likely to contain this task's messages.
- *  1. A session-history entry whose lifetime overlaps the task.
- *  2. The most recent session-history entry with a transcriptPath.
- *  3. The live agentManager record's jsonlPath.
+ *  1. If the task has a captured transcriptPath, use it directly.
+ *  2. Scan ~/.claude/projects/<encoded-cwd>/ for a JSONL whose mtime falls
+ *     inside the task window. This is the most reliable signal because
+ *     session-history entries are populated by hooks that can lag the actual
+ *     Claude session, so the "most recent history entry" can easily be from
+ *     the *previous* task on the same agent.
+ *  3. A session-history entry whose lifetime overlaps the task.
+ *  4. The most recent session-history entry with a transcriptPath.
+ *  5. The live agentManager record's jsonlPath.
  */
 function pickTranscriptPath(agent, agentManager, task) {
+  if (task && task.transcriptPath) {
+    try {
+      if (fs.existsSync(task.transcriptPath)) return task.transcriptPath;
+    } catch { /* fall through */ }
+  }
+
+  const fromCwd = findTranscriptByCwdMtime(task);
+  if (fromCwd) return fromCwd;
+
   const history = Array.isArray(agent.sessionHistory) ? agent.sessionHistory : [];
 
   const taskStart = task.startedAt || task.createdAt || 0;
@@ -76,6 +94,57 @@ function pickTranscriptPath(agent, agentManager, task) {
     if (live && live.jsonlPath) return live.jsonlPath;
   }
   return null;
+}
+
+/**
+ * Locate the JSONL Claude wrote for THIS task by scanning the project dir
+ * Claude assigns to the task's cwd and picking the file whose mtime falls
+ * within the task lifetime. Returns null if the cwd is unknown or no file
+ * matches — the caller falls back to session-history.
+ */
+function findTranscriptByCwdMtime(task) {
+  const cwd = task && task.workspacePath;
+  if (!cwd) return null;
+
+  const projectDir = getClaudeProjectDirForCwd(cwd);
+  if (!projectDir) return null;
+
+  let entries;
+  try {
+    if (!fs.existsSync(projectDir)) return null;
+    entries = fs.readdirSync(projectDir, { withFileTypes: true });
+  } catch {
+    return null;
+  }
+
+  const taskStart = task.startedAt || task.createdAt || 0;
+  const taskEnd = task.completedAt || task.updatedAt || Date.now();
+  const lower = taskStart - TRANSCRIPT_MTIME_BUFFER_MS;
+  const upper = taskEnd + TRANSCRIPT_MTIME_BUFFER_MS;
+
+  let best = null;
+  let bestMtime = -1;
+
+  for (const entry of entries) {
+    if (!entry.isFile() || !entry.name.endsWith('.jsonl')) continue;
+    const full = path.join(projectDir, entry.name);
+    let stat;
+    try {
+      stat = fs.statSync(full);
+    } catch {
+      continue;
+    }
+    const mtime = stat.mtimeMs;
+    if (mtime < lower || mtime > upper) continue;
+    // Among files inside the window, prefer the most recently written —
+    // that's the one Claude was actively appending to as the task ran.
+    if (mtime > bestMtime) {
+      bestMtime = mtime;
+      best = full;
+    }
+  }
+
+  return best;
 }
 
 function filterMessagesForTask(messages, task) {
