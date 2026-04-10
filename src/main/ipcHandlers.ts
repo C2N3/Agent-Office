@@ -121,20 +121,35 @@ function findLatestResumableSessionEntry(history = []) {
 }
 
 function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowManager, terminalManager, terminalProfileService, workspaceManager, nicknameStore, orchestrator, debugLog, adaptAgentToDashboard, errorHandler, attachRegisteredAgent }) {
-  function isMainWindowSender(event) {
+  function getDashboardSenderWindow(event) {
     const senderId = event?.sender?.id;
     const mainWindow = windowManager?.mainWindow;
-    if (!senderId || !mainWindow || mainWindow.isDestroyed?.()) return false;
-    return mainWindow.webContents?.id === senderId;
+    const dashboardWindow = windowManager?.dashboardWindow;
+    if (!senderId) return null;
+    if (dashboardWindow && !dashboardWindow.isDestroyed?.() && dashboardWindow.webContents?.id === senderId) {
+      return dashboardWindow;
+    }
+    if (mainWindow && !mainWindow.isDestroyed?.() && mainWindow.webContents?.id === senderId) {
+      return mainWindow;
+    }
+    return null;
+  }
+
+  function isMainWindowSender(event) {
+    const mainWindow = windowManager?.mainWindow;
+    const senderWindow = getDashboardSenderWindow(event);
+    if (!senderWindow || !mainWindow || mainWindow.isDestroyed?.()) return false;
+    return senderWindow.webContents?.id === mainWindow.webContents?.id;
   }
 
   ipcMain.handle('dialog:pick-directory', async (event, options = {}) => {
-    if (!isMainWindowSender(event)) {
-      return { success: false, error: 'Directory picker is only available from the main dashboard window.' };
+    const senderWindow = getDashboardSenderWindow(event);
+    if (!senderWindow) {
+      return { success: false, error: 'Directory picker is only available from an Agent-Office app window.' };
     }
 
     try {
-      const result = await dialog.showOpenDialog(windowManager?.mainWindow || undefined, {
+      const result = await dialog.showOpenDialog(senderWindow, {
         title: typeof options?.title === 'string' ? options.title : 'Select folder',
         buttonLabel: typeof options?.buttonLabel === 'string' ? options.buttonLabel : 'Select',
         defaultPath: typeof options?.defaultPath === 'string' && options.defaultPath.trim()
