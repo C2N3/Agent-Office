@@ -89,7 +89,10 @@ class Orchestrator extends EventEmitter {
     const updated = transitionTask(task, 'cancelled');
     this.taskStore.updateTask(taskId, updated);
 
-    // Clean up worktree on cancellation
+    // Clear session and clean up worktree on cancellation
+    if (task.agentRegistryId) {
+      this.agentRegistry.unlinkSession(task.agentRegistryId);
+    }
     this._cleanupTaskWorktree(taskId);
 
     this.emit('task:cancelled', updated);
@@ -457,8 +460,9 @@ class Orchestrator extends EventEmitter {
       }
     }
 
-    // Transition agent to Offline
+    // Transition agent to Offline and clear session so Merge/Remove buttons work
     if (task.agentRegistryId) {
+      this.agentRegistry.unlinkSession(task.agentRegistryId);
       this.agentManager.updateAgent({
         registryId: task.agentRegistryId,
         state: 'Offline',
@@ -508,7 +512,9 @@ class Orchestrator extends EventEmitter {
     // Clean up worktree on failure — no useful changes to preserve
     this._cleanupTaskWorktree(taskId);
 
+    // Clear session so Merge/Remove buttons are not blocked
     if (task.agentRegistryId) {
+      this.agentRegistry.unlinkSession(task.agentRegistryId);
       this.agentManager.updateAgent({
         registryId: task.agentRegistryId,
         state: 'Offline',
