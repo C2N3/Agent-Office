@@ -65,6 +65,7 @@ export type DashboardAgent = {
   enabled?: boolean;
   type?: 'main' | 'subagent' | 'teammate' | string;
   lastMessage?: string | null;
+  reportTaskId?: string | null;
   timing?: {
     elapsed?: number;
     active?: boolean;

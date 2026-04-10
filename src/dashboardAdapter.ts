@@ -45,6 +45,7 @@ type PixelAgent = {
   teamName?: string | null;
   endReason?: string | null;
   provider?: string | null;
+  reportTaskId?: string | null;
   firstSeen?: number | null;
 };
 
