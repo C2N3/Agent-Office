@@ -62,6 +62,9 @@ export async function initOffice() {
     return;
   }
 
+  // Expose for cross-module access (SSE handlers, report modal)
+  (globalThis as any).officeCharacters = officeCharacters;
+
   // Load existing agents
   try {
     const res = await fetch('/api/agents');

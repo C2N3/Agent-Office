@@ -19,8 +19,10 @@ class ClaudeAdapter {
   }
 
   buildSpawnConfig(options) {
+    // Run in interactive mode (no --print) so the full TUI is visible
+    // in the terminal: tool calls, file reads/writes, streaming, etc.
+    // Pass the prompt as a positional argument so Claude starts processing immediately.
     const args = [
-      '--print',
       '--verbose',
       '--dangerously-skip-permissions',
       '--max-turns', String(options.maxTurns || 30),
@@ -28,8 +30,9 @@ class ClaudeAdapter {
     if (options.model) {
       args.push('--model', options.model);
     }
-    // Pass prompt as -p argument since node-pty uses TTY (not pipe)
-    args.push('-p', options.prompt);
+    // Positional prompt: `claude [options] "prompt"` starts interactive mode
+    // with the prompt already submitted (unlike -p which is --print mode).
+    args.push(options.prompt);
     return {
       command: 'claude',
       args,
@@ -70,7 +73,7 @@ class ClaudeAdapter {
   }
 
   buildStdinPrompt(prompt) {
-    return prompt + '\n';
+    return prompt + '\r';
   }
 }
 

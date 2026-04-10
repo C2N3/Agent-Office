@@ -4,6 +4,8 @@ export interface DashboardRefs {
   heatmapScanner: any;
   agentRegistryRef: any;
   orchestrator: any;
+  workspaceManager: any;
+  terminalManager: any;
   missionControlWindow: any;
 }
 
@@ -18,6 +20,8 @@ export const refs: DashboardRefs = {
   heatmapScanner: null,
   agentRegistryRef: null,
   orchestrator: null,
+  workspaceManager: null,
+  terminalManager: null,
   missionControlWindow: null,
 };
 
@@ -44,6 +48,14 @@ export function setAgentRegistry(registry: any): void {
 
 export function setOrchestrator(orchestrator: any): void {
   refs.orchestrator = orchestrator;
+}
+
+export function setWorkspaceManager(wm: any): void {
+  refs.workspaceManager = wm;
+}
+
+export function setTerminalManager(tm: any): void {
+  refs.terminalManager = tm;
 }
 
 export function setDashboardWindow(window: any): void {

@@ -65,7 +65,6 @@ export function setupAgentModal(openTerminalForAgent) {
   const modeBtns = document.querySelectorAll('#createModeSelect .provider-btn');
   const existingFields = document.getElementById('existingAgentFields');
   const worktreeFields = document.getElementById('worktreeAgentFields');
-  const autonomousFields = document.getElementById('autonomousAgentFields');
   const repoPathInput = document.getElementById('agentRepoPathInput');
   const branchInput = document.getElementById('agentBranchInput');
   const baseBranchInput = document.getElementById('agentBaseBranchInput');
@@ -73,7 +72,7 @@ export function setupAgentModal(openTerminalForAgent) {
   const branchModeInput = document.getElementById('agentBranchModeInput');
   const startPointInput = document.getElementById('agentStartPointInput');
   const inspectStatusEl = document.getElementById('agentRepoInspectStatus');
-  if (!modal || !form || !openBtn || !existingFields || !worktreeFields || !autonomousFields) return;
+  if (!modal || !form || !openBtn || !existingFields || !worktreeFields) return;
 
   let createMode = 'existing';
   let selectedProvider = 'claude';
@@ -95,11 +94,10 @@ export function setupAgentModal(openTerminalForAgent) {
   });
 
   function setCreateMode(nextMode) {
-    createMode = nextMode === 'worktree' ? 'worktree' : nextMode === 'autonomous' ? 'autonomous' : 'existing';
+    createMode = nextMode === 'worktree' ? 'worktree' : 'existing';
     modeBtns.forEach((btn) => btn.classList.toggle('active', btn.dataset.mode === createMode));
     existingFields.style.display = createMode === 'existing' ? '' : 'none';
     worktreeFields.style.display = createMode === 'worktree' ? '' : 'none';
-    autonomousFields.style.display = createMode === 'autonomous' ? '' : 'none';
   }
 
   function resetProviderSelection() {
@@ -128,6 +126,42 @@ export function setupAgentModal(openTerminalForAgent) {
   function closeModal() {
     modal.style.display = 'none';
     if (errorEl) errorEl.textContent = '';
+  }
+
+  async function pickDirectory({
+    inputId,
+    title,
+    fallbackInputId,
+  }: {
+    inputId: string;
+    title: string;
+    fallbackInputId?: string;
+  }) {
+    const input = document.getElementById(inputId) as HTMLInputElement | null;
+    if (!input) return;
+
+    const fallbackInput = fallbackInputId
+      ? document.getElementById(fallbackInputId) as HTMLInputElement | null
+      : null;
+    const dashboardAPI = getDashboardAPI();
+    if (!dashboardAPI?.pickDirectory) {
+      if (errorEl) errorEl.textContent = 'Folder selection is only available in the Electron app.';
+      return;
+    }
+
+    const result = await dashboardAPI.pickDirectory({
+      title,
+      defaultPath: input.value.trim() || fallbackInput?.value.trim() || undefined,
+    });
+    if (!result?.success) {
+      if (errorEl) errorEl.textContent = result?.error || 'Could not open folder picker.';
+      return;
+    }
+    if (result.canceled || !result.path) return;
+
+    input.value = result.path;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
   function parsePathListValue(inputId) {
@@ -256,14 +290,36 @@ export function setupAgentModal(openTerminalForAgent) {
     });
   });
 
+  document.getElementById('agentPathBrowseBtn')?.addEventListener('click', () => {
+    pickDirectory({ inputId: 'agentPathInput', title: 'Select project folder' }).catch((error) => {
+      console.error('[Directory Picker]', error);
+      if (errorEl) errorEl.textContent = 'Could not open folder picker.';
+    });
+  });
+  document.getElementById('agentRepoPathBrowseBtn')?.addEventListener('click', () => {
+    pickDirectory({ inputId: 'agentRepoPathInput', title: 'Select repository folder' }).catch((error) => {
+      console.error('[Directory Picker]', error);
+      if (errorEl) errorEl.textContent = 'Could not open folder picker.';
+    });
+  });
+  document.getElementById('agentWorkspaceParentBrowseBtn')?.addEventListener('click', () => {
+    pickDirectory({
+      inputId: 'agentWorkspaceParentInput',
+      title: 'Select workspace parent folder',
+      fallbackInputId: 'agentRepoPathInput',
+    }).catch((error) => {
+      console.error('[Directory Picker]', error);
+      if (errorEl) errorEl.textContent = 'Could not open folder picker.';
+    });
+  });
   openBtn.addEventListener('click', () => {
     resetFormState();
     syncAutoBranch();
     modal.style.display = '';
   });
   cancelBtn?.addEventListener('click', closeModal);
-  modal.addEventListener('click', (event) => {
-    if (event.target === modal) closeModal();
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && modal.style.display !== 'none') closeModal();
   });
 
   form.addEventListener('submit', async (event) => {
@@ -275,30 +331,6 @@ export function setupAgentModal(openTerminalForAgent) {
     const role = document.getElementById('agentRoleInput').value.trim();
     if (!name) {
       if (errorEl) errorEl.textContent = 'Name is required.';
-      return;
-    }
-
-    if (createMode === 'autonomous') {
-      const repoPath = (document.getElementById('autoRepoPathInput') as HTMLInputElement).value.trim();
-      if (!repoPath) {
-        if (errorEl) errorEl.textContent = 'Repository path is required.';
-        return;
-      }
-
-      if (dashboardAPI?.createRegisteredAgent) {
-        const result = await dashboardAPI.createRegisteredAgent({
-          name,
-          role: role || 'autonomous',
-          projectPath: repoPath,
-          provider: selectedProvider,
-        });
-        if (result?.success) {
-          closeModal();
-          resetFormState();
-        } else if (errorEl) {
-          errorEl.textContent = result?.error || 'Failed to register agent.';
-        }
-      }
       return;
     }
 
@@ -422,6 +454,9 @@ export function setupAssignTaskModal() {
   modal.addEventListener('click', (event) => {
     if (event.target === modal) closeModal();
   });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && modal.style.display !== 'none') closeModal();
+  });
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -539,6 +574,9 @@ export function setupAvatarPicker(updateAgentUI) {
   modal.addEventListener('click', (event) => {
     if (event.target === modal) modal.style.display = 'none';
   });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && modal.style.display !== 'none') modal.style.display = 'none';
+  }, { capture: true });
 
   document.addEventListener('click', (event) => {
     const btn = event.target.closest('.agent-avatar-btn');
@@ -554,6 +592,7 @@ export function setupAvatarPicker(updateAgentUI) {
     });
 
     modal.style.display = '';
+    requestAnimationFrame(() => modal.focus());
   });
 }
 
@@ -608,6 +647,9 @@ export function setupConversationViewer(resumeRegisteredSession) {
   closeBtn.addEventListener('click', closeModal);
   overlay.addEventListener('click', (event) => {
     if (event.target === overlay) closeModal();
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && overlay.style.display !== 'none') closeModal();
   });
   backBtn.addEventListener('click', () => {
     chatPanel.style.display = 'none';
@@ -764,4 +806,96 @@ export function setupConversationViewer(resumeRegisteredSession) {
   }
 
   globalThis.openSessionHistory = openSessionHistory;
+}
+
+export function setupTaskReportModal() {
+  const modal = document.getElementById('taskReportModal');
+  const closeBtn = document.getElementById('closeTaskReportBtn');
+  const outputEl = document.getElementById('taskReportOutput');
+  const diffSummaryEl = document.getElementById('taskReportDiffSummary');
+  const diffEl = document.getElementById('taskReportDiff');
+  const titleEl = document.getElementById('taskReportTitle');
+  const mergeBtn = document.getElementById('taskReportMergeBtn');
+  const rejectBtn = document.getElementById('taskReportRejectBtn');
+  if (!modal || !outputEl || !diffSummaryEl || !diffEl || !mergeBtn || !rejectBtn) return;
+
+  let currentTaskId = '';
+  let currentAgentId = '';
+
+  function closeModal() {
+    modal.style.display = 'none';
+    currentTaskId = '';
+    currentAgentId = '';
+  }
+
+  closeBtn?.addEventListener('click', closeModal);
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+
+  async function openTaskReport(taskId) {
+    currentTaskId = taskId;
+    if (titleEl) titleEl.textContent = 'Task Report';
+    outputEl.textContent = 'Loading...';
+    diffSummaryEl.textContent = '';
+    diffEl.textContent = '';
+    modal.style.display = '';
+
+    try {
+      const res = await fetch(`/api/tasks/${taskId}/report`);
+      const data = await res.json();
+      currentAgentId = data.agentRegistryId || '';
+      if (titleEl) titleEl.textContent = data.title || 'Task Report';
+      outputEl.textContent = data.output || '(no output)';
+      diffSummaryEl.textContent = data.diffSummary || '(no changes)';
+      diffEl.textContent = data.diff || '';
+    } catch (e) {
+      outputEl.textContent = 'Failed to load report.';
+    }
+  }
+
+  mergeBtn.addEventListener('click', async () => {
+    if (!currentTaskId) return;
+    mergeBtn.disabled = true;
+    mergeBtn.textContent = 'Merging...';
+    try {
+      const res = await fetch(`/api/tasks/${currentTaskId}/merge`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        const officeChars = (globalThis as any).officeCharacters;
+        if (officeChars?.clearReportBubble && currentAgentId) officeChars.clearReportBubble(currentAgentId);
+        closeModal();
+      } else {
+        alert(data.error || 'Merge failed');
+      }
+    } catch (e) {
+      alert('Merge request failed');
+    } finally {
+      mergeBtn.disabled = false;
+      mergeBtn.textContent = 'Merge';
+    }
+  });
+
+  rejectBtn.addEventListener('click', async () => {
+    if (!currentTaskId) return;
+    if (!confirm('Reject this task and discard all changes?')) return;
+    rejectBtn.disabled = true;
+    rejectBtn.textContent = 'Rejecting...';
+    try {
+      const res = await fetch(`/api/tasks/${currentTaskId}/reject`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        const officeChars = (globalThis as any).officeCharacters;
+        if (officeChars?.clearReportBubble && currentAgentId) officeChars.clearReportBubble(currentAgentId);
+        closeModal();
+      } else {
+        alert(data.error || 'Reject failed');
+      }
+    } catch (e) {
+      alert('Reject request failed');
+    } finally {
+      rejectBtn.disabled = false;
+      rejectBtn.textContent = 'Reject';
+    }
+  });
+
+  (globalThis as any).openTaskReportModal = openTaskReport;
 }

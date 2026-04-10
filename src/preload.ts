@@ -1,12 +1,14 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import type {
+  ElectronAPI,
   DashboardAgent,
   DashboardAgentRemoval,
   DashboardErrorContext,
   DashboardRecoveryActionResult,
   DashboardResizeRequest,
   DashboardWindowActionResult,
-} from '../public/dashboard/shared.js';
+} from './shared/contracts/index.js';
+import { electronIpcChannels } from './shared/contracts/index.js';
 
 type Listener<T> = (data: T) => void;
 
@@ -28,25 +30,27 @@ function once<T>(channel: string): Promise<T> {
   });
 }
 
-contextBridge.exposeInMainWorld('electronAPI', {
+const electronAPI: ElectronAPI = {
   formatTime,
-  resizeWindow: (size: DashboardResizeRequest) => ipcRenderer.send('resize-window', size),
-  rendererReady: () => ipcRenderer.send('renderer-ready'),
-  onAgentAdded: (callback: Listener<DashboardAgent>) => safeOn('agent-added', callback),
-  onAgentUpdated: (callback: Listener<DashboardAgent>) => safeOn('agent-updated', callback),
-  onAgentRemoved: (callback: Listener<DashboardAgentRemoval>) => safeOn('agent-removed', callback),
-  onAgentsCleaned: (callback: Listener<DashboardAgentRemoval>) => safeOn('agents-cleaned', callback),
-  onErrorOccurred: (callback: Listener<DashboardErrorContext>) => safeOn('error-occurred', callback),
+  resizeWindow: (size: DashboardResizeRequest) => ipcRenderer.send(electronIpcChannels.resizeWindow, size),
+  rendererReady: () => ipcRenderer.send(electronIpcChannels.rendererReady),
+  onAgentAdded: (callback: Listener<DashboardAgent>) => safeOn(electronIpcChannels.agentAdded, callback),
+  onAgentUpdated: (callback: Listener<DashboardAgent>) => safeOn(electronIpcChannels.agentUpdated, callback),
+  onAgentRemoved: (callback: Listener<DashboardAgentRemoval>) => safeOn(electronIpcChannels.agentRemoved, callback),
+  onAgentsCleaned: (callback: Listener<DashboardAgentRemoval>) => safeOn(electronIpcChannels.agentsCleaned, callback),
+  onErrorOccurred: (callback: Listener<DashboardErrorContext>) => safeOn(electronIpcChannels.errorOccurred, callback),
   getAllAgents: () => {
-    ipcRenderer.send('get-all-agents');
-    return once<DashboardAgent[]>('all-agents-response');
+    ipcRenderer.send(electronIpcChannels.getAllAgents);
+    return once<DashboardAgent[]>(electronIpcChannels.allAgentsResponse);
   },
   getAvatars: () => {
-    ipcRenderer.send('get-avatars');
-    return once<string[]>('avatars-response');
+    ipcRenderer.send(electronIpcChannels.getAvatars);
+    return once<string[]>(electronIpcChannels.avatarsResponse);
   },
-  focusTerminal: (agentId: string): Promise<DashboardRecoveryActionResult> => ipcRenderer.invoke('focus-terminal', agentId),
-  openWebDashboard: (): Promise<DashboardWindowActionResult> => ipcRenderer.invoke('open-web-dashboard'),
+  focusTerminal: (agentId: string): Promise<DashboardRecoveryActionResult> => ipcRenderer.invoke(electronIpcChannels.focusTerminal, agentId),
+  openWebDashboard: (): Promise<DashboardWindowActionResult> => ipcRenderer.invoke(electronIpcChannels.openWebDashboard),
   executeRecoveryAction: (errorId: string, action: string) =>
-    ipcRenderer.invoke('execute-recovery-action', errorId, action) as Promise<DashboardRecoveryActionResult>,
-});
+    ipcRenderer.invoke(electronIpcChannels.executeRecoveryAction, errorId, action) as Promise<DashboardRecoveryActionResult>,
+};
+
+contextBridge.exposeInMainWorld('electronAPI', electronAPI);

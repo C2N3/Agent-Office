@@ -5,8 +5,8 @@ Thanks for your interest in contributing! This guide will help you get started.
 ## Development Setup
 
 ```bash
-git clone https://github.com/Mgpixelart/agent-office.git
-cd agent-office
+git clone https://github.com/C2N3/Agent-Office.git
+cd Agent-Office
 npm install
 npm start
 ```
@@ -31,7 +31,7 @@ npm run test:watch      # Watch mode for development
 
 ### Reporting Bugs
 
-- Open an issue on [GitHub Issues](https://github.com/Mgpixelart/agent-office/issues)
+- Open an issue on [GitHub Issues](https://github.com/C2N3/Agent-Office/issues)
 - Include your OS, Node.js version, and Electron version
 - Describe the steps to reproduce the bug
 - Include any relevant error messages or logs

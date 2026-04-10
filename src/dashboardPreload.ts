@@ -5,7 +5,8 @@ import type {
   DashboardAgentRecord,
   DashboardAgentRemoval,
   DashboardOpenOptions,
-} from '../public/dashboard/shared.js';
+} from './shared/contracts/index.js';
+import { dashboardIpcChannels } from './shared/contracts/index.js';
 
 type Cleanup = () => void;
 type DashboardTupleArg = string | number;
@@ -34,56 +35,61 @@ function requestResponse<T>(requestChannel: string, responseChannel: string): Pr
 }
 
 const dashboardAPI: DashboardAPI = {
-  getInitialAgents: () => requestResponse<DashboardAgent[]>('get-dashboard-agents', 'dashboard-agents-response'),
-  onInitialData: (callback: (data: DashboardAgent[]) => void) => listen('dashboard-initial-data', callback),
-  onAgentAdded: (callback: (data: DashboardAgent) => void) => listen('dashboard-agent-added', callback),
-  onAgentUpdated: (callback: (data: DashboardAgent) => void) => listen('dashboard-agent-updated', callback),
-  onAgentRemoved: (callback: (data: DashboardAgentRemoval) => void) => listen('dashboard-agent-removed', callback),
-  focusAgent: (agentId: string) => ipcRenderer.invoke('focus-terminal', agentId),
-  togglePip: () => ipcRenderer.invoke('toggle-pip'),
-  onPipStateChanged: (callback: (isOpen: boolean) => void) => listen('pip-state-changed', callback),
-  toggleOverlay: () => ipcRenderer.invoke('toggle-overlay'),
-  onOverlayStateChanged: (callback: (isOpen: boolean) => void) => listen('overlay-state-changed', callback),
-  createRegisteredAgent: (data: Partial<DashboardAgentRecord> & { name: string; projectPath: string }) => ipcRenderer.invoke('registry:create', data),
-  inspectWorkspaceRepo: (repoPath: string) => ipcRenderer.invoke('workspace:inspect-repo', repoPath),
-  createWorkspaceAgent: (data) => ipcRenderer.invoke('workspace:create', data),
-  mergeWorkspaceAgent: (registryId: string) => ipcRenderer.invoke('workspace:merge-cleanup', registryId),
-  removeWorkspaceAgent: (registryId: string) => ipcRenderer.invoke('workspace:remove', registryId),
-  listRegisteredAgents: () => ipcRenderer.invoke('registry:list'),
-  listArchivedAgents: () => ipcRenderer.invoke('registry:list-archived'),
-  listArchivedWorkspaceAgents: () => ipcRenderer.invoke('registry:list-archived-workspaces'),
+  getInitialAgents: () => requestResponse<DashboardAgent[]>(
+    dashboardIpcChannels.getDashboardAgents,
+    dashboardIpcChannels.dashboardAgentsResponse,
+  ),
+  onInitialData: (callback: (data: DashboardAgent[]) => void) => listen(dashboardIpcChannels.dashboardInitialData, callback),
+  onAgentAdded: (callback: (data: DashboardAgent) => void) => listen(dashboardIpcChannels.dashboardAgentAdded, callback),
+  onAgentUpdated: (callback: (data: DashboardAgent) => void) => listen(dashboardIpcChannels.dashboardAgentUpdated, callback),
+  onAgentRemoved: (callback: (data: DashboardAgentRemoval) => void) => listen(dashboardIpcChannels.dashboardAgentRemoved, callback),
+  focusAgent: (agentId: string) => ipcRenderer.invoke(dashboardIpcChannels.focusTerminal, agentId),
+  togglePip: () => ipcRenderer.invoke(dashboardIpcChannels.togglePip),
+  onPipStateChanged: (callback: (isOpen: boolean) => void) => listen(dashboardIpcChannels.pipStateChanged, callback),
+  toggleOverlay: () => ipcRenderer.invoke(dashboardIpcChannels.toggleOverlay),
+  onOverlayStateChanged: (callback: (isOpen: boolean) => void) => listen(dashboardIpcChannels.overlayStateChanged, callback),
+  createRegisteredAgent: (data: Partial<DashboardAgentRecord> & { name: string; projectPath: string }) =>
+    ipcRenderer.invoke(dashboardIpcChannels.registryCreate, data),
+  pickDirectory: (options) => ipcRenderer.invoke(dashboardIpcChannels.dialogPickDirectory, options),
+  inspectWorkspaceRepo: (repoPath: string) => ipcRenderer.invoke(dashboardIpcChannels.workspaceInspectRepo, repoPath),
+  createWorkspaceAgent: (data) => ipcRenderer.invoke(dashboardIpcChannels.workspaceCreate, data),
+  mergeWorkspaceAgent: (registryId: string) => ipcRenderer.invoke(dashboardIpcChannels.workspaceMergeCleanup, registryId),
+  removeWorkspaceAgent: (registryId: string) => ipcRenderer.invoke(dashboardIpcChannels.workspaceRemove, registryId),
+  listRegisteredAgents: () => ipcRenderer.invoke(dashboardIpcChannels.registryList),
+  listArchivedAgents: () => ipcRenderer.invoke(dashboardIpcChannels.registryListArchived),
+  listArchivedWorkspaceAgents: () => ipcRenderer.invoke(dashboardIpcChannels.registryListArchivedWorkspaces),
   updateRegisteredAgent: (id: string, fields: Partial<DashboardAgentRecord>) =>
-    ipcRenderer.invoke('registry:update', id, fields),
-  toggleRegisteredAgent: (id: string, enabled: boolean) => ipcRenderer.invoke('registry:toggle', id, enabled),
-  archiveRegisteredAgent: (id: string) => ipcRenderer.invoke('registry:archive', id),
-  deleteRegisteredAgent: (id: string) => ipcRenderer.invoke('registry:delete', id),
-  clearInactiveUnregisteredAgents: () => ipcRenderer.invoke('agents:clear-inactive-unregistered'),
-  getSessionHistory: (registryId: string) => ipcRenderer.invoke('registry:session-history', registryId),
+    ipcRenderer.invoke(dashboardIpcChannels.registryUpdate, id, fields),
+  toggleRegisteredAgent: (id: string, enabled: boolean) => ipcRenderer.invoke(dashboardIpcChannels.registryToggle, id, enabled),
+  archiveRegisteredAgent: (id: string) => ipcRenderer.invoke(dashboardIpcChannels.registryArchive, id),
+  deleteRegisteredAgent: (id: string) => ipcRenderer.invoke(dashboardIpcChannels.registryDelete, id),
+  clearInactiveUnregisteredAgents: () => ipcRenderer.invoke(dashboardIpcChannels.agentsClearInactiveUnregistered),
+  getSessionHistory: (registryId: string) => ipcRenderer.invoke(dashboardIpcChannels.registrySessionHistory, registryId),
   getConversation: (registryId: string, sessionId: string, options?: { limit?: number; offset?: number }) =>
-    ipcRenderer.invoke('registry:conversation', registryId, sessionId, options),
+    ipcRenderer.invoke(dashboardIpcChannels.registryConversation, registryId, sessionId, options),
   resumeSession: (registryId: string, sessionId: string) =>
-    ipcRenderer.invoke('registry:resume-session', registryId, sessionId),
-  setNickname: (agentId: string, nickname: string) => ipcRenderer.invoke('nickname:set', agentId, nickname),
-  getNickname: (agentId: string) => ipcRenderer.invoke('nickname:get', agentId),
-  removeNickname: (agentId: string) => ipcRenderer.invoke('nickname:remove', agentId),
-  getTerminalProfiles: () => ipcRenderer.invoke('terminal:profiles'),
-  setDefaultTerminalProfile: (profileId: string) => ipcRenderer.invoke('terminal:default-profile:set', profileId),
+    ipcRenderer.invoke(dashboardIpcChannels.registryResumeSession, registryId, sessionId),
+  setNickname: (agentId: string, nickname: string) => ipcRenderer.invoke(dashboardIpcChannels.nicknameSet, agentId, nickname),
+  getNickname: (agentId: string) => ipcRenderer.invoke(dashboardIpcChannels.nicknameGet, agentId),
+  removeNickname: (agentId: string) => ipcRenderer.invoke(dashboardIpcChannels.nicknameRemove, agentId),
+  getTerminalProfiles: () => ipcRenderer.invoke(dashboardIpcChannels.terminalProfiles),
+  setDefaultTerminalProfile: (profileId: string) => ipcRenderer.invoke(dashboardIpcChannels.terminalDefaultProfileSet, profileId),
   createTerminal: (agentId: string, options?: DashboardOpenOptions) =>
-    ipcRenderer.invoke('terminal:create', agentId, options),
-  writeTerminal: (agentId: string, data: string) => ipcRenderer.invoke('terminal:write', agentId, data),
+    ipcRenderer.invoke(dashboardIpcChannels.terminalCreate, agentId, options),
+  writeTerminal: (agentId: string, data: string) => ipcRenderer.invoke(dashboardIpcChannels.terminalWrite, agentId, data),
   resizeTerminal: (agentId: string, cols: number, rows: number) =>
-    ipcRenderer.invoke('terminal:resize', agentId, cols, rows),
-  destroyTerminal: (agentId: string) => ipcRenderer.invoke('terminal:destroy', agentId),
+    ipcRenderer.invoke(dashboardIpcChannels.terminalResize, agentId, cols, rows),
+  destroyTerminal: (agentId: string) => ipcRenderer.invoke(dashboardIpcChannels.terminalDestroy, agentId),
   onTerminalData: (callback: (agentId: string, data: string) => void) =>
-    listenTuple('terminal:data', callback),
+    listenTuple(dashboardIpcChannels.terminalData, callback),
   onTerminalExit: (callback: (agentId: string, exitCode: number) => void) =>
-    listenTuple('terminal:exit', callback),
+    listenTuple(dashboardIpcChannels.terminalExit, callback),
   onPsPolicyBlocked: (callback: () => void) => {
     const listener = () => callback();
-    ipcRenderer.on('powershell:policy-blocked', listener);
-    return () => ipcRenderer.removeListener('powershell:policy-blocked', listener);
+    ipcRenderer.on(dashboardIpcChannels.powershellPolicyBlocked, listener);
+    return () => ipcRenderer.removeListener(dashboardIpcChannels.powershellPolicyBlocked, listener);
   },
-  openPsPolicyTerminal: () => ipcRenderer.invoke('powershell:open-policy-terminal'),
+  openPsPolicyTerminal: () => ipcRenderer.invoke(dashboardIpcChannels.powershellOpenPolicyTerminal),
 };
 
 contextBridge.exposeInMainWorld('dashboardAPI', dashboardAPI);

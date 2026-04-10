@@ -1,8 +1,11 @@
 // @ts-nocheck
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const { execFileSync } = require('child_process');
 const { sanitizeProjectPath } = require('../utils');
+
+const GLOBAL_WORKTREE_DIR = path.join(os.homedir(), '.agent-office', 'worktrees');
 
 function slugifyBranchName(input) {
   const normalized = String(input || '')
@@ -75,8 +78,11 @@ class WorkspaceManager {
       throw new Error(`Repository path does not exist: ${sanitizedPath}`);
     }
 
-    const root = this.runGit(sanitizedPath, ['rev-parse', '--show-toplevel']);
-    return path.resolve(root);
+    // Use --git-common-dir to always resolve to the main repository root,
+    // even when called from within a git worktree (--show-toplevel returns worktree path).
+    const gitCommonDir = this.runGit(sanitizedPath, ['rev-parse', '--git-common-dir']);
+    const absGitDir = path.resolve(sanitizedPath, gitCommonDir);
+    return path.resolve(absGitDir, '..');
   }
 
   localBranchExists(repoPath, branchName) {
@@ -166,7 +172,7 @@ class WorkspaceManager {
     const detectedBaseBranch = this.getCurrentBranch(repoRoot);
     const baseBranch = String(options.baseBranch || detectedBaseBranch || 'HEAD').trim() || 'HEAD';
     const startPoint = String(options.startPoint || baseBranch).trim() || baseBranch;
-    const defaultParent = path.join(path.dirname(repoRoot), `${repositoryName}-worktrees`);
+    const defaultParent = path.join(GLOBAL_WORKTREE_DIR, repositoryName);
     const workspaceParent = path.resolve(sanitizeProjectPath(options.workspaceParent) || defaultParent);
     const workspacePath = path.resolve(sanitizeProjectPath(options.workspacePath) || path.join(workspaceParent, branchName));
     const copyPaths = normalizePathList(options.copyPaths);

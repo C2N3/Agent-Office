@@ -1,28 +1,32 @@
 # Custom Office Layouts
 
-Agent-Office can load a custom office layout from either:
+Agent-Office can replace the built-in office map, coordinate masks, laptop markers, and extra decor with a custom layout manifest.
 
-- `./office-layout/manifest.json` in the project root
-- `AGENT_OFFICE_LAYOUT_DIR=<absolute-path>` pointing at a layout folder
+## Where Agent-Office Looks
 
-If neither exists, the built-in office assets are used.
+Runtime lookup order:
+
+1. `AGENT_OFFICE_LAYOUT_DIR=<absolute-path>`
+2. `dist/office-layout/manifest.json`
+3. built-in default office assets
+
+`AGENT_OFFICE_LAYOUT_DIR` takes precedence over the default runtime folder.
+
+Important: the Electron app runs from `dist/`, so the automatic fallback folder is `dist/office-layout`, not the repository root. If you want to keep layouts elsewhere, point the app at them with `AGENT_OFFICE_LAYOUT_DIR`.
 
 ## What You Can Customize
 
-- Background and foreground office art
-- Walkable collision map
-- Desk and idle coordinates
-- Laptop marker positions
-- Seat facing and sit/stand metadata
-- Extra decor sprites rendered behind or in front of agents
+- background and foreground map art
+- collision mask for pathfinding
+- coordinate mask for desk, meeting, and idle spots
+- laptop marker mask and per-direction laptop sprites
+- seat direction / sit-stand metadata
+- idle animations for completed agents
+- extra decor sprites rendered behind or in front of agents
 
-The current system is still image-driven. That means structure changes come from swapping the map masks:
+The office system is image-driven. Most structure comes from swapping the mask images rather than editing code.
 
-- `coordinates`: desk, idle, and meeting spots
-- `collision`: walkable vs blocked areas
-- `laptopSpots`: where laptop sprites render
-
-## Manifest Format
+## Manifest Example
 
 ```json
 {
@@ -55,7 +59,7 @@ The current system is still image-driven. That means structure changes come from
     }
   },
   "seatMap": {
-    "0": { "dir": "down", "animType": "sit" },
+    "10": { "dir": "right", "animType": "sit" },
     "24": { "dir": "up", "animType": "stand" }
   },
   "idleSeatMap": {
@@ -80,29 +84,98 @@ The current system is still image-driven. That means structure changes come from
 }
 ```
 
-## Asset Paths
+## Supported Fields
 
-Manifest asset paths can be:
+Top-level fields:
 
-- Relative to the layout folder, like `map/bg.webp`
-- Built-in app assets, like `/public/office/map/office_bg_32.webp`
-- Remote URLs, like `https://...`
+- `name`: display name for the layout
+- `mapScale`: positive number used when rendering the office map
+- `tileSize`: positive number used for pathfinding and coordinate snapping
+- `assets`: map and laptop image sources
+- `seatMap`: seat id to `{ dir, animType }`
+- `idleSeatMap`: idle spot id to `up|down|left|right|dance`
+- `laptopSeatMap`: laptop marker index to seat id
+- `decor`: additional static sprites
 
-Relative paths are served through the local dashboard server and are sandboxed to the chosen layout directory.
+Valid values:
 
-## Decor Fields
+- `dir`: `up`, `down`, `left`, `right`
+- `animType`: `sit` or `stand`
+- `decor.layer`: `bg` or `fg`
 
-Each `decor` item supports:
+If a field is missing or invalid, Agent-Office falls back to the built-in default for that specific field.
 
-- `src`, `x`, `y`
-- Optional `id`
-- Optional `layer`: `bg` or `fg`
-- Optional `scale`
-- Optional `width`, `height`
-- Optional `alpha`
+## Asset Path Rules
+
+Asset paths may be:
+
+- relative to the chosen layout directory, for example `map/bg.webp`
+- built-in app assets, for example `/public/office/map/office_bg_32.webp`
+- remote `http://` or `https://` URLs
+
+Relative asset paths are rewritten to local dashboard URLs such as:
+
+```text
+/api/office-layout/assets/map/bg.webp
+```
+
+Those asset requests are sandboxed to the chosen layout directory. Path traversal outside the layout directory is rejected.
+
+## Mask Image Semantics
+
+### `assets.collision`
+
+- transparent pixel: walkable
+- opaque pixel: blocked
+
+### `assets.coordinates`
+
+- green or black: idle spot
+- blue: desk spot
+- yellow: meeting spot
+
+Meeting spots are currently stored in the same seat list as desk spots, after desk spots.
+
+### `assets.laptopSpots`
+
+- orange: laptop facing `left`
+- cyan: laptop facing `down`
+- magenta: laptop facing `up`
+- blue: laptop facing `right`
+
+Only one marker is used per snapped tile cell.
+
+## Spot IDs And Mapping
+
+`seatMap`, `idleSeatMap`, and `laptopSeatMap` use numeric ids generated from the parsed masks:
+
+- desk spots are numbered first
+- meeting spots are appended after desk spots
+- idle spots are appended after that
+- laptop spots are indexed in the order they are found in the laptop mask
+
+If you change the mask images, the numeric ids used by these maps may need to change as well.
+
+## Decor Items
+
+Each `decor` entry supports:
+
+- required: `src`, `x`, `y`
+- optional: `id`
+- optional: `layer`
+- optional: `scale`
+- optional: `width`, `height`
+- optional: `alpha` from `0` to `1`
+
+Decor defaults to the background layer when `layer` is omitted.
+
+## Related Runtime Endpoints
+
+- `GET /api/office-layout` returns the merged layout manifest the renderer will use
+- `GET /api/office-layout/assets/<relative-path>` serves relative layout assets
 
 ## Notes
 
-- There is no in-app layout editor yet.
-- If a manifest field is omitted, Agent-Office falls back to the built-in default.
-- Invalid relative asset paths outside the layout directory are rejected.
+- There is no in-app office layout editor yet.
+- A malformed `manifest.json` causes Agent-Office to fall back to the full default layout.
+- Partial manifests are supported; you can override only the fields you need.

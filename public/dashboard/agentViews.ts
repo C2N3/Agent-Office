@@ -97,6 +97,18 @@ export function connectSSE() {
       }
     } catch {}
   });
+  eventSource.addEventListener('task.succeeded', (event: MessageEvent) => {
+    try {
+      const data = JSON.parse(event.data) as { data: { id?: string; agentRegistryId?: string } };
+      const task = data.data;
+      if (task.agentRegistryId && task.id) {
+        const officeChars = (globalThis as any).officeCharacters;
+        if (officeChars?.setReportBubble) {
+          officeChars.setReportBubble(task.agentRegistryId, task.id);
+        }
+      }
+    } catch {}
+  });
 }
 
 export async function fetchInitialData() {

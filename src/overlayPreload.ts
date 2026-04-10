@@ -5,9 +5,10 @@
  */
 
 const { contextBridge, ipcRenderer } = require('electron');
+const { dashboardIpcChannels } = require('./shared/contracts/ipc');
 
 contextBridge.exposeInMainWorld('overlayAPI', {
-  close: () => ipcRenderer.send('overlay-close'),
-  backToDashboard: () => ipcRenderer.send('overlay-back-to-dashboard'),
-  resize: (width, height) => ipcRenderer.send('overlay-resize', { width, height }),
+  close: () => ipcRenderer.send(dashboardIpcChannels.overlayClose),
+  backToDashboard: () => ipcRenderer.send(dashboardIpcChannels.overlayBackToDashboard),
+  resize: (width, height) => ipcRenderer.send(dashboardIpcChannels.overlayResize, { width, height }),
 });

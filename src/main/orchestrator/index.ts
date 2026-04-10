@@ -1,14 +1,21 @@
 // @ts-nocheck
 const EventEmitter = require('events');
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
 const { canTransition, transitionTask, isTerminalStatus } = require('./taskStateMachine');
 const { createCLIAdapter } = require('./cliAdapter');
 const { OutputParser } = require('./outputParser');
 const { detectContextExhaustion } = require('./contextDetector');
 
+const TASK_OUTPUT_DIR = path.join(os.homedir(), '.agent-office', 'task-output');
+
 const TICK_INTERVAL_MS = 2000;
 const STDIN_DELAY_MS = 500;
 const MAX_CONCURRENT_TASKS = 5;
+const IDLE_EXIT_MS = 30000; // Send /exit after 30s of no output (interactive mode)
+const IDLE_ARM_BYTES = 500; // Only arm idle timer after receiving this many bytes of output
 
 class Orchestrator extends EventEmitter {
   constructor(options) {
@@ -25,6 +32,8 @@ class Orchestrator extends EventEmitter {
     this.outputParsers = new Map();   // taskId -> OutputParser
     this.cleanupFns = new Map();      // taskId -> [cleanup functions]
     this.repoLocks = new Map();       // repoPath -> Promise
+    this.idleTimers = new Map();      // taskId -> setTimeout id
+    this.taskOutputBytes = new Map(); // taskId -> total bytes received
 
     this.tickInterval = null;
   }
@@ -84,6 +93,22 @@ class Orchestrator extends EventEmitter {
 
     const updated = transitionTask(task, 'cancelled');
     this.taskStore.updateTask(taskId, updated);
+
+    // Clear session, restore projectPath, and clean up worktree
+    if (task.agentRegistryId) {
+      this.agentRegistry.unlinkSession(task.agentRegistryId);
+      const regAgent = this.agentRegistry.getAgent(task.agentRegistryId);
+      const originalPath = regAgent?.workspace?.repositoryPath || task.repositoryPath;
+      this.agentRegistry.updateAgent(task.agentRegistryId, { projectPath: originalPath, workspace: null });
+      this.agentManager.updateAgent({
+        registryId: task.agentRegistryId,
+        state: 'Offline',
+        projectPath: originalPath,
+        workspace: null,
+      }, 'orchestrator');
+    }
+    this._cleanupTaskWorktree(taskId);
+
     this.emit('task:cancelled', updated);
     this.emit('task:updated', updated);
     return updated;
@@ -212,6 +237,7 @@ class Orchestrator extends EventEmitter {
 
     // Create worktree (if not already created from previous attempt)
     let workspacePath = task.workspacePath;
+    let workspaceMetadata = null;
     if (!workspacePath && task.repositoryPath) {
       const branchName = task.branchName || `task/${task.id.slice(0, 8)}`;
       await this._withRepoLock(task.repositoryPath, async () => {
@@ -226,6 +252,7 @@ class Orchestrator extends EventEmitter {
           bootstrapCommand: task.bootstrapCommand || '',
         });
         workspacePath = result.workspacePath;
+        workspaceMetadata = result.workspace;
 
         // If dependent on parent, squash-merge parent branch
         if (task.parentTaskId) {
@@ -266,6 +293,12 @@ class Orchestrator extends EventEmitter {
 
     // Update agent state — preserve existing name if agent was pre-registered
     const existingAgent = this.agentRegistry.getAgent(agentRegistryId);
+
+    // Attach workspace metadata to the registry agent so Merge/Remove buttons appear
+    if (workspaceMetadata && agentRegistryId) {
+      this.agentRegistry.updateAgent(agentRegistryId, { workspace: workspaceMetadata });
+    }
+
     this.agentManager.updateAgent({
       registryId: agentRegistryId,
       displayName: existingAgent?.name || task.title,
@@ -273,7 +306,8 @@ class Orchestrator extends EventEmitter {
       projectPath: workspacePath || task.repositoryPath,
       provider,
       isRegistered: true,
-      state: 'Coding',
+      state: 'Working',
+      workspace: workspaceMetadata || undefined,
     }, 'orchestrator');
 
     // Build CLI spawn config
@@ -363,11 +397,46 @@ class Orchestrator extends EventEmitter {
         return;
       }
     }
+
+    // Track total output bytes and arm idle timer only after substantial output.
+    // This prevents the timer from firing during Claude's initial API call.
+    const prevBytes = this.taskOutputBytes.get(taskId) || 0;
+    const newBytes = prevBytes + (data ? data.length : 0);
+    this.taskOutputBytes.set(taskId, newBytes);
+
+    if (newBytes >= IDLE_ARM_BYTES) {
+      this._resetIdleTimer(taskId);
+    }
+  }
+
+  _resetIdleTimer(taskId) {
+    // If we already sent /exit, stop resetting — avoid spamming /exit repeatedly.
+    if (this._exitSent?.has(taskId)) return;
+
+    const existing = this.idleTimers.get(taskId);
+    if (existing) clearTimeout(existing);
+
+    const timer = setTimeout(() => {
+      this.idleTimers.delete(taskId);
+      const task = this.taskStore.getTask(taskId);
+      if (!task || task.status !== 'running') return;
+      if (task.terminalId && this.terminalManager.hasTerminal(task.terminalId)) {
+        this.debugLog(`[Orchestrator] Idle timeout for ${taskId.slice(0, 8)}, sending /exit`);
+        this.terminalManager.writeToTerminal(task.terminalId, '/exit\r');
+        if (!this._exitSent) this._exitSent = new Set();
+        this._exitSent.add(taskId);
+      }
+    }, IDLE_EXIT_MS);
+
+    this.idleTimers.set(taskId, timer);
   }
 
   _handleTaskExit(taskId, exitCode) {
     const task = this.taskStore.getTask(taskId);
     if (!task || isTerminalStatus(task.status)) return;
+
+    // Save full output before cleanup destroys the parser
+    this._saveTaskOutput(taskId);
 
     this._cleanupTaskRuntime(taskId);
     this.taskStore.updateTask(taskId, { exitCode });
@@ -408,11 +477,17 @@ class Orchestrator extends EventEmitter {
       }
     }
 
-    // Transition agent to Offline
+    // Transition agent to done with report, clear session, restore original projectPath
     if (task.agentRegistryId) {
+      this.agentRegistry.unlinkSession(task.agentRegistryId);
+      const regAgent = this.agentRegistry.getAgent(task.agentRegistryId);
+      const originalPath = regAgent?.workspace?.repositoryPath || task.repositoryPath;
+      this.agentRegistry.updateAgent(task.agentRegistryId, { projectPath: originalPath });
       this.agentManager.updateAgent({
         registryId: task.agentRegistryId,
-        state: 'Offline',
+        state: 'done',
+        projectPath: originalPath,
+        reportTaskId: task.id,
       }, 'orchestrator');
     }
 
@@ -456,10 +531,20 @@ class Orchestrator extends EventEmitter {
       updatedAt: Date.now(),
     });
 
+    // Clean up worktree on failure — no useful changes to preserve
+    this._cleanupTaskWorktree(taskId);
+
+    // Clear session and restore original projectPath
     if (task.agentRegistryId) {
+      this.agentRegistry.unlinkSession(task.agentRegistryId);
+      const regAgent = this.agentRegistry.getAgent(task.agentRegistryId);
+      const originalPath = regAgent?.workspace?.repositoryPath || task.repositoryPath;
+      this.agentRegistry.updateAgent(task.agentRegistryId, { projectPath: originalPath, workspace: null });
       this.agentManager.updateAgent({
         registryId: task.agentRegistryId,
         state: 'Offline',
+        projectPath: originalPath,
+        workspace: null,
       }, 'orchestrator');
     }
 
@@ -523,9 +608,41 @@ class Orchestrator extends EventEmitter {
     this.taskStore.updateTask(taskId, { status: 'ready', updatedAt: Date.now() });
   }
 
+  // === Output Capture ===
+
+  _saveTaskOutput(taskId) {
+    const parser = this.outputParsers.get(taskId);
+    if (!parser) return;
+
+    try {
+      const fullOutput = parser.getFullOutput();
+      if (!fullOutput) return;
+
+      // Strip ANSI escape codes for readable output
+      const clean = fullOutput.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '');
+
+      fs.mkdirSync(TASK_OUTPUT_DIR, { recursive: true });
+      const outputPath = path.join(TASK_OUTPUT_DIR, `${taskId}.txt`);
+      fs.writeFileSync(outputPath, clean, 'utf-8');
+      this.taskStore.updateTask(taskId, { outputPath });
+      this.debugLog(`[Orchestrator] Saved task output: ${outputPath}`);
+    } catch (e) {
+      this.debugLog(`[Orchestrator] Failed to save task output: ${e.message}`);
+    }
+  }
+
   // === Cleanup ===
 
   _cleanupTaskRuntime(taskId) {
+    // Clear idle timer and output tracking
+    const idleTimer = this.idleTimers.get(taskId);
+    if (idleTimer) {
+      clearTimeout(idleTimer);
+      this.idleTimers.delete(taskId);
+    }
+    this.taskOutputBytes.delete(taskId);
+    this._exitSent?.delete(taskId);
+
     // Remove output taps
     const fns = this.cleanupFns.get(taskId);
     if (fns) {
@@ -536,11 +653,54 @@ class Orchestrator extends EventEmitter {
     }
     this.outputParsers.delete(taskId);
 
-    // Kill terminal
+    // Don't destroy the terminal here — let the process exit naturally
+    // so the frontend terminal tab can show the full output and exit message.
+    // The terminal will be cleaned up when the user closes the tab.
+  }
+
+  /**
+   * Remove the git worktree and branch created for a task.
+   * Kills the terminal process first, then retries removal on Windows
+   * where file handles may linger after process exit.
+   */
+  _cleanupTaskWorktree(taskId) {
     const task = this.taskStore.getTask(taskId);
-    if (task && task.terminalId && this.terminalManager.hasTerminal(task.terminalId)) {
+    if (!task || !task.workspacePath) return;
+
+    // Kill the terminal process first so it releases the worktree directory.
+    if (task.terminalId && this.terminalManager.hasTerminal(task.terminalId)) {
       this.terminalManager.destroyTerminal(task.terminalId);
     }
+
+    const branchName = task.branchName || `task/${taskId.slice(0, 8)}`;
+    let repoRoot;
+    try {
+      repoRoot = this.workspaceManager.resolveRepositoryRoot(task.repositoryPath);
+    } catch (e) {
+      this.debugLog(`[Orchestrator] Cannot resolve repo root for ${taskId.slice(0, 8)}: ${e.message}`);
+      return;
+    }
+
+    const attemptRemove = (attempt) => {
+      try {
+        this.workspaceManager.runGit(repoRoot, ['worktree', 'remove', '--force', task.workspacePath]);
+      } catch (e) {
+        if (attempt < 3) {
+          this.debugLog(`[Workspace] Remove attempt ${attempt + 1} failed, retrying in ${(attempt + 1) * 3}s...`);
+          setTimeout(() => attemptRemove(attempt + 1), (attempt + 1) * 3000);
+          return;
+        }
+        this.debugLog(`[Workspace] Remove failed after ${attempt + 1} attempts: ${e.message}`);
+        return;
+      }
+      try {
+        this.workspaceManager.runGit(repoRoot, ['branch', '-D', branchName]);
+      } catch {}
+      this.debugLog(`[Orchestrator] Cleaned up worktree for ${taskId.slice(0, 8)}`);
+    };
+
+    // First attempt after delay to let file handles release
+    setTimeout(() => attemptRemove(0), process.platform === 'win32' ? 3000 : 500);
   }
 
   // === Repo Lock ===

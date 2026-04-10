@@ -11,7 +11,7 @@ import type {
   TerminalAddonLike,
   TerminalCtor,
   WebLinksAddonLike,
-} from '../public/dashboard/shared.js';
+} from './shared/contracts/index.js';
 
 declare global {
   interface Window {

@@ -6,6 +6,8 @@ import {
   setAgentManager as setAgentManagerRef,
   setAgentRegistry as setAgentRegistryRef,
   setOrchestrator as setOrchestratorRef,
+  setWorkspaceManager as setWorkspaceManagerRef,
+  setTerminalManager as setTerminalManagerRef,
   setDashboardWindow as setDashboardWindowRef,
   setHeatmapScanner as setHeatmapScannerRef,
   setSessionScanner as setSessionScannerRef,
@@ -37,6 +39,14 @@ export function setAgentRegistry(registry: any): void {
 export function setOrchestrator(orch: any): void {
   setOrchestratorRef(orch);
   attachOrchestratorBroadcasts(orch);
+}
+
+export function setWorkspaceManager(wm: any): void {
+  setWorkspaceManagerRef(wm);
+}
+
+export function setTerminalManager(tm: any): void {
+  setTerminalManagerRef(tm);
 }
 
 export function setDashboardWindow(window: any): void {

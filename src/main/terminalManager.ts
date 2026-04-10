@@ -56,12 +56,15 @@ class TerminalManager {
     const cols = options.cols || 120;
     const rows = options.rows || 30;
 
-    // On Windows, node-pty needs resolved command path for non-shell executables
+    // On Windows, node-pty needs resolved command path for non-shell executables.
+    // `where` may return multiple results (e.g. a POSIX shell script AND a .cmd wrapper).
+    // Prefer .cmd/.exe over extensionless scripts to avoid ERROR_BAD_EXE_FORMAT (193).
     if (process.platform === 'win32' && options.command && !options.command.includes('\\') && !options.command.includes('/')) {
       try {
         const { execFileSync } = require('child_process');
-        const resolved = execFileSync('where', [options.command], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim().split(/\r?\n/)[0];
-        if (resolved) command = resolved;
+        const candidates = execFileSync('where', [options.command], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim().split(/\r?\n/);
+        const preferred = candidates.find(c => /\.(cmd|exe|bat)$/i.test(c)) || candidates[0];
+        if (preferred) command = preferred;
       } catch {}
     }
 

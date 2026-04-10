@@ -132,6 +132,7 @@ class AgentManager extends EventEmitter {
       agentType: m('agentType'),
       currentTool: m('currentTool'),
       lastMessage: m('lastMessage'),
+      reportTaskId: m('reportTaskId'),
       endReason: m('endReason'),
       teammateName: m('teammateName'),
       teamName: m('teamName'),
