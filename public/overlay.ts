@@ -111,6 +111,10 @@ function handleAgent(agent: DashboardAgent) {
     existing.status = status;
     existing.name = agent.name || existing.name;
     existing.bubble = agent.lastMessage || null;
+    if (agent.avatarIndex != null && agent.avatarIndex !== existing.avatarIndex) {
+      existing.avatarIndex = agent.avatarIndex;
+      existing.avatarFile = AVATAR_FILES[agent.avatarIndex] || AVATAR_FILES[0] || '';
+    }
     return;
   }
 

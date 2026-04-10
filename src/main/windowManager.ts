@@ -6,6 +6,7 @@
 
 const { BrowserWindow, screen, shell } = require('electron');
 const path = require('path');
+const { saveUiState } = require('./uiState');
 
 function createWindowManager({ agentManager, agentRegistry, sessionScanner, heatmapScanner, debugLog, adaptAgentToDashboard, errorHandler, getWindowSizeForAgents }) {
   let mainWindow = null;
@@ -317,10 +318,12 @@ function createWindowManager({ agentManager, agentRegistry, sessionScanner, heat
     overlayWindow.on('closed', () => {
       overlayWindow = null;
       notifyDashboardOverlayState(false);
+      saveUiState({ overlayOpen: false });
       debugLog('[Overlay] Window closed');
     });
 
     notifyDashboardOverlayState(true);
+    saveUiState({ overlayOpen: true });
     debugLog('[Overlay] Window created');
   }
 

@@ -162,8 +162,8 @@ class AgentManager extends EventEmitter {
       console.log(`[AgentManager] Agent added: ${agentData.displayName} (${newState})`);
     } else if (newState !== prevState) {
       this._emitWithDebounce(agentId, prevState, newState, agentData.displayName);
-    } else if (existingAgent.displayName !== agentData.displayName) {
-      // Name changed (e.g. nickname set/removed) — force emit without debounce
+    } else if (existingAgent.displayName !== agentData.displayName || existingAgent.avatarIndex !== agentData.avatarIndex) {
+      // Name or avatar changed — force emit without debounce
       this.emit('agent-updated', this.getAgentWithEffectiveState(agentId));
     }
 
