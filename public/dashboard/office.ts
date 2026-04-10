@@ -139,8 +139,6 @@ export function setupOfficeClickHandler(openTerminalForAgent: (agentId: string, 
   const canvas = canvasEl;
 
   // ── Drag-and-drop: move a character by left-click-dragging it.
-  // Runs in capture phase so we can preempt the renderer's camera-pan handler
-  // when the mousedown lands on a character.
   type DragState = {
     character: OfficeCharacter;
     startClientX: number;
@@ -172,9 +170,7 @@ export function setupOfficeClickHandler(openTerminalForAgent: (agentId: string, 
     const character = hitTestOfficeCharacter(canvas, event);
     if (!character) return;
 
-    // Prevent the renderer's mousedown listener (camera pan) from firing.
     event.preventDefault();
-    event.stopImmediatePropagation();
 
     const world = officeRenderer?.screenToWorld?.(event.clientX, event.clientY);
     const startWorldX = world?.x ?? character.x;
@@ -189,7 +185,7 @@ export function setupOfficeClickHandler(openTerminalForAgent: (agentId: string, 
       moved: false,
     };
     canvas.style.cursor = 'grabbing';
-  }, true);
+  });
 
   window.addEventListener('mousemove', (event) => {
     if (!dragState) return;
@@ -232,7 +228,7 @@ export function setupOfficeClickHandler(openTerminalForAgent: (agentId: string, 
       };
       canvas.addEventListener('click', swallow, true);
     }
-  }, true);
+  });
 
   canvas.addEventListener('click', (event) => {
     const character = hitTestOfficeCharacter(canvas, event);

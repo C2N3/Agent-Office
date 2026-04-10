@@ -99,7 +99,8 @@ export const officeRenderer: any = {
       cam.panY = mouseY - (mouseY - cam.panY) * zoomRatio;
     }, { passive: false });
 
-    // Left-click or middle-click drag to pan
+    // Middle-click drag to pan. Left-click is reserved for character
+    // interaction (drag/click) and must not move the camera.
     let dragging = false;
     let dragStartX = 0;
     let dragStartY = 0;
@@ -108,7 +109,7 @@ export const officeRenderer: any = {
     let dragMoved = false;
 
     canvas.addEventListener('mousedown', function (e) {
-      if (e.button === 0 || e.button === 1) {
+      if (e.button === 1) {
         e.preventDefault();
         dragging = true;
         dragMoved = false;
@@ -131,7 +132,7 @@ export const officeRenderer: any = {
     });
 
     window.addEventListener('mouseup', function (e) {
-      if ((e.button === 0 || e.button === 1) && dragging) {
+      if (e.button === 1 && dragging) {
         dragging = false;
         canvas.style.cursor = '';
       }
