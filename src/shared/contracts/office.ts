@@ -10,6 +10,14 @@ export type OfficeCharacterMetadata = {
   tool?: string | null;
 } & JsonObject;
 
+export type OfficeBubble = {
+  text: string;
+  icon?: string | null;
+  expiresAt: number;
+  isReport?: boolean;
+  taskId?: string;
+};
+
 export type OfficeCharacter = {
   id: string;
   x: number;
@@ -19,6 +27,7 @@ export type OfficeCharacter = {
   metadata?: OfficeCharacterMetadata | null;
   avatarFile?: string;
   skinIndex?: number;
+  bubble?: OfficeBubble | null;
 };
 
 export type OfficeCharacters = {
