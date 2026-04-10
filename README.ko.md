@@ -1,6 +1,6 @@
 # Agent-Office
 
-[![CI](https://github.com/Mgpixelart/agent-office/actions/workflows/test.yml/badge.svg)](https://github.com/Mgpixelart/agent-office/actions/workflows/test.yml)
+[![CI](https://github.com/C2N3/Agent-Office/actions/workflows/test.yml/badge.svg)](https://github.com/C2N3/Agent-Office/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Electron](https://img.shields.io/badge/Electron-32+-47848F?logo=electron&logoColor=white)](https://www.electronjs.org/)
 
@@ -40,8 +40,8 @@ Agent-Office는 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) ho
 ## 빠른 시작
 
 ```bash
-git clone https://github.com/Mgpixelart/agent-office.git
-cd agent-office
+git clone https://github.com/C2N3/Agent-Office.git
+cd Agent-Office
 npm install
 npm start
 ```
