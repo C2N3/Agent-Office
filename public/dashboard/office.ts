@@ -154,13 +154,16 @@ export function setupOfficeClickHandler(openTerminalForAgent: (agentId: string, 
 
   const setCharacterPosition = (character: OfficeCharacter, worldX: number, worldY: number) => {
     const mutable = character as OfficeCharacter & {
-      x: number; y: number; path?: unknown[]; pathIndex?: number;
+      x: number; y: number; path?: unknown[]; pathIndex?: number; manualPinned?: boolean;
     };
     mutable.x = worldX;
     mutable.y = worldY;
     // Stop any pathfinding movement in-flight so it doesn't fight the drag.
+    // Also flag as manually pinned so _updateTarget doesn't recompute a path
+    // back to the desk every frame while the user is dragging.
     if (Array.isArray(mutable.path)) mutable.path = [];
     mutable.pathIndex = 0;
+    mutable.manualPinned = true;
   };
 
   canvas.addEventListener('mousedown', (event) => {
@@ -213,10 +216,15 @@ export function setupOfficeClickHandler(openTerminalForAgent: (agentId: string, 
     canvas.style.cursor = '';
 
     if (finishedDrag.moved) {
-      const pin = (officeCharacters as unknown as {
+      // Call directly on the object so `this` is preserved —
+      // pinCharacterAt's body relies on `this.characters`.
+      (officeCharacters as unknown as {
         pinCharacterAt?: (id: string, x: number, y: number) => void;
-      }).pinCharacterAt;
-      pin?.(finishedDrag.character.id, finishedDrag.character.x, finishedDrag.character.y);
+      }).pinCharacterAt?.(
+        finishedDrag.character.id,
+        finishedDrag.character.x,
+        finishedDrag.character.y,
+      );
       // Swallow the upcoming click event so it doesn't re-open the popover.
       const swallow = (e: MouseEvent) => {
         e.stopImmediatePropagation();
