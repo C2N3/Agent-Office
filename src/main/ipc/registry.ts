@@ -173,9 +173,24 @@ function registerRegistryHandlers({
     const result = terminalManager.createTerminal(registryId, { cwd });
     if (!result.success) return result;
 
+    // Wait for first shell output before sending the command to avoid losing
+    // the first character due to a race condition between pty spawn and write.
+    let sent = false;
+    const unsubscribe = terminalManager.tapOutput(registryId, () => {
+      if (sent) return;
+      sent = true;
+      unsubscribe();
+      setTimeout(() => {
+        terminalManager.writeToTerminal(registryId, resumeCommand);
+      }, 50);
+    });
+    // Fallback in case no output arrives (e.g. silent shell)
     setTimeout(() => {
+      if (sent) return;
+      sent = true;
+      unsubscribe();
       terminalManager.writeToTerminal(registryId, resumeCommand);
-    }, 800);
+    }, 2000);
 
     return { ...result, terminalId: registryId, sessionId: resolvedSessionId };
   });
