@@ -111,7 +111,7 @@ function handleRequest(req: RequestLike, res: ResponseLike): void {
     }
   }
 
-  if (pathname.startsWith('/dist/') || pathname.startsWith('/public/') || pathname.startsWith('/src/office/')) {
+  if (pathname.startsWith('/dist/') || pathname.startsWith('/public/')) {
     const decoded = decodeURIComponent(pathname);
     const resolved = path.resolve(PROJECT_ROOT, decoded.slice(1));
     const rel = path.relative(PROJECT_ROOT, resolved);

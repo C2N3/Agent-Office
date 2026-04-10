@@ -15,15 +15,6 @@ const watchTargets = [
 ];
 const browserGlobalTargets = [
   'dist/public/dashboardResume.js',
-  'dist/src/office/office-character.js',
-  'dist/src/office/office-config.js',
-  'dist/src/office/office-coords.js',
-  'dist/src/office/office-init.js',
-  'dist/src/office/office-layers.js',
-  'dist/src/office/office-pathfinder.js',
-  'dist/src/office/office-renderer.js',
-  'dist/src/office/office-sprite.js',
-  'dist/src/office/office-ui.js',
 ];
 
 let buildRunning = false;
