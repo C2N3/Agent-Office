@@ -306,7 +306,7 @@ class Orchestrator extends EventEmitter {
       projectPath: workspacePath || task.repositoryPath,
       provider,
       isRegistered: true,
-      state: 'Coding',
+      state: 'Working',
       workspace: workspaceMetadata || undefined,
     }, 'orchestrator');
 
