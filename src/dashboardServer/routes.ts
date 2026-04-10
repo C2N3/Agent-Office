@@ -12,7 +12,7 @@ const { getConversationSummary, parseConversation } = require('../main/conversat
   getConversationSummary: (transcriptPath: string) => any;
   parseConversation: (transcriptPath: string, options?: { limit?: number; offset?: number }) => any;
 };
-import { HTML_FILE, MIME_TYPES, OVERLAY_FILE, PIP_FILE, PROJECT_ROOT } from './constants.js';
+import { APP_ROOT, HTML_FILE, MIME_TYPES, OVERLAY_FILE, PIP_FILE, PROJECT_ROOT } from './constants.js';
 import { calculateStats } from './stats.js';
 import { getClients, getRefs } from './context.js';
 
@@ -95,7 +95,7 @@ function handleRequest(req: RequestLike, res: ResponseLike): void {
     };
     const mapped = libMap[pathname];
     if (mapped) {
-      const filePath = path.join(PROJECT_ROOT, mapped);
+      const filePath = path.join(APP_ROOT, mapped);
       const ext = path.extname(filePath);
       const mime = MIME_TYPES[ext] || 'application/octet-stream';
       fs.readFile(filePath, (err, data) => {
@@ -111,7 +111,7 @@ function handleRequest(req: RequestLike, res: ResponseLike): void {
     }
   }
 
-  if (pathname.startsWith('/dist/') || pathname.startsWith('/public/')) {
+  if (pathname.startsWith('/public/')) {
     const decoded = decodeURIComponent(pathname);
     const resolved = path.resolve(PROJECT_ROOT, decoded.slice(1));
     const rel = path.relative(PROJECT_ROOT, resolved);

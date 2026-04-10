@@ -4,9 +4,10 @@ export const PORT = 3000;
 
 const runtimeRoot = path.resolve(__dirname, '..', '..');
 
-export const PROJECT_ROOT = path.basename(runtimeRoot) === 'dist'
+export const APP_ROOT = path.basename(runtimeRoot) === 'dist'
   ? path.resolve(runtimeRoot, '..')
   : runtimeRoot;
+export const PROJECT_ROOT = runtimeRoot;
 
 export const HTML_FILE = path.join(PROJECT_ROOT, 'dashboard.html');
 export const PIP_FILE = path.join(PROJECT_ROOT, 'pip.html');
