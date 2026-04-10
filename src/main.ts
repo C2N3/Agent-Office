@@ -199,7 +199,7 @@ app.whenReady().then(() => {
     debugLog,
     errorHandler,
   }));
-  startDashboardRuntime({ windowManager, orchestrator, debugLog });
+  startDashboardRuntime({ windowManager, orchestrator, workspaceManager, terminalManager, debugLog });
 
   // 6.5. Start orchestrator
   if (orchestrator) {

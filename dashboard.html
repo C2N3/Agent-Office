@@ -384,6 +384,34 @@
   <!-- Office Character Popover -->
   <div class="office-popover" id="officePopover"></div>
 
+  <!-- Task Report Modal -->
+  <div class="modal-overlay" id="taskReportModal" style="display:none;">
+    <div class="modal-content task-report-modal">
+      <div class="modal-header">
+        <span id="taskReportTitle">Task Report</span>
+        <button class="conv-modal-close" id="closeTaskReportBtn">&times;</button>
+      </div>
+      <div class="task-report-body">
+        <div class="task-report-section">
+          <h4>Output</h4>
+          <pre class="task-report-pre" id="taskReportOutput">Loading...</pre>
+        </div>
+        <div class="task-report-section">
+          <h4>Changes</h4>
+          <pre class="task-report-pre task-report-diff-summary" id="taskReportDiffSummary"></pre>
+          <details class="task-report-diff-details">
+            <summary>Full Diff</summary>
+            <pre class="task-report-pre" id="taskReportDiff"></pre>
+          </details>
+        </div>
+      </div>
+      <div class="modal-actions task-report-actions">
+        <button class="btn-primary" id="taskReportMergeBtn">Merge</button>
+        <button class="btn-secondary btn-danger" id="taskReportRejectBtn">Reject</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Terminal: ensure UMD scripts export to window, not CommonJS -->
   <script>if(typeof module!=='undefined'){window.__module=module;delete window.module;}</script>
   <script src="/lib/xterm.js"></script>

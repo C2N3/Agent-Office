@@ -1,10 +1,15 @@
 // @ts-nocheck
 const EventEmitter = require('events');
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
 const { canTransition, transitionTask, isTerminalStatus } = require('./taskStateMachine');
 const { createCLIAdapter } = require('./cliAdapter');
 const { OutputParser } = require('./outputParser');
 const { detectContextExhaustion } = require('./contextDetector');
+
+const TASK_OUTPUT_DIR = path.join(os.homedir(), '.agent-office', 'task-output');
 
 const TICK_INTERVAL_MS = 2000;
 const STDIN_DELAY_MS = 500;
@@ -430,6 +435,9 @@ class Orchestrator extends EventEmitter {
     const task = this.taskStore.getTask(taskId);
     if (!task || isTerminalStatus(task.status)) return;
 
+    // Save full output before cleanup destroys the parser
+    this._saveTaskOutput(taskId);
+
     this._cleanupTaskRuntime(taskId);
     this.taskStore.updateTask(taskId, { exitCode });
 
@@ -597,6 +605,29 @@ class Orchestrator extends EventEmitter {
 
     // Queue for re-dispatch
     this.taskStore.updateTask(taskId, { status: 'ready', updatedAt: Date.now() });
+  }
+
+  // === Output Capture ===
+
+  _saveTaskOutput(taskId) {
+    const parser = this.outputParsers.get(taskId);
+    if (!parser) return;
+
+    try {
+      const fullOutput = parser.getFullOutput();
+      if (!fullOutput) return;
+
+      // Strip ANSI escape codes for readable output
+      const clean = fullOutput.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '');
+
+      fs.mkdirSync(TASK_OUTPUT_DIR, { recursive: true });
+      const outputPath = path.join(TASK_OUTPUT_DIR, `${taskId}.txt`);
+      fs.writeFileSync(outputPath, clean, 'utf-8');
+      this.taskStore.updateTask(taskId, { outputPath });
+      this.debugLog(`[Orchestrator] Saved task output: ${outputPath}`);
+    } catch (e) {
+      this.debugLog(`[Orchestrator] Failed to save task output: ${e.message}`);
+    }
   }
 
   // === Cleanup ===

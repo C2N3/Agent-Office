@@ -172,6 +172,18 @@ function handleAPIRequest(req: RequestLike, res: ResponseLike, url: URL): void {
     const taskId = parts[0];
     const action = parts[1];
 
+    if (req.method === 'GET' && action === 'report') {
+      handleTaskReport(req, res, taskId);
+      return;
+    }
+    if (req.method === 'POST' && action === 'merge') {
+      handleTaskMerge(req, res, taskId);
+      return;
+    }
+    if (req.method === 'POST' && action === 'reject') {
+      handleTaskReject(req, res, taskId);
+      return;
+    }
     if (req.method === 'GET' && !action) {
       handleGetTask(req, res, taskId);
       return;
@@ -514,6 +526,110 @@ function handleDeleteTask(req: RequestLike, res: ResponseLike, taskId: string): 
     res.end(JSON.stringify({ error: e.message }));
   }
 }
+
+// === Task Report / Merge / Reject ===
+
+async function handleTaskReport(req: RequestLike, res: ResponseLike, taskId: string): Promise<void> {
+  const { orchestrator, workspaceManager } = getRefs();
+  if (!orchestrator) { res.writeHead(503, jsonHeader); res.end(JSON.stringify({ error: 'Orchestrator not available' })); return; }
+
+  const task = orchestrator.getTask(taskId);
+  if (!task) { res.writeHead(404, jsonHeader); res.end(JSON.stringify({ error: 'Task not found' })); return; }
+
+  // Read saved output file or fall back to lastOutput
+  let output = task.lastOutput || '';
+  if (task.outputPath) {
+    try { output = fs.readFileSync(task.outputPath, 'utf-8'); } catch {}
+  }
+
+  // Git diff from worktree
+  let diff = '';
+  let diffSummary = '';
+  if (task.workspacePath && workspaceManager) {
+    try {
+      const baseBranch = task.baseBranch || 'HEAD~1';
+      diffSummary = workspaceManager.runGit(task.workspacePath, ['diff', '--stat', baseBranch]).trim();
+      diff = workspaceManager.runGit(task.workspacePath, ['diff', baseBranch]).trim();
+    } catch (e: any) {
+      // Worktree may already be cleaned up — try diffing the branch from main repo
+      try {
+        const branchName = task.branchName || `task/${taskId.slice(0, 8)}`;
+        const repoRoot = workspaceManager.resolveRepositoryRoot(task.repositoryPath);
+        diffSummary = workspaceManager.runGit(repoRoot, ['diff', '--stat', `${branchName}~1..${branchName}`]).trim();
+        diff = workspaceManager.runGit(repoRoot, ['diff', `${branchName}~1..${branchName}`]).trim();
+      } catch { /* diff unavailable */ }
+    }
+  }
+
+  res.writeHead(200, jsonHeader);
+  res.end(JSON.stringify({ taskId: task.id, title: task.title, status: task.status, output, diffSummary, diff, agentRegistryId: task.agentRegistryId, workspacePath: task.workspacePath, branchName: task.branchName }));
+}
+
+async function handleTaskMerge(req: RequestLike, res: ResponseLike, taskId: string): Promise<void> {
+  const { orchestrator, workspaceManager, agentRegistryRef, terminalManager } = getRefs();
+  if (!orchestrator || !workspaceManager) { res.writeHead(503, jsonHeader); res.end(JSON.stringify({ error: 'Not available' })); return; }
+
+  const task = orchestrator.getTask(taskId);
+  if (!task) { res.writeHead(404, jsonHeader); res.end(JSON.stringify({ error: 'Task not found' })); return; }
+
+  try {
+    const registryId = task.agentRegistryId;
+    if (registryId && terminalManager?.hasTerminal?.(registryId)) {
+      terminalManager.destroyTerminal(registryId);
+    }
+    if (registryId && agentRegistryRef) {
+      agentRegistryRef.unlinkSession(registryId);
+    }
+
+    if (process.platform === 'win32') await new Promise(r => setTimeout(r, 3000));
+
+    const agent = registryId && agentRegistryRef ? agentRegistryRef.getAgent(registryId) : null;
+    if (agent?.workspace) {
+      workspaceManager.mergeWorkspace(agent.workspace);
+      agentRegistryRef.updateAgent(registryId, { workspace: null, projectPath: agent.workspace.repositoryPath });
+    }
+
+    res.writeHead(200, jsonHeader);
+    res.end(JSON.stringify({ success: true }));
+  } catch (e: any) {
+    res.writeHead(500, jsonHeader);
+    res.end(JSON.stringify({ error: e.message }));
+  }
+}
+
+async function handleTaskReject(req: RequestLike, res: ResponseLike, taskId: string): Promise<void> {
+  const { orchestrator, workspaceManager, agentRegistryRef, terminalManager } = getRefs();
+  if (!orchestrator || !workspaceManager) { res.writeHead(503, jsonHeader); res.end(JSON.stringify({ error: 'Not available' })); return; }
+
+  const task = orchestrator.getTask(taskId);
+  if (!task) { res.writeHead(404, jsonHeader); res.end(JSON.stringify({ error: 'Task not found' })); return; }
+
+  try {
+    const registryId = task.agentRegistryId;
+    if (registryId && terminalManager?.hasTerminal?.(registryId)) {
+      terminalManager.destroyTerminal(registryId);
+    }
+    if (registryId && agentRegistryRef) {
+      agentRegistryRef.unlinkSession(registryId);
+    }
+
+    if (process.platform === 'win32') await new Promise(r => setTimeout(r, 3000));
+
+    const agent = registryId && agentRegistryRef ? agentRegistryRef.getAgent(registryId) : null;
+    if (agent?.workspace) {
+      workspaceManager.removeWorkspace(agent.workspace, { deleteBranch: true });
+      agentRegistryRef.updateAgent(registryId, { workspace: null, projectPath: agent.workspace.repositoryPath });
+    }
+
+    res.writeHead(200, jsonHeader);
+    res.end(JSON.stringify({ success: true }));
+  } catch (e: any) {
+    res.writeHead(500, jsonHeader);
+    res.end(JSON.stringify({ error: e.message }));
+  }
+}
+
+const jsonHeader = { 'Content-Type': 'application/json' };
 
 const apiRoutes = {
   'GET /api/events': handleSSE,

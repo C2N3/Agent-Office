@@ -392,9 +392,25 @@ export const officeCharacters: any = {
     }
 
     if (text) {
+      // Don't overwrite a report bubble with normal status updates
+      if (char.bubble && char.bubble.isReport) return;
       // working/thinking/help/error states are displayed persistently while active
       const isPersistent = (status === 'working' || status === 'thinking' || status === 'help' || status === 'error');
       char.bubble = { text: text, icon: icon, expiresAt: isPersistent ? Infinity : Date.now() + 8000 };
+    }
+  },
+
+  setReportBubble: function (agentId, taskId) {
+    const char = this.characters.get(agentId);
+    if (!char) return;
+    char.bubble = { text: '작업 완료! 보고드릴게요', icon: null, expiresAt: Infinity, isReport: true, taskId: taskId };
+  },
+
+  clearReportBubble: function (agentId) {
+    const char = this.characters.get(agentId);
+    if (!char) return;
+    if (char.bubble && char.bubble.isReport) {
+      char.bubble = null;
     }
   },
 

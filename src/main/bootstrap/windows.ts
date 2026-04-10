@@ -25,7 +25,7 @@ function createApplicationWindowManager({
   });
 }
 
-function startDashboardRuntime({ windowManager, orchestrator, debugLog }) {
+function startDashboardRuntime({ windowManager, orchestrator, workspaceManager, terminalManager, debugLog }) {
   windowManager.startDashboardServer();
 
   if (!orchestrator) {
@@ -35,6 +35,8 @@ function startDashboardRuntime({ windowManager, orchestrator, debugLog }) {
   try {
     const serverModule = require('../../dashboardServer/index.js');
     serverModule.setOrchestrator(orchestrator);
+    if (workspaceManager) serverModule.setWorkspaceManager(workspaceManager);
+    if (terminalManager) serverModule.setTerminalManager(terminalManager);
   } catch (error) {
     debugLog(`[Main] Failed to wire orchestrator to dashboard: ${error.message}`);
   }

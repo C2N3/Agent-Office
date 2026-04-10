@@ -85,6 +85,7 @@ class TaskStore {
       exitCode: null,
       errorMessage: null,
       lastOutput: null,
+      outputPath: null,
 
       autoMergeOnSuccess: input.autoMergeOnSuccess ?? false,
       deleteBranchOnMerge: input.deleteBranchOnMerge ?? true,

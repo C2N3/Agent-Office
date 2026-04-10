@@ -130,6 +130,14 @@ export function setupOfficeClickHandler(openTerminalForAgent: (agentId: string, 
   canvas.addEventListener('click', (event) => {
     const character = hitTestOfficeCharacter(canvas, event);
     if (character) {
+      // If the character has a report bubble, open the report modal instead of popover
+      if (character.bubble && character.bubble.isReport && character.bubble.taskId) {
+        const openReport = (globalThis as any).openTaskReportModal;
+        if (openReport) {
+          openReport(character.bubble.taskId);
+          return;
+        }
+      }
       showOfficePopover(canvas, character, openTerminalForAgent);
     } else {
       hideOfficePopover();

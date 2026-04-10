@@ -36,6 +36,7 @@ import {
   setupAvatarPicker,
   setupConversationViewer,
   setupNicknameEdit,
+  setupTaskReportModal,
 } from './modals.js';
 
 type DashboardUiError = Error | { message?: string } | DisplayValue;
@@ -268,6 +269,7 @@ function initApp() {
   setupAssignTaskModal();
   setupAvatarPicker(updateAgentUI);
   setupConversationViewer(resumeRegisteredSession);
+  setupTaskReportModal();
 
   window.addEventListener('resize', () => {
     fitActiveTerminal();

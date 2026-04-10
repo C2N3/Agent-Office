@@ -92,21 +92,26 @@ export function drawOfficeBubble(ctx, agent) {
     const boxX = baseX - boxW / 2;
     const boxY = bubbleY - boxH;
 
+    const isReport = !!agent.bubble.isReport;
+    const bgColor = isReport ? 'rgba(34, 197, 94, 0.95)' : 'rgba(255, 255, 255, 0.95)';
+    const borderColor = isReport ? 'rgba(22, 163, 74, 0.7)' : 'rgba(203, 213, 225, 0.5)';
+    const textColor = isReport ? '#fff' : '#0f172a';
+
     // Bubble background
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+    ctx.fillStyle = bgColor;
     ctx.beginPath();
     ctx.roundRect(boxX, boxY, boxW, boxH, Math.round(8 * S));
     ctx.fill();
 
     // Border
     ctx.lineWidth = Math.round(2 * S);
-    ctx.strokeStyle = 'rgba(203, 213, 225, 0.5)';
+    ctx.strokeStyle = borderColor;
     ctx.stroke();
 
     // Tail
     const tailW = Math.round(6 * S);
     const tailH = Math.round(7 * S);
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+    ctx.fillStyle = bgColor;
     ctx.beginPath();
     ctx.moveTo(baseX - tailW, boxY + boxH);
     ctx.lineTo(baseX + tailW, boxY + boxH);
@@ -114,13 +119,13 @@ export function drawOfficeBubble(ctx, agent) {
     ctx.closePath();
     ctx.fill();
     ctx.lineWidth = Math.round(2 * S);
-    ctx.strokeStyle = 'rgba(203, 213, 225, 0.5)';
+    ctx.strokeStyle = borderColor;
     ctx.stroke();
 
     // Text
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#0f172a';
+    ctx.fillStyle = textColor;
     ctx.fillText(text, baseX, boxY + boxH / 2);
   }
 
