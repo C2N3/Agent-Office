@@ -201,6 +201,84 @@ export const officeCharacters: any = {
     }
   },
 
+  /** Called when a user drops a dragged character. Places the character at
+   *  (x, y), unpins, releases any prior desk, and routes them to the nearest
+   *  available work spot (if their state needs a desk) or nearest rest spot
+   *  (otherwise). The normal update loop then walks them there. */
+  dropCharacterAt: function (agentId, x, y) {
+    const char = this.characters.get(agentId);
+    if (!char) return;
+    char.x = x;
+    char.y = y;
+    char.manualPinned = false;
+    char.path = [];
+    char.pathIndex = 0;
+
+    // Always release any prior desk; we re-pick based on the new position.
+    if (char.deskIndex !== undefined) {
+      this.seatAssignments.delete(char.deskIndex);
+      char.deskIndex = undefined;
+    }
+    char.deskOverflow = false;
+
+    const zone = (STATE_ZONE_MAP as any)[char.agentState] || 'idle';
+    if (zone === 'desk') {
+      // Working / thinking / error / help → claim the nearest available desk
+      const usedDesks = new Set(this.seatAssignments.keys());
+      const deskCoords: any[] = officeCoords.desk || [];
+      let bestIdx = -1;
+      let bestDist = Infinity;
+      for (let i = 0; i < deskCoords.length; i++) {
+        if (usedDesks.has(i)) continue;
+        const ddx = deskCoords[i].x - x;
+        const ddy = deskCoords[i].y - y;
+        const dd = ddx * ddx + ddy * ddy;
+        if (dd < bestDist) {
+          bestDist = dd;
+          bestIdx = i;
+        }
+      }
+      if (bestIdx >= 0) {
+        char.deskIndex = bestIdx;
+        this.seatAssignments.set(bestIdx, agentId);
+      } else {
+        char.deskOverflow = true;
+      }
+      // _updateTarget will compute a path on the next tick.
+    } else {
+      // Idle / done → route directly to the nearest unoccupied idle spot.
+      const idleCoords: any[] = officeCoords.idle || [];
+      const occupied: Record<string, boolean> = {};
+      this.characters.forEach(function (a) {
+        if (a.id === char.id) return;
+        let ax = Math.floor(a.x), ay = Math.floor(a.y);
+        if (a.path.length > 0) {
+          const t = a.path[a.path.length - 1];
+          ax = Math.floor(t.x);
+          ay = Math.floor(t.y);
+        }
+        occupied[ax + ',' + ay] = true;
+      });
+      let bestSpot: any = null;
+      let bestDist = Infinity;
+      for (let i = 0; i < idleCoords.length; i++) {
+        const p = idleCoords[i];
+        if (occupied[Math.floor(p.x) + ',' + Math.floor(p.y)]) continue;
+        const ddx = p.x - x;
+        const ddy = p.y - y;
+        const dd = ddx * ddx + ddy * ddy;
+        if (dd < bestDist) {
+          bestDist = dd;
+          bestSpot = p;
+        }
+      }
+      if (bestSpot) {
+        char.path = officePathfinder.findPath(char.x, char.y, bestSpot.x, bestSpot.y);
+        char.pathIndex = 0;
+      }
+    }
+  },
+
   updateAll: function (deltaSec, deltaMs) {
     const self = this;
     this.characters.forEach(function (char) {
@@ -296,13 +374,13 @@ export const officeCharacters: any = {
   },
 
   _updateMovement: function (char, deltaSec) {
-    // Manually pinned — stay put with a plain idle animation in current facing direction
+    // Manually pinned by user drag — skip auto movement entirely. Don't touch
+    // currentAnim so whatever animation was playing keeps cycling each frame
+    // via tickOfficeAnimation (the drag handler picks the appropriate walk
+    // anim based on cursor motion).
     if (char.manualPinned) {
       char.path = [];
       char.pathIndex = 0;
-      const dir = char.facingDir || 'down';
-      const idleAnim = dir + '_idle';
-      if (char.currentAnim !== idleAnim) char.currentAnim = idleAnim;
       return;
     }
 
