@@ -422,6 +422,7 @@ function createXtermInstance(agentId, label) {
       if (fitAddon) {
         try {
           fitAddon.fit();
+          xterm.scrollToBottom();
         } catch (error) {
           console.warn('[Terminal UI] fit error:', error);
         }
@@ -459,6 +460,7 @@ function createXtermInstance(agentId, label) {
     if (termState.activeId === agentId && fitAddon) {
       try {
         fitAddon.fit();
+        xterm.scrollToBottom();
         if (dashboardAPI?.resizeTerminal) {
           dashboardAPI.resizeTerminal(agentId, xterm.cols, xterm.rows);
         }
@@ -507,6 +509,7 @@ function activateTerminalTab(agentId) {
   termState.activeId = agentId;
   requestAnimationFrame(() => {
     terminal.fitAddon?.fit();
+    terminal.xterm.scrollToBottom();
     terminal.xterm.focus();
   });
 }
