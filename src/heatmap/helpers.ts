@@ -4,7 +4,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { getCodexSessionRoots } = require('./main/codexPaths');
+const { getCodexSessionRoots } = require('../main/codexPaths');
 
 const MODEL_PRICING = {
   'claude-opus-4-6': { inputPerMillion: 15, outputPerMillion: 75 },

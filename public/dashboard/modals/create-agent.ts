@@ -1,6 +1,6 @@
 // @ts-nocheck
 
-import { getDashboardAPI } from './shared.js';
+import { getDashboardAPI } from '../shared.js';
 import {
   buildFallbackBranchName,
   pickDirectory,
@@ -9,7 +9,7 @@ import {
   submitAgentCreateForm,
   updatePreviewCopy,
   updateWorktreeFieldState,
-} from './agentCreateModalHelpers.js';
+} from './workspace-form.js';
 
 export function setupAgentModal(openTerminalForAgent) {
   const modal = document.getElementById('createAgentModal');

@@ -14,7 +14,7 @@ const {
   resetIdleTimer,
   saveTaskOutput,
   withRepoLock,
-} = require('./runtimeHelpers');
+} = require('./runtime');
 
 const TICK_INTERVAL_MS = 2000;
 const MAX_CONCURRENT_TASKS = 5;

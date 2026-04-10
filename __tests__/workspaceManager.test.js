@@ -11,7 +11,7 @@ const {
   WorkspaceManager,
   buildSuggestedBranchName,
   slugifyBranchName,
-} = require('../src/main/workspaceManager');
+} = require('../src/main/workspace');
 
 describe('WorkspaceManager', () => {
   let tempRoot;

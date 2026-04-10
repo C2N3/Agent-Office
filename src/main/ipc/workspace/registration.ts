@@ -1,5 +1,5 @@
 // @ts-nocheck
-const { normalizePath } = require('../agentRegistry');
+const { normalizePath } = require('../../registry');
 
 function normalizeStrategy(value) {
   return value === 'worktree' || value === 'existing' ? value : 'auto';

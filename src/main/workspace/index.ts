@@ -2,7 +2,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
-const { sanitizeProjectPath } = require('../utils');
+const { sanitizeProjectPath } = require('../../utils');
 const {
   GLOBAL_WORKTREE_DIR,
   buildSuggestedBranchName,
@@ -12,7 +12,7 @@ const {
   inspectWorkspacePath,
   copyIntoWorkspace,
   symlinkIntoWorkspace,
-} = require('./workspaceManagerHelpers');
+} = require('./helpers');
 
 class WorkspaceManager {
   constructor({ debugLog } = {}) {

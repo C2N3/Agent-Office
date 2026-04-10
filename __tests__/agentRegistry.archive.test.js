@@ -20,7 +20,7 @@ describe('AgentRegistry archived workspaces', () => {
   });
 
   test('returns only archived workspace agents sorted by archivedAt desc', () => {
-    const { AgentRegistry } = require('../src/main/agentRegistry');
+    const { AgentRegistry } = require('../src/main/registry');
     const registry = new AgentRegistry(() => {});
 
     const activeWorkspace = registry.createAgent({

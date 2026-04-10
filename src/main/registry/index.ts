@@ -9,7 +9,7 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 const crypto = require('crypto');
-const { sanitizeProjectPath } = require('../utils');
+const { sanitizeProjectPath } = require('../../utils');
 const {
   normalizePath,
   sanitizeWorkspace,
@@ -21,7 +21,7 @@ const {
   getAgentSessionHistory,
   findAgentSessionHistoryEntry,
   findAgentByProjectPath,
-} = require('./agentRegistryHelpers');
+} = require('./shared');
 
 const PERSIST_DIR = path.join(os.homedir(), '.agent-office');
 const PERSIST_FILE = path.join(PERSIST_DIR, 'agent-registry.json');

@@ -6,7 +6,7 @@ jest.mock('fs', () => ({
   renameSync: jest.fn(),
 }));
 
-const { AgentRegistry, normalizePath } = require('../src/main/agentRegistry');
+const { AgentRegistry, normalizePath } = require('../src/main/registry');
 
 describe('agentRegistry.normalizePath', () => {
   const originalPlatform = process.platform;

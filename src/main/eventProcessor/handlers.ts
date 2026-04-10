@@ -31,10 +31,10 @@ export function createEventHandlers({
   updateSource = 'event',
   state,
 }: EventHandlerOptions) {
-  const { createProcessEventHandler } = require('./processEvent.js') as {
+  const { createProcessEventHandler } = require('./process.js') as {
     createProcessEventHandler: (options: any) => (event: any) => void;
   };
-  const { createSessionLifecycleHandlers } = require('./sessionLifecycle.js') as {
+  const { createSessionLifecycleHandlers } = require('./sessions.js') as {
     createSessionLifecycleHandlers: (options: any) => {
       handlePidReconnect: (event: any) => void;
       handleSessionStart: (sessionId: string, cwd: string, pid?: number, options?: Partial<SessionStateOptions>) => void;

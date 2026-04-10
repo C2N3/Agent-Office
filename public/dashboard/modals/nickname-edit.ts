@@ -1,6 +1,6 @@
 // @ts-nocheck
 
-import { getDashboardAPI } from './shared.js';
+import { getDashboardAPI } from '../shared.js';
 
 export function setupNicknameEdit() {
   const panel = document.getElementById('agentPanel');

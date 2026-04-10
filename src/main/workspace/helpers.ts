@@ -2,7 +2,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { sanitizeProjectPath } = require('../utils');
+const { sanitizeProjectPath } = require('../../utils');
 
 const GLOBAL_WORKTREE_DIR = path.join(os.homedir(), '.agent-office', 'worktrees');
 

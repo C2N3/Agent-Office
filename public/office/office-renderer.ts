@@ -7,7 +7,7 @@
 /* eslint-disable no-unused-vars */
 
 import { OFFICE, OFFICE_LAYOUT } from './office-config.js';
-import { officeCharacters } from './office-character.js';
+import { officeCharacters } from './character/index.js';
 import { officeCoords, parseMapCoordinates, parseObjectCoordinates } from './office-coords.js';
 import { buildOfficeLayers, officeLayers } from './office-layers.js';
 import { officePathfinder } from './office-pathfinder.js';

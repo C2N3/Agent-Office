@@ -1,6 +1,6 @@
 // @ts-nocheck
 
-import { dashboardResumeUtils, getDashboardAPI, termState } from './shared.js';
+import { dashboardResumeUtils, getDashboardAPI, termState } from '../shared.js';
 import {
   activateTerminalTab,
   createXtermInstance,
@@ -11,7 +11,7 @@ import {
   refreshTerminalProfiles,
   resumeLatestRegisteredSession,
   closeTerminal,
-} from './terminalHelpers.js';
+} from './ui.js';
 
 export function initTerminals() {
   const dashboardAPI = getDashboardAPI();

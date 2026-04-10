@@ -1,10 +1,10 @@
 // @ts-nocheck
 
-import { escapeText, getDashboardAPI } from './shared.js';
+import { escapeText, getDashboardAPI } from '../shared.js';
 import {
   getEffectiveRegistrationStrategy,
   getRegistrationDecisionMessage,
-} from './agentRegistration.js';
+} from '../registration/decision.js';
 
 export function setPreviewStatus(previewStatusEl, message) {
   if (previewStatusEl) previewStatusEl.textContent = message;

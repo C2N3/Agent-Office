@@ -4,7 +4,7 @@ import {
   SHARED_AVATAR_FILES,
   getDashboardAPI,
   state,
-} from './shared.js';
+} from '../shared.js';
 import { officeCharacters } from '../office/index.js';
 
 export function setupAvatarPicker(updateAgentUI) {

@@ -7,7 +7,7 @@
 /* eslint-disable no-unused-vars */
 
 import { loadAvatarFiles, loadOfficeLayout, loadSpriteFrames } from './office-config.js';
-import { officeCharacters } from './office-character.js';
+import { officeCharacters } from './character/index.js';
 import { officeRenderer } from './office-renderer.js';
 
 let officeInitialized = false;

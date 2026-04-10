@@ -1,7 +1,7 @@
 const {
   getEffectiveRegistrationStrategy,
   getRegistrationDecisionMessage,
-} = require('../public/dashboard/agentRegistration.ts');
+} = require('../public/dashboard/registration/decision.ts');
 
 describe('agentRegistration helpers', () => {
   test('defaults to direct registration without a worktree preview', () => {

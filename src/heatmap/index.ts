@@ -18,7 +18,7 @@ const {
   pruneOldDays,
   savePersisted,
   scanFile,
-} = require('./heatmapScannerHelpers');
+} = require('./helpers');
 
 class HeatmapScanner {
   constructor(debugLog = () => {}) {

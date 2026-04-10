@@ -1,6 +1,6 @@
 // @ts-nocheck
 const path = require('path');
-const { sanitizeProjectPath } = require('../utils');
+const { sanitizeProjectPath } = require('../../utils');
 
 function convertWslPathToWindowsDrivePath(rawPath) {
   if (typeof rawPath !== 'string' || !rawPath) return rawPath;

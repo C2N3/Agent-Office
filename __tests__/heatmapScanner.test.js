@@ -6,7 +6,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const HeatmapScanner = require('../src/heatmapScanner');
+const HeatmapScanner = require('../src/heatmap');
 
 // Temporary directory for tests
 let tmpDir;

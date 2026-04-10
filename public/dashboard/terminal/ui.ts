@@ -6,7 +6,7 @@ import {
   getDashboardAPI,
   state,
   termState,
-} from './shared.js';
+} from '../shared.js';
 
 function getTerminalProfile(profileId) {
   return termState.profiles.find((profile) => profile.id === profileId) || null;

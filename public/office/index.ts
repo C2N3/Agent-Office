@@ -12,7 +12,7 @@ export {
   loadOfficeLayout,
   loadSpriteFrames,
 } from './office-config.js';
-export { officeCharacters } from './office-character.js';
+export { officeCharacters } from './character/index.js';
 export { officeCoords, parseMapCoordinates, parseObjectCoordinates } from './office-coords.js';
 export { initOffice, officeOnAgentCreated, officeOnAgentRemoved, officeOnAgentUpdated, resumeOffice, stopOffice } from './office-init.js';
 export { buildOfficeLayers, loadOfficeDecorItems, loadOfficeImage, officeLayers } from './office-layers.js';

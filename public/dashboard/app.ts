@@ -28,7 +28,7 @@ import {
   openTerminalForAgent,
   refreshTerminalProfiles,
   resumeRegisteredSession,
-} from './terminal.js';
+} from './terminal/index.js';
 import { initOffice } from '../office/index.js';
 import {
   setupAgentModal,
@@ -37,7 +37,7 @@ import {
   setupConversationViewer,
   setupNicknameEdit,
   setupTaskReportModal,
-} from './modals.js';
+} from './modals/index.js';
 
 type DashboardUiError = Error | { message?: string } | DisplayValue;
 

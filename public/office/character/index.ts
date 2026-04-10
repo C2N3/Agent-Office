@@ -21,7 +21,7 @@ import {
   updateCharacter,
   updateMovement,
   updateTarget,
-} from './office-character-behavior.js';
+} from './behavior.js';
 
 export const officeCharacters: any = {
   characters: new Map(),

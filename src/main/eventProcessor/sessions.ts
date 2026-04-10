@@ -176,7 +176,7 @@ export function createSessionLifecycleHandlers(options: any) {
     if (!agentManager || !agentRegistry || !registryAgent || !registryAgent.id) return null;
     if (!canBindRegistryAgent(registryAgent)) return null;
 
-    const { normalizePath } = require('../agentRegistry.js') as {
+    const { normalizePath } = require('../registry') as {
       normalizePath: (value: string | null | undefined) => string;
     };
     const targetPath = normalizePath(registryAgent.projectPath);
