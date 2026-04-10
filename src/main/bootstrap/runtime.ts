@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 
 function installStartupLogging({ app, processRef = process, consoleRef = console }) {
-  const logDir = app.isPackaged ? app.getPath('userData') : __dirname;
+  const logDir = app.isPackaged ? app.getPath('userData') : path.join(__dirname, '..', '..');
   const errorLogPath = path.join(logDir, 'startup-error.log');
   const originalConsoleError = consoleRef.error;
 
@@ -53,6 +53,13 @@ function installStartupLogging({ app, processRef = process, consoleRef = console
 }
 
 function configureRuntime({ app, processRef = process }) {
+  if (processRef.platform === 'win32') {
+    try {
+      const { execSync } = require('child_process');
+      execSync('chcp 65001', { stdio: 'ignore' });
+    } catch {}
+  }
+
   app.commandLine.appendSwitch('high-dpi-support', '1');
   app.commandLine.appendSwitch('force-device-scale-factor', '1');
   app.commandLine.appendSwitch('disable-logging');

@@ -44,6 +44,7 @@ function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowM
   registerWorkspaceHandlers({
     agentManager,
     agentRegistry,
+    terminalManager,
     workspaceManager,
     attachRegisteredAgent,
     debugLog,

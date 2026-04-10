@@ -1279,6 +1279,7 @@ body {
 .terminal-tab-dot.thinking { background: var(--color-state-thinking); }
 .terminal-tab-dot.done { background: var(--color-state-done); }
 .terminal-tab-dot.error { background: var(--color-state-error); }
+.terminal-tab-dot.exited { background: var(--color-text-dark); opacity: 0.4; }
 
 .terminal-tab-close {
   opacity: 0;

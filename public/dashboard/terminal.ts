@@ -15,7 +15,15 @@ export function initTerminals() {
   if (dashboardAPI.onTerminalData) {
     termState.dataCleanup = dashboardAPI.onTerminalData((agentId, data) => {
       const terminal = termState.terminals.get(agentId);
-      if (terminal) terminal.xterm.write(data);
+      if (terminal) {
+        terminal.xterm.write(data);
+      } else {
+        // Buffer data for terminals whose xterm instance hasn't been created yet.
+        // This prevents output loss when the backend terminal starts before the frontend tab opens.
+        if (!termState._pendingData) (termState as any)._pendingData = new Map();
+        const buf = (termState as any)._pendingData;
+        buf.set(agentId, (buf.get(agentId) || '') + data);
+      }
     });
   }
 
@@ -24,8 +32,11 @@ export function initTerminals() {
       const terminal = termState.terminals.get(agentId);
       if (terminal) {
         terminal.xterm.writeln(`\r\n\x1b[90m[Process exited with code ${exitCode}]\x1b[0m`);
-        // Auto-close the terminal tab after process exits so stale content doesn't linger
-        setTimeout(() => closeTerminal(agentId), 600);
+        // Mark the tab as finished instead of auto-closing so the user can read the output
+        if (terminal.tab) {
+          const dot = terminal.tab.querySelector('.terminal-tab-dot');
+          if (dot) dot.classList.add('exited');
+        }
       }
     });
   }
@@ -391,6 +402,13 @@ function createXtermInstance(agentId, label) {
   }
 
   xterm.open(element);
+
+  // Flush any data that arrived before the xterm instance was created
+  const pendingBuf = (termState as any)._pendingData as Map<string, string> | undefined;
+  if (pendingBuf?.has(agentId)) {
+    xterm.write(pendingBuf.get(agentId)!);
+    pendingBuf.delete(agentId);
+  }
 
   const tab = addTerminalTab(agentId, label);
   termState.terminals.set(agentId, { xterm, fitAddon, element, tab });

@@ -5,6 +5,7 @@ const { dashboardIpcChannels } = require('../../shared/contracts/ipc');
 function registerWorkspaceHandlers({
   agentManager,
   agentRegistry,
+  terminalManager,
   workspaceManager,
   attachRegisteredAgent,
   debugLog,
@@ -92,15 +93,24 @@ function registerWorkspaceHandlers({
     try {
       const agent = agentRegistry.getAgent(registryId);
       if (!agent) return { success: false, error: 'Agent not found' };
-      if (agent.currentSessionId) return { success: false, error: 'Stop the active session before merging this workspace.' };
       if (!agent.workspace) return { success: false, error: 'No managed workspace is attached to this agent.' };
 
-      const result = workspaceManager.mergeWorkspace(agent.workspace);
-      agentRegistry.archiveAgent(registryId);
-      const existing = agentManager.getAgent(registryId);
-      if (existing && existing.state === 'Offline') {
-        agentManager.removeAgent(registryId);
+      if (terminalManager?.hasTerminal?.(registryId)) {
+        terminalManager.destroyTerminal(registryId);
       }
+      agentRegistry.unlinkSession(registryId);
+
+      if (process.platform === 'win32') {
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+      }
+
+      const result = workspaceManager.mergeWorkspace(agent.workspace);
+      agentRegistry.updateAgent(registryId, { workspace: null });
+      agentManager.updateAgent({
+        registryId,
+        state: 'Offline',
+        workspace: null,
+      }, 'workspace-merge');
 
       return { success: true, result };
     } catch (error) {
@@ -113,15 +123,24 @@ function registerWorkspaceHandlers({
     try {
       const agent = agentRegistry.getAgent(registryId);
       if (!agent) return { success: false, error: 'Agent not found' };
-      if (agent.currentSessionId) return { success: false, error: 'Stop the active session before removing this workspace.' };
       if (!agent.workspace) return { success: false, error: 'No managed workspace is attached to this agent.' };
 
-      const result = workspaceManager.removeWorkspace(agent.workspace, { deleteBranch: true });
-      agentRegistry.archiveAgent(registryId);
-      const existing = agentManager.getAgent(registryId);
-      if (existing && existing.state === 'Offline') {
-        agentManager.removeAgent(registryId);
+      if (terminalManager?.hasTerminal?.(registryId)) {
+        terminalManager.destroyTerminal(registryId);
       }
+      agentRegistry.unlinkSession(registryId);
+
+      if (process.platform === 'win32') {
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+      }
+
+      const result = workspaceManager.removeWorkspace(agent.workspace, { deleteBranch: true });
+      agentRegistry.updateAgent(registryId, { workspace: null });
+      agentManager.updateAgent({
+        registryId,
+        state: 'Offline',
+        workspace: null,
+      }, 'workspace-remove');
 
       return { success: true, result };
     } catch (error) {
