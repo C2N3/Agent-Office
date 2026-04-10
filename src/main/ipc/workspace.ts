@@ -1,5 +1,4 @@
 // @ts-nocheck
-
 const { dialog, ipcMain } = require('electron');
 const { dashboardIpcChannels } = require('../../shared/contracts/ipc');
 
