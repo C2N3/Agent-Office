@@ -220,7 +220,7 @@ class WorkspaceManager {
 
       this.runGit(repoRoot, ['merge', '--no-edit', branchName]);
       this.runGit(repoRoot, ['worktree', 'remove', worktreePath]);
-      this.runGit(repoRoot, ['branch', '-d', branchName]);
+      this.runGit(repoRoot, ['branch', '-D', branchName]);
 
       if (shouldRestore) {
         this.runGit(repoRoot, ['checkout', originalBranch]);
@@ -268,7 +268,7 @@ class WorkspaceManager {
     this.ensureClean(worktreePath, 'Workspace');
     this.runGit(repoRoot, ['worktree', 'remove', worktreePath]);
     if (deleteBranch) {
-      this.runGit(repoRoot, ['branch', '-d', branchName]);
+      this.runGit(repoRoot, ['branch', '-D', branchName]);
     }
 
     this.debugLog(`[Workspace] Removed ${worktreePath} (${branchName})`);
