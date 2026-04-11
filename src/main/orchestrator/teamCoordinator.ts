@@ -26,7 +26,17 @@ class TeamCoordinator extends EventEmitter {
     const shortId = team.id.slice(0, 8);
     const integrationBranch = `team/${shortId}`;
 
-    this.teamStore.updateTeam(team.id, { integrationBranch });
+    // Detect the actual base branch from the repository
+    let baseBranch = team.baseBranch;
+    try {
+      const repoRoot = this.workspaceManager.resolveRepositoryRoot(team.repositoryPath);
+      baseBranch = this.workspaceManager.getCurrentBranch(repoRoot) || 'HEAD';
+      this.debugLog(`[Team] Detected base branch: ${baseBranch}`);
+    } catch (e) {
+      this.debugLog(`[Team] Could not detect base branch: ${e.message}`);
+    }
+
+    this.teamStore.updateTeam(team.id, { integrationBranch, baseBranch });
 
     // Submit planning task to the leader
     const memberDescriptions = team.memberAgentIds
