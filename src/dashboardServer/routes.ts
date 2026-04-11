@@ -73,9 +73,12 @@ function handleRequest(req: RequestLike, res: ResponseLike): void {
   if (pathname.startsWith('/lib/')) {
     const libMap: Record<string, string> = {
       '/lib/xterm.js': 'node_modules/@xterm/xterm/lib/xterm.js',
+      '/lib/xterm.js.map': 'node_modules/@xterm/xterm/lib/xterm.js.map',
       '/lib/xterm.css': 'node_modules/@xterm/xterm/css/xterm.css',
       '/lib/xterm-addon-fit.js': 'node_modules/@xterm/addon-fit/lib/addon-fit.js',
+      '/lib/addon-fit.js.map': 'node_modules/@xterm/addon-fit/lib/addon-fit.js.map',
       '/lib/xterm-addon-web-links.js': 'node_modules/@xterm/addon-web-links/lib/addon-web-links.js',
+      '/lib/addon-web-links.js.map': 'node_modules/@xterm/addon-web-links/lib/addon-web-links.js.map',
     };
     const mapped = libMap[pathname];
     if (mapped) {

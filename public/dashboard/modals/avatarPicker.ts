@@ -5,7 +5,7 @@ import {
   getDashboardAPI,
   state,
 } from '../shared.js';
-import { officeCharacters } from '../office/index.js';
+import { officeCharacters } from '../../office/index.js';
 
 export function setupAvatarPicker(updateAgentUI) {
   const modal = document.getElementById('avatarPickerModal');

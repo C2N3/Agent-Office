@@ -64,7 +64,7 @@ function createSecondaryWindowControls(options) {
         nodeIntegration: false,
         contextIsolation: true,
         sandbox: false,
-        preload: path.join(__dirname, '..', 'overlayPreload.js'),
+        preload: path.join(__dirname, '..', '..', '..', 'overlayPreload.js'),
       },
     });
 
@@ -116,7 +116,7 @@ function createSecondaryWindowControls(options) {
           nodeIntegration: false,
           contextIsolation: true,
           sandbox: false,
-          preload: path.join(__dirname, '..', 'dashboardPreload.js'),
+          preload: path.join(__dirname, '..', '..', '..', 'dashboardPreload.js'),
         },
       });
 
@@ -183,7 +183,7 @@ function createSecondaryWindowControls(options) {
         nodeIntegration: false,
         contextIsolation: true,
         sandbox: false,
-        preload: path.join(__dirname, '..', 'pipPreload.js'),
+        preload: path.join(__dirname, '..', '..', '..', 'pipPreload.js'),
       },
     });
 

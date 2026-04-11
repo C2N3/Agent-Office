@@ -14,6 +14,7 @@ import { officePathfinder } from './officePathfinder.js';
 import { drawOfficeSprite, loadAllOfficeSkins } from './officeSprite.js';
 import { drawOfficeBubble, drawOfficeNameTag } from './officeUi.js';
 import { screenToWorld, setupCameraControls } from './renderer/camera.js';
+import { rendererEffects } from './officeRendererEffects.js';
 
 export const officeRenderer: any = {
   canvas: null,

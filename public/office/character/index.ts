@@ -33,6 +33,9 @@ import {
 export const officeCharacters: any = {
   characters: new Map(),
   seatAssignments: new Map(),
+  getCharacterArray: function () {
+    return Array.from(this.characters.values());
+  },
   addCharacter,
   updateCharacter,
   removeCharacter,

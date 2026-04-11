@@ -348,6 +348,18 @@ describe('dashboard-server', () => {
       }));
     });
 
+    test('/lib/* serves bundled xterm source maps', () => {
+      const fs = require('fs');
+      fs.readFile.mockImplementation((_path, cb) => cb(null, Buffer.from('{}')));
+
+      const { req, res } = createMockReqRes('GET', '/lib/xterm.js.map');
+      handler(req, res);
+
+      expect(res.writeHead).toHaveBeenCalledWith(200, expect.objectContaining({
+        'Content-Type': 'application/octet-stream',
+      }));
+    });
+
     test('path traversal via ../ is prevented by URL normalization', () => {
       // URL class normalizes /public/../../etc/passwd → /etc/passwd
       // which doesn't start with /public/, so falls through to general 404
