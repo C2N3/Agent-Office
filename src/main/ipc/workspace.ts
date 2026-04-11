@@ -105,8 +105,11 @@ function registerWorkspaceHandlers({
           throw new Error('Managed worktree creation requires a Git repository path');
         }
 
+        // Omit workspacePath from data — it's the original repo path, not the worktree target.
+        // createWorkspace will compute the correct worktree path from workspaceParent + branchName.
+        const { workspacePath: _omit, ...worktreeData } = data;
         const workspaceResult = workspaceManager.createWorkspace({
-          ...data,
+          ...worktreeData,
           repoPath: preview.repositoryPath,
           branchName: String(data.branchName || '').trim() || preview.worktreeDefaults?.branchName,
           baseBranch: String(data.baseBranch || '').trim() || preview.worktreeDefaults?.baseBranch,
