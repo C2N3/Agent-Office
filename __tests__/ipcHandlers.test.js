@@ -3,9 +3,12 @@ const childProcess = require('child_process');
 
 const { registerIpcHandlers } = require('../src/main/ipcHandlers');
 
+const ORIGINAL_PLATFORM = Object.getOwnPropertyDescriptor(process, 'platform');
+
 describe('ipcHandlers focus-terminal recovery', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    Object.defineProperty(process, 'platform', ORIGINAL_PLATFORM);
   });
 
   test('marks registered agents as stale immediately when pid is missing but the session is resumable', async () => {
@@ -104,6 +107,7 @@ describe('ipcHandlers focus-terminal recovery', () => {
   });
 
   test('launches an external resume terminal for main-window focus requests when pid is missing', async () => {
+    Object.defineProperty(process, 'platform', { value: 'win32' });
     const spawnSpy = jest.spyOn(childProcess, 'spawn').mockImplementation(() => ({
       unref: jest.fn(),
     }));
