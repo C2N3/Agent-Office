@@ -32,11 +32,19 @@ function handleTaskSuccess(orchestrator, taskId) {
     const regAgent = orchestrator.agentRegistry.getAgent(task.agentRegistryId);
     const originalPath = regAgent?.workspace?.repositoryPath || task.repositoryPath;
     orchestrator.agentRegistry.updateAgent(task.agentRegistryId, { projectPath: originalPath });
+
+    // Check if this task belongs to a team — if so, skip individual report bubble.
+    // The team coordinator will show the report on the leader when ALL subtasks complete.
+    const isTeamTask = orchestrator.teamCoordinator && (() => {
+      const teams = orchestrator.teamCoordinator.teamStore.getAllTeams();
+      return teams.some(t => t.planningTaskId === task.id || (t.subtaskIds && t.subtaskIds.includes(task.id)));
+    })();
+
     orchestrator.agentManager.updateAgent({
       registryId: task.agentRegistryId,
-      state: 'done',
+      state: isTeamTask ? 'Offline' : 'done',
       projectPath: originalPath,
-      reportTaskId: task.id,
+      reportTaskId: isTeamTask ? null : task.id,
     }, 'orchestrator');
   }
 

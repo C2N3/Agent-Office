@@ -182,6 +182,7 @@ app.whenReady().then(() => {
     workspaceManager,
     debugLog,
   });
+  orchestrator.teamCoordinator = teamCoordinator;
 
   // 5. Register IPC handlers
   registerIpcHandlers({

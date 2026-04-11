@@ -38,6 +38,7 @@ class Orchestrator extends EventEmitter {
     this.taskOutputBytes = new Map(); // taskId -> total bytes received
 
     this.tickInterval = null;
+    this.teamCoordinator = null; // Set after TeamCoordinator is created
   }
 
   // === Lifecycle ===
