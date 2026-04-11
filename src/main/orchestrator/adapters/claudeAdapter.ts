@@ -73,7 +73,10 @@ class ClaudeAdapter {
   }
 
   buildStdinPrompt(prompt) {
-    return prompt + '\r';
+    // For very long prompts (team planning), newlines in the prompt
+    // can accidentally submit early in the TUI. Escape them.
+    const escaped = prompt.replace(/\n/g, '\\n');
+    return escaped + '\r';
   }
 }
 
