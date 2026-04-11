@@ -348,7 +348,7 @@ function createWindowManagerCore(context) {
 
     debugLog('[Dashboard] Starting server...');
     try {
-      const serverModule = require('../dashboardServer/index.js');
+      const serverModule = require('../../dashboardServer/index.js');
       if (agentManager) serverModule.setAgentManager(agentManager);
       if (sessionScanner) serverModule.setSessionScanner(sessionScanner);
       if (heatmapScanner) serverModule.setHeatmapScanner(heatmapScanner);
