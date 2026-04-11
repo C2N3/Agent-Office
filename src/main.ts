@@ -10,7 +10,7 @@ const fs = require('fs');
 
 const AgentManager = require('./agentManager');
 const SessionScanner = require('./sessionScanner');
-const HeatmapScanner = require('./heatmapScanner');
+const HeatmapScanner = require('./heatmap');
 const { adaptAgentToDashboard } = require('./dashboardAdapter');
 const errorHandler = require('./errorHandler');
 const { getWindowSizeForAgents } = require('./utils');
@@ -21,8 +21,8 @@ const { registerIpcHandlers } = require('./main/ipcHandlers');
 const { NicknameStore } = require('./main/nicknameStore');
 const { TerminalManager } = require('./main/terminalManager');
 const { TerminalProfileService } = require('./main/terminalProfileService');
-const { AgentRegistry } = require('./main/agentRegistry');
-const { WorkspaceManager } = require('./main/workspaceManager');
+const { AgentRegistry } = require('./main/registry');
+const { WorkspaceManager } = require('./main/workspace');
 const { TaskStore } = require('./main/orchestrator/taskStore');
 const { Orchestrator } = require('./main/orchestrator/index');
 const {

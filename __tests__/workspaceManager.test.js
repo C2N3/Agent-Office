@@ -7,12 +7,78 @@ jest.mock('child_process', () => ({
 }));
 
 const { execFileSync } = require('child_process');
-const { WorkspaceManager, slugifyBranchName } = require('../src/main/workspaceManager');
+const {
+  WorkspaceManager,
+  buildSuggestedBranchName,
+  slugifyBranchName,
+} = require('../src/main/workspace');
 
 describe('WorkspaceManager', () => {
   let tempRoot;
   let repoRoot;
   let manager;
+
+  function mockGit({
+    currentBranch = 'main',
+    branches = ['main'],
+    branchExists = false,
+    dirtyPath = null,
+    nonGitPaths = new Set(),
+  } = {}) {
+    execFileSync.mockImplementation((command, args) => {
+      if (command !== 'git') {
+        throw new Error(`Unexpected command: ${command}`);
+      }
+
+      const workingTree = args[3];
+      const gitArgs = args.slice(4);
+
+      if (gitArgs[0] === 'rev-parse' && gitArgs[1] === '--git-common-dir') {
+        if (nonGitPaths.has(path.resolve(workingTree))) {
+          const error = new Error('not a git repository');
+          error.stderr = Buffer.from('fatal: not a git repository');
+          throw error;
+        }
+        return '.git\n';
+      }
+
+      if (gitArgs[0] === 'branch' && gitArgs[1] === '--show-current') {
+        return `${currentBranch}\n`;
+      }
+
+      if (gitArgs[0] === 'for-each-ref') {
+        return `${branches.join('\n')}\n`;
+      }
+
+      if (gitArgs[0] === 'rev-parse' && gitArgs[1] === '--verify') {
+        if (branchExists) {
+          return 'abc123\n';
+        }
+        const error = new Error('missing branch');
+        error.stderr = Buffer.from('fatal: Needed a single revision');
+        throw error;
+      }
+
+      if (gitArgs[0] === 'status' && gitArgs[1] === '--porcelain') {
+        return dirtyPath && path.resolve(workingTree) === path.resolve(dirtyPath)
+          ? ' M index.js\n'
+          : '';
+      }
+
+      if (gitArgs[0] === 'worktree' && gitArgs[1] === 'add') {
+        const workspacePath = gitArgs.includes('-b') ? gitArgs[4] : gitArgs[2];
+        fs.mkdirSync(workspacePath, { recursive: true });
+        return '';
+      }
+
+      if (gitArgs[0] === 'worktree' && gitArgs[1] === 'remove') {
+        fs.rmSync(gitArgs[gitArgs.length - 1], { recursive: true, force: true });
+        return '';
+      }
+
+      return '';
+    });
+  }
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -23,42 +89,7 @@ describe('WorkspaceManager', () => {
     fs.mkdirSync(path.join(repoRoot, 'node_modules'), { recursive: true });
     fs.writeFileSync(path.join(repoRoot, 'node_modules', 'dep.txt'), 'shared dependency\n', 'utf8');
 
-    execFileSync.mockImplementation((command, args) => {
-      if (command !== 'git') {
-        throw new Error(`Unexpected command: ${command}`);
-      }
-
-      const workingTree = args[3];
-      const gitArgs = args.slice(4);
-
-      if (gitArgs[0] === 'rev-parse' && gitArgs[1] === '--show-toplevel') {
-        return `${workingTree}\n`;
-      }
-
-      if (gitArgs[0] === 'branch' && gitArgs[1] === '--show-current') {
-        return 'main\n';
-      }
-
-      if (gitArgs[0] === 'rev-parse' && gitArgs[1] === '--verify') {
-        const error = new Error('missing branch');
-        error.stderr = Buffer.from('fatal: Needed a single revision');
-        throw error;
-      }
-
-      if (gitArgs[0] === 'worktree' && gitArgs[1] === 'add') {
-        const workspacePath = gitArgs.includes('-b') ? gitArgs[4] : gitArgs[2];
-        fs.mkdirSync(workspacePath, { recursive: true });
-        return '';
-      }
-
-      if (gitArgs[0] === 'worktree' && gitArgs[1] === 'remove') {
-        fs.rmSync(gitArgs[3], { recursive: true, force: true });
-        return '';
-      }
-
-      return '';
-    });
-
+    mockGit({ branches: ['main', 'release/1.0'] });
     manager = new WorkspaceManager({ debugLog: jest.fn() });
   });
 
@@ -70,10 +101,16 @@ describe('WorkspaceManager', () => {
     expect(slugifyBranchName('Feature Agent #1')).toBe('feature-agent-1');
   });
 
+  test('builds provider-aware branch suggestions', () => {
+    expect(buildSuggestedBranchName({ name: 'Feature Agent', provider: 'codex' }))
+      .toBe('workspace/codex/feature-agent');
+  });
+
   test('creates a worktree and syncs copy/symlink paths', () => {
     const result = manager.createWorkspace({
       name: 'Feature Agent',
       repoPath: repoRoot,
+      workspaceParent: path.join(tempRoot, 'managed-worktrees'),
       copyPaths: ['.env.local'],
       symlinkPaths: ['node_modules'],
       bootstrapCommand: 'npm install',
@@ -93,20 +130,9 @@ describe('WorkspaceManager', () => {
   });
 
   test('inspects a repository and lists local branches', () => {
-    execFileSync.mockImplementation((command, args) => {
-      const workingTree = args[3];
-      const gitArgs = args.slice(4);
-
-      if (gitArgs[0] === 'rev-parse' && gitArgs[1] === '--show-toplevel') {
-        return `${workingTree}\n`;
-      }
-      if (gitArgs[0] === 'branch' && gitArgs[1] === '--show-current') {
-        return 'develop\n';
-      }
-      if (gitArgs[0] === 'for-each-ref') {
-        return 'develop\nmain\nrelease/1.0\n';
-      }
-      return '';
+    mockGit({
+      currentBranch: 'develop',
+      branches: ['develop', 'main', 'release/1.0'],
     });
 
     const result = manager.inspectRepository(repoRoot);
@@ -117,6 +143,49 @@ describe('WorkspaceManager', () => {
       currentBranch: 'develop',
       branches: ['develop', 'main', 'release/1.0'],
     });
+  });
+
+  test('inspects a workspace path and returns worktree defaults for git repositories', () => {
+    const result = manager.inspectWorkspacePath(repoRoot, {
+      name: 'Feature Agent',
+      provider: 'codex',
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      normalizedPath: repoRoot,
+      isGitRepository: true,
+      repositoryPath: repoRoot,
+      repositoryName: 'repo',
+      currentBranch: 'main',
+      branches: ['main', 'release/1.0'],
+      worktreeDefaults: expect.objectContaining({
+        branchName: 'workspace/codex/feature-agent',
+        baseBranch: 'main',
+        startPoint: 'main',
+      }),
+    }));
+  });
+
+  test('marks non-git paths as direct registration candidates', () => {
+    const plainPath = path.join(tempRoot, 'plain-folder');
+    fs.mkdirSync(plainPath, { recursive: true });
+    mockGit({ nonGitPaths: new Set([plainPath]) });
+
+    const result = manager.inspectWorkspacePath(plainPath, {
+      name: 'Plain Folder',
+      provider: 'claude',
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      normalizedPath: plainPath,
+      isGitRepository: false,
+      repositoryPath: null,
+      currentBranch: null,
+      branches: [],
+      worktreeDefaults: expect.objectContaining({
+        branchName: 'workspace/claude/plain-folder',
+      }),
+    }));
   });
 
   test('stores explicit baseBranch and defaults startPoint to it', () => {
@@ -143,25 +212,7 @@ describe('WorkspaceManager', () => {
   });
 
   test('uses an existing local branch without -b', () => {
-    execFileSync.mockImplementation((command, args) => {
-      const workingTree = args[3];
-      const gitArgs = args.slice(4);
-
-      if (gitArgs[0] === 'rev-parse' && gitArgs[1] === '--show-toplevel') {
-        return `${workingTree}\n`;
-      }
-      if (gitArgs[0] === 'branch' && gitArgs[1] === '--show-current') {
-        return 'main\n';
-      }
-      if (gitArgs[0] === 'rev-parse' && gitArgs[1] === '--verify') {
-        return 'abc123\n';
-      }
-      if (gitArgs[0] === 'worktree' && gitArgs[1] === 'add') {
-        fs.mkdirSync(gitArgs[2], { recursive: true });
-        return '';
-      }
-      return '';
-    });
+    mockGit({ branchExists: true });
 
     manager.createWorkspace({
       name: 'existing branch',
@@ -179,32 +230,6 @@ describe('WorkspaceManager', () => {
     const worktreePath = path.join(tempRoot, 'repo-worktrees', 'feature-agent');
     fs.mkdirSync(worktreePath, { recursive: true });
 
-    execFileSync.mockImplementation((command, args) => {
-      const workingTree = args[3];
-      const gitArgs = args.slice(4);
-
-      if (gitArgs[0] === 'rev-parse' && gitArgs[1] === '--show-toplevel') {
-        return `${repoRoot}\n`;
-      }
-      if (gitArgs[0] === 'branch' && gitArgs[1] === '--show-current') {
-        return 'main\n';
-      }
-      if (gitArgs[0] === 'status' && gitArgs[1] === '--porcelain') {
-        return '';
-      }
-      if (gitArgs[0] === 'merge') {
-        return 'Merge made by the ort strategy.\n';
-      }
-      if (gitArgs[0] === 'worktree' && gitArgs[1] === 'remove') {
-        fs.rmSync(gitArgs[2], { recursive: true, force: true });
-        return '';
-      }
-      if (gitArgs[0] === 'branch' && gitArgs[1] === '-d') {
-        return '';
-      }
-      return '';
-    });
-
     const result = manager.mergeWorkspace({
       repositoryPath: repoRoot,
       worktreePath,
@@ -221,25 +246,6 @@ describe('WorkspaceManager', () => {
     const worktreePath = path.join(tempRoot, 'repo-worktrees', 'feature-agent');
     fs.mkdirSync(worktreePath, { recursive: true });
 
-    execFileSync.mockImplementation((command, args) => {
-      const gitArgs = args.slice(4);
-
-      if (gitArgs[0] === 'rev-parse' && gitArgs[1] === '--show-toplevel') {
-        return `${repoRoot}\n`;
-      }
-      if (gitArgs[0] === 'status' && gitArgs[1] === '--porcelain') {
-        return '';
-      }
-      if (gitArgs[0] === 'worktree' && gitArgs[1] === 'remove') {
-        fs.rmSync(gitArgs[2], { recursive: true, force: true });
-        return '';
-      }
-      if (gitArgs[0] === 'branch' && gitArgs[1] === '-d') {
-        return '';
-      }
-      return '';
-    });
-
     const result = manager.removeWorkspace({
       repositoryPath: repoRoot,
       worktreePath,
@@ -253,21 +259,7 @@ describe('WorkspaceManager', () => {
   test('rejects merge when the workspace is dirty', () => {
     const worktreePath = path.join(tempRoot, 'repo-worktrees', 'feature-agent');
     fs.mkdirSync(worktreePath, { recursive: true });
-
-    execFileSync.mockImplementation((command, args) => {
-      const gitArgs = args.slice(4);
-
-      if (gitArgs[0] === 'rev-parse' && gitArgs[1] === '--show-toplevel') {
-        return `${repoRoot}\n`;
-      }
-      if (gitArgs[0] === 'branch' && gitArgs[1] === '--show-current') {
-        return 'main\n';
-      }
-      if (gitArgs[0] === 'status' && gitArgs[1] === '--porcelain') {
-        return workingTreeMatcher(args[3], worktreePath) ? ' M index.js\n' : '';
-      }
-      return '';
-    });
+    mockGit({ dirtyPath: worktreePath });
 
     expect(() => manager.mergeWorkspace({
       repositoryPath: repoRoot,
@@ -277,7 +269,3 @@ describe('WorkspaceManager', () => {
     })).toThrow('Workspace has uncommitted changes');
   });
 });
-
-function workingTreeMatcher(actual, expected) {
-  return path.resolve(actual) === path.resolve(expected);
-}

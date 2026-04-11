@@ -7,8 +7,8 @@ import {
   stopOffice,
   resumeOffice,
 } from './office/index.js';
-import { AVATAR_FILES, OFFICE, SPRITE_FRAMES, loadAvatarFiles, loadSpriteFrames } from './office/office-config.js';
-import { loadAllOfficeSkins, getOfficeSkinImage } from './office/office-sprite.js';
+import { AVATAR_FILES, OFFICE, SPRITE_FRAMES, loadAvatarFiles, loadSpriteFrames } from './office/officeConfig.js';
+import { loadAllOfficeSkins, getOfficeSkinImage } from './office/officeSprite.js';
 
 // ─── Types ───
 interface OverlayAgent {

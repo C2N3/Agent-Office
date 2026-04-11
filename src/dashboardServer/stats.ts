@@ -34,6 +34,12 @@ export function calculateStats(agentManager: AgentManagerLike | null) {
       subagent: 0,
       teammate: 0,
     },
+    tokens: {
+      input: 0,
+      output: 0,
+      total: 0,
+      estimatedCost: 0,
+    },
   };
 
   for (const agent of agents) {
@@ -69,7 +75,16 @@ export function calculateStats(agentManager: AgentManagerLike | null) {
     } else {
       stats.byType.main++;
     }
+
+    const tokenUsage: any = (agent as any).tokenUsage || null;
+    if (tokenUsage) {
+      stats.tokens.input += tokenUsage.inputTokens || 0;
+      stats.tokens.output += tokenUsage.outputTokens || 0;
+      stats.tokens.estimatedCost += tokenUsage.estimatedCost || 0;
+    }
   }
+
+  stats.tokens.total = stats.tokens.input + stats.tokens.output;
 
   return stats;
 }

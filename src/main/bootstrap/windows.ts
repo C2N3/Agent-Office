@@ -1,6 +1,6 @@
 // @ts-nocheck
 
-const { createWindowManager } = require('../windowManager');
+const { createWindowManager } = require('../windowing');
 const { savePersistedState } = require('../sessionPersistence');
 
 function createApplicationWindowManager({

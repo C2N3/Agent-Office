@@ -20,6 +20,7 @@ import {
   renderUsageView,
 } from './activityViews.js';
 import { setupOfficeClickHandler } from './office.js';
+import { renderDashboardModals } from './modalMarkup.js';
 import {
   fitActiveTerminal,
   initResizableHandles,
@@ -28,7 +29,7 @@ import {
   openTerminalForAgent,
   refreshTerminalProfiles,
   resumeRegisteredSession,
-} from './terminal.js';
+} from './terminal/index.js';
 import { initOffice } from '../office/index.js';
 import {
   setupAgentModal,
@@ -37,7 +38,7 @@ import {
   setupConversationViewer,
   setupNicknameEdit,
   setupTaskReportModal,
-} from './modals.js';
+} from './modals/index.js';
 
 type DashboardUiError = Error | { message?: string } | DisplayValue;
 
@@ -245,6 +246,7 @@ function initArchiveEvents() {
 function initApp() {
   globalThis.openTerminalForAgent = openTerminalForAgent;
 
+  renderDashboardModals();
   initFilterControls();
   initViewControls();
   initPipControls();

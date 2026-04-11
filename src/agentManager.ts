@@ -6,12 +6,13 @@
  */
 
 const EventEmitter = require('events');
-const path = require('path');
-const { formatSlugToDisplayName, sanitizeProjectPath } = require('./utils');
-
-// Single source of truth: public/shared/avatars.json
-const AVATAR_FILES = require('../public/shared/avatars.json');
-const AVATAR_COUNT = AVATAR_FILES.length;
+const {
+  assignAvatarIndex,
+  formatDisplayName,
+  getAgentWithEffectiveState,
+  getStats,
+  releaseAvatarIndex,
+} = require('./agentManager/helpers');
 
 /**
  * Merge a field: entry value wins if defined, then existing, then default.
@@ -323,31 +324,7 @@ class AgentManager extends EventEmitter {
   }
 
   getAgentWithEffectiveState(agentId) {
-    const agent = this.agents.get(agentId);
-    if (!agent) return null;
-
-    // Return as-is if already in Help or Error state (highest priority)
-    if (agent.state === 'Help' || agent.state === 'Error') return agent;
-
-    // Check children (subagent) states
-    const children = Array.from(this.agents.values()).filter(a => a.parentId === agentId);
-
-    // 1. If any child is Help/Error, show parent as Help (notify user intervention needed)
-    const someChildNeedsHelp = children.some(c => c.state === 'Help' || c.state === 'Error');
-    if (someChildNeedsHelp) {
-      return { ...agent, state: 'Help', isAggregated: true };
-    }
-
-    // Return as-is if already in Working state
-    if (agent.state === 'Working' || agent.state === 'Thinking') return agent;
-
-    // 2. If any child is Working/Thinking, show parent as Working
-    const someChildWorking = children.some(c => c.state === 'Working' || c.state === 'Thinking');
-    if (someChildWorking) {
-      return { ...agent, state: 'Working', isAggregated: true };
-    }
-
-    return agent;
+    return getAgentWithEffectiveState(this.agents, agentId);
   }
 
   reEvaluateParentState(parentId) {
@@ -369,66 +346,25 @@ class AgentManager extends EventEmitter {
    * 3. Fallback: "Agent"
    */
   formatDisplayName(slug, projectPath) {
-    if (slug) {
-      return formatSlugToDisplayName(slug);
-    }
-    const sanitizedProjectPath = sanitizeProjectPath(projectPath);
-    if (sanitizedProjectPath) {
-      return path.basename(sanitizedProjectPath);
-    }
-    return 'Agent';
+    return formatDisplayName(slug, projectPath);
   }
 
   /**
    * Assign avatar index — prioritize unused avatars on hash collision
    */
   _assignAvatarIndex(agentId) {
-    let hash = 0;
-    const str = agentId || '';
-    for (let i = 0; i < str.length; i++) {
-      hash = ((hash << 5) - hash) + str.charCodeAt(i);
-      hash |= 0;
-    }
-    const hashIdx = Math.abs(hash) % AVATAR_COUNT;
-
-    if (!this._usedAvatarIndices.has(hashIdx)) {
-      this._usedAvatarIndices.add(hashIdx);
-      return hashIdx;
-    }
-
-    // Hash collision: iterate through unused avatars
-    for (let i = 0; i < AVATAR_COUNT; i++) {
-      if (!this._usedAvatarIndices.has(i)) {
-        this._usedAvatarIndices.add(i);
-        return i;
-      }
-    }
-
-    // All avatars in use, fall back to hash index
-    return hashIdx;
+    return assignAvatarIndex(agentId, this._usedAvatarIndices);
   }
 
   /**
    * Release avatar index
    */
   _releaseAvatarIndex(avatarIndex) {
-    if (avatarIndex !== undefined && avatarIndex !== null) {
-      this._usedAvatarIndices.delete(avatarIndex);
-    }
+    releaseAvatarIndex(avatarIndex, this._usedAvatarIndices);
   }
 
   getStats() {
-    const agents = this.getAllAgents();
-    const counts = { Done: 0, Thinking: 0, Working: 0, Waiting: 0, Help: 0, Error: 0 };
-    for (const agent of agents) {
-      if (counts.hasOwnProperty(agent.state)) {
-        counts[agent.state]++;
-      }
-    }
-    return {
-      total: agents.length,
-      byState: counts
-    };
+    return getStats(this.getAllAgents());
   }
 }
 
