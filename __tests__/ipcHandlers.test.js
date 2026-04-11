@@ -108,6 +108,8 @@ describe('ipcHandlers focus-terminal recovery', () => {
 
   test('launches an external resume terminal for main-window focus requests when pid is missing', async () => {
     Object.defineProperty(process, 'platform', { value: 'win32' });
+    const projectPath = process.cwd();
+    const expectedResumeCommand = `Set-Location -LiteralPath '${projectPath.replace(/'/g, "''")}'; codex resume thread-123`;
     const spawnSpy = jest.spyOn(childProcess, 'spawn').mockImplementation(() => ({
       unref: jest.fn(),
     }));
@@ -126,7 +128,7 @@ describe('ipcHandlers focus-terminal recovery', () => {
         sessionId: 'thread-123',
         resumeSessionId: 'thread-123',
         provider: 'codex',
-        projectPath: '/tmp',
+        projectPath,
         firstSeen: Date.now(),
       })),
       transitionToOffline: jest.fn(),
@@ -136,7 +138,7 @@ describe('ipcHandlers focus-terminal recovery', () => {
       getAgent: jest.fn(() => ({
         id: 'registry-1',
         provider: 'codex',
-        projectPath: '/tmp',
+        projectPath,
         currentSessionId: 'thread-123',
         currentResumeSessionId: 'thread-123',
       })),
@@ -183,9 +185,9 @@ describe('ipcHandlers focus-terminal recovery', () => {
     expect(result).toEqual({ success: true, reason: 'resumed' });
     expect(spawnSpy).toHaveBeenCalledWith(
       'cmd.exe',
-      expect.arrayContaining(['powershell.exe', '-NoExit', '-Command', 'Set-Location -LiteralPath \'/tmp\'; codex resume thread-123']),
+      expect.arrayContaining(['powershell.exe', '-NoExit', '-Command', expectedResumeCommand]),
       expect.objectContaining({
-        cwd: '/tmp',
+        cwd: projectPath,
         detached: true,
         stdio: 'ignore',
       })
