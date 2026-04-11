@@ -34,6 +34,7 @@ function handleTaskSuccess(orchestrator, taskId) {
     orchestrator.agentRegistry.updateAgent(task.agentRegistryId, { projectPath: originalPath });
 
     // Check if this task belongs to a team — if so, skip individual report bubble.
+    // Team members stay in 'Waiting' state until the entire team finishes.
     // The team coordinator will show the report on the leader when ALL subtasks complete.
     const isTeamTask = orchestrator.teamCoordinator && (() => {
       const teams = orchestrator.teamCoordinator.teamStore.getAllTeams();
@@ -42,7 +43,7 @@ function handleTaskSuccess(orchestrator, taskId) {
 
     orchestrator.agentManager.updateAgent({
       registryId: task.agentRegistryId,
-      state: isTeamTask ? 'Offline' : 'done',
+      state: isTeamTask ? 'Waiting' : 'done',
       projectPath: originalPath,
       reportTaskId: isTeamTask ? null : task.id,
     }, 'orchestrator');
