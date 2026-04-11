@@ -34,9 +34,11 @@ Repository-wide instructions for agents working in this project.
 
 ## File Organization
 
-- If a file you are working on grows beyond 400 lines, split it into smaller modules.
+- If a file you are working on grows beyond 300 lines, split it into smaller modules.
+- The 300-line rule targets source, styles, and scripts that agents need to read and edit. Generated output, lockfiles, binary media, and test fixtures may be larger when splitting them would not reduce agent context.
 - When modularizing, create a directory for the related files and move the split modules into it.
 - Do not repeat the directory name as a redundant filename prefix for files inside that directory.
+- Prefer feature directories with role-named files over broad sibling names. For example, use `src/main/codex/events.ts` instead of `src/main/codexEvents.ts`, and `src/main/liveness/agents.ts` instead of `src/main/livenessAgents.ts`.
 - Prefer modules that are understandable from a small, local context. A task should usually be explainable by reading a few nearby files, not a long dependency chain.
 - Keep abstractions thin and explainable. If an abstraction hides important behavior, add a short nearby note or module-level comment that states where the real work happens.
 - Use specific, role-revealing names for files, functions, and exports. Avoid generic names like `process`, `handle`, or `manager` when the behavior can be named directly.

@@ -1,3 +1,4 @@
+@import url("./terminal/profile-actions.css");
 /* ─── TERMINAL PANEL (embedded in overview) ─── */
 
 .terminal-tabs {
@@ -295,30 +296,4 @@
   color: var(--color-primary);
   font-family: var(--font-mono);
   font-size: 0.8rem;
-}
-
-.terminal-profile-divider {
-  height: 1px;
-  margin: 12px 0;
-  background: var(--color-border);
-}
-
-/* Popover terminal button */
-.pop-terminal-btn {
-  width: 100%;
-  margin-top: 8px;
-  padding: 5px 0;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  background: var(--color-primary-dim);
-  color: var(--color-primary);
-  font-size: 0.7rem;
-  font-family: var(--font-mono);
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.pop-terminal-btn:hover {
-  background: var(--color-primary);
-  color: #fff;
 }

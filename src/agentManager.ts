@@ -13,6 +13,7 @@ const {
   getStats,
   releaseAvatarIndex,
 } = require('./agentManager/helpers');
+const { rekeyAgent, transitionAgentToOffline } = require('./agentManager/identity');
 
 /**
  * Merge a field: entry value wins if defined, then existing, then default.
@@ -222,101 +223,14 @@ class AgentManager extends EventEmitter {
   }
 
   rekeyAgent(currentId, nextId, fields = {}) {
-    if (!currentId || !nextId) return null;
-
-    const current = this.agents.get(currentId);
-    if (!current) return null;
-
-    if (currentId === nextId) {
-      const updated = { ...current, ...fields, id: nextId };
-      this.agents.set(nextId, updated);
-      this.emit('agent-updated', this.getAgentWithEffectiveState(nextId));
-      return updated;
-    }
-
-    this._cancelPendingEmit(currentId);
-    this._cancelPendingEmit(nextId);
-
-    const existingTarget = this.agents.get(nextId) || null;
-    const merged = {
-      ...current,
-      id: nextId,
-      sessionId: fields.sessionId || current.sessionId || nextId,
-      runtimeSessionId: fields.runtimeSessionId !== undefined
-        ? fields.runtimeSessionId
-        : (current.runtimeSessionId || current.sessionId || currentId),
-      resumeSessionId: fields.resumeSessionId !== undefined
-        ? fields.resumeSessionId
-        : (fields.sessionId || current.resumeSessionId || current.sessionId || nextId),
-    };
-
-    if (existingTarget) {
-      for (const [key, value] of Object.entries(existingTarget)) {
-        if (merged[key] === undefined || merged[key] === null) {
-          merged[key] = value;
-        }
-      }
-    }
-
-    for (const [key, value] of Object.entries(fields)) {
-      if (value !== undefined) {
-        merged[key] = value;
-      }
-    }
-
-    this.agents.delete(currentId);
-    this.agents.set(nextId, merged);
-
-    for (const [agentId, agent] of this.agents.entries()) {
-      if (agent.parentId === currentId) {
-        this.agents.set(agentId, { ...agent, parentId: nextId });
-      }
-    }
-
-    if (this._nicknameStore) {
-      const nickname = this._nicknameStore.rekeyNickname(currentId, nextId);
-      if (nickname) {
-        merged.nickname = nickname;
-        this.agents.set(nextId, merged);
-      }
-    }
-
-    this.emit('agent-removed', { id: currentId, displayName: current.displayName });
-    if (existingTarget) {
-      this.emit('agent-updated', this.getAgentWithEffectiveState(nextId));
-    } else {
-      this.emit('agent-added', this.getAgentWithEffectiveState(nextId));
-    }
-
-    if (merged.parentId) {
-      this.reEvaluateParentState(merged.parentId);
-    }
-
-    console.log(`[AgentManager] Rekeyed: ${currentId} → ${nextId}`);
-    return merged;
+    return rekeyAgent(this, currentId, nextId, fields);
   }
 
   /**
    * Transition a registered agent to Offline state instead of removing it.
    */
   transitionToOffline(agentId) {
-    const agent = this.agents.get(agentId);
-    if (!agent) return false;
-    this._cancelPendingEmit(agentId);
-    const offlineAgent = {
-      ...agent,
-      state: 'Offline',
-      currentTool: null,
-      sessionId: null,
-      runtimeSessionId: null,
-      resumeSessionId: null,
-      jsonlPath: null,
-      lastActivity: Date.now(),
-    };
-    this.agents.set(agentId, offlineAgent);
-    this.emit('agent-updated', this.getAgentWithEffectiveState(agentId));
-    console.log(`[AgentManager] Offline: ${agent.displayName}`);
-    return true;
+    return transitionAgentToOffline(this, agentId);
   }
 
   getAllAgents() {

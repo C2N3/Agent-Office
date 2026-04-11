@@ -1,7 +1,7 @@
 // @ts-nocheck
-const { BrowserWindow, screen, shell } = require('electron');
+const { BrowserWindow, screen } = require('electron');
 const path = require('path');
-const { saveUiState } = require('../uiState');
+const { createSecondaryWindowControls } = require('./secondary/windows');
 
 function createWindowManagerCore(context) {
   const {
@@ -23,6 +23,31 @@ function createWindowManagerCore(context) {
   let dashboardServer = null;
   const dashboardClientUrl = process.env.DASHBOARD_DEV_SERVER_URL || 'http://localhost:3000';
   const dashboardRootUrl = process.argv.includes('--dev') ? dashboardClientUrl : 'http://localhost:3000';
+  const refs = {
+    get dashboardWindow() { return dashboardWindow; },
+    set dashboardWindow(value) { dashboardWindow = value; },
+    get pipWindow() { return pipWindow; },
+    set pipWindow(value) { pipWindow = value; },
+    get overlayWindow() { return overlayWindow; },
+    set overlayWindow(value) { overlayWindow = value; },
+  };
+  const {
+    closeDashboardWindow,
+    closeOverlayWindow,
+    closePipWindow,
+    createDashboardWindow,
+    createOverlayWindow,
+    createPipWindow,
+    focusDashboardWindow,
+    resizeOverlayWindow,
+    toggleOverlayWindow,
+  } = createSecondaryWindowControls({
+    refs,
+    dashboardRootUrl,
+    agentManager,
+    adaptAgentToDashboard,
+    debugLog,
+  });
 
   function resizeWindowForAgents(agentsOrCount) {
     if (!mainWindow || mainWindow.isDestroyed()) return;
@@ -54,85 +79,6 @@ function createWindowManagerCore(context) {
       keepAliveInterval = null;
       debugLog('[Main] Keep-alive interval stopped');
     }
-  }
-
-  function notifyDashboardPipState(isOpen) {
-    if (dashboardWindow && !dashboardWindow.isDestroyed()) {
-      dashboardWindow.webContents.send('pip-state-changed', isOpen);
-    }
-  }
-
-  function notifyDashboardOverlayState(isOpen) {
-    if (dashboardWindow && !dashboardWindow.isDestroyed()) {
-      dashboardWindow.webContents.send('overlay-state-changed', isOpen);
-    }
-  }
-
-  function closePipWindow() {
-    if (pipWindow && !pipWindow.isDestroyed()) {
-      pipWindow.close();
-    }
-    pipWindow = null;
-  }
-
-  function closeOverlayWindow() {
-    if (overlayWindow && !overlayWindow.isDestroyed()) {
-      overlayWindow.close();
-    }
-    overlayWindow = null;
-  }
-
-  function createOverlayWindow() {
-    if (overlayWindow && !overlayWindow.isDestroyed()) {
-      overlayWindow.focus();
-      return;
-    }
-
-    const { width, height } = screen.getPrimaryDisplay().workAreaSize;
-    overlayWindow = new BrowserWindow({
-      width: 80,
-      height: 150,
-      x: width - 110,
-      y: height - 180,
-      transparent: true,
-      frame: false,
-      hasShadow: false,
-      backgroundColor: '#00000000',
-      alwaysOnTop: true,
-      skipTaskbar: false,
-      resizable: false,
-      movable: true,
-      show: false,
-      webPreferences: {
-        nodeIntegration: false,
-        contextIsolation: true,
-        sandbox: false,
-        preload: path.join(__dirname, '..', 'overlayPreload.js'),
-      },
-    });
-
-    overlayWindow.once('ready-to-show', () => {
-      if (!overlayWindow || overlayWindow.isDestroyed()) return;
-      overlayWindow.show();
-      overlayWindow.setAlwaysOnTop(true, 'floating');
-      debugLog('[Overlay] Window shown');
-    });
-    overlayWindow.loadURL(`${dashboardRootUrl}/overlay`);
-    overlayWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription) => {
-      debugLog(`[Overlay] Failed to load: ${errorCode} - ${errorDescription}`);
-      if (overlayWindow && !overlayWindow.isDestroyed()) overlayWindow.destroy();
-      overlayWindow = null;
-    });
-    overlayWindow.on('closed', () => {
-      overlayWindow = null;
-      notifyDashboardOverlayState(false);
-      saveUiState({ overlayOpen: false });
-      debugLog('[Overlay] Window closed');
-    });
-
-    notifyDashboardOverlayState(true);
-    saveUiState({ overlayOpen: true });
-    debugLog('[Overlay] Window created');
   }
 
   function createWindow() {
@@ -191,153 +137,6 @@ function createWindowManagerCore(context) {
     });
 
     startKeepAlive();
-  }
-
-  function createDashboardWindow() {
-    if (dashboardWindow && !dashboardWindow.isDestroyed()) {
-      debugLog('[MissionControl] Window already open, focusing existing window');
-      if (dashboardWindow.isMinimized()) dashboardWindow.restore();
-      dashboardWindow.focus();
-      return { success: true, alreadyOpen: true };
-    }
-
-    try {
-      const { width, height } = screen.getPrimaryDisplay().workAreaSize;
-      const dashW = Math.min(Math.max(1280, Math.floor(width * 0.9)), width - 20);
-      const dashH = Math.min(Math.max(980, Math.floor(height * 0.95)), height - 10);
-
-      dashboardWindow = new BrowserWindow({
-        width: dashW,
-        height: dashH,
-        x: Math.floor((width - dashW) / 2),
-        y: Math.floor((height - dashH) / 2),
-        title: 'Agent-Office',
-        backgroundColor: '#ffffff',
-        webPreferences: {
-          nodeIntegration: false,
-          contextIsolation: true,
-          sandbox: false,
-          preload: path.join(__dirname, '..', 'dashboardPreload.js'),
-        },
-      });
-
-      dashboardWindow.loadURL(`${dashboardRootUrl}/`);
-      dashboardWindow.webContents.setWindowOpenHandler(({ url }) => {
-        shell.openExternal(url);
-        return { action: 'deny' };
-      });
-      dashboardWindow.webContents.on('did-finish-load', () => {
-        debugLog('[MissionControl] Window loaded successfully');
-        if (agentManager) {
-          const adaptedAgents = agentManager.getAllAgents().map((agent) => adaptAgentToDashboard(agent));
-          debugLog(`[MissionControl] Sending ${adaptedAgents.length} agents to dashboard`);
-          dashboardWindow.webContents.send('dashboard-initial-data', adaptedAgents);
-        }
-      });
-      dashboardWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription) => {
-        debugLog(`[MissionControl] Failed to load: ${errorCode} - ${errorDescription}`);
-        dashboardWindow.destroy();
-        dashboardWindow = null;
-      });
-      dashboardWindow.on('closed', () => {
-        debugLog('[MissionControl] Window closed');
-        dashboardWindow = null;
-        closePipWindow();
-        if (agentManager) {
-          const activeAgents = agentManager.getAllAgents().filter((a) => a.state !== 'Offline');
-          if (activeAgents.length > 0 && (!overlayWindow || overlayWindow.isDestroyed())) {
-            createOverlayWindow();
-            debugLog(`[Overlay] Auto-shown with ${activeAgents.length} active agent(s)`);
-          }
-        }
-      });
-
-      debugLog('[MissionControl] Window created');
-      return { success: true };
-    } catch (error) {
-      debugLog(`[MissionControl] Failed to create window: ${error.message}`);
-      dashboardWindow = null;
-      return { success: false, error: error.message };
-    }
-  }
-
-  function createPipWindow() {
-    if (pipWindow && !pipWindow.isDestroyed()) {
-      pipWindow.focus();
-      return;
-    }
-
-    const { width, height } = screen.getPrimaryDisplay().workAreaSize;
-    pipWindow = new BrowserWindow({
-      width: 480,
-      height: 450,
-      x: width - 500,
-      y: height - 470,
-      frame: true,
-      resizable: true,
-      maximizable: false,
-      title: 'Office PiP',
-      backgroundColor: '#050709',
-      autoHideMenuBar: true,
-      show: false,
-      webPreferences: {
-        nodeIntegration: false,
-        contextIsolation: true,
-        sandbox: false,
-        preload: path.join(__dirname, '..', 'pipPreload.js'),
-      },
-    });
-
-    pipWindow.setAspectRatio(864 / 800);
-    pipWindow.once('ready-to-show', () => {
-      if (!pipWindow || pipWindow.isDestroyed()) return;
-      pipWindow.show();
-      pipWindow.setAlwaysOnTop(true, 'floating');
-      notifyDashboardPipState(true);
-      debugLog('[PiP] Window shown');
-    });
-    pipWindow.loadURL(`${dashboardRootUrl}/pip`);
-    pipWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription) => {
-      debugLog(`[PiP] Failed to load: ${errorCode} - ${errorDescription}`);
-      if (pipWindow && !pipWindow.isDestroyed()) pipWindow.destroy();
-      pipWindow = null;
-    });
-    pipWindow.on('closed', () => {
-      pipWindow = null;
-      notifyDashboardPipState(false);
-      debugLog('[PiP] Window closed');
-    });
-    debugLog('[PiP] Window created');
-  }
-
-  function toggleOverlayWindow() {
-    if (overlayWindow && !overlayWindow.isDestroyed()) {
-      closeOverlayWindow();
-    } else {
-      createOverlayWindow();
-    }
-  }
-
-  function resizeOverlayWindow(width, height) {
-    if (overlayWindow && !overlayWindow.isDestroyed()) {
-      overlayWindow.setSize(Math.round(width), Math.round(height));
-    }
-  }
-
-  function focusDashboardWindow() {
-    if (dashboardWindow && !dashboardWindow.isDestroyed()) {
-      if (dashboardWindow.isMinimized()) dashboardWindow.restore();
-      dashboardWindow.focus();
-    }
-  }
-
-  function closeDashboardWindow() {
-    closePipWindow();
-    if (dashboardWindow && !dashboardWindow.isDestroyed()) {
-      dashboardWindow.close();
-      debugLog('[MissionControl] Window closed by request');
-    }
-    dashboardWindow = null;
   }
 
   function startDashboardServer() {

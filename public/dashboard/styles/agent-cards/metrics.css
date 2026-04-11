@@ -1,0 +1,64 @@
+.mc-agent-metrics {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  border-top: 1px solid var(--color-border);
+  padding-top: 8px;
+}
+
+.mc-metric-val {
+  font-family: var(--font-mono);
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+/* ─── Context Gauge (approximate) ─── */
+.mc-context-gauge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.65rem;
+  opacity: 0.7;
+  padding-top: 6px;
+}
+
+.mc-context-gauge .ctx-label {
+  font-family: var(--font-mono);
+  font-style: italic;
+  color: var(--color-text-dark);
+  white-space: nowrap;
+}
+
+.mc-context-gauge .ctx-track {
+  flex: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.mc-context-gauge .ctx-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: repeating-linear-gradient(
+    90deg,
+    currentColor 0px,
+    currentColor 3px,
+    transparent 3px,
+    transparent 5px
+  );
+  transition: width 0.4s ease;
+}
+
+.mc-context-gauge .ctx-fill.ctx-low { color: var(--color-primary); }
+.mc-context-gauge .ctx-fill.ctx-mid { color: var(--color-warning); }
+.mc-context-gauge .ctx-fill.ctx-high { color: var(--color-error); }
+
+.mc-context-gauge .ctx-val {
+  font-family: var(--font-mono);
+  font-style: italic;
+  color: var(--color-text-dark);
+  min-width: 28px;
+  text-align: right;
+}

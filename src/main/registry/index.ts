@@ -1,10 +1,4 @@
 // @ts-nocheck
-/**
- * Agent Registry
- * Persistent role-based agent management.
- * Agents survive sessions and auto-reconnect when matching sessions start.
- */
-
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
@@ -218,10 +212,6 @@ class AgentRegistry {
     return true;
   }
 
-  /**
-   * Find a registered agent by project path.
-   * Skips disabled, archived, or agents with an active session.
-   */
   findByProjectPath(rawPath) {
     return findAgentByProjectPath(this.agents.values(), rawPath, {
       includeArchived: false,
@@ -230,10 +220,6 @@ class AgentRegistry {
     });
   }
 
-  /**
-   * Find registered agent by path, including those with active sessions.
-   * Used for lookups that don't need to link.
-   */
   findAnyByProjectPath(rawPath) {
     return findAgentByProjectPath(this.agents.values(), rawPath, {
       includeArchived: false,
