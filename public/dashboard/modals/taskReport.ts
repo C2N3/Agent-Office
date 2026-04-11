@@ -37,8 +37,16 @@ export function setupTaskReportModal() {
       currentAgentId = data.agentRegistryId || '';
       if (titleEl) titleEl.textContent = data.title || 'Task Report';
       const cleanedOutput = (data.output || '').trim();
-      outputEl.textContent = cleanedOutput
-        || '(이 태스크에 대한 에이전트 응답을 찾을 수 없습니다. 아래 Changes 섹션에서 실제 변경 내역을 확인하세요.)';
+      if (cleanedOutput) {
+        const markedLib = (globalThis as any).marked;
+        if (markedLib?.parse) {
+          outputEl.innerHTML = markedLib.parse(cleanedOutput);
+        } else {
+          outputEl.textContent = cleanedOutput;
+        }
+      } else {
+        outputEl.textContent = '(이 태스크에 대한 에이전트 응답을 찾을 수 없습니다. 아래 Changes 섹션에서 실제 변경 내역을 확인하세요.)';
+      }
       diffSummaryEl.textContent = data.diffSummary || '(no changes)';
       diffEl.textContent = data.diff || '';
     } catch (e) {

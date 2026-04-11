@@ -79,6 +79,7 @@ function handleRequest(req: RequestLike, res: ResponseLike): void {
       '/lib/addon-fit.js.map': 'node_modules/@xterm/addon-fit/lib/addon-fit.js.map',
       '/lib/xterm-addon-web-links.js': 'node_modules/@xterm/addon-web-links/lib/addon-web-links.js',
       '/lib/addon-web-links.js.map': 'node_modules/@xterm/addon-web-links/lib/addon-web-links.js.map',
+      '/lib/marked.umd.js': 'node_modules/marked/lib/marked.umd.js',
     };
     const mapped = libMap[pathname];
     if (mapped) {
