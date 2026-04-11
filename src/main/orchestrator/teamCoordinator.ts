@@ -89,10 +89,11 @@ Rules:
    * Handle task success — check if it's a planning or subtask completion.
    */
   _onTaskSucceeded(task) {
-    // Check if this is a planning task
+    this.debugLog(`[Team] _onTaskSucceeded: ${task.id.slice(0, 8)}`);
     const teams = this.teamStore.getAllTeams();
     for (const team of teams) {
       if (team.planningTaskId === task.id && team.status === 'planning') {
+        this.debugLog(`[Team] Matched planning task for team ${team.id.slice(0, 8)}`);
         this._handlePlanningComplete(team.id, task);
         return;
       }
@@ -101,6 +102,7 @@ Rules:
         return;
       }
     }
+    this.debugLog(`[Team] Task ${task.id.slice(0, 8)} did not match any team`);
   }
 
   /**
@@ -147,11 +149,16 @@ Rules:
       try {
         const fs = require('fs');
         output = fs.readFileSync(planningTask.outputPath, 'utf-8');
-      } catch {}
+        this.debugLog(`[Team] Read output from file (${output.length} chars)`);
+      } catch (e) {
+        this.debugLog(`[Team] Failed to read output file: ${e.message}`);
+      }
     }
+    this.debugLog(`[Team] Output length: ${output.length}, first 200: ${output.slice(0, 200).replace(/\n/g, '\\n')}`);
 
     // Parse JSON subtasks from output
     const subtasks = this._parseSubtasks(output);
+    this.debugLog(`[Team] Parsed subtasks: ${subtasks ? subtasks.length : 'null'}`);
     if (!subtasks || subtasks.length === 0) {
       this.teamStore.updateTeam(teamId, {
         status: 'failed',
