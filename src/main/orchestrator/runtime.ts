@@ -14,6 +14,7 @@ const {
 const STDIN_READY_TIMEOUT_MS = 8000;
 const STDIN_POST_READY_MS = 400;
 const IDLE_EXIT_MS = 30000;
+const TEAM_IDLE_EXIT_MS = 120000; // 2 minutes for team subtasks (complex work needs longer thinking)
 const IDLE_ARM_BYTES = 500;
 const CLAUDE_READY_MARKER = /╰[─━]/;
 
@@ -205,17 +206,22 @@ function resetIdleTimer(orchestrator, taskId) {
   const existing = orchestrator.idleTimers.get(taskId);
   if (existing) clearTimeout(existing);
 
+  // Use longer timeout for team tasks (subtasks involve complex analysis)
+  const task = orchestrator.taskStore.getTask(taskId);
+  const isTeamTask = task && task.parentTaskId;
+  const timeout = isTeamTask ? TEAM_IDLE_EXIT_MS : IDLE_EXIT_MS;
+
   const timer = setTimeout(() => {
     orchestrator.idleTimers.delete(taskId);
-    const task = orchestrator.taskStore.getTask(taskId);
-    if (!task || task.status !== 'running') return;
-    if (task.terminalId && orchestrator.terminalManager.hasTerminal(task.terminalId)) {
+    const t = orchestrator.taskStore.getTask(taskId);
+    if (!t || t.status !== 'running') return;
+    if (t.terminalId && orchestrator.terminalManager.hasTerminal(t.terminalId)) {
       orchestrator.debugLog(`[Orchestrator] Idle timeout for ${taskId.slice(0, 8)}, sending /exit`);
-      orchestrator.terminalManager.writeToTerminal(task.terminalId, '/exit\r');
+      orchestrator.terminalManager.writeToTerminal(t.terminalId, '/exit\r');
       if (!orchestrator._exitSent) orchestrator._exitSent = new Set();
       orchestrator._exitSent.add(taskId);
     }
-  }, IDLE_EXIT_MS);
+  }, timeout);
 
   orchestrator.idleTimers.set(taskId, timer);
 }
