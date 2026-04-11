@@ -158,15 +158,18 @@ async function handleTaskReport(_req: RequestLike, res: ResponseLike, taskId: st
   let diffSummary = '';
   if (task.workspacePath && workspaceManager) {
     try {
-      const baseBranch = task.baseBranch || 'HEAD~1';
-      diffSummary = workspaceManager.runGit(task.workspacePath, ['diff', '--stat', baseBranch]).trim();
-      diff = workspaceManager.runGit(task.workspacePath, ['diff', baseBranch]).trim();
+      // Compare only the agent's own commits: diff from the branch point (merge-base)
+      // to the current worktree HEAD, so unrelated master commits don't appear.
+      const branchName = task.branchName || `task/${taskId.slice(0, 8)}`;
+      const baseBranch = task.baseBranch || 'master';
+      const mergeBase = workspaceManager.runGit(task.workspacePath, ['merge-base', baseBranch, 'HEAD']).trim();
+      diffSummary = workspaceManager.runGit(task.workspacePath, ['diff', '--stat', mergeBase]).trim();
+      diff = workspaceManager.runGit(task.workspacePath, ['diff', mergeBase]).trim();
     } catch {
       try {
-        const branchName = task.branchName || `task/${taskId.slice(0, 8)}`;
-        const repoRoot = workspaceManager.resolveRepositoryRoot(task.repositoryPath);
-        diffSummary = workspaceManager.runGit(repoRoot, ['diff', '--stat', `${branchName}~1..${branchName}`]).trim();
-        diff = workspaceManager.runGit(repoRoot, ['diff', `${branchName}~1..${branchName}`]).trim();
+        // Fallback: compare staged + unstaged changes in worktree
+        diffSummary = workspaceManager.runGit(task.workspacePath, ['diff', '--stat', 'HEAD']).trim();
+        diff = workspaceManager.runGit(task.workspacePath, ['diff', 'HEAD']).trim();
       } catch {}
     }
   }
