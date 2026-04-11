@@ -123,5 +123,8 @@ export function setupAssignTaskModal() {
     populateModels(provider);
     if (errorEl) errorEl.textContent = '';
     modal.style.display = '';
+    requestAnimationFrame(() => {
+      (document.getElementById('taskPromptInput') as HTMLTextAreaElement)?.focus();
+    });
   };
 }

@@ -253,6 +253,9 @@ export function setupAgentModal(openTerminalForAgent) {
   openBtn.addEventListener('click', () => {
     resetFormState();
     modal.style.display = '';
+    requestAnimationFrame(() => {
+      (document.getElementById('agentNameInput') as HTMLInputElement)?.focus();
+    });
   });
   cancelBtn?.addEventListener('click', closeModal);
   document.addEventListener('keydown', (event) => {
