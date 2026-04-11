@@ -37,19 +37,47 @@
   color: var(--color-text);
   margin: 0;
 }
-.task-report-diff-summary {
-  max-height: 150px;
-  color: var(--color-state-working);
+/* Per-file diff viewer */
+.diff-empty {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  padding: 8px 0;
 }
-.task-report-diff-details {
-  margin-top: 8px;
+.diff-file {
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  margin-bottom: 6px;
+  overflow: hidden;
 }
-.task-report-diff-details summary {
+.diff-file-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #161b22;
   cursor: pointer;
   font-size: 12px;
-  color: var(--color-text-muted);
-  padding: 4px 0;
+  font-family: var(--font-mono);
+  user-select: none;
 }
+.diff-file-header:hover { background: #1c2129; }
+.diff-file-name { flex: 1; color: var(--color-text); }
+.diff-stat-add { color: #3fb950; font-size: 11px; }
+.diff-stat-del { color: #f85149; font-size: 11px; }
+.diff-file-body {
+  background: #0b0d0f;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-x: auto;
+  max-height: 400px;
+  overflow-y: auto;
+}
+.diff-file-body > div { padding: 0 12px; white-space: pre-wrap; word-break: break-all; }
+.diff-line-add { background: rgba(63, 185, 80, 0.12); color: #3fb950; }
+.diff-line-del { background: rgba(248, 81, 73, 0.12); color: #f85149; }
+.diff-line-hunk { color: rgba(139, 148, 158, 0.7); padding-top: 4px; padding-bottom: 2px; }
+.diff-line-ctx { color: var(--color-text-muted); }
 .task-report-actions {
   display: flex;
   gap: 8px;

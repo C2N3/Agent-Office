@@ -1,15 +1,76 @@
 // @ts-nocheck
 
+function escapeHtml(str) {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/** Parse unified diff into per-file sections */
+function parseDiffToFiles(diff) {
+  if (!diff) return [];
+  const files = [];
+  const lines = diff.split('\n');
+  let current = null;
+
+  for (const line of lines) {
+    if (line.startsWith('diff --git')) {
+      if (current) files.push(current);
+      // Extract filename: diff --git a/path b/path
+      const match = line.match(/diff --git a\/(.+?) b\/(.+)/);
+      current = { name: match ? match[2] : 'unknown', additions: 0, deletions: 0, lines: [] };
+      continue;
+    }
+    if (!current) continue;
+    // Skip index/--- /+++ header lines
+    if (line.startsWith('index ') || line.startsWith('--- ') || line.startsWith('+++ ')) continue;
+
+    if (line.startsWith('@@')) {
+      current.lines.push({ type: 'hunk', text: line });
+    } else if (line.startsWith('+')) {
+      current.additions++;
+      current.lines.push({ type: 'add', text: line });
+    } else if (line.startsWith('-')) {
+      current.deletions++;
+      current.lines.push({ type: 'del', text: line });
+    } else {
+      current.lines.push({ type: 'ctx', text: line });
+    }
+  }
+  if (current) files.push(current);
+  return files;
+}
+
+/** Render file diffs into a container element */
+function renderFileDiffs(container, files) {
+  if (!files.length) {
+    container.innerHTML = '<div class="diff-empty">(no changes)</div>';
+    return;
+  }
+
+  const html = files.map((file) => {
+    const stat = `<span class="diff-stat-add">+${file.additions}</span> <span class="diff-stat-del">-${file.deletions}</span>`;
+    const linesHtml = file.lines.map((l) => {
+      const cls = l.type === 'add' ? 'diff-line-add' : l.type === 'del' ? 'diff-line-del' : l.type === 'hunk' ? 'diff-line-hunk' : 'diff-line-ctx';
+      return `<div class="${cls}">${escapeHtml(l.text)}</div>`;
+    }).join('');
+
+    return `<details class="diff-file">
+      <summary class="diff-file-header"><span class="diff-file-name">${escapeHtml(file.name)}</span>${stat}</summary>
+      <div class="diff-file-body">${linesHtml}</div>
+    </details>`;
+  }).join('');
+
+  container.innerHTML = html;
+}
+
 export function setupTaskReportModal() {
   const modal = document.getElementById('taskReportModal');
   const closeBtn = document.getElementById('closeTaskReportBtn');
   const outputEl = document.getElementById('taskReportOutput');
-  const diffSummaryEl = document.getElementById('taskReportDiffSummary');
-  const diffEl = document.getElementById('taskReportDiff');
+  const changesEl = document.getElementById('taskReportChanges');
   const titleEl = document.getElementById('taskReportTitle');
   const mergeBtn = document.getElementById('taskReportMergeBtn');
   const rejectBtn = document.getElementById('taskReportRejectBtn');
-  if (!modal || !outputEl || !diffSummaryEl || !diffEl || !mergeBtn || !rejectBtn) return;
+  if (!modal || !outputEl || !changesEl || !mergeBtn || !rejectBtn) return;
 
   let currentTaskId = '';
   let currentAgentId = '';
@@ -27,8 +88,7 @@ export function setupTaskReportModal() {
     currentTaskId = taskId;
     if (titleEl) titleEl.textContent = 'Task Report';
     outputEl.textContent = 'Loading...';
-    diffSummaryEl.textContent = '';
-    diffEl.textContent = '';
+    changesEl.innerHTML = '';
     modal.style.display = '';
 
     try {
@@ -45,10 +105,11 @@ export function setupTaskReportModal() {
           outputEl.textContent = cleanedOutput;
         }
       } else {
-        outputEl.textContent = '(이 태스크에 대한 에이전트 응답을 찾을 수 없습니다. 아래 Changes 섹션에서 실제 변경 내역을 확인하세요.)';
+        outputEl.textContent = '(이 태스크에 대한 에이전트 응답을 찾을 수 없습니다.)';
       }
-      diffSummaryEl.textContent = data.diffSummary || '(no changes)';
-      diffEl.textContent = data.diff || '';
+
+      const files = parseDiffToFiles(data.diff || '');
+      renderFileDiffs(changesEl, files);
     } catch (e) {
       outputEl.textContent = 'Failed to load report.';
     }
