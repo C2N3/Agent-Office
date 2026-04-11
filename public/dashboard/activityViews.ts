@@ -12,46 +12,12 @@ import {
   state,
 } from './shared.js';
 
-const MODEL_COLORS = {
-  opus: '#e879a0',
-  sonnet: '#2f81f7',
-  haiku: '#3fb950',
-};
-
 const tooltip = document.getElementById('mcTooltip') as HTMLDivElement | null;
-type BarDatum = { label: string; value: number };
 
 function toMillis(value: number | string | Date | null | undefined): number {
   if (value == null) return 0;
   const ts = new Date(value).getTime();
   return Number.isFinite(ts) ? ts : 0;
-}
-
-function getModelFamily(modelName: string | null | undefined): 'opus' | 'sonnet' | 'haiku' | null {
-  if (!modelName) return null;
-  const lower = modelName.toLowerCase();
-  if (lower.includes('opus')) return 'opus';
-  if (lower.includes('sonnet')) return 'sonnet';
-  if (lower.includes('haiku')) return 'haiku';
-  return null;
-}
-
-function getModelColor(modelName: string | null | undefined): string {
-  const family = getModelFamily(modelName);
-  return (family && MODEL_COLORS[family]) || '#8b949e';
-}
-
-function getModelDisplayName(modelName: string | null | undefined): string {
-  if (!modelName) return 'Unknown';
-  const match = modelName.match(/claude-(\w+)-(\d+)-(\d+)/);
-  if (match) {
-    return `${match[1].charAt(0).toUpperCase() + match[1].slice(1)} ${match[2]}.${match[3]}`;
-  }
-  return modelName;
-}
-
-function renderModelBreakdown(_days: Record<string, DashboardDayStats>): void {
-  // Token/cost breakdown removed
 }
 
 async function fetchHistory(): Promise<void> {
@@ -82,63 +48,6 @@ function showTooltip(element: HTMLElement, dateString: string, data?: DashboardD
 function hideTooltip() {
   if (!tooltip) return;
   tooltip.style.display = 'none';
-}
-
-function aggregateChart(
-  days: Record<string, DashboardDayStats>,
-  mode: 'weeks' | 'months',
-  valueFn: (day: DashboardDayStats) => number
-): Array<{ label: string; value: number }> {
-  const result: Array<{ label: string; value: number }> = [];
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  if (mode === 'weeks') {
-    for (let week = 11; week >= 0; week--) {
-      let sum = 0;
-      const weekEnd = new Date(today);
-      weekEnd.setDate(today.getDate() - week * 7);
-      const weekStart = new Date(weekEnd);
-      weekStart.setDate(weekEnd.getDate() - 6);
-      const cursor = new Date(weekStart);
-      while (cursor <= weekEnd) {
-        sum += valueFn(days[cursor.toISOString().slice(0, 10)] || {});
-        cursor.setDate(cursor.getDate() + 1);
-      }
-      result.push({ label: `W${12 - week}`, value: sum });
-    }
-    return result;
-  }
-
-  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  for (let month = 11; month >= 0; month--) {
-    const target = new Date(today.getFullYear(), today.getMonth() - month, 1);
-    const year = target.getFullYear();
-    const monthIndex = target.getMonth();
-    const maxDay = new Date(year, monthIndex + 1, 0).getDate();
-    let sum = 0;
-    for (let day = 1; day <= maxDay; day++) {
-      sum += valueFn(days[`${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`] || {});
-    }
-    result.push({ label: monthNames[monthIndex], value: sum });
-  }
-  return result;
-}
-
-function buildBars(data: BarDatum[], colorClass: string, isMoney = false): string {
-  const max = Math.max(...data.map((entry) => entry.value), 1);
-  const bars = data.map((entry) => {
-    const height = entry.value > 0 ? Math.max(4, Math.round((entry.value / max) * 100)) : 0;
-    const formatted = entry.value === 0
-      ? ''
-      : (isMoney ? `$${entry.value.toFixed(2)}` : formatNum(entry.value));
-    return `<div class="chart-col">
-              <div class="chart-val">${formatted}</div>
-              <div class="chart-bar ${colorClass}" style="height:${height}%"></div>
-              <div class="chart-lbl">${entry.label}</div>
-            </div>`;
-  }).join('');
-  return `<div class="chart-box">${bars}</div>`;
 }
 
 export async function renderHeatmapView(): Promise<void> {

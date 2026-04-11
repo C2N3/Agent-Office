@@ -13,6 +13,7 @@ import { buildOfficeLayers, officeLayers } from './officeLayers.js';
 import { officePathfinder } from './officePathfinder.js';
 import { drawOfficeSprite, loadAllOfficeSkins } from './officeSprite.js';
 import { drawOfficeBubble, drawOfficeNameTag } from './officeUi.js';
+import { screenToWorld, setupCameraControls } from './renderer/camera.js';
 
 export const officeRenderer: any = {
   canvas: null,
@@ -121,98 +122,12 @@ export const officeRenderer: any = {
   },
 
   _setupCameraControls: function (canvas) {
-    const cam = this.camera;
-
-    canvas.addEventListener('wheel', function (e) {
-      e.preventDefault();
-      const rect = canvas.getBoundingClientRect();
-      const mouseX = (e.clientX - rect.left) / rect.width * canvas.width;
-      const mouseY = (e.clientY - rect.top) / rect.height * canvas.height;
-
-      const oldZoom = cam.zoom;
-      const zoomDelta = e.deltaY < 0 ? 1.1 : 0.9;
-      cam.zoom = Math.max(cam.minZoom, Math.min(cam.maxZoom, cam.zoom * zoomDelta));
-
-      // Zoom towards mouse position
-      const zoomRatio = cam.zoom / oldZoom;
-      cam.panX = mouseX - (mouseX - cam.panX) * zoomRatio;
-      cam.panY = mouseY - (mouseY - cam.panY) * zoomRatio;
-    }, { passive: false });
-
-    // Right-click drag to pan. Left-click is reserved for character
-    // interaction (drag/click) and must not move the camera.
-    let dragging = false;
-    let dragStartX = 0;
-    let dragStartY = 0;
-    let panStartX = 0;
-    let panStartY = 0;
-    let dragMoved = false;
-
-    canvas.addEventListener('mousedown', function (e) {
-      if (e.button === 2) {
-        e.preventDefault();
-        dragging = true;
-        dragMoved = false;
-        dragStartX = e.clientX;
-        dragStartY = e.clientY;
-        panStartX = cam.panX;
-        panStartY = cam.panY;
-        canvas.style.cursor = 'grabbing';
-      }
-    });
-
-    window.addEventListener('mousemove', function (e) {
-      if (!dragging) return;
-      const dx = e.clientX - dragStartX;
-      const dy = e.clientY - dragStartY;
-      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) dragMoved = true;
-      const rect = canvas.getBoundingClientRect();
-      // Pan is stored in canvas-pixel space (applied before the zoom
-      // scale), so the cursor delta maps 1:1 regardless of zoom level —
-      // dragging by N screen pixels moves the world by N pixels on screen.
-      cam.panX = panStartX + (dx / rect.width) * canvas.width;
-      cam.panY = panStartY + (dy / rect.height) * canvas.height;
-    });
-
-    window.addEventListener('mouseup', function (e) {
-      if (e.button === 2 && dragging) {
-        dragging = false;
-        canvas.style.cursor = '';
-      }
-    });
-
-    // Suppress the browser context menu so right-click drag can pan freely.
-    canvas.addEventListener('contextmenu', function (e) {
-      e.preventDefault();
-    });
-
-    // Suppress click event if user was dragging (prevent popover on drag release)
-    canvas.addEventListener('click', function (e) {
-      if (dragMoved) {
-        e.stopImmediatePropagation();
-        dragMoved = false;
-      }
-    }, true);
-
-    // Double-click to reset zoom and re-center the world in the canvas.
-    const self = this;
-    canvas.addEventListener('dblclick', function () {
-      cam.zoom = 1;
-      cam.panX = (canvas.width - officeLayers.width) / 2;
-      cam.panY = (canvas.height - officeLayers.height) / 2;
-      void self;
-    });
+    setupCameraControls(this, canvas, officeLayers);
   },
 
   /** Convert screen (client) coordinates to world (canvas) coordinates */
   screenToWorld: function (clientX, clientY) {
-    const rect = this.canvas.getBoundingClientRect();
-    const canvasX = (clientX - rect.left) / rect.width * this.canvas.width;
-    const canvasY = (clientY - rect.top) / rect.height * this.canvas.height;
-    return {
-      x: (canvasX - this.camera.panX) / this.camera.zoom,
-      y: (canvasY - this.camera.panY) / this.camera.zoom,
-    };
+    return screenToWorld(this, clientX, clientY);
   },
 
   stop: function () {

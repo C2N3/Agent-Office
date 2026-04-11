@@ -7,6 +7,7 @@
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
+const { hasActiveOrchestratorTask, removeOrOffline } = require('./liveness/agents');
 
 const sessionPids = new Map(); // sessionId → actual CLI process PID
 const KNOWN_PROVIDERS = new Set(['claude', 'codex']);
@@ -142,10 +143,6 @@ function countProviderProcesses(provider, callback) {
   }
 }
 
-function countClaudeProcesses(callback) {
-  countProviderProcesses('claude', callback);
-}
-
 /**
  * Get jsonl file mtime (0 if not found)
  */
@@ -218,31 +215,6 @@ const LIVENESS_INTERVAL = 2000;
 const GRACE_MS = 10000;
 const ZOMBIE_SWEEP_INTERVAL = 30000;
 const NO_PID_TIMEOUT = GRACE_MS + 10000;
-
-/** Remove or transition agent based on registration status */
-function removeOrOffline(agentManager, agentRegistry, agent, debugLog) {
-  if (agent.isRegistered) {
-    const registryId = agent.registryId || agent.id;
-    agentRegistry?.unlinkSession?.(registryId);
-    agentManager.transitionToOffline(agent.id);
-    debugLog(`[Live] ${agent.id.slice(0, 8)} (registered) → Offline`);
-  } else {
-    agentManager.removeAgent(agent.id);
-  }
-}
-
-/** Check if an agent has an active task in the Orchestrator */
-function hasActiveOrchestratorTask(taskStore, agent) {
-  if (!taskStore) return false;
-  const registryId = agent.registryId || agent.id;
-  const activeTasks = taskStore.getAllTasks
-    ? taskStore.getAllTasks()
-    : [];
-  return activeTasks.some(t =>
-    t.agentRegistryId === registryId &&
-    (t.status === 'running' || t.status === 'provisioning' || t.status === 'retrying')
-  );
-}
 
 function startLivenessChecker({ agentManager, agentRegistry, taskStore, debugLog }) {
   const zombieSweepId = setInterval(() => {
