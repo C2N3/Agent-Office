@@ -36,7 +36,9 @@ export function setupTaskReportModal() {
       const data = await res.json();
       currentAgentId = data.agentRegistryId || '';
       if (titleEl) titleEl.textContent = data.title || 'Task Report';
-      outputEl.textContent = data.output || '(no output)';
+      const cleanedOutput = (data.output || '').trim();
+      outputEl.textContent = cleanedOutput
+        || '(이 태스크에 대한 에이전트 응답을 찾을 수 없습니다. 아래 Changes 섹션에서 실제 변경 내역을 확인하세요.)';
       diffSummaryEl.textContent = data.diffSummary || '(no changes)';
       diffEl.textContent = data.diff || '';
     } catch (e) {

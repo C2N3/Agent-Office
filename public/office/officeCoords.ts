@@ -6,8 +6,8 @@
 
 /* eslint-disable no-unused-vars */
 
-import { OFFICE, OFFICE_LAYOUT } from './office-config.js';
-import { loadOfficeImage } from './office-layers.js';
+import { OFFICE, OFFICE_LAYOUT } from './officeConfig.js';
+import { loadOfficeImage } from './officeLayers.js';
 
 export const officeCoords: any = {
   idle: [],

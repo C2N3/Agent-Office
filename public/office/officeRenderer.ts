@@ -6,13 +6,13 @@
 
 /* eslint-disable no-unused-vars */
 
-import { OFFICE, OFFICE_LAYOUT } from './office-config.js';
+import { OFFICE, OFFICE_LAYOUT } from './officeConfig.js';
 import { officeCharacters } from './character/index.js';
-import { officeCoords, parseMapCoordinates, parseObjectCoordinates } from './office-coords.js';
-import { buildOfficeLayers, officeLayers } from './office-layers.js';
-import { officePathfinder } from './office-pathfinder.js';
-import { drawOfficeSprite, loadAllOfficeSkins } from './office-sprite.js';
-import { drawOfficeBubble, drawOfficeNameTag } from './office-ui.js';
+import { officeCoords, parseMapCoordinates, parseObjectCoordinates } from './officeCoords.js';
+import { buildOfficeLayers, officeLayers } from './officeLayers.js';
+import { officePathfinder } from './officePathfinder.js';
+import { drawOfficeSprite, loadAllOfficeSkins } from './officeSprite.js';
+import { drawOfficeBubble, drawOfficeNameTag } from './officeUi.js';
 
 export const officeRenderer: any = {
   canvas: null,
@@ -32,8 +32,11 @@ export const officeRenderer: any = {
 
     // 1. Load layers (bg/fg)
     await buildOfficeLayers();
-    canvas.width = officeLayers.width;
-    canvas.height = officeLayers.height;
+    // Canvas internal buffer follows the panel size so the map renders at
+    // its native resolution and a larger panel reveals more of the world
+    // (instead of stretching the same pixels). _fitCanvasToContainer also
+    // centers the map on the first sizing pass.
+    this._fitCanvasToContainer(true);
 
     // 2. Build pathfinder
     await officePathfinder.init(officeLayers.width, officeLayers.height);
@@ -76,8 +79,45 @@ export const officeRenderer: any = {
     // 6. Setup wheel zoom + middle-click pan
     this._setupCameraControls(canvas);
 
+    // 7. React to panel resizes (window resize, splitter drag, etc.)
+    this._setupResizeObserver(canvas);
+
     this.lastTime = performance.now();
     this.loop(this.lastTime);
+  },
+
+  _fitCanvasToContainer: function (centerCamera) {
+    const canvas = this.canvas;
+    if (!canvas) return;
+    const parent = canvas.parentElement;
+    // Fall back to the canvas's own client size if no parent is available.
+    const w = Math.max(1, Math.round((parent && parent.clientWidth) || canvas.clientWidth || 1));
+    const h = Math.max(1, Math.round((parent && parent.clientHeight) || canvas.clientHeight || 1));
+    if (canvas.width !== w) canvas.width = w;
+    if (canvas.height !== h) canvas.height = h;
+    if (centerCamera) {
+      // Center the world inside the canvas at zoom=1 so the map sits in
+      // the middle and any extra panel space is visible around it.
+      this.camera.panX = (w - officeLayers.width) / 2;
+      this.camera.panY = (h - officeLayers.height) / 2;
+    }
+  },
+
+  _setupResizeObserver: function (canvas) {
+    const self = this;
+    const target = canvas.parentElement || canvas;
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(function () {
+        self._fitCanvasToContainer(false);
+      });
+      ro.observe(target);
+      this._resizeObserver = ro;
+    } else {
+      // Fallback for environments without ResizeObserver.
+      const onResize = function () { self._fitCanvasToContainer(false); };
+      window.addEventListener('resize', onResize);
+      this._onWindowResize = onResize;
+    }
   },
 
   _setupCameraControls: function (canvas) {
@@ -99,7 +139,8 @@ export const officeRenderer: any = {
       cam.panY = mouseY - (mouseY - cam.panY) * zoomRatio;
     }, { passive: false });
 
-    // Left-click or middle-click drag to pan
+    // Right-click drag to pan. Left-click is reserved for character
+    // interaction (drag/click) and must not move the camera.
     let dragging = false;
     let dragStartX = 0;
     let dragStartY = 0;
@@ -108,7 +149,7 @@ export const officeRenderer: any = {
     let dragMoved = false;
 
     canvas.addEventListener('mousedown', function (e) {
-      if (e.button === 0 || e.button === 1) {
+      if (e.button === 2) {
         e.preventDefault();
         dragging = true;
         dragMoved = false;
@@ -126,15 +167,23 @@ export const officeRenderer: any = {
       const dy = e.clientY - dragStartY;
       if (Math.abs(dx) > 3 || Math.abs(dy) > 3) dragMoved = true;
       const rect = canvas.getBoundingClientRect();
-      cam.panX = panStartX + (dx / rect.width * canvas.width) / cam.zoom;
-      cam.panY = panStartY + (dy / rect.height * canvas.height) / cam.zoom;
+      // Pan is stored in canvas-pixel space (applied before the zoom
+      // scale), so the cursor delta maps 1:1 regardless of zoom level —
+      // dragging by N screen pixels moves the world by N pixels on screen.
+      cam.panX = panStartX + (dx / rect.width) * canvas.width;
+      cam.panY = panStartY + (dy / rect.height) * canvas.height;
     });
 
     window.addEventListener('mouseup', function (e) {
-      if ((e.button === 0 || e.button === 1) && dragging) {
+      if (e.button === 2 && dragging) {
         dragging = false;
         canvas.style.cursor = '';
       }
+    });
+
+    // Suppress the browser context menu so right-click drag can pan freely.
+    canvas.addEventListener('contextmenu', function (e) {
+      e.preventDefault();
     });
 
     // Suppress click event if user was dragging (prevent popover on drag release)
@@ -145,11 +194,13 @@ export const officeRenderer: any = {
       }
     }, true);
 
-    // Double-click to reset zoom
+    // Double-click to reset zoom and re-center the world in the canvas.
+    const self = this;
     canvas.addEventListener('dblclick', function () {
       cam.zoom = 1;
-      cam.panX = 0;
-      cam.panY = 0;
+      cam.panX = (canvas.width - officeLayers.width) / 2;
+      cam.panY = (canvas.height - officeLayers.height) / 2;
+      void self;
     });
   },
 
@@ -202,8 +253,8 @@ export const officeRenderer: any = {
     ctx.translate(this.camera.panX, this.camera.panY);
     ctx.scale(this.camera.zoom, this.camera.zoom);
 
-    // 1. Background (scaled to canvas size)
-    ctx.drawImage(officeLayers.bgImage, 0, 0, this.canvas.width, this.canvas.height);
+    // 1. Background (drawn at native world size; camera transform handles fit)
+    ctx.drawImage(officeLayers.bgImage, 0, 0, officeLayers.width, officeLayers.height);
 
     // 2. Static decor behind agents
     this._drawDecorItems(ctx, officeLayers.decorBefore);
@@ -258,9 +309,9 @@ export const officeRenderer: any = {
       if (isOffline) ctx.globalAlpha = 1.0;
     }
 
-    // 5. Foreground (scaled to canvas size)
+    // 5. Foreground (drawn at native world size to match background)
     if (officeLayers.fgImage && officeLayers.fgImage.complete && officeLayers.fgImage.naturalWidth > 0) {
-      ctx.drawImage(officeLayers.fgImage, 0, 0, this.canvas.width, this.canvas.height);
+      ctx.drawImage(officeLayers.fgImage, 0, 0, officeLayers.width, officeLayers.height);
     }
 
     // 6. Static decor above agents
@@ -273,135 +324,7 @@ export const officeRenderer: any = {
     ctx.restore();
   },
 
-  spawnEffect: function (type, x, y) {
-    const S = OFFICE.MAP_SCALE || 1;
-    const id = Math.random().toString(36).substr(2, 9);
-    const now = performance.now();
-
-    if (type === 'confetti') {
-      const colors = ['#ff4d4d', '#ffeb3b', '#4caf50', '#2196f3', '#e91e63', '#9c27b0'];
-      for (let i = 0; i < 20; i++) {
-        this.effects.push({
-          id: id + i, type: type,
-          x: x + (Math.random() - 0.5) * 10 * S, y: y - 5 * S,
-          vx: (Math.random() - 0.5) * 6 * S, vy: (-Math.random() * 8 - 2) * S,
-          rotation: Math.random() * Math.PI * 2,
-          vRotation: (Math.random() - 0.5) * 0.4,
-          startTime: now, duration: 1500 + Math.random() * 1000,
-          alpha: 1, scale: (0.6 + Math.random() * 0.8) * S,
-          color: colors[Math.floor(Math.random() * colors.length)],
-        });
-      }
-    } else if (type === 'warning') {
-      this.effects.push({
-        id: id, type: type, x: x, y: y,
-        vx: 0, vy: -0.2 * S, rotation: 0, vRotation: 0,
-        startTime: now, duration: 1200, alpha: 1, scale: S,
-      });
-    } else if (type === 'focus') {
-      this.effects.push({
-        id: id, type: type,
-        x: x + (Math.random() - 0.5) * 15 * S, y: y + (Math.random() - 0.5) * 10 * S,
-        vx: (Math.random() - 0.5) * 0.3 * S, vy: (-0.4 - Math.random() * 0.4) * S,
-        rotation: (Math.random() - 0.5) * 0.2,
-        vRotation: (Math.random() - 0.5) * 0.05,
-        startTime: now, duration: 1000 + Math.random() * 500,
-        alpha: 1, scale: (0.8 + Math.random() * 0.4) * S,
-        color: Math.random() > 0.5 ? '#00f2ff' : '#00ffaa',
-      });
-    } else if (type === 'stateChange') {
-      this.effects.push({
-        id: id, type: type, x: x, y: y,
-        vx: 0, vy: 0, rotation: 0, vRotation: 0,
-        startTime: now, duration: 600, alpha: 1, scale: 0.3 * S,
-        color: arguments[3] || '#f97316', // 4th argument = color
-      });
-    }
-  },
-
-  updateEffects: function (deltaMs) {
-    const now = performance.now();
-    this.effects = this.effects.filter(function (fx) {
-      const elapsed = now - fx.startTime;
-      if (elapsed > fx.duration) return false;
-      fx.alpha = 1 - (elapsed / fx.duration);
-      fx.x += fx.vx * (deltaMs / 16);
-      fx.y += fx.vy * (deltaMs / 16);
-      fx.rotation += fx.vRotation * (deltaMs / 16);
-      if (fx.type === 'confetti') {
-        fx.vy += 0.15;
-        fx.vx *= 0.98;
-      } else if (fx.type === 'focus') {
-        fx.vy -= 0.02;
-      }
-      return true;
-    });
-  },
-
-  renderEffects: function (ctx) {
-    for (let i = 0; i < this.effects.length; i++) {
-      const fx = this.effects[i];
-      ctx.save();
-      ctx.translate(fx.x, fx.y);
-      ctx.rotate(fx.rotation);
-      ctx.scale(fx.scale, fx.scale);
-      ctx.globalAlpha = fx.alpha;
-
-      const S = OFFICE.MAP_SCALE || 1;
-      if (fx.type === 'confetti') {
-        ctx.fillStyle = fx.color || '#fff';
-        ctx.fillRect(-2, -3, 4, 6);
-        ctx.fillStyle = 'rgba(255,255,255,0.3)';
-        ctx.fillRect(-2, -3, 2, 2);
-      } else if (fx.type === 'warning') {
-        const size = Math.round(24 * S);
-        const wobble = Math.sin(performance.now() * 0.02) * 3 * S;
-        ctx.translate(wobble, 0);
-        ctx.fillStyle = 'rgba(0,0,0,0.3)';
-        this._drawTri(ctx, 2, 2, size);
-        ctx.fillStyle = '#ffcc00';
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = Math.round(2 * S);
-        this._drawTri(ctx, 0, 0, size);
-        ctx.fill();
-        ctx.stroke();
-        ctx.font = 'bold ' + Math.round(16 * S) + 'px Arial';
-        ctx.fillStyle = '#000';
-        ctx.textAlign = 'center';
-        ctx.fillText('!', 0, Math.round(7 * S));
-      } else if (fx.type === 'focus') {
-        ctx.fillStyle = fx.color || '#fff';
-        ctx.font = 'bold ' + Math.round(9 * S) + 'px "Courier New", monospace';
-        ctx.textAlign = 'center';
-        const chars = ['0', '1', '{', '}', ';', '>', '_'];
-        const charIdx = parseInt(fx.id.slice(-1), 36) % chars.length;
-        ctx.fillText(chars[charIdx], 0, 0);
-        ctx.shadowBlur = Math.round(4 * S);
-        ctx.shadowColor = fx.color || '#fff';
-        ctx.fillText(chars[charIdx], 0, 0);
-      } else if (fx.type === 'stateChange') {
-        const elapsed = performance.now() - fx.startTime;
-        const t = elapsed / fx.duration;
-        const radius = (8 + t * 20) * S;
-        ctx.strokeStyle = fx.color || '#f97316';
-        ctx.lineWidth = 2 * S * (1 - t);
-        ctx.beginPath();
-        ctx.arc(0, 0, radius, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-
-      ctx.restore();
-    }
-  },
-
-  _drawTri: function (ctx, x, y, size) {
-    const h = size * (Math.sqrt(3) / 2);
-    ctx.beginPath();
-    ctx.moveTo(x, y - h / 2 - 2);
-    ctx.lineTo(x + size / 2 + 2, y + h / 2);
-    ctx.lineTo(x - size / 2 - 2, y + h / 2);
-    ctx.closePath();
-  },
+  ...rendererEffects,
 
   _drawDecorItems: function (ctx, items) {
     if (!Array.isArray(items) || items.length === 0) return;

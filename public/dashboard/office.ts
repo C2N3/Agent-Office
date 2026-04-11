@@ -75,6 +75,11 @@ function showOfficePopover(
   const branch = escapeText(workspaceMeta?.branch || '-');
   const repository = escapeText(workspaceMeta?.repositoryName || '-');
 
+  const isPinned = !!(character as OfficeCharacter & { manualPinned?: boolean }).manualPinned;
+  const unpinButton = isPinned
+    ? '<button class="pop-terminal-btn" data-action="unpin">Unpin Position</button>'
+    : '';
+
   popoverEl.innerHTML = `
     <div class="pop-header">
       <span class="pop-name">${name}</span>
@@ -87,6 +92,7 @@ function showOfficePopover(
     <div class="pop-row"><span>Model</span><span class="pop-val">${model}</span></div>
     <button class="pop-terminal-btn" data-action="rename">Rename</button>
     <button class="pop-terminal-btn" data-action="open-terminal">Open Terminal</button>
+    ${unpinButton}
   `;
   popoverEl.style.display = 'block';
 
@@ -95,6 +101,11 @@ function showOfficePopover(
   });
   popoverEl.querySelector('[data-action="open-terminal"]')?.addEventListener('click', () => {
     openTerminalForAgent(character.id);
+  });
+  popoverEl.querySelector('[data-action="unpin"]')?.addEventListener('click', () => {
+    (officeCharacters as unknown as { unpinCharacter?: (id: string) => void })
+      .unpinCharacter?.(character.id);
+    hideOfficePopover();
   });
 
   const rect = canvas.getBoundingClientRect();
@@ -126,6 +137,110 @@ export function setupOfficeClickHandler(openTerminalForAgent: (agentId: string, 
   const canvasEl = document.getElementById('office-canvas');
   if (!(canvasEl instanceof HTMLCanvasElement)) return;
   const canvas = canvasEl;
+
+  // ── Drag-and-drop: move a character by left-click-dragging it.
+  type DragState = {
+    character: OfficeCharacter;
+    startClientX: number;
+    startClientY: number;
+    grabOffsetX: number;
+    grabOffsetY: number;
+    moved: boolean;
+  };
+  let dragState: DragState | null = null;
+  const DRAG_THRESHOLD = 4;
+
+  const setCharacterPosition = (character: OfficeCharacter, worldX: number, worldY: number) => {
+    const mutable = character as OfficeCharacter & {
+      x: number; y: number; path?: unknown[]; pathIndex?: number; manualPinned?: boolean;
+      facingDir?: string; currentAnim?: string;
+    };
+    const dx = worldX - mutable.x;
+    const dy = worldY - mutable.y;
+    mutable.x = worldX;
+    mutable.y = worldY;
+    // Stop any pathfinding movement in-flight so it doesn't fight the drag.
+    // Also flag as manually pinned so _updateTarget doesn't recompute a path
+    // back to the desk every frame while the user is dragging.
+    if (Array.isArray(mutable.path)) mutable.path = [];
+    mutable.pathIndex = 0;
+    mutable.manualPinned = true;
+    // Face the direction of cursor motion and play the matching walk anim so
+    // the held character keeps animating naturally instead of looking frozen.
+    if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+      const dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+      mutable.facingDir = dir;
+      mutable.currentAnim = 'walk_' + dir;
+    }
+  };
+
+  canvas.addEventListener('mousedown', (event) => {
+    // Only left-click starts a character drag.
+    if (event.button !== 0) return;
+    const character = hitTestOfficeCharacter(canvas, event);
+    if (!character) return;
+
+    event.preventDefault();
+
+    const world = officeRenderer?.screenToWorld?.(event.clientX, event.clientY);
+    const startWorldX = world?.x ?? character.x;
+    const startWorldY = world?.y ?? character.y;
+
+    dragState = {
+      character,
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+      grabOffsetX: character.x - startWorldX,
+      grabOffsetY: character.y - startWorldY,
+      moved: false,
+    };
+    canvas.style.cursor = 'grabbing';
+  });
+
+  window.addEventListener('mousemove', (event) => {
+    if (!dragState) return;
+    const dx = event.clientX - dragState.startClientX;
+    const dy = event.clientY - dragState.startClientY;
+    if (!dragState.moved && Math.abs(dx) < DRAG_THRESHOLD && Math.abs(dy) < DRAG_THRESHOLD) return;
+
+    dragState.moved = true;
+    hideOfficePopover();
+    const world = officeRenderer?.screenToWorld?.(event.clientX, event.clientY);
+    if (!world) return;
+    setCharacterPosition(
+      dragState.character,
+      world.x + dragState.grabOffsetX,
+      world.y + dragState.grabOffsetY,
+    );
+  });
+
+  window.addEventListener('mouseup', (event) => {
+    if (!dragState) return;
+    if (event.button !== 0) return;
+    const finishedDrag = dragState;
+    dragState = null;
+    canvas.style.cursor = '';
+
+    if (finishedDrag.moved) {
+      // Hand off to dropCharacterAt: it unpins, releases the prior desk, and
+      // routes the character to the nearest work/rest spot for its current
+      // state. Called directly on the object so `this` (→ this.characters)
+      // is preserved.
+      (officeCharacters as unknown as {
+        dropCharacterAt?: (id: string, x: number, y: number) => void;
+      }).dropCharacterAt?.(
+        finishedDrag.character.id,
+        finishedDrag.character.x,
+        finishedDrag.character.y,
+      );
+      // Swallow the upcoming click event so it doesn't re-open the popover.
+      const swallow = (e: MouseEvent) => {
+        e.stopImmediatePropagation();
+        canvas.removeEventListener('click', swallow, true);
+      };
+      canvas.addEventListener('click', swallow, true);
+    }
+  });
 
   canvas.addEventListener('click', (event) => {
     const character = hitTestOfficeCharacter(canvas, event);

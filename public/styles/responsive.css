@@ -1,0 +1,207 @@
+/* ════════════════════════════════════════
+   Context Menu
+════════════════════════════════════════ */
+.context-menu {
+  position: fixed;
+  background: rgba(30, 30, 30, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  padding: 8px 0;
+  min-width: 240px;
+  z-index: 10000;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  pointer-events: auto;
+  animation: contextMenuFadeIn 0.15s ease-out;
+}
+
+@keyframes contextMenuFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  color: #e0e0e0;
+  font-size: 14px;
+  position: relative;
+}
+
+.context-menu-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.context-menu-item:active {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.context-menu-item.danger {
+  color: #ff6b6b;
+}
+
+.context-menu-item.danger:hover {
+  background: rgba(255, 107, 107, 0.15);
+}
+
+.menu-icon {
+  font-size: 16px;
+  margin-right: 12px;
+  width: 20px;
+  text-align: center;
+}
+
+.menu-label {
+  flex: 1;
+  font-family: var(--font-ui);
+  font-weight: 500;
+}
+
+.menu-shortcut {
+  font-size: 12px;
+  color: #888;
+  font-family: var(--font-ui);
+  background: rgba(255, 255, 255, 0.08);
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 12px;
+}
+
+/* Focus styles for accessibility */
+.context-menu-item:focus {
+  outline: 2px solid #6200ea;
+  outline-offset: -2px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Agent card keyboard navigation focus */
+.agent-card {
+  outline: none;
+}
+
+.agent-card:focus-visible {
+  outline: 2px solid #6200ea;
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* ════════════════════════════════════════
+   Satellite Tray — Mini Avatars for Sub/Team children
+════════════════════════════════════════ */
+
+/* Container for mini avatars inside parent card (above character) */
+.satellite-tray {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1px;
+  max-width: 78px;
+  min-height: 0;
+  padding: 0;
+}
+
+/* Mini avatar sprite (50% of 48x64 = 24x32, border-box so 3 fit per row) */
+.mini-avatar {
+  width: 24px;
+  height: 32px;
+  background-size: 192px 288px; /* 50% of 384x576 */
+  background-repeat: no-repeat;
+  image-rendering: auto;
+  border: 1.5px solid #94a3b8;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: border-color 0.3s ease, transform 0.15s ease;
+  animation: satellite-enter 0.25s ease-out;
+  pointer-events: auto;
+  -webkit-app-region: no-drag;
+}
+
+.mini-avatar:hover {
+  transform: scale(1.15);
+  z-index: 5;
+}
+
+.mini-avatar:active {
+  transform: scale(0.92);
+}
+
+/* Mini avatar state-based border colors */
+.mini-avatar[data-state="working"] { border-color: #f97316; }
+.mini-avatar[data-state="thinking"] { border-color: #8b5cf6; }
+.mini-avatar[data-state="done"] { border-color: #22c55e; }
+.mini-avatar[data-state="waiting"] { border-color: #94a3b8; }
+.mini-avatar[data-state="help"],
+.mini-avatar[data-state="error"] { border-color: #ef4444; }
+.mini-avatar[data-state="offline"] { border-color: #475569; filter: grayscale(80%) opacity(0.5); }
+
+/* Satellite enter animation */
+@keyframes satellite-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Satellite exit animation */
+.mini-avatar.removing {
+  animation: satellite-exit 0.2s ease-in forwards;
+  pointer-events: none;
+}
+
+@keyframes satellite-exit {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+}
+
+/* ════════════════════════════════════════
+   Agent Enter/Exit Animations
+════════════════════════════════════════ */
+.agent-card {
+  animation: agent-enter 0.3s ease-out;
+}
+
+@keyframes agent-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.agent-card.removing {
+  animation: agent-exit 0.25s ease-in forwards;
+  pointer-events: none;
+}
+
+@keyframes agent-exit {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.8) translateY(8px);
+  }
+}

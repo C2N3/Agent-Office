@@ -1,15 +1,15 @@
 // @ts-nocheck
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
 const { createCLIAdapter } = require('./cliAdapter');
 const { OutputParser } = require('./outputParser');
 const { isTerminalStatus } = require('./taskStateMachine');
+const { cleanupTaskRuntime, cleanupTaskWorktree, withRepoLock } = require('./cleanup');
+const { autoCommitTaskChanges, saveTaskOutput } = require('./output');
 
-const TASK_OUTPUT_DIR = path.join(os.homedir(), '.agent-office', 'task-output');
-const STDIN_DELAY_MS = 500;
+const STDIN_READY_TIMEOUT_MS = 8000;
+const STDIN_POST_READY_MS = 400;
 const IDLE_EXIT_MS = 30000;
 const IDLE_ARM_BYTES = 500;
+const CLAUDE_READY_MARKER = /╰[─━]/;
 
 async function dispatchTask(orchestrator, task) {
   orchestrator.taskStore.updateTask(task.id, { status: 'provisioning', updatedAt: Date.now() });
@@ -113,18 +113,48 @@ async function dispatchTask(orchestrator, task) {
   orchestrator.outputParsers.set(task.id, outputParser);
 
   const cleanups = [];
+  const stdinState = (spawnConfig.promptDelivery === 'stdin' && adapter.buildStdinPrompt)
+    ? { written: false, fallbackTimer: null, postReadyTimer: null }
+    : null;
+
+  const writePromptOnce = () => {
+    if (!stdinState || stdinState.written) return;
+    stdinState.written = true;
+    if (stdinState.fallbackTimer) {
+      clearTimeout(stdinState.fallbackTimer);
+      stdinState.fallbackTimer = null;
+    }
+    if (stdinState.postReadyTimer) {
+      clearTimeout(stdinState.postReadyTimer);
+      stdinState.postReadyTimer = null;
+    }
+    orchestrator.terminalManager.writeToTerminal(terminalId, adapter.buildStdinPrompt(task.prompt));
+    orchestrator.debugLog(`[Orchestrator] Prompt delivered via stdin: ${task.id.slice(0, 8)}`);
+  };
+
   cleanups.push(orchestrator.terminalManager.tapOutput(terminalId, (data) => {
+    if (stdinState && !stdinState.written && !stdinState.postReadyTimer
+        && CLAUDE_READY_MARKER.test(data)) {
+      stdinState.postReadyTimer = setTimeout(writePromptOnce, STDIN_POST_READY_MS);
+    }
     handleTaskOutput(orchestrator, task.id, data, outputParser);
   }));
   cleanups.push(orchestrator.terminalManager.tapExit(terminalId, (exitCode) => {
+    if (stdinState) {
+      if (stdinState.fallbackTimer) clearTimeout(stdinState.fallbackTimer);
+      if (stdinState.postReadyTimer) clearTimeout(stdinState.postReadyTimer);
+    }
     handleTaskExit(orchestrator, task.id, exitCode);
   }));
   orchestrator.cleanupFns.set(task.id, cleanups);
 
-  if (spawnConfig.promptDelivery === 'stdin' && adapter.buildStdinPrompt) {
-    setTimeout(() => {
-      orchestrator.terminalManager.writeToTerminal(terminalId, adapter.buildStdinPrompt(task.prompt));
-    }, STDIN_DELAY_MS);
+  if (stdinState) {
+    stdinState.fallbackTimer = setTimeout(() => {
+      stdinState.fallbackTimer = null;
+      if (stdinState.written) return;
+      orchestrator.debugLog(`[Orchestrator] TUI readiness marker not seen in ${STDIN_READY_TIMEOUT_MS}ms - writing prompt anyway: ${task.id.slice(0, 8)}`);
+      writePromptOnce();
+    }, STDIN_READY_TIMEOUT_MS);
   }
 
   orchestrator.taskStore.updateTask(task.id, {
@@ -208,6 +238,8 @@ function handleTaskExit(orchestrator, taskId, exitCode) {
 function handleTaskSuccess(orchestrator, taskId) {
   const task = orchestrator.taskStore.getTask(taskId);
   if (!task) return;
+
+  autoCommitTaskChanges(orchestrator, task);
 
   orchestrator.taskStore.updateTask(taskId, {
     status: 'succeeded',
@@ -340,88 +372,6 @@ function handleRetry(orchestrator, taskId, errorMessage) {
   orchestrator.emit('task:updated', updated);
   orchestrator.debugLog(`[Orchestrator] Retrying task ${taskId} (attempt ${nextAttempt}) with ${nextProvider}`);
   orchestrator.taskStore.updateTask(taskId, { status: 'ready', updatedAt: Date.now() });
-}
-
-function saveTaskOutput(orchestrator, taskId) {
-  const parser = orchestrator.outputParsers.get(taskId);
-  if (!parser) return;
-
-  try {
-    const fullOutput = parser.getFullOutput();
-    if (!fullOutput) return;
-    const clean = fullOutput.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '');
-    fs.mkdirSync(TASK_OUTPUT_DIR, { recursive: true });
-    const outputPath = path.join(TASK_OUTPUT_DIR, `${taskId}.txt`);
-    fs.writeFileSync(outputPath, clean, 'utf-8');
-    orchestrator.taskStore.updateTask(taskId, { outputPath });
-    orchestrator.debugLog(`[Orchestrator] Saved task output: ${outputPath}`);
-  } catch (e) {
-    orchestrator.debugLog(`[Orchestrator] Failed to save task output: ${e.message}`);
-  }
-}
-
-function cleanupTaskRuntime(orchestrator, taskId) {
-  const idleTimer = orchestrator.idleTimers.get(taskId);
-  if (idleTimer) {
-    clearTimeout(idleTimer);
-    orchestrator.idleTimers.delete(taskId);
-  }
-  orchestrator.taskOutputBytes.delete(taskId);
-  orchestrator._exitSent?.delete(taskId);
-
-  const fns = orchestrator.cleanupFns.get(taskId);
-  if (fns) {
-    for (const fn of fns) {
-      try { fn(); } catch {}
-    }
-    orchestrator.cleanupFns.delete(taskId);
-  }
-  orchestrator.outputParsers.delete(taskId);
-}
-
-function cleanupTaskWorktree(orchestrator, taskId) {
-  const task = orchestrator.taskStore.getTask(taskId);
-  if (!task || !task.workspacePath) return;
-
-  if (task.terminalId && orchestrator.terminalManager.hasTerminal(task.terminalId)) {
-    orchestrator.terminalManager.destroyTerminal(task.terminalId);
-  }
-
-  const branchName = task.branchName || `task/${taskId.slice(0, 8)}`;
-  let repoRoot;
-  try {
-    repoRoot = orchestrator.workspaceManager.resolveRepositoryRoot(task.repositoryPath);
-  } catch (e) {
-    orchestrator.debugLog(`[Orchestrator] Cannot resolve repo root for ${taskId.slice(0, 8)}: ${e.message}`);
-    return;
-  }
-
-  const attemptRemove = (attempt) => {
-    try {
-      orchestrator.workspaceManager.runGit(repoRoot, ['worktree', 'remove', '--force', task.workspacePath]);
-    } catch (e) {
-      if (attempt < 3) {
-        orchestrator.debugLog(`[Workspace] Remove attempt ${attempt + 1} failed, retrying in ${(attempt + 1) * 3}s...`);
-        setTimeout(() => attemptRemove(attempt + 1), (attempt + 1) * 3000);
-        return;
-      }
-      orchestrator.debugLog(`[Workspace] Remove failed after ${attempt + 1} attempts: ${e.message}`);
-      return;
-    }
-    try {
-      orchestrator.workspaceManager.runGit(repoRoot, ['branch', '-D', branchName]);
-    } catch {}
-    orchestrator.debugLog(`[Orchestrator] Cleaned up worktree for ${taskId.slice(0, 8)}`);
-  };
-
-  setTimeout(() => attemptRemove(0), process.platform === 'win32' ? 3000 : 500);
-}
-
-async function withRepoLock(orchestrator, repoPath, fn) {
-  const existing = orchestrator.repoLocks.get(repoPath) || Promise.resolve();
-  const next = existing.then(fn, fn);
-  orchestrator.repoLocks.set(repoPath, next);
-  await next;
 }
 
 module.exports = {

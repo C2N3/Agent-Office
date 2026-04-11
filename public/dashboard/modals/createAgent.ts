@@ -9,7 +9,7 @@ import {
   submitAgentCreateForm,
   updatePreviewCopy,
   updateWorktreeFieldState,
-} from './workspace-form.js';
+} from './workspaceForm.js';
 
 export function setupAgentModal(openTerminalForAgent) {
   const modal = document.getElementById('createAgentModal');
@@ -255,8 +255,8 @@ export function setupAgentModal(openTerminalForAgent) {
     modal.style.display = '';
   });
   cancelBtn?.addEventListener('click', closeModal);
-  modal.addEventListener('click', (event) => {
-    if (event.target === modal) closeModal();
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && modal.style.display !== 'none') closeModal();
   });
 
   form.addEventListener('submit', async (event) => {

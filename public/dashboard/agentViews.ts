@@ -13,6 +13,15 @@ import {
   officeOnAgentRemoved,
   officeOnAgentUpdated,
 } from '../office/index.js';
+import { updateConnectionStatus } from './connectionStatus.js';
+import {
+  formatWorkspaceTypeLabel,
+  getActivityIcon,
+  getStateColor,
+  humanizeToolName,
+} from './agentViewHelpers.js';
+
+export { getStateColor };
 
 let sseDelay = 1000;
 let sseSource: EventSource | null = null;
@@ -27,20 +36,6 @@ function recalcStats() {
   if (state.stats.errorCount > 0) {
     DOM.kpiErrors.className = 'kpi-value error';
   }
-}
-
-function updateConnectionStatus(up: boolean) {
-  const banner = document.getElementById('disconnectBanner');
-  if (up) {
-    DOM.statusIndicator.className = 'status-dot connected';
-    DOM.connectionStatus.textContent = 'Gateway Online';
-    if (banner) banner.style.display = 'none';
-    return;
-  }
-
-  DOM.statusIndicator.className = 'status-dot disconnected';
-  DOM.connectionStatus.textContent = 'Disconnected';
-  if (banner) banner.style.display = 'block';
 }
 
 export function connectSSE() {
@@ -266,25 +261,6 @@ export async function clearUnregisteredAgents(): Promise<void> {
   }
 }
 
-export function getStateColor(status: string) {
-  const map: Record<string, string> = {
-    working: 'var(--color-state-working)',
-    thinking: 'var(--color-state-thinking)',
-    waiting: 'var(--color-state-waiting)',
-    done: 'var(--color-state-done)',
-    completed: 'var(--color-state-done)',
-    error: 'var(--color-state-error)',
-  };
-  return map[status] || 'var(--color-state-waiting)';
-}
-
-function formatWorkspaceTypeLabel(type: string | null | undefined) {
-  const trimmed = String(type || '').trim();
-  if (!trimmed) return 'workspace';
-  if (trimmed === 'git-worktree') return 'worktree';
-  return trimmed.replace(/[_-]+/g, ' ');
-}
-
 export function updateAgentUI(agent: DashboardAgent) {
   if (!shouldDisplayAgent(agent)) {
     const existingHidden = DOM.agentPanel.querySelector(`[data-id="${agent.id}"]`) as HTMLElement | null;
@@ -305,9 +281,20 @@ export function updateAgentUI(agent: DashboardAgent) {
       ? '<span class="mc-type-badge" style="background:var(--color-info-dim);color:var(--color-info)">REG</span>'
       : '<span class="mc-type-badge main">MAIN</span>');
   const isActive = ['working', 'thinking'].includes(statusClass);
-  const activityText = agent.currentTool
-    ? `<span class="hl">${agent.currentTool}</span>`
-    : (isActive ? statusText : 'Idling...');
+  const humanizedTool = agent.currentTool ? humanizeToolName(agent.currentTool) : '';
+  const activityIcon = getActivityIcon(statusClass, agent.currentTool);
+  const activityLabel = agent.currentTool
+    ? (statusClass === 'thinking' ? 'Thinking' : 'Running')
+    : (statusClass === 'thinking' ? 'Thinking'
+      : statusClass === 'working' ? 'Working'
+      : statusClass === 'error' ? 'Error'
+      : statusClass === 'done' || statusClass === 'completed' ? 'Done'
+      : statusClass === 'offline' ? 'Offline'
+      : 'Idle');
+  const activityDetail = agent.currentTool
+    ? `<span class="mc-activity-tool">${escapeText(humanizedTool)}</span>`
+    : (isActive ? '<span class="mc-activity-dots"><i></i><i></i><i></i></span>' : '');
+  const activityStateClass = isActive ? `active ${statusClass}` : statusClass;
   const workspaceMeta = agent.metadata?.workspace || null;
   const workspaceType = formatWorkspaceTypeLabel(workspaceMeta?.type);
   const workspaceBranch = workspaceMeta?.branch || '';
@@ -381,7 +368,11 @@ export function updateAgentUI(agent: DashboardAgent) {
     ${agent.role ? `<div class="mc-agent-role">${agent.role}</div>` : ''}
     ${workspaceSummary}
     ${actionButtons ? `<div class="mc-agent-actions">${actionButtons}</div>` : ''}
-    <div class="mc-agent-activity">CMD> ${activityText}</div>
+    <div class="mc-agent-activity ${activityStateClass}">
+      <span class="mc-activity-indicator">${activityIcon}</span>
+      <span class="mc-activity-label">${activityLabel}</span>
+      ${activityDetail}
+    </div>
     ${timelineHtml}
   `;
 

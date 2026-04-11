@@ -7,8 +7,8 @@ import {
   stopOffice,
   resumeOffice,
 } from './office/index.js';
-import { AVATAR_FILES, OFFICE, SPRITE_FRAMES, loadAvatarFiles, loadSpriteFrames } from './office/office-config.js';
-import { loadAllOfficeSkins, getOfficeSkinImage } from './office/office-sprite.js';
+import { AVATAR_FILES, OFFICE, SPRITE_FRAMES, loadAvatarFiles, loadSpriteFrames } from './office/officeConfig.js';
+import { loadAllOfficeSkins, getOfficeSkinImage } from './office/officeSprite.js';
 
 // ─── Types ───
 interface OverlayAgent {
@@ -111,6 +111,10 @@ function handleAgent(agent: DashboardAgent) {
     existing.status = status;
     existing.name = agent.name || existing.name;
     existing.bubble = agent.lastMessage || null;
+    if (agent.avatarIndex != null && agent.avatarIndex !== existing.avatarIndex) {
+      existing.avatarIndex = agent.avatarIndex;
+      existing.avatarFile = AVATAR_FILES[agent.avatarIndex] || AVATAR_FILES[0] || '';
+    }
     return;
   }
 

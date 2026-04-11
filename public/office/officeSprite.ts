@@ -2,12 +2,12 @@
 /**
  * Office Sprite — Sprite sheet loading, drawing, animation ticking
  * Ported from pixel_office spriteSheet.ts
- * Uses AVATAR_FILES from office-config.js (synced with taskbar renderer)
+ * Uses AVATAR_FILES from officeConfig.js (synced with taskbar renderer)
  */
 
 /* eslint-disable no-unused-vars */
 
-import { AVATAR_FILES, IDLE_ANIM_KEYS, OFFICE, SPRITE_FRAMES } from './office-config.js';
+import { AVATAR_FILES, IDLE_ANIM_KEYS, OFFICE, SPRITE_FRAMES } from './officeConfig.js';
 
 export let officeSkinImages: Record<string, HTMLImageElement> = {}; // filename → Image
 

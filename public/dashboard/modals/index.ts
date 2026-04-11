@@ -1,6 +1,6 @@
-export { setupNicknameEdit } from './nickname-edit.js';
-export { setupAgentModal } from './create-agent.js';
-export { setupAssignTaskModal } from './assign-task.js';
-export { setupAvatarPicker } from './avatar-picker.js';
-export { setupConversationViewer } from './conversation-viewer.js';
-export { setupTaskReportModal } from './task-report.js';
+export { setupNicknameEdit } from './nicknameEdit.js';
+export { setupAgentModal } from './createAgent.js';
+export { setupAssignTaskModal } from './assignTask.js';
+export { setupAvatarPicker } from './avatarPicker.js';
+export { setupConversationViewer } from './conversationViewer.js';
+export { setupTaskReportModal } from './taskReport.js';

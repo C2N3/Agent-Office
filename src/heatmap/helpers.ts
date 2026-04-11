@@ -5,6 +5,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { getCodexSessionRoots } = require('../main/codexPaths');
+const { pruneOldDays, savePersisted, loadPersisted } = require('./persistence');
 
 const MODEL_PRICING = {
   'claude-opus-4-6': { inputPerMillion: 15, outputPerMillion: 75 },
@@ -28,8 +29,6 @@ function calculateTokenCost(usage, model) {
   const outputTokens = usage.output || 0;
   return (inputTokens * pricing.inputPerMillion + outputTokens * pricing.outputPerMillion) / 1_000_000;
 }
-
-const MAX_AGE_DAYS = 400;
 
 function listJsonlFiles(dir) {
   if (!dir || !fs.existsSync(dir)) return [];
@@ -353,65 +352,6 @@ function scanFile(scanner, filePath) {
   };
 
   return count;
-}
-
-function pruneOldDays(scanner) {
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - MAX_AGE_DAYS);
-  const cutoffStr = cutoff.toISOString().slice(0, 10);
-  for (const dateKey of Object.keys(scanner.days)) {
-    if (dateKey < cutoffStr) delete scanner.days[dateKey];
-  }
-}
-
-function savePersisted(scanner) {
-  try {
-    if (!fs.existsSync(scanner.persistDir)) {
-      fs.mkdirSync(scanner.persistDir, { recursive: true });
-    }
-
-    const serialDays = {};
-    for (const [date, stats] of Object.entries(scanner.days)) {
-      const { _sessions, _projects, ...rest } = stats;
-      rest.estimatedCost = roundCost(rest.estimatedCost);
-      if (rest.byModel) {
-        for (const model of Object.keys(rest.byModel)) {
-          rest.byModel[model].estimatedCost = roundCost(rest.byModel[model].estimatedCost);
-        }
-      }
-      serialDays[date] = rest;
-    }
-
-    fs.writeFileSync(scanner.persistFile, JSON.stringify({
-      days: serialDays,
-      lastScan: scanner.lastScan,
-      fileOffsets: scanner.fileOffsets,
-    }), 'utf-8');
-  } catch (e) {
-    scanner.debugLog(`[HeatmapScanner] Failed to save: ${e.message}`);
-  }
-}
-
-function loadPersisted(scanner) {
-  try {
-    if (!fs.existsSync(scanner.persistFile)) return;
-    const data = JSON.parse(fs.readFileSync(scanner.persistFile, 'utf-8'));
-    if (data.days) {
-      for (const [date, stats] of Object.entries(data.days)) {
-        scanner.days[date] = {
-          ...stats,
-          byModel: stats.byModel || {},
-          _sessions: new Set(),
-          _projects: new Set(stats.projects || []),
-        };
-      }
-    }
-    scanner.lastScan = data.lastScan || 0;
-    scanner.fileOffsets = data.fileOffsets || {};
-    scanner.debugLog(`[HeatmapScanner] Loaded ${Object.keys(scanner.days).length} day(s)`);
-  } catch (e) {
-    scanner.debugLog(`[HeatmapScanner] Failed to load persisted data: ${e.message}`);
-  }
 }
 
 module.exports = {

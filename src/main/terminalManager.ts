@@ -8,6 +8,19 @@ const fs = require('fs');
 const os = require('os');
 const { resolveProjectPathForPlatform } = require('../utils');
 
+/**
+ * Escape cmd.exe metacharacters (`&`, `|`, `<`, `>`, `^`, `(`, `)`) with `^`
+ * for arguments that node-pty's CRT quoter will pass through unquoted.
+ * If the arg already contains whitespace or `"`, node-pty wraps it in `"..."`
+ * and cmd treats the metacharacters as literal — no `^` needed. Otherwise cmd
+ * would interpret e.g. `fix&login` as two commands.
+ */
+function escapeCmdMetacharsForUnquoted(arg) {
+  const str = String(arg ?? '');
+  if (/[\s"]/.test(str)) return str;
+  return str.replace(/[&|<>^()]/g, '^$&');
+}
+
 class TerminalManager {
   constructor({ debugLog, getWindow, terminalProfileService }) {
     this.debugLog = debugLog || (() => {});
@@ -50,7 +63,7 @@ class TerminalManager {
     let command = options.command || options.shell || profile?.command || (process.platform === 'win32'
       ? 'powershell.exe'
       : process.env.SHELL || '/bin/bash');
-    const args = options.args || profile?.args || [];
+    let args = options.args || profile?.args || [];
 
     let cwd = resolveProjectPathForPlatform(options.cwd) || os.homedir();
     const cols = options.cols || 120;
@@ -66,6 +79,28 @@ class TerminalManager {
         const preferred = candidates.find(c => /\.(cmd|exe|bat)$/i.test(c)) || candidates[0];
         if (preferred) command = preferred;
       } catch {}
+    }
+
+    // On Windows, when spawning a direct command (e.g. `claude` from Agent
+    // Tasks), the ConPTY inherits the system code page — CP949 on Korean
+    // Windows — and mis-decodes UTF-8 output from Node-based CLIs as mojibake.
+    // Wrap the command in `cmd.exe /d /c "chcp 65001>nul & <original>"` so the
+    // console switches to UTF-8 before the target process starts.
+    // Shell profiles (Git Bash, pwsh, cmd, WSL) are left alone — they manage
+    // their own encoding and may rely on specific codepages.
+    if (process.platform === 'win32' && options.command) {
+      // Pass args as separate tokens (not one joined string) so cmd.exe's
+      // /c outer-quote-stripping rule doesn't mangle quoted arguments. node-pty
+      // CRT-escapes each arg individually, and cmd sees a natural pipeline:
+      // `chcp 65001 >nul && <exe> <arg1> <arg2> ...`
+      const originalCommand = command;
+      const originalArgs = args;
+      command = process.env.ComSpec || 'cmd.exe';
+      args = [
+        '/d', '/c', 'chcp', '65001', '>nul', '&&',
+        escapeCmdMetacharsForUnquoted(originalCommand),
+        ...originalArgs.map(escapeCmdMetacharsForUnquoted),
+      ];
     }
 
     try {

@@ -8,12 +8,12 @@ import {
   STATE_COLORS,
   STATE_ZONE_MAP,
   getSeatConfig,
-} from './office-config.js';
-import { officeCoords } from './office-coords.js';
-import { officeLayers } from './office-layers.js';
-import { officePathfinder } from './office-pathfinder.js';
-import { officeRenderer } from './office-renderer.js';
-import { animKeyFromDir, tickOfficeAnimation } from './office-sprite.js';
+} from '../officeConfig.js';
+import { officeCoords } from '../officeCoords.js';
+import { officeLayers } from '../officeLayers.js';
+import { officePathfinder } from '../officePathfinder.js';
+import { officeRenderer } from '../officeRenderer.js';
+import { animKeyFromDir, tickOfficeAnimation } from '../officeSprite.js';
 
 export function addCharacter(agentData) {
   if (this.characters.has(agentData.id)) {
@@ -37,6 +37,7 @@ export function addCharacter(agentData) {
     skinIndex: avatarIdx,
     deskIndex: undefined,
     deskOverflow: false,
+    manualPinned: false,
     currentAnim: 'down_idle',
     animFrame: 0,
     animTimer: 0,
@@ -63,7 +64,6 @@ export function addCharacter(agentData) {
   this._updateTarget(char);
   this._setBubble(char, agentData);
 }
-
 export function updateCharacter(agentData) {
   const char = this.characters.get(agentData.id);
   if (!char) {
@@ -87,10 +87,12 @@ export function updateCharacter(agentData) {
     const oldZone = STATE_ZONE_MAP[oldState] || 'idle';
     const newZone = STATE_ZONE_MAP[newState] || 'idle';
 
-    if (newZone === 'desk' && char.deskIndex === undefined) {
-      this.assignDesk(agentData.id);
-    } else if (newZone === 'idle' && oldZone === 'desk') {
-      this.releaseDesk(agentData.id);
+    if (!char.manualPinned) {
+      if (newZone === 'desk' && char.deskIndex === undefined) {
+        this.assignDesk(agentData.id);
+      } else if (newZone === 'idle' && oldZone === 'desk') {
+        this.releaseDesk(agentData.id);
+      }
     }
 
     const stateColor = STATE_COLORS[newState] || '#94a3b8';
@@ -158,6 +160,12 @@ export function updateTarget(char) {
   const coords = officeCoords;
   if (!coords || !coords.desk || !coords.idle) return;
 
+  if (char.manualPinned) {
+    char.path = [];
+    char.pathIndex = 0;
+    return;
+  }
+
   if (char.agentState === 'working' || char.agentState === 'thinking' ||
       char.agentState === 'error' || char.agentState === 'help') {
     char.restTimer = 0;
@@ -217,6 +225,12 @@ export function updateTarget(char) {
 }
 
 export function updateMovement(char, deltaSec) {
+  if (char.manualPinned) {
+    char.path = [];
+    char.pathIndex = 0;
+    return;
+  }
+
   const isArrived = char.path.length === 0 || char.pathIndex >= char.path.length;
 
   if (isArrived) {
@@ -277,137 +291,4 @@ export function updateMovement(char, deltaSec) {
   const dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
   char.facingDir = dir;
   char.currentAnim = animKeyFromDir(dir, true);
-}
-
-export function humanizeToolName(toolName, provider) {
-  if (!toolName) return null;
-
-  if (provider === 'codex') {
-    const known = {
-      exec_command: 'Command',
-      apply_patch: 'Patch',
-      web_search: 'Web Search',
-      view_image: 'Image',
-      spawn_agent: 'Subagent',
-      send_input: 'Agent Input',
-      wait_agent: 'Waiting',
-      query_docs: 'Docs',
-      read_mcp_resource: 'MCP Resource',
-    };
-
-    if (known[toolName]) return known[toolName];
-  }
-
-  return String(toolName)
-    .replace(/[_-]+/g, ' ')
-    .replace(/\b\w/g, (ch) => ch.toUpperCase());
-}
-
-export function mapStatus(agentOrStatus) {
-  const dashboardStatus = typeof agentOrStatus === 'string'
-    ? agentOrStatus
-    : (agentOrStatus?.status || 'idle');
-  const currentTool = typeof agentOrStatus === 'string'
-    ? null
-    : (agentOrStatus?.currentTool || null);
-  const provider = typeof agentOrStatus === 'string'
-    ? null
-    : (agentOrStatus?.metadata?.provider || null);
-
-  const map = {
-    working: 'working',
-    thinking: 'thinking',
-    waiting: 'idle',
-    completed: 'done',
-    done: 'done',
-    help: 'help',
-    error: 'error',
-    offline: 'offline',
-  };
-
-  if (provider === 'codex' && currentTool && !['error', 'offline', 'completed', 'done', 'help'].includes(dashboardStatus)) {
-    return 'working';
-  }
-
-  return map[dashboardStatus] || 'idle';
-}
-
-export function setBubble(char, agentData) {
-  if (agentData.reportTaskId) {
-    char.bubble = { text: '작업 완료! 보고드릴게요', icon: null, expiresAt: Infinity, isReport: true, taskId: agentData.reportTaskId };
-    return;
-  }
-
-  if (char.bubble && char.bubble.isReport) return;
-
-  let text = null;
-  let icon = null;
-  const status = this._mapStatus(agentData);
-  const provider = agentData.metadata?.provider || char.metadata.provider || null;
-  const currentTool = agentData.currentTool || char.metadata.tool || null;
-
-  if (status === 'working' && currentTool) {
-    text = this._humanizeToolName(currentTool, provider);
-  } else if (status === 'thinking') {
-    text = 'Thinking...';
-  } else if (status === 'completed' || status === 'done') {
-    text = 'Done!';
-  } else if (status === 'help') {
-    text = 'Need help!';
-  } else if (status === 'error') {
-    text = 'Error!';
-  }
-
-  if (text) {
-    const isPersistent = status === 'working' || status === 'thinking' || status === 'help' || status === 'error';
-    char.bubble = { text, icon, expiresAt: isPersistent ? Infinity : Date.now() + 8000 };
-  }
-}
-
-export function setReportBubble(agentId, taskId) {
-  const char = this.characters.get(agentId);
-  if (!char) return;
-  char.bubble = { text: '작업 완료! 보고드릴게요', icon: null, expiresAt: Infinity, isReport: true, taskId };
-}
-
-export function clearReportBubble(agentId) {
-  const char = this.characters.get(agentId);
-  if (char?.bubble?.isReport) {
-    char.bubble = null;
-  }
-}
-
-export function findNearDeskIdleSpot(char) {
-  const coords = officeCoords;
-  if (!coords || !coords.idle || !coords.desk || coords.desk.length === 0) return null;
-
-  let avgX = 0;
-  let avgY = 0;
-  for (let i = 0; i < coords.desk.length; i++) {
-    avgX += coords.desk[i].x;
-    avgY += coords.desk[i].y;
-  }
-  avgX /= coords.desk.length;
-  avgY /= coords.desk.length;
-
-  const occupied = {};
-  this.characters.forEach((a) => {
-    if (a.id === char.id) return;
-    let ax = Math.floor(a.x);
-    let ay = Math.floor(a.y);
-    if (a.path.length > 0) {
-      const t = a.path[a.path.length - 1];
-      ax = Math.floor(t.x);
-      ay = Math.floor(t.y);
-    }
-    occupied[`${ax},${ay}`] = true;
-  });
-
-  const candidates = coords.idle
-    .filter((p) => !occupied[`${Math.floor(p.x)},${Math.floor(p.y)}`])
-    .sort((a, b) => (Math.abs(a.x - avgX) + Math.abs(a.y - avgY)) - (Math.abs(b.x - avgX) + Math.abs(b.y - avgY)));
-
-  if (candidates.length === 0) return null;
-  const idHash = avatarIndexFromId(char.id);
-  return candidates[idHash % Math.min(candidates.length, 5)];
 }

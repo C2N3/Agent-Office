@@ -21,7 +21,10 @@ class ClaudeAdapter {
   buildSpawnConfig(options) {
     // Run in interactive mode (no --print) so the full TUI is visible
     // in the terminal: tool calls, file reads/writes, streaming, etc.
-    // Pass the prompt as a positional argument so Claude starts processing immediately.
+    // Note: do NOT pass the prompt as a positional arg — `claude "prompt"`
+    // runs in one-shot mode and exits after responding, leaving the user
+    // unable to continue the conversation. Instead spawn claude bare and
+    // deliver the prompt via stdin so the TUI stays interactive.
     const args = [
       '--verbose',
       '--dangerously-skip-permissions',
@@ -30,13 +33,10 @@ class ClaudeAdapter {
     if (options.model) {
       args.push('--model', options.model);
     }
-    // Positional prompt: `claude [options] "prompt"` starts interactive mode
-    // with the prompt already submitted (unlike -p which is --print mode).
-    args.push(options.prompt);
     return {
       command: 'claude',
       args,
-      promptDelivery: 'arg',
+      promptDelivery: 'stdin',
       env: {},
     };
   }

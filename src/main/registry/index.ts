@@ -177,7 +177,17 @@ class AgentRegistry {
       }
     }
     if (fields.workspace !== undefined) {
-      agent.workspace = sanitizeWorkspace(fields.workspace, agent.projectPath);
+      const previousWorktreePath = normalizePath(agent.workspace?.worktreePath);
+      const nextWorkspace = sanitizeWorkspace(fields.workspace, agent.projectPath);
+      const nextWorktreePath = normalizePath(nextWorkspace?.worktreePath);
+      agent.workspace = nextWorkspace;
+
+      if (previousWorktreePath && nextWorktreePath && previousWorktreePath !== nextWorktreePath) {
+        agent.currentSessionId = null;
+        agent.currentRuntimeSessionId = null;
+        agent.currentResumeSessionId = null;
+        this.debugLog(`[Registry] Workspace moved: cleared current session for ${registryId.slice(0, 8)}`);
+      }
     }
     this.agents.set(registryId, agent);
     this._save();

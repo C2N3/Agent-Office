@@ -65,6 +65,9 @@ export function setupAvatarPicker(updateAgentUI) {
   modal.addEventListener('click', (event) => {
     if (event.target === modal) modal.style.display = 'none';
   });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && modal.style.display !== 'none') modal.style.display = 'none';
+  }, { capture: true });
 
   document.addEventListener('click', (event) => {
     const btn = event.target.closest('.agent-avatar-btn');
@@ -80,5 +83,6 @@ export function setupAvatarPicker(updateAgentUI) {
     });
 
     modal.style.display = '';
+    requestAnimationFrame(() => modal.focus());
   });
 }

@@ -65,6 +65,9 @@ export function setupAssignTaskModal() {
   modal.addEventListener('click', (event) => {
     if (event.target === modal) closeModal();
   });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && modal.style.display !== 'none') closeModal();
+  });
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();

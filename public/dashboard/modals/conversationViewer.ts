@@ -54,6 +54,9 @@ export function setupConversationViewer(resumeRegisteredSession) {
   overlay.addEventListener('click', (event) => {
     if (event.target === overlay) closeModal();
   });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && overlay.style.display !== 'none') closeModal();
+  });
   backBtn.addEventListener('click', () => {
     chatPanel.style.display = 'none';
     sessionListEl.style.display = '';

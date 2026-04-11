@@ -45,6 +45,7 @@ const {
   restoreRegisteredAgents,
 } = require('./main/bootstrap/recovery');
 const { registerAppLifecycle } = require('./main/bootstrap/shutdown');
+const { loadUiState } = require('./main/uiState');
 
 const { debugLog } = installStartupLogging({ app });
 
@@ -208,7 +209,7 @@ app.whenReady().then(() => {
   }
 
   if (enabledProviders.some((provider) => provider === 'claude' || provider === 'codex')) {
-    livenessIntervals = startLivenessChecker({ agentManager, agentRegistry, debugLog });
+    livenessIntervals = startLivenessChecker({ agentManager, agentRegistry, taskStore, debugLog });
   }
 
   // 7. Recover existing active sessions
@@ -240,6 +241,13 @@ app.whenReady().then(() => {
   // 9. Create UI — only dashboard, no overlay window
   // windowManager.createWindow(); // Disabled: overlay replaced by dashboard Agent List
   windowManager.createDashboardWindow();
+
+  // 9.5. Restore overlay if it was open at last shutdown
+  const uiState = loadUiState();
+  if (uiState.overlayOpen) {
+    windowManager.createOverlayWindow();
+    debugLog('[Main] Overlay restored from last session');
+  }
 
   // Wire up agent event listeners immediately (no overlay window to wait for)
   agentListeners = attachAgentBroadcasts({

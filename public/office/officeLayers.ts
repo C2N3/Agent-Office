@@ -6,7 +6,7 @@
 
 /* eslint-disable no-unused-vars */
 
-import { OFFICE, OFFICE_LAYOUT } from './office-config.js';
+import { OFFICE, OFFICE_LAYOUT } from './officeConfig.js';
 
 export function loadOfficeImage(src) {
   return new Promise<HTMLImageElement>(function (resolve) {

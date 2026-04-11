@@ -1,6 +1,7 @@
 // @ts-nocheck
 const { BrowserWindow, screen, shell } = require('electron');
 const path = require('path');
+const { saveUiState } = require('../uiState');
 
 function createWindowManagerCore(context) {
   const {
@@ -125,10 +126,12 @@ function createWindowManagerCore(context) {
     overlayWindow.on('closed', () => {
       overlayWindow = null;
       notifyDashboardOverlayState(false);
+      saveUiState({ overlayOpen: false });
       debugLog('[Overlay] Window closed');
     });
 
     notifyDashboardOverlayState(true);
+    saveUiState({ overlayOpen: true });
     debugLog('[Overlay] Window created');
   }
 

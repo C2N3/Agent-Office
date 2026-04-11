@@ -7,11 +7,13 @@ import {
   fitActiveTerminal,
   getTerminalOpenContext,
   initResizableHandles as initResizableHandlesHelper,
-  initTerminalProfileMenu as initTerminalProfileMenuHelper,
-  refreshTerminalProfiles,
   resumeLatestRegisteredSession,
   closeTerminal,
 } from './ui.js';
+import {
+  initTerminalProfileMenu as initTerminalProfileMenuHelper,
+  refreshTerminalProfiles,
+} from './profiles.js';
 
 export function initTerminals() {
   const dashboardAPI = getDashboardAPI();

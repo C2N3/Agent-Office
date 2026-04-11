@@ -1,0 +1,134 @@
+/* ════════════════════════════════════════
+   Layout Show/Hide
+════════════════════════════════════════ */
+
+/* Single container: hidden in multi mode */
+.agent-grid.has-multiple #container {
+  display: none;
+}
+
+/* Agent cards: hidden in single mode */
+.agent-grid:not(.has-multiple) .agent-card {
+  display: none !important;
+}
+
+/* ════════════════════════════════════════
+   Subagent Styles
+════════════════════════════════════════ */
+
+/* Subagent card: character at 80% size, purple tint, negative margin to visually attach to main agent */
+.agent-card.is-subagent {
+  opacity: 0.9;
+}
+
+.agent-card.is-subagent .agent-character {
+  transform: scale(0.8);
+  transform-origin: bottom center;
+}
+
+.agent-card.is-subagent .agent-bubble {
+  font-size: 11px;
+  border-style: dashed;
+  border-color: #9c27b0;
+  color: #6a1b9a;
+  min-width: 50px;
+}
+
+.agent-card.is-subagent.state-working .agent-bubble {
+  border-color: #9c27b0;
+}
+
+.agent-card.is-subagent.state-complete .agent-bubble {
+  border-color: #7b1fa2;
+}
+
+.agent-card.is-subagent .agent-bubble::after {
+  border-top-color: #9c27b0;
+}
+
+/* Sub badge */
+.agent-sub-badge {
+  position: absolute;
+  top: 18px;
+  left: -4px;
+  background: #9c27b0;
+  color: #fff;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 5px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* ════════════════════════════════════════
+   Agent Party Layout (Main + Sub/Team row layout)
+════════════════════════════════════════ */
+/* Party (main+sub/team) group wrapper (background grid box) */
+.agent-party-bg {
+  background-color: rgba(153, 111, 184, 0.08);
+  border: 1px solid rgba(153, 111, 184, 0.2);
+  border-bottom: none;
+  /* Prevent bottom border artifact */
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  z-index: -1;
+  margin: -5px -2px -2px -2px;
+  /* Adjust margin to slightly wrap around cards */
+  pointer-events: none;
+}
+
+/* ════════════════════════════════════════
+   Avatar Toolbar (Floating Agent Desk Button)
+═════════════════════════════════════════ */
+.avatar-toolbar {
+  position: fixed;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10000;
+  pointer-events: auto;
+  -webkit-app-region: no-drag;
+}
+
+.web-dashboard-btn {
+  background: rgba(255, 255, 255, 0.92);
+  color: #333;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 12px;
+  padding: 3px 10px;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  pointer-events: auto;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  white-space: nowrap;
+}
+
+.web-dashboard-btn:hover {
+  background: #2196f3;
+  color: #fff;
+  border-color: #1976d2;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.4);
+}
+
+.web-dashboard-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+.web-dashboard-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.web-dashboard-btn:focus-visible {
+  outline: 2px solid #2196f3;
+  outline-offset: 2px;
+}

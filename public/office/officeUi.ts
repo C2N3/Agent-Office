@@ -6,7 +6,7 @@
 
 /* eslint-disable no-unused-vars */
 
-import { OFFICE, STATE_COLORS } from './office-config.js';
+import { OFFICE, STATE_COLORS } from './officeConfig.js';
 
 export const OFFICE_UI_BASE_Y = -144;  // above character head (FRAME_H + small gap)
 

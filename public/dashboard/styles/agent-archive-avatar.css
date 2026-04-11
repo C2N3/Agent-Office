@@ -1,0 +1,218 @@
+/* ─── OFFLINE & REGISTERED AGENT STYLES ─── */
+.mc-agent-card[data-status="offline"] {
+  opacity: 0.5;
+}
+
+.mc-agent-status.offline {
+  background: rgba(100, 100, 100, 0.15);
+  color: #8b949e;
+}
+
+.mc-agent-role {
+  font-size: 0.65rem;
+  color: var(--color-text-dark);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mc-agent-workspace {
+  font-size: 0.68rem;
+  color: var(--color-warning);
+  font-family: var(--font-mono);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.mc-agent-workspace-repo,
+.mc-agent-workspace-branch {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mc-agent-workspace-repo {
+  color: var(--color-text-muted);
+}
+
+.mc-agent-workspace-branch {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.mc-agent-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.agent-delete-btn {
+  background: none;
+  border: none;
+  color: var(--color-text-dark);
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+  border-radius: 3px;
+}
+
+.agent-delete-btn:hover {
+  color: var(--color-error);
+  background: var(--color-error-dim);
+}
+
+.agent-unregister-btn,
+.archive-delete-btn,
+.agent-delete-btn.agent-delete-inline {
+  border: 1px solid var(--color-border);
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  padding: 4px 8px;
+  line-height: 1.2;
+  border-radius: 6px;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.agent-unregister-btn {
+  color: var(--color-text-muted);
+}
+
+.agent-unregister-btn:hover {
+  color: var(--color-warning);
+  border-color: rgba(210, 153, 34, 0.4);
+  background: rgba(210, 153, 34, 0.12);
+}
+
+.archive-delete-btn,
+.agent-delete-btn.agent-delete-inline {
+  color: #fca5a5;
+}
+
+.archive-delete-btn:hover,
+.agent-delete-btn.agent-delete-inline:hover {
+  color: #fecaca;
+  border-color: rgba(248, 81, 73, 0.4);
+  background: rgba(248, 81, 73, 0.14);
+}
+
+/* Agent card click-to-terminal cursor */
+.mc-agent-card {
+  cursor: pointer;
+}
+
+.mc-agent-card:hover {
+  border-color: var(--color-primary);
+}
+
+/* ─── Agent Card Avatar Preview ─── */
+.mc-agent-avatar {
+  width: 26px;
+  height: 35px;
+  background-size: 212px auto;
+  background-position: 0px 0px;
+  background-repeat: no-repeat;
+  image-rendering: auto;
+  flex-shrink: 0;
+}
+
+/* ─── Avatar Change Button ─── */
+.agent-avatar-btn {
+  background: none;
+  border: none;
+  color: var(--color-text-dark);
+  cursor: pointer;
+  padding: 2px 4px;
+  line-height: 1;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+}
+
+.agent-avatar-btn:hover {
+  color: var(--color-info);
+  background: var(--color-info-dim);
+}
+
+/* ─── Avatar Picker Modal ─── */
+.avatar-picker-modal {
+  max-width: 420px;
+}
+
+.avatar-picker-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  padding: 20px 16px;
+}
+
+.avatar-picker-item {
+  cursor: pointer;
+  border: 2px solid var(--color-border);
+  border-radius: 6px;
+  background-color: var(--color-bg-dim);
+  transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+  flex-shrink: 0;
+}
+
+.avatar-picker-item:hover {
+  border-color: var(--color-primary);
+  transform: scale(1.15);
+  box-shadow: 0 0 12px rgba(56, 139, 253, 0.3);
+}
+
+.avatar-picker-item.selected {
+  border-color: var(--color-info);
+  box-shadow: 0 0 8px rgba(56, 139, 253, 0.4);
+}
+
+/* ─── History Button ─── */
+.agent-history-btn,
+.agent-assign-task-btn {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 2px 4px;
+  display: flex;
+  align-items: center;
+  transition: all 0.2s;
+}
+
+.agent-history-btn:hover,
+.agent-assign-task-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: var(--color-primary-dim);
+}
+
+.agent-workspace-btn {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 2px 4px;
+  display: flex;
+  align-items: center;
+  transition: all 0.2s;
+}
+
+.agent-workspace-btn.merge:hover {
+  border-color: var(--color-success);
+  color: var(--color-success);
+  background: var(--color-success-dim);
+}
+
+.agent-workspace-btn.remove:hover {
+  border-color: var(--color-warning);
+  color: var(--color-warning);
+  background: var(--color-warning-dim);
+}

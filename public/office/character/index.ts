@@ -9,19 +9,26 @@
 import {
   addCharacter,
   assignDesk,
-  clearReportBubble,
-  findNearDeskIdleSpot,
-  humanizeToolName,
-  mapStatus,
   releaseDesk,
   removeCharacter,
-  setBubble,
-  setReportBubble,
   updateAll,
   updateCharacter,
   updateMovement,
   updateTarget,
 } from './behavior.js';
+import {
+  dropCharacterAt,
+  pinCharacterAt,
+  unpinCharacter,
+} from './drag.js';
+import {
+  clearReportBubble,
+  findNearDeskIdleSpot,
+  humanizeToolName,
+  mapStatus,
+  setBubble,
+  setReportBubble,
+} from './presentation.js';
 
 export const officeCharacters: any = {
   characters: new Map(),
@@ -31,6 +38,9 @@ export const officeCharacters: any = {
   removeCharacter,
   assignDesk,
   releaseDesk,
+  pinCharacterAt,
+  unpinCharacter,
+  dropCharacterAt,
   updateAll,
   _updateTarget: updateTarget,
   _updateMovement: updateMovement,

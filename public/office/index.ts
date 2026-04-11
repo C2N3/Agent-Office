@@ -11,12 +11,12 @@ export {
   loadAvatarFiles,
   loadOfficeLayout,
   loadSpriteFrames,
-} from './office-config.js';
+} from './officeConfig.js';
 export { officeCharacters } from './character/index.js';
-export { officeCoords, parseMapCoordinates, parseObjectCoordinates } from './office-coords.js';
-export { initOffice, officeOnAgentCreated, officeOnAgentRemoved, officeOnAgentUpdated, resumeOffice, stopOffice } from './office-init.js';
-export { buildOfficeLayers, loadOfficeDecorItems, loadOfficeImage, officeLayers } from './office-layers.js';
-export { officePathfinder } from './office-pathfinder.js';
-export { officeRenderer } from './office-renderer.js';
-export { animKeyFromDir, drawOfficeSprite, getOfficeSkinImage, isIdleAnim, loadAllOfficeSkins, officeSkinImages, tickOfficeAnimation } from './office-sprite.js';
-export { OFFICE_UI_BASE_Y, drawOfficeBubble, drawOfficeNameTag } from './office-ui.js';
+export { officeCoords, parseMapCoordinates, parseObjectCoordinates } from './officeCoords.js';
+export { initOffice, officeOnAgentCreated, officeOnAgentRemoved, officeOnAgentUpdated, resumeOffice, stopOffice } from './officeInit.js';
+export { buildOfficeLayers, loadOfficeDecorItems, loadOfficeImage, officeLayers } from './officeLayers.js';
+export { officePathfinder } from './officePathfinder.js';
+export { officeRenderer } from './officeRenderer.js';
+export { animKeyFromDir, drawOfficeSprite, getOfficeSkinImage, isIdleAnim, loadAllOfficeSkins, officeSkinImages, tickOfficeAnimation } from './officeSprite.js';
+export { OFFICE_UI_BASE_Y, drawOfficeBubble, drawOfficeNameTag } from './officeUi.js';

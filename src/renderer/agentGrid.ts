@@ -17,7 +17,6 @@ const MINI_AVATAR_SCALE = 0.5;
 function isSatelliteCandidate(agent) {
   return !!(agent && (agent.isSubagent || (agent.isTeammate && agent.parentId)) && agent.parentId);
 }
-
 /** Find the parent card DOM element for a given agent */
 function findParentCard(agent) {
   if (!agent || !agent.parentId) return null;
@@ -318,14 +317,6 @@ export function showIdleAvatar(avatarFile) {
   startIdleAnimation();
 }
 
-function drawFrameOn(el, frameIndex) {
-  if (!el) return;
-  const col = frameIndex % SHEET.cols;
-  const row = Math.floor(frameIndex / SHEET.cols);
-  const yOff = getSpriteYOffset(el);
-  el.style.backgroundPosition = `${col * -SHEET.width}px ${row * -SHEET.height - yOff}px`;
-}
-
 export function updateGridLayout() {
   const cards = Array.from(agentGrid.querySelectorAll('.agent-card'));
   if (cards.length === 0) {
@@ -399,20 +390,4 @@ export function updateGridLayout() {
       card.remove();
     }
   });
-}
-
-// Window resize — debounce (restarts on each call, uses latest size)
-let _resizeTimer = null;
-export function requestDynamicResize() {
-  if (!window.electronAPI || !window.electronAPI.resizeWindow) return;
-  clearTimeout(_resizeTimer);
-  _resizeTimer = setTimeout(() => {
-    _resizeTimer = null;
-    const grid = document.getElementById('agent-grid');
-    if (!grid) return;
-    const width = grid.scrollWidth;
-    const height = grid.scrollHeight;
-    if (width < 100 || height < 100) return;
-    window.electronAPI.resizeWindow({ width, height });
-  }, 100);
 }
