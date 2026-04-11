@@ -200,7 +200,7 @@ Rules:
         prompt: sub.prompt,
         provider: assigneeAgent?.provider || 'claude',
         repositoryPath: team.repositoryPath,
-        baseBranch: team.integrationBranch || team.baseBranch,
+        baseBranch: team.baseBranch,
         agentRegistryId: assigneeId,
         parentTaskId: team.planningTaskId,
         dependsOn,
@@ -337,28 +337,61 @@ Rules:
 
   /**
    * Parse JSON subtask array from the leader's output text.
+   * The TUI output can mangle whitespace, so we try multiple strategies.
    */
   _parseSubtasks(output) {
     if (!output) return null;
 
-    // Try to find a JSON block in the output
-    const patterns = [
-      /```json\s*\n([\s\S]*?)\n\s*```/,
-      /```\s*\n([\s\S]*?)\n\s*```/,
-      /(\{[\s\S]*"subtasks"\s*:\s*\[[\s\S]*\]\s*\})/,
-      /(\[[\s\S]*\])/,
+    // Strategy 1: find ```json ... ``` code block
+    const codeBlockPatterns = [
+      /```json\s*\n([\s\S]*?)\n\s*```/g,
+      /```\s*\n([\s\S]*?)\n\s*```/g,
     ];
-
-    for (const pattern of patterns) {
-      const match = output.match(pattern);
-      if (match) {
-        try {
-          const parsed = JSON.parse(match[1]);
-          if (Array.isArray(parsed)) return parsed;
-          if (parsed.subtasks && Array.isArray(parsed.subtasks)) return parsed.subtasks;
-        } catch {}
+    for (const pattern of codeBlockPatterns) {
+      let match;
+      while ((match = pattern.exec(output)) !== null) {
+        const result = this._tryParseSubtaskJson(match[1]);
+        if (result && result.length > 1) return result;
       }
     }
+
+    // Strategy 2: find {"subtasks": [...]} — may span messy lines
+    const objMatch = output.match(/\{[\s\S]*?"subtasks"\s*:\s*\[[\s\S]*?\]\s*\}/g);
+    if (objMatch) {
+      // Try each match, prefer the one with real assignee names (not template placeholders)
+      for (const candidate of objMatch) {
+        const result = this._tryParseSubtaskJson(candidate);
+        if (result && result.length > 1 && !result[0]?.assignee?.includes('member name')) return result;
+      }
+    }
+
+    // Strategy 3: scan for individual subtask objects and reconstruct
+    const subtaskPattern = /"assignee"\s*:\s*"([^"]+)"[\s\S]*?"title"\s*:\s*"([^"]+)"[\s\S]*?"prompt"\s*:\s*"((?:[^"\\]|\\.)*)"/g;
+    const found = [];
+    let m;
+    while ((m = subtaskPattern.exec(output)) !== null) {
+      if (m[1].includes('member name')) continue; // skip template
+      found.push({
+        assignee: m[1],
+        title: m[2],
+        prompt: m[3].replace(/\\n/g, '\n').replace(/\\"/g, '"'),
+        dependsOn: [],
+      });
+    }
+    if (found.length > 0) {
+      this.debugLog(`[Team] Extracted ${found.length} subtasks via field scanning`);
+      return found;
+    }
+
+    return null;
+  }
+
+  _tryParseSubtaskJson(text) {
+    try {
+      const parsed = JSON.parse(text);
+      if (Array.isArray(parsed)) return parsed;
+      if (parsed.subtasks && Array.isArray(parsed.subtasks)) return parsed.subtasks;
+    } catch {}
     return null;
   }
 
