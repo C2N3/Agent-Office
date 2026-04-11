@@ -2,7 +2,7 @@
 
 const { BrowserWindow, screen, shell } = require('electron');
 const path = require('path');
-const { saveUiState } = require('../uiState');
+const { saveUiState } = require('../../uiState');
 
 function createSecondaryWindowControls(options) {
   const {
