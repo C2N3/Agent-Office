@@ -17,10 +17,17 @@ function hasActiveOrchestratorTask(taskStore, agent) {
   const activeTasks = taskStore.getAllTasks
     ? taskStore.getAllTasks()
     : [];
-  return activeTasks.some(t =>
+  // Protect agents with running/provisioning tasks
+  const hasRunning = activeTasks.some(t =>
     t.agentRegistryId === registryId &&
     (t.status === 'running' || t.status === 'provisioning' || t.status === 'retrying')
   );
+  if (hasRunning) return true;
+
+  // Protect agents in an active team (Waiting state = team in progress)
+  if (agent.state === 'Waiting' && agent.isRegistered) return true;
+
+  return false;
 }
 
 module.exports = { hasActiveOrchestratorTask, removeOrOffline };
