@@ -32,6 +32,17 @@ Repository-wide instructions for agents working in this project.
 - `src/install.js` is the intentional source-side JavaScript exception.
 - Do not migrate or redesign `src/install.js` in routine cleanup work.
 
+## File Organization
+
+- If a file you are working on grows beyond 400 lines, split it into smaller modules.
+- When modularizing, create a directory for the related files and move the split modules into it.
+- Do not repeat the directory name as a redundant filename prefix for files inside that directory.
+- Prefer modules that are understandable from a small, local context. A task should usually be explainable by reading a few nearby files, not a long dependency chain.
+- Keep abstractions thin and explainable. If an abstraction hides important behavior, add a short nearby note or module-level comment that states where the real work happens.
+- Use specific, role-revealing names for files, functions, and exports. Avoid generic names like `process`, `handle`, or `manager` when the behavior can be named directly.
+- Keep short documentation close to the code it explains: entrypoints, orchestration flows, and modules with non-obvious dependencies should include concise local context.
+- Avoid over-splitting. Each extracted module should be a self-contained chunk with one clear responsibility and enough context to support retrieval and review.
+
 ## Practical Rule For Agents
 
 - Before changing scripts, build flow, or test loading, read this file first.
