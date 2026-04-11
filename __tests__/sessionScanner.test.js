@@ -392,7 +392,7 @@ describe('SessionScanner', () => {
 
     test('updates codex agents from Codex session roots', () => {
       const codexRoot = '/tmp/.codex/sessions';
-      const codexFile = '/tmp/.codex/sessions/thread-1234.jsonl';
+      const codexFile = path.join(codexRoot, 'thread-1234.jsonl');
       getCodexSessionRoots.mockReturnValue([codexRoot]);
 
       mockAgentManager.getAllAgents.mockReturnValue([

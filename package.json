@@ -1,6 +1,6 @@
 {
   "name": "agent-office",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Visualize multi-agent Claude and Codex CLI sessions as pixel avatars in real time",
   "main": "dist/src/main.js",
   "scripts": {
