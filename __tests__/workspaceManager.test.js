@@ -126,7 +126,7 @@ describe('WorkspaceManager', () => {
 
     expect(fs.readFileSync(copiedEnv, 'utf8')).toContain('API_KEY=test');
     expect(fs.lstatSync(linkedModules).isSymbolicLink()).toBe(true);
-    expect(fs.realpathSync(linkedModules)).toBe(path.join(repoRoot, 'node_modules'));
+    expect(fs.realpathSync(linkedModules)).toBe(fs.realpathSync(path.join(repoRoot, 'node_modules')));
   });
 
   test('inspects a repository and lists local branches', () => {

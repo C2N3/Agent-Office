@@ -2,6 +2,12 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const {
+    calculateTokenCost,
+    getTotalInputTokens,
+    normalizeTokenUsage,
+    roundCost,
+} = require('../pricing');
 
 function resolveTranscriptPath(filePath) {
     if (!filePath) return null;
@@ -57,10 +63,6 @@ function getEntryTimestamp(entry) {
     return entry?.timestamp || entry?.created_at || entry?.createdAt || null;
 }
 
-function normalizeTokenUsage(rawUsage) {
-    return null;
-}
-
 function makeEmptyStats() {
     return {
         model: null,
@@ -99,6 +101,7 @@ function detectSessionFormat(entries, filePath) {
 }
 
 function finalizeCost(stats) {
+    stats.estimatedCost = roundCost(stats.estimatedCost);
     return stats;
 }
 
@@ -132,8 +135,9 @@ function parseClaudeEntries(entries) {
             if (usage) {
                 stats.cacheReadTokens += usage.cacheRead;
                 stats.cacheCreationTokens += usage.cacheCreate;
-                stats.inputTokens += usage.input + usage.cacheRead + usage.cacheCreate;
+                stats.inputTokens += getTotalInputTokens(usage);
                 stats.outputTokens += usage.output;
+                stats.estimatedCost += calculateTokenCost(usage, stats.model);
             }
 
             if (Array.isArray(entry.message.content)) {
@@ -196,8 +200,9 @@ function parseCodexEntries(entries) {
                     if (usage) {
                         stats.cacheReadTokens += usage.cacheRead;
                         stats.cacheCreationTokens += usage.cacheCreate;
-                        stats.inputTokens += usage.input + usage.cacheRead + usage.cacheCreate;
+                        stats.inputTokens += getTotalInputTokens(usage);
                         stats.outputTokens += usage.output;
+                        stats.estimatedCost += calculateTokenCost(usage, stats.model);
                     }
                     break;
                 }

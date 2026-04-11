@@ -1,4 +1,6 @@
 export function createProcessEventHandler(options: any) {
+  const { buildAccumulatedTokenUsage, resetContextPercent } = require('./tokenUsage');
+
   const {
     agentManager,
     agentRegistry,
@@ -93,6 +95,9 @@ export function createProcessEventHandler(options: any) {
         if (sessionSource !== 'startup' && agentManager) {
           const existing = agentManager.getAgent(resolveAgentId(sessionId) || sessionId);
           if (existing) {
+            const tokenUsage = sessionSource === 'compact'
+              ? resetContextPercent(existing.tokenUsage)
+              : existing.tokenUsage || null;
             agentManager.updateAgent({
               ...existing,
               sessionId,
@@ -103,6 +108,7 @@ export function createProcessEventHandler(options: any) {
               model: sessionMeta.model || existing.model,
               source: sessionSource,
               provider: sessionMeta.provider || existing.provider || null,
+              tokenUsage,
             }, updateSource);
             debugLog(`[${logPrefix}] SessionStart (${sessionSource}) -> updated existing agent ${sessionId.slice(0, 8)}`);
             break;
@@ -136,12 +142,14 @@ export function createProcessEventHandler(options: any) {
         if (agentManager) {
           const agent = agentManager.getAgent(resolveAgentId(sessionId) || sessionId);
           if (agent) {
+            const tokenUsage = buildAccumulatedTokenUsage(agent, event);
             agentManager.updateAgent({
               ...agent,
               sessionId,
               state: 'Done',
               currentTool: null,
               lastMessage: event.lastAssistantMessage !== undefined ? event.lastAssistantMessage : agent.lastMessage,
+              tokenUsage,
             }, updateSource);
           }
         }
@@ -166,6 +174,25 @@ export function createProcessEventHandler(options: any) {
           const agent = agentManager.getAgent(resolveAgentId(sessionId) || sessionId);
           if (agent) agentManager.updateAgent({ ...agent, sessionId, state: 'Working', currentTool: event.toolName || null }, updateSource);
         }
+        break;
+      case 'tool.end':
+        if (!firstToolUseDone.has(sessionId)) {
+          debugLog(`[${logPrefix}] Tool end ignored (first tool start not seen)`);
+          break;
+        }
+        if (agentManager) {
+          const agent = agentManager.getAgent(resolveAgentId(sessionId) || sessionId);
+          if (agent) {
+            const tokenUsage = buildAccumulatedTokenUsage(agent, event);
+            agentManager.updateAgent({
+              ...agent,
+              sessionId,
+              state: 'Thinking',
+              currentTool: null,
+              tokenUsage,
+            }, updateSource);
+          }
+        }
         handlePidReconnect({
           sessionId,
           toolName: event.toolName,
@@ -173,12 +200,7 @@ export function createProcessEventHandler(options: any) {
           transcriptPath: event.transcriptPath,
         });
         break;
-      case 'tool.end':
-        if (agentManager) {
-          const agent = agentManager.getAgent(resolveAgentId(sessionId) || sessionId);
-          if (agent) agentManager.updateAgent({ ...agent, sessionId, state: 'Waiting', currentTool: null }, updateSource);
-        }
-        break;
+      case 'tool.error':
       case 'error':
         if (agentManager) {
           const agent = agentManager.getAgent(resolveAgentId(sessionId) || sessionId);
