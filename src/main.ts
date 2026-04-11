@@ -222,7 +222,7 @@ app.whenReady().then(() => {
   }
 
   if (enabledProviders.some((provider) => provider === 'claude' || provider === 'codex')) {
-    livenessIntervals = startLivenessChecker({ agentManager, agentRegistry, taskStore, debugLog });
+    livenessIntervals = startLivenessChecker({ agentManager, agentRegistry, taskStore, terminalManager, debugLog });
   }
 
   // 7. Recover existing active sessions

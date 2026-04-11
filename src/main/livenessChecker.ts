@@ -168,6 +168,9 @@ function zombieSweep(agentManager, agentRegistry, taskStore, debugLog) {
     if (agent.isRegistered && agent.state === 'Offline') continue;
     // Skip agents managed by Orchestrator
     if (hasActiveOrchestratorTask(taskStore, agent)) continue;
+    // Skip agents with a live terminal — terminal is the source of truth
+    const termId = agent.registryId || agent.id;
+    if (_terminalManagerRef?.hasTerminal?.(termId)) continue;
     const provider = KNOWN_PROVIDERS.has(agent.provider) ? agent.provider : 'claude';
     if (!providerAgents.has(provider)) {
       providerAgents.set(provider, []);
@@ -215,8 +218,10 @@ const LIVENESS_INTERVAL = 2000;
 const GRACE_MS = 10000;
 const ZOMBIE_SWEEP_INTERVAL = 30000;
 const NO_PID_TIMEOUT = GRACE_MS + 10000;
+let _terminalManagerRef = null;
 
-function startLivenessChecker({ agentManager, agentRegistry, taskStore, debugLog }) {
+function startLivenessChecker({ agentManager, agentRegistry, taskStore, terminalManager, debugLog }) {
+  _terminalManagerRef = terminalManager || null;
   const zombieSweepId = setInterval(() => {
     if (agentManager) zombieSweep(agentManager, agentRegistry, taskStore, debugLog);
   }, ZOMBIE_SWEEP_INTERVAL);
@@ -228,6 +233,10 @@ function startLivenessChecker({ agentManager, agentRegistry, taskStore, debugLog
       // Skip offline registered agents — they have no session to check
       if (agent.isRegistered && agent.state === 'Offline') continue;
       if (agent.firstSeen && (Date.now() - agent.firstSeen) < GRACE_MS) continue;
+
+      // If the agent has a live terminal, it's definitely online — skip liveness checks
+      const termId = agent.registryId || agent.id;
+      if (terminalManager?.hasTerminal?.(termId)) continue;
 
       // For registered agents, PID is stored under sessionId, not registryId
       const pidKey = agent.sessionId || agent.id;
