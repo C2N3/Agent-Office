@@ -1,6 +1,6 @@
 import http from 'http';
 import { PORT } from './constants.js';
-import { attachAgentManagerBroadcasts, attachOrchestratorBroadcasts, broadcastSSE, broadcastUpdate } from './broadcast.js';
+import { attachAgentManagerBroadcasts, attachOrchestratorBroadcasts, attachTeamCoordinatorBroadcasts, broadcastSSE, broadcastUpdate } from './broadcast.js';
 import {
   getRefs,
   setAgentManager as setAgentManagerRef,
@@ -8,6 +8,7 @@ import {
   setOrchestrator as setOrchestratorRef,
   setWorkspaceManager as setWorkspaceManagerRef,
   setTerminalManager as setTerminalManagerRef,
+  setTeamCoordinator as setTeamCoordinatorRef,
   setDashboardWindow as setDashboardWindowRef,
   setHeatmapScanner as setHeatmapScannerRef,
   setSessionScanner as setSessionScannerRef,
@@ -47,6 +48,11 @@ export function setWorkspaceManager(wm: any): void {
 
 export function setTerminalManager(tm: any): void {
   setTerminalManagerRef(tm);
+}
+
+export function setTeamCoordinator(tc: any): void {
+  setTeamCoordinatorRef(tc);
+  attachTeamCoordinatorBroadcasts(tc);
 }
 
 export function setDashboardWindow(window: any): void {

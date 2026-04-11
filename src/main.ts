@@ -25,6 +25,8 @@ const { AgentRegistry } = require('./main/registry');
 const { WorkspaceManager } = require('./main/workspace');
 const { TaskStore } = require('./main/orchestrator/taskStore');
 const { Orchestrator } = require('./main/orchestrator/index');
+const { TeamStore } = require('./main/orchestrator/teamStore');
+const { TeamCoordinator } = require('./main/orchestrator/teamCoordinator');
 const {
   configureApplicationMenu,
   configureRuntime,
@@ -159,7 +161,7 @@ app.whenReady().then(() => {
     terminalProfileService,
   });
 
-  // 4.6. Create orchestrator
+  // 4.6. Create orchestrator and team coordinator
   taskStore = new TaskStore(debugLog);
   orchestrator = new Orchestrator({
     taskStore,
@@ -169,6 +171,16 @@ app.whenReady().then(() => {
     agentManager,
     debugLog,
     maxConcurrentTasks: 5,
+  });
+
+  const teamStore = new TeamStore(debugLog);
+  const teamCoordinator = new TeamCoordinator({
+    teamStore,
+    orchestrator,
+    agentRegistry,
+    agentManager,
+    workspaceManager,
+    debugLog,
   });
 
   // 5. Register IPC handlers
@@ -200,7 +212,7 @@ app.whenReady().then(() => {
     debugLog,
     errorHandler,
   }));
-  startDashboardRuntime({ windowManager, orchestrator, workspaceManager, terminalManager, debugLog });
+  startDashboardRuntime({ windowManager, orchestrator, workspaceManager, terminalManager, teamCoordinator, debugLog });
 
   // 6.5. Start orchestrator
   if (orchestrator) {

@@ -20,6 +20,15 @@ import {
   handleListTasks,
   handleTaskApiRoute,
 } from './taskHandlers.js';
+import {
+  handleCreateTeam,
+  handleListTeams,
+  handleGetTeam,
+  handleTeamReport,
+  handleTeamMerge,
+  handleTeamReject,
+  handleTeamCancel,
+} from './teamHandlers.js';
 
 export { handleTaskApiRoute };
 
@@ -239,6 +248,28 @@ export function handleAgentApiRoute(req: RequestLike, res: ResponseLike, url: UR
   }
   handleGetAgentById(req, res, url);
   return true;
+}
+
+export function handleTeamApiRoute(req: RequestLike, res: ResponseLike, url: URL): boolean {
+  if (!url.pathname.startsWith('/api/teams')) return false;
+
+  if (url.pathname === '/api/teams' || url.pathname === '/api/teams/') {
+    if (req.method === 'GET') { handleListTeams(req as any, res as any); return true; }
+    if (req.method === 'POST') { handleCreateTeam(req as any, res as any); return true; }
+    return false;
+  }
+
+  const parts = url.pathname.replace('/api/teams/', '').split('/').filter(Boolean);
+  const teamId = parts[0];
+  const action = parts[1];
+
+  if (req.method === 'GET' && !action) { handleGetTeam(req as any, res as any, teamId); return true; }
+  if (req.method === 'GET' && action === 'report') { handleTeamReport(req as any, res as any, teamId); return true; }
+  if (req.method === 'POST' && action === 'merge') { handleTeamMerge(req as any, res as any, teamId); return true; }
+  if (req.method === 'POST' && action === 'reject') { handleTeamReject(req as any, res as any, teamId); return true; }
+  if (req.method === 'POST' && action === 'cancel') { handleTeamCancel(req as any, res as any, teamId); return true; }
+
+  return false;
 }
 
 export const apiRoutes = {

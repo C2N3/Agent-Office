@@ -73,6 +73,19 @@ export function attachOrchestratorBroadcasts(orchestrator: any): void {
   }
 }
 
+export function attachTeamCoordinatorBroadcasts(teamCoordinator: any): void {
+  if (!teamCoordinator) return;
+
+  const events = ['team:created', 'team:updated', 'team:working', 'team:completed', 'team:failed', 'team:cancelled'];
+  for (const event of events) {
+    const sseType = event.replace(':', '.');
+    teamCoordinator.on(event, (team: any) => {
+      broadcastSSE(sseType, team);
+      broadcastUpdate(event, team);
+    });
+  }
+}
+
 export function getAgentManager(): any {
   return getRefs().agentManager;
 }

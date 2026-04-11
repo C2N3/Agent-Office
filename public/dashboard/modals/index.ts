@@ -4,3 +4,4 @@ export { setupAssignTaskModal } from './assignTask.js';
 export { setupAvatarPicker } from './avatarPicker.js';
 export { setupConversationViewer } from './conversationViewer.js';
 export { setupTaskReportModal } from './taskReport.js';
+export { setupTeamFormationModal } from './teamFormation.js';

@@ -7,6 +7,7 @@ import {
   handleAgentApiRoute,
   handleGetOfficeLayoutAsset,
   handleTaskApiRoute,
+  handleTeamApiRoute,
 } from './apiHandlers.js';
 
 interface ResponseLike {
@@ -127,6 +128,7 @@ function handleAPIRequest(req: RequestLike, res: ResponseLike, url: URL): void {
     return;
   }
   if (handleTaskApiRoute(req as any, res as any, url)) return;
+  if (handleTeamApiRoute(req as any, res as any, url)) return;
   if (handleAgentApiRoute(req as any, res as any, url)) return;
 
   res.writeHead(404, { 'Content-Type': 'application/json' });

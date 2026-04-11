@@ -38,6 +38,7 @@ import {
   setupConversationViewer,
   setupNicknameEdit,
   setupTaskReportModal,
+  setupTeamFormationModal,
 } from './modals/index.js';
 
 type DashboardUiError = Error | { message?: string } | DisplayValue;
@@ -119,6 +120,13 @@ function initAgentPanelEvents() {
       if (agent) {
         (globalThis as any).openAssignTaskModal?.(agent);
       }
+      return;
+    }
+
+    const teamBtn = target.closest('.agent-form-team-btn') as HTMLButtonElement | null;
+    if (teamBtn?.dataset.agentId && teamBtn?.dataset.registryId) {
+      event.stopPropagation();
+      (globalThis as any).openTeamFormationModal?.(teamBtn.dataset.agentId, teamBtn.dataset.registryId);
       return;
     }
 
@@ -272,6 +280,7 @@ function initApp() {
   setupAvatarPicker(updateAgentUI);
   setupConversationViewer(resumeRegisteredSession);
   setupTaskReportModal();
+  setupTeamFormationModal();
 
   window.addEventListener('resize', () => {
     fitActiveTerminal();
