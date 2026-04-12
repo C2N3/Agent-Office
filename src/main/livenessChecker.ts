@@ -166,8 +166,9 @@ function zombieSweep(agentManager, agentRegistry, taskStore, debugLog) {
   for (const agent of agentManager.getAllAgents()) {
     if (agent.isSubagent) continue;
     if (agent.isRegistered && agent.state === 'Offline') continue;
-    // Skip agents managed by Orchestrator
+    // Skip agents managed by Orchestrator or in a team
     if (hasActiveOrchestratorTask(taskStore, agent)) continue;
+    if (agent.teamId) continue;
     // Skip agents with a live terminal — terminal is the source of truth
     const termId = agent.registryId || agent.id;
     if (_terminalManagerRef?.hasTerminal?.(termId)) continue;
@@ -237,6 +238,9 @@ function startLivenessChecker({ agentManager, agentRegistry, taskStore, terminal
       // If the agent has a live terminal, it's definitely online — skip liveness checks
       const termId = agent.registryId || agent.id;
       if (terminalManager?.hasTerminal?.(termId)) continue;
+
+      // Skip agents in a team — TeamCoordinator manages their lifecycle
+      if (agent.teamId) continue;
 
       // For registered agents, PID is stored under sessionId, not registryId
       const pidKey = agent.sessionId || agent.id;

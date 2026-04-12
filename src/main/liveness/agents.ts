@@ -24,7 +24,8 @@ function hasActiveOrchestratorTask(taskStore, agent) {
   );
   if (hasRunning) return true;
 
-  // Protect agents in an active team (Waiting state = team in progress)
+  // Protect agents in an active team
+  if (agent.teamId && agent.isRegistered) return true;
   if (agent.state === 'Waiting' && agent.isRegistered) return true;
 
   return false;
