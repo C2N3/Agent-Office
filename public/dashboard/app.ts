@@ -39,6 +39,7 @@ import {
   setupNicknameEdit,
   setupTaskReportModal,
   setupTeamFormationModal,
+  setupTeamReportModal,
 } from './modals/index.js';
 
 type DashboardUiError = Error | { message?: string } | DisplayValue;
@@ -281,6 +282,7 @@ function initApp() {
   setupConversationViewer(resumeRegisteredSession);
   setupTaskReportModal();
   setupTeamFormationModal();
+  setupTeamReportModal();
 
   window.addEventListener('resize', () => {
     fitActiveTerminal();

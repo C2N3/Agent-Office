@@ -243,11 +243,14 @@ export function setupOfficeClickHandler(openTerminalForAgent: (agentId: string, 
     const character = hitTestOfficeCharacter(canvas, event);
     if (character) {
       // If the character has a report bubble, open the report modal instead of popover
-      if (character.bubble && character.bubble.isReport && character.bubble.taskId) {
-        const openReport = (globalThis as any).openTaskReportModal;
-        if (openReport) {
-          openReport(character.bubble.taskId);
-          return;
+      if (character.bubble && character.bubble.isReport) {
+        if (character.bubble.taskId) {
+          const openReport = (globalThis as any).openTaskReportModal;
+          if (openReport) { openReport(character.bubble.taskId); return; }
+        }
+        if (character.bubble.teamId) {
+          const openTeamReport = (globalThis as any).openTeamReportModal;
+          if (openTeamReport) { openTeamReport(character.bubble.teamId); return; }
         }
       }
       showOfficePopover(canvas, character, openTerminalForAgent);
