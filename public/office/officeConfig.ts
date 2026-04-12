@@ -75,15 +75,15 @@ export const IDLE_ANIM_KEYS = new Set([
 
 // Default seat direction/pose config (global ID → pose)
 const DEFAULT_SEAT_MAP = {
-  10: { dir: 'right', animType: 'sit' },
-  12: { dir: 'right', animType: 'sit' },
-  18: { dir: 'right', animType: 'sit' },
-  28: { dir: 'right', animType: 'sit' },
+  10: { dir: 'left', animType: 'sit' },
+  12: { dir: 'left', animType: 'sit' },
+  18: { dir: 'left', animType: 'sit' },
+  28: { dir: 'left', animType: 'sit' },
 
-  11: { dir: 'left', animType: 'sit' },
-  13: { dir: 'left', animType: 'sit' },
-  19: { dir: 'left', animType: 'sit' },
-  29: { dir: 'left', animType: 'sit' },
+  11: { dir: 'right', animType: 'sit' },
+  13: { dir: 'right', animType: 'sit' },
+  19: { dir: 'right', animType: 'sit' },
+  29: { dir: 'right', animType: 'sit' },
 
   24: { dir: 'up', animType: 'stand' },
 
@@ -97,11 +97,11 @@ const DEFAULT_SEAT_MAP = {
 
 // Idle zone spot → resting animation ('dance' or sit direction)
 const DEFAULT_IDLE_SEAT_MAP = {
-  18: 'right',
-  28: 'right',
+  18: 'left',
+  28: 'left',
   24: 'dance',
-  19: 'left',
-  29: 'left',
+  19: 'right',
+  29: 'right',
   // all others default to 'down' (front_sit_idle)
 };
 
