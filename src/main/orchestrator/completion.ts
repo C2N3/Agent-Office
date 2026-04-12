@@ -33,20 +33,37 @@ function handleTaskSuccess(orchestrator, taskId) {
     const originalPath = regAgent?.workspace?.repositoryPath || task.repositoryPath;
     orchestrator.agentRegistry.updateAgent(task.agentRegistryId, { projectPath: originalPath });
 
-    // Check if this task belongs to a team — if so, skip individual report bubble.
-    // Team members stay in 'Waiting' state until the entire team finishes.
-    // The team coordinator will show the report on the leader when ALL subtasks complete.
-    const isTeamTask = orchestrator.teamCoordinator && (() => {
+    // Check if this task belongs to a team.
+    // Team tasks: no individual report bubble, stay Waiting until all done.
+    // The TeamCoordinator handles the final state transition.
+    let teamInfo = null;
+    if (orchestrator.teamCoordinator) {
       const teams = orchestrator.teamCoordinator.teamStore.getAllTeams();
-      return teams.some(t => t.planningTaskId === task.id || (t.subtaskIds && t.subtaskIds.includes(task.id)));
-    })();
+      for (const t of teams) {
+        if (t.planningTaskId === task.id) { teamInfo = { role: 'leader', team: t }; break; }
+        if (t.subtaskIds && t.subtaskIds.includes(task.id)) { teamInfo = { role: 'member', team: t }; break; }
+      }
+    }
 
-    orchestrator.agentManager.updateAgent({
-      registryId: task.agentRegistryId,
-      state: isTeamTask ? 'Waiting' : 'done',
-      projectPath: originalPath,
-      reportTaskId: isTeamTask ? null : task.id,
-    }, 'orchestrator');
+    if (teamInfo) {
+      // Team task: keep agent visible with team context, no report bubble
+      orchestrator.agentManager.updateAgent({
+        registryId: task.agentRegistryId,
+        state: 'Waiting',
+        projectPath: originalPath,
+        reportTaskId: null,
+        teamId: teamInfo.team.id,
+        teamName: teamInfo.team.name,
+      }, 'orchestrator');
+    } else {
+      // Regular task: show done + report bubble
+      orchestrator.agentManager.updateAgent({
+        registryId: task.agentRegistryId,
+        state: 'done',
+        projectPath: originalPath,
+        reportTaskId: task.id,
+      }, 'orchestrator');
+    }
   }
 
   for (const candidate of orchestrator.taskStore.getAllTasks()) {

@@ -18,6 +18,7 @@ const {
 
 const TICK_INTERVAL_MS = 2000;
 const MAX_CONCURRENT_TASKS = 5;
+const MAX_CONCURRENT_TEAM_TASKS = 5; // Separate pool for team subtasks
 
 class Orchestrator extends EventEmitter {
   constructor(options) {
@@ -208,13 +209,32 @@ class Orchestrator extends EventEmitter {
   }
 
   _dispatchReadyTasks() {
-    const runningCount = this.taskStore.getRunningTasks().length
-      + this.taskStore.getTasksByStatus('provisioning').length;
-    const available = this.maxConcurrentTasks - runningCount;
-    if (available <= 0) return;
+    const allRunning = this.taskStore.getRunningTasks()
+      .concat(this.taskStore.getTasksByStatus('provisioning'));
 
-    const ready = this.taskStore.getReadyTasks().slice(0, available);
-    for (const task of ready) {
+    // Split into team vs regular tasks using separate concurrency pools
+    const teamRunning = allRunning.filter(t => t.parentTaskId).length;
+    const regularRunning = allRunning.filter(t => !t.parentTaskId).length;
+
+    const ready = this.taskStore.getReadyTasks();
+    const teamReady = ready.filter(t => t.parentTaskId);
+    const regularReady = ready.filter(t => !t.parentTaskId);
+
+    const dispatchBatch = [];
+
+    // Regular tasks: own pool
+    const regularAvailable = this.maxConcurrentTasks - regularRunning;
+    if (regularAvailable > 0) {
+      dispatchBatch.push(...regularReady.slice(0, regularAvailable));
+    }
+
+    // Team tasks: separate pool
+    const teamAvailable = MAX_CONCURRENT_TEAM_TASKS - teamRunning;
+    if (teamAvailable > 0) {
+      dispatchBatch.push(...teamReady.slice(0, teamAvailable));
+    }
+
+    for (const task of dispatchBatch) {
       this._dispatchTask(task).catch((e) => {
         this.debugLog(`[Orchestrator] Dispatch error for ${task.id}: ${e.message}`);
         this.taskStore.updateTask(task.id, {

@@ -162,10 +162,14 @@ export function createSessionLifecycleHandlers(options: any) {
 
     if (registryId && agentRegistry) {
       agentRegistry.unlinkSession?.(registryId);
-      if (agentManager.transitionToOffline) {
+      // Don't force Offline if the agent is part of an active team (Waiting/Working on team subtasks).
+      // The TeamCoordinator manages their final state.
+      const currentState = agent.state;
+      const isTeamActive = currentState === 'Waiting' || (agent.teamId && currentState !== 'Offline');
+      if (!isTeamActive && agentManager.transitionToOffline) {
         agentManager.transitionToOffline(agentKey);
       }
-      debugLog(`[${logPrefix}] SessionEnd -> registered agent ${registryId.slice(0, 8)} → Offline`);
+      debugLog(`[${logPrefix}] SessionEnd -> registered agent ${registryId.slice(0, 8)} ${isTeamActive ? '→ kept (team active)' : '→ Offline'}`);
     } else {
       debugLog(`[${logPrefix}] SessionEnd -> removing ephemeral agent ${sessionId.slice(0, 8)}`);
       agentManager.removeAgent?.(agentKey);
