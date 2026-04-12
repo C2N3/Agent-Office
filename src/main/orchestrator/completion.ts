@@ -33,30 +33,8 @@ function handleTaskSuccess(orchestrator, taskId) {
     const originalPath = regAgent?.workspace?.repositoryPath || task.repositoryPath;
     orchestrator.agentRegistry.updateAgent(task.agentRegistryId, { projectPath: originalPath });
 
-    // Check if this task belongs to a team.
-    // Team tasks: no individual report bubble, stay Waiting until all done.
-    // The TeamCoordinator handles the final state transition.
-    let teamInfo = null;
-    if (orchestrator.teamCoordinator) {
-      const teams = orchestrator.teamCoordinator.teamStore.getAllTeams();
-      for (const t of teams) {
-        if (t.planningTaskId === task.id) { teamInfo = { role: 'leader', team: t }; break; }
-        if (t.subtaskIds && t.subtaskIds.includes(task.id)) { teamInfo = { role: 'member', team: t }; break; }
-      }
-    }
-
-    if (teamInfo) {
-      // Team task: keep agent visible with team context, no report bubble
-      orchestrator.agentManager.updateAgent({
-        registryId: task.agentRegistryId,
-        state: 'Waiting',
-        projectPath: originalPath,
-        reportTaskId: null,
-        teamId: teamInfo.team.id,
-        teamName: teamInfo.team.name,
-      }, 'orchestrator');
-    } else {
-      // Regular task: show done + report bubble
+    // Regular task: show done + report bubble (team tasks are handled by TeamCoordinator directly)
+    {
       orchestrator.agentManager.updateAgent({
         registryId: task.agentRegistryId,
         state: 'done',

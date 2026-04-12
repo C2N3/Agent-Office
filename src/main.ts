@@ -188,7 +188,7 @@ app.whenReady().then(() => {
   const teamStore = new TeamStore(debugLog);
   const teamCoordinator = new TeamCoordinator({
     teamStore,
-    orchestrator,
+    terminalManager,
     agentRegistry,
     agentManager,
     workspaceManager,

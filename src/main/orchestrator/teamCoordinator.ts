@@ -1,233 +1,51 @@
 // @ts-nocheck
+/**
+ * TeamCoordinator — fully independent team execution pipeline.
+ * Does NOT use Orchestrator's task queue, idle timers, or session handling.
+ * Spawns Claude CLI in --print mode (auto-exits, clean output, no TUI issues).
+ */
 const EventEmitter = require('events');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
+const { cleanTerminalOutput } = require('./cleanOutput');
+
+const TEAM_OUTPUT_DIR = path.join(os.homedir(), '.agent-office', 'team-output');
+const GLOBAL_WORKTREE_DIR = path.join(os.homedir(), '.agent-office', 'worktrees');
 
 class TeamCoordinator extends EventEmitter {
-  constructor({ teamStore, orchestrator, agentRegistry, agentManager, workspaceManager, debugLog }) {
+  constructor({ teamStore, terminalManager, agentRegistry, agentManager, workspaceManager, debugLog }) {
     super();
     this.teamStore = teamStore;
-    this.orchestrator = orchestrator;
+    this.terminalManager = terminalManager;
     this.agentRegistry = agentRegistry;
     this.agentManager = agentManager;
     this.workspaceManager = workspaceManager;
     this.debugLog = debugLog || (() => {});
-
-    // Listen for task completions
-    if (orchestrator) {
-      orchestrator.on('task:succeeded', (task) => this._onTaskSucceeded(task));
-      orchestrator.on('task:failed', (task) => this._onTaskFailed(task));
-    }
+    this.activeJobs = new Map(); // teamId:agentId -> { terminalId, output }
   }
 
-  /**
-   * Create a team and submit the planning task to the leader.
-   */
+  // ========== PUBLIC API ==========
+
   createTeam(input) {
     const team = this.teamStore.createTeam(input);
     const shortId = team.id.slice(0, 8);
-    const integrationBranch = `team/${shortId}`;
 
-    // Detect the actual base branch from the repository
     let baseBranch = team.baseBranch;
     try {
       const repoRoot = this.workspaceManager.resolveRepositoryRoot(team.repositoryPath);
       baseBranch = this.workspaceManager.getCurrentBranch(repoRoot) || 'HEAD';
-      this.debugLog(`[Team] Detected base branch: ${baseBranch}`);
-    } catch (e) {
-      this.debugLog(`[Team] Could not detect base branch: ${e.message}`);
-    }
-
-    this.teamStore.updateTeam(team.id, { integrationBranch, baseBranch });
-
-    // Submit planning task to the leader
-    const memberDescriptions = team.memberAgentIds
-      .map((id) => {
-        const agent = this.agentRegistry.getAgent(id);
-        return agent ? `- ${agent.name} (${agent.role || 'general'})` : null;
-      })
-      .filter(Boolean)
-      .join('\n');
-
-    const planningPrompt = `You are the team leader. Your team's goal:
-${team.goal}
-
-Your team members:
-${memberDescriptions}
-
-Break this goal into concrete subtasks for each team member. Output exactly one JSON block:
-\`\`\`json
-{
-  "subtasks": [
-    {
-      "assignee": "member name (exact match)",
-      "title": "short task title",
-      "prompt": "detailed instructions for this subtask",
-      "dependsOn": []
-    }
-  ]
-}
-\`\`\`
-
-Rules:
-- Assign each subtask to a specific team member by their exact name.
-- Use "dependsOn" to list titles of subtasks that must complete first.
-- You may assign multiple subtasks to one member.
-- Keep prompts specific and actionable.`;
-
-    const leaderAgent = this.agentRegistry.getAgent(team.leaderAgentId);
-    const task = this.orchestrator.submitTask({
-      title: `[Team Plan] ${team.name}: ${team.goal.slice(0, 40)}`,
-      prompt: planningPrompt,
-      provider: leaderAgent?.provider || 'claude',
-      repositoryPath: team.repositoryPath,
-      agentRegistryId: team.leaderAgentId,
-      priority: 'high',
-    });
+    } catch {}
 
     this.teamStore.updateTeam(team.id, {
-      planningTaskId: task.id,
-      status: 'planning',
+      integrationBranch: `team/${shortId}`,
+      baseBranch,
     });
 
+    this.debugLog(`[Team] Created "${team.name}" (${shortId})`);
     this.emit('team:created', this.teamStore.getTeam(team.id));
-    this.emit('team:updated', this.teamStore.getTeam(team.id));
-    this.debugLog(`[Team] Created team "${team.name}" (${shortId}), planning task: ${task.id.slice(0, 8)}`);
 
-    return this.teamStore.getTeam(team.id);
-  }
-
-  /**
-   * Handle task success — check if it's a planning or subtask completion.
-   */
-  _onTaskSucceeded(task) {
-    this.debugLog(`[Team] _onTaskSucceeded: ${task.id.slice(0, 8)}`);
-    const teams = this.teamStore.getAllTeams();
-    for (const team of teams) {
-      if (team.planningTaskId === task.id && team.status === 'planning') {
-        this.debugLog(`[Team] Matched planning task for team ${team.id.slice(0, 8)}`);
-        this._handlePlanningComplete(team.id, task);
-        return;
-      }
-      if (team.subtaskIds.includes(task.id) && team.status === 'working') {
-        this._checkTeamCompletion(team.id);
-        return;
-      }
-    }
-    this.debugLog(`[Team] Task ${task.id.slice(0, 8)} did not match any team`);
-  }
-
-  /**
-   * Handle task failure — check if it affects a team.
-   */
-  _onTaskFailed(task) {
-    const teams = this.teamStore.getAllTeams();
-    for (const team of teams) {
-      if (team.planningTaskId === task.id && team.status === 'planning') {
-        this.teamStore.updateTeam(team.id, {
-          status: 'failed',
-          errorMessage: 'Planning task failed: ' + (task.errorMessage || 'unknown'),
-          completedAt: Date.now(),
-        });
-        this.emit('team:failed', this.teamStore.getTeam(team.id));
-        this.emit('team:updated', this.teamStore.getTeam(team.id));
-        this.debugLog(`[Team] Planning failed for ${team.id.slice(0, 8)}`);
-        return;
-      }
-      if (team.subtaskIds.includes(task.id) && team.status === 'working') {
-        this.teamStore.updateTeam(team.id, {
-          status: 'failed',
-          errorMessage: `Subtask "${task.title}" failed: ${task.errorMessage || 'unknown'}`,
-          completedAt: Date.now(),
-        });
-        this.emit('team:failed', this.teamStore.getTeam(team.id));
-        this.emit('team:updated', this.teamStore.getTeam(team.id));
-        this.debugLog(`[Team] Subtask failed for ${team.id.slice(0, 8)}: ${task.id.slice(0, 8)}`);
-        return;
-      }
-    }
-  }
-
-  /**
-   * Parse the leader's planning output and create subtasks.
-   */
-  _handlePlanningComplete(teamId, planningTask) {
-    const team = this.teamStore.getTeam(teamId);
-    if (!team) return;
-
-    // Read saved output
-    let output = planningTask.lastOutput || '';
-    if (planningTask.outputPath) {
-      try {
-        const fs = require('fs');
-        output = fs.readFileSync(planningTask.outputPath, 'utf-8');
-        this.debugLog(`[Team] Read output from file (${output.length} chars)`);
-      } catch (e) {
-        this.debugLog(`[Team] Failed to read output file: ${e.message}`);
-      }
-    }
-    this.debugLog(`[Team] Output length: ${output.length}, first 200: ${output.slice(0, 200).replace(/\n/g, '\\n')}`);
-
-    // Parse JSON subtasks from output
-    const subtasks = this._parseSubtasks(output);
-    this.debugLog(`[Team] Parsed subtasks: ${subtasks ? subtasks.length : 'null'}`);
-    if (!subtasks || subtasks.length === 0) {
-      this.teamStore.updateTeam(teamId, {
-        status: 'failed',
-        errorMessage: 'Could not parse subtask plan from leader output.',
-        completedAt: Date.now(),
-      });
-      this.emit('team:failed', this.teamStore.getTeam(teamId));
-      this.emit('team:updated', this.teamStore.getTeam(teamId));
-      this.debugLog(`[Team] Failed to parse subtasks for ${teamId.slice(0, 8)}`);
-      return;
-    }
-
-    // Resolve assignees to agent IDs
-    const memberMap = new Map();
-    for (const memberId of team.memberAgentIds) {
-      const agent = this.agentRegistry.getAgent(memberId);
-      if (agent) memberMap.set(agent.name.toLowerCase(), memberId);
-    }
-
-    // Create subtasks with dependency resolution
-    const titleToTaskId = new Map();
-    const subtaskIds = [];
-
-    for (const sub of subtasks) {
-      const assigneeId = memberMap.get(sub.assignee?.toLowerCase())
-        || team.memberAgentIds.find((id) => {
-          const a = this.agentRegistry.getAgent(id);
-          return a && a.name.toLowerCase().includes(sub.assignee?.toLowerCase());
-        })
-        || team.leaderAgentId; // fallback to leader
-
-      const dependsOn = (sub.dependsOn || [])
-        .map((title) => titleToTaskId.get(title.toLowerCase()))
-        .filter(Boolean);
-
-      const assigneeAgent = this.agentRegistry.getAgent(assigneeId);
-      const task = this.orchestrator.submitTask({
-        title: `[Team] ${sub.title}`,
-        prompt: sub.prompt,
-        provider: assigneeAgent?.provider || 'claude',
-        repositoryPath: team.repositoryPath,
-        baseBranch: team.baseBranch,
-        agentRegistryId: assigneeId,
-        parentTaskId: team.planningTaskId,
-        dependsOn,
-        priority: 'normal',
-      });
-
-      titleToTaskId.set(sub.title.toLowerCase(), task.id);
-      subtaskIds.push(task.id);
-      this.debugLog(`[Team] Subtask "${sub.title}" → ${assigneeAgent?.name || assigneeId.slice(0, 8)}`);
-    }
-
-    this.teamStore.updateTeam(teamId, {
-      subtaskIds,
-      status: 'working',
-    });
-
-    // Update member agents to show team membership
+    // Set all members to Working state
     for (const memberId of team.memberAgentIds) {
       this.agentManager.updateAgent({
         registryId: memberId,
@@ -236,208 +54,375 @@ Rules:
       }, 'team');
     }
 
-    this.emit('team:working', this.teamStore.getTeam(teamId));
-    this.emit('team:updated', this.teamStore.getTeam(teamId));
-    this.debugLog(`[Team] Distributed ${subtasks.length} subtask(s) for ${teamId.slice(0, 8)}`);
+    // Start planning phase
+    this._runPlanningTask(team.id);
+    return this.teamStore.getTeam(team.id);
   }
 
-  /**
-   * Check if all subtasks are complete and trigger merge.
-   */
-  _checkTeamCompletion(teamId) {
+  cancelTeam(teamId) {
     const team = this.teamStore.getTeam(teamId);
-    if (!team || team.status !== 'working') return;
+    if (!team) throw new Error('Team not found');
 
-    const allDone = team.subtaskIds.every((id) => {
-      const task = this.orchestrator.getTask(id);
-      return task && task.status === 'succeeded';
-    });
+    // Kill all active terminals
+    for (const [key, job] of this.activeJobs) {
+      if (key.startsWith(teamId)) {
+        if (this.terminalManager.hasTerminal(job.terminalId)) {
+          this.terminalManager.destroyTerminal(job.terminalId);
+        }
+      }
+    }
 
-    if (!allDone) return;
+    // Clean worktrees
+    this._cleanupTeamWorktrees(team);
 
-    this.teamStore.updateTeam(teamId, { status: 'merging' });
-    this.debugLog(`[Team] All subtasks complete for ${teamId.slice(0, 8)}, merging...`);
+    // Reset members
+    for (const memberId of team.memberAgentIds) {
+      this.agentManager.updateAgent({ registryId: memberId, state: 'Offline', teamId: null, teamName: null }, 'team');
+    }
 
-    this._mergeTeamResults(teamId);
+    this.teamStore.updateTeam(teamId, { status: 'cancelled', completedAt: Date.now() });
+    this.emit('team:cancelled', this.teamStore.getTeam(teamId));
+    this.emit('team:updated', this.teamStore.getTeam(teamId));
+    return this.teamStore.getTeam(teamId);
   }
 
-  /**
-   * Merge all subtask branches into the integration branch.
-   */
-  _mergeTeamResults(teamId) {
+  // ========== PLANNING PHASE ==========
+
+  _runPlanningTask(teamId) {
     const team = this.teamStore.getTeam(teamId);
     if (!team) return;
 
-    let repoRoot;
-    try {
-      repoRoot = this.workspaceManager.resolveRepositoryRoot(team.repositoryPath);
-    } catch (e) {
-      this.teamStore.updateTeam(teamId, {
-        status: 'failed',
-        errorMessage: `Cannot resolve repo: ${e.message}`,
-        completedAt: Date.now(),
-      });
-      this.emit('team:failed', this.teamStore.getTeam(teamId));
-      this.emit('team:updated', this.teamStore.getTeam(teamId));
+    const memberDescriptions = team.memberAgentIds
+      .map((id) => { const a = this.agentRegistry.getAgent(id); return a ? `- ${a.name} (${a.role || 'general'})` : null; })
+      .filter(Boolean).join('\n');
+
+    const prompt = `You are the team leader. Your team's goal:\n${team.goal}\n\nYour team members:\n${memberDescriptions}\n\nBreak this goal into concrete subtasks for each team member. Output exactly one JSON block:\n\`\`\`json\n{"subtasks":[{"assignee":"member name","title":"short title","prompt":"detailed instructions","dependsOn":[]}]}\n\`\`\`\n\nRules:\n- Assign each subtask to a specific team member by their exact name.\n- Use "dependsOn" to list titles of subtasks that must complete first.\n- Keep prompts specific and actionable.`;
+
+    this.teamStore.updateTeam(teamId, { status: 'planning' });
+    this.emit('team:updated', this.teamStore.getTeam(teamId));
+
+    this.agentManager.updateAgent({
+      registryId: team.leaderAgentId,
+      state: 'Working',
+      teamId: team.id,
+    }, 'team');
+
+    this._runCLI({
+      teamId,
+      agentId: team.leaderAgentId,
+      prompt,
+      repoPath: team.repositoryPath,
+      label: `[Team Plan] ${team.name}`,
+      onSuccess: (output) => this._onPlanningDone(teamId, output),
+      onFailure: (err) => {
+        this.debugLog(`[Team] Planning failed: ${err}`);
+        this._failTeam(teamId, `Planning failed: ${err}`);
+      },
+    });
+  }
+
+  _onPlanningDone(teamId, output) {
+    const team = this.teamStore.getTeam(teamId);
+    if (!team) return;
+
+    const subtasks = this._parseSubtasks(output);
+    this.debugLog(`[Team] Parsed subtasks: ${subtasks ? subtasks.length : 'null'}`);
+
+    if (!subtasks || subtasks.length === 0) {
+      this._failTeam(teamId, 'Could not parse subtask plan from leader output.');
       return;
     }
 
-    // Create integration branch if it doesn't exist
-    const intBranch = team.integrationBranch;
-    try {
-      if (!this.workspaceManager.localBranchExists(repoRoot, intBranch)) {
-        this.workspaceManager.runGit(repoRoot, ['branch', intBranch, team.baseBranch]);
-      }
-    } catch (e) {
-      this.debugLog(`[Team] Integration branch creation: ${e.message}`);
+    // Set leader to Waiting (done planning, waiting for members)
+    this.agentManager.updateAgent({ registryId: team.leaderAgentId, state: 'Waiting' }, 'team');
+
+    // Resolve assignees
+    const memberMap = new Map();
+    for (const memberId of team.memberAgentIds) {
+      const agent = this.agentRegistry.getAgent(memberId);
+      if (agent) memberMap.set(agent.name.toLowerCase(), memberId);
     }
 
-    // Merge each subtask branch into integration
-    for (const taskId of team.subtaskIds) {
-      const task = this.orchestrator.getTask(taskId);
-      if (!task) continue;
-      const branchName = task.branchName || `task/${taskId.slice(0, 8)}`;
-      try {
-        this.workspaceManager.runGit(repoRoot, ['checkout', intBranch]);
-        this.workspaceManager.runGit(repoRoot, ['merge', '--no-edit', branchName]);
-        this.debugLog(`[Team] Merged ${branchName} into ${intBranch}`);
-      } catch (e) {
-        this.teamStore.updateTeam(teamId, {
-          status: 'failed',
-          errorMessage: `Merge conflict: ${branchName} into ${intBranch}: ${e.message}`,
-          completedAt: Date.now(),
-        });
-        // Abort the merge and restore
-        try { this.workspaceManager.runGit(repoRoot, ['merge', '--abort']); } catch {}
-        try { this.workspaceManager.runGit(repoRoot, ['checkout', team.baseBranch]); } catch {}
-        this.emit('team:failed', this.teamStore.getTeam(teamId));
-        this.emit('team:updated', this.teamStore.getTeam(teamId));
-        return;
-      }
-    }
-
-    // Restore original branch
-    try { this.workspaceManager.runGit(repoRoot, ['checkout', team.baseBranch]); } catch {}
-
-    this.teamStore.updateTeam(teamId, {
-      status: 'completed',
-      completedAt: Date.now(),
+    // Build ordered subtask list respecting dependsOn
+    const subtaskEntries = subtasks.map((sub) => {
+      const assigneeId = memberMap.get(sub.assignee?.toLowerCase())
+        || team.memberAgentIds.find((id) => {
+          const a = this.agentRegistry.getAgent(id);
+          return a && a.name.toLowerCase().includes(sub.assignee?.toLowerCase());
+        })
+        || team.leaderAgentId;
+      return { ...sub, assigneeId };
     });
 
-    // Show report bubble on leader
+    this.teamStore.updateTeam(teamId, { status: 'working', subtaskEntries });
+    this.emit('team:working', this.teamStore.getTeam(teamId));
+    this.emit('team:updated', this.teamStore.getTeam(teamId));
+
+    this.debugLog(`[Team] Distributing ${subtaskEntries.length} subtask(s)`);
+    this._dispatchSubtasks(teamId);
+  }
+
+  // ========== SUBTASK EXECUTION ==========
+
+  _dispatchSubtasks(teamId) {
+    const team = this.teamStore.getTeam(teamId);
+    if (!team || team.status !== 'working') return;
+
+    const entries = team.subtaskEntries || [];
+    const completed = team.completedSubtasks || [];
+    const running = team.runningSubtasks || [];
+
+    for (const sub of entries) {
+      if (completed.includes(sub.title) || running.includes(sub.title)) continue;
+
+      // Check dependsOn
+      const depsOk = (sub.dependsOn || []).every(dep => completed.includes(dep));
+      if (!depsOk) continue;
+
+      // Dispatch this subtask
+      this.teamStore.updateTeam(teamId, {
+        runningSubtasks: [...(this.teamStore.getTeam(teamId).runningSubtasks || []), sub.title],
+      });
+
+      this.agentManager.updateAgent({
+        registryId: sub.assigneeId,
+        state: 'Working',
+        teamId: team.id,
+      }, 'team');
+
+      const agent = this.agentRegistry.getAgent(sub.assigneeId);
+      this.debugLog(`[Team] Dispatching "${sub.title}" → ${agent?.name || sub.assigneeId.slice(0, 8)}`);
+
+      this._runCLI({
+        teamId,
+        agentId: sub.assigneeId,
+        prompt: sub.prompt,
+        repoPath: team.repositoryPath,
+        label: `[Team] ${sub.title}`,
+        onSuccess: (output) => this._onSubtaskDone(teamId, sub.title, output),
+        onFailure: (err) => {
+          this.debugLog(`[Team] Subtask "${sub.title}" failed: ${err}`);
+          this._failTeam(teamId, `Subtask "${sub.title}" failed: ${err}`);
+        },
+      });
+    }
+  }
+
+  _onSubtaskDone(teamId, title, output) {
+    const team = this.teamStore.getTeam(teamId);
+    if (!team || team.status !== 'working') return;
+
+    const completed = [...(team.completedSubtasks || []), title];
+    const running = (team.runningSubtasks || []).filter(t => t !== title);
+    this.teamStore.updateTeam(teamId, { completedSubtasks: completed, runningSubtasks: running });
+
+    const entries = team.subtaskEntries || [];
+    const allDone = entries.every(e => completed.includes(e.title));
+
+    this.debugLog(`[Team] Subtask "${title}" done (${completed.length}/${entries.length})`);
+
+    if (allDone) {
+      this._onAllSubtasksDone(teamId);
+    } else {
+      // Dispatch next subtasks whose deps are now met
+      this._dispatchSubtasks(teamId);
+    }
+  }
+
+  _onAllSubtasksDone(teamId) {
+    const team = this.teamStore.getTeam(teamId);
+    if (!team) return;
+
+    this.debugLog(`[Team] All subtasks complete for ${teamId.slice(0, 8)}`);
+    this.teamStore.updateTeam(teamId, { status: 'completed', completedAt: Date.now() });
+
+    // Leader gets report bubble
     this.agentManager.updateAgent({
       registryId: team.leaderAgentId,
       state: 'done',
       reportTeamId: team.id,
     }, 'team');
 
-    // Clear team membership from members
+    // Members go to Waiting (until team report is handled)
     for (const memberId of team.memberAgentIds) {
-      this.agentManager.updateAgent({
-        registryId: memberId,
-        teamId: null,
-        teamName: null,
-      }, 'team');
+      if (memberId !== team.leaderAgentId) {
+        this.agentManager.updateAgent({ registryId: memberId, state: 'Waiting' }, 'team');
+      }
     }
 
     this.emit('team:completed', this.teamStore.getTeam(teamId));
     this.emit('team:updated', this.teamStore.getTeam(teamId));
-    this.debugLog(`[Team] Completed: ${teamId.slice(0, 8)} "${team.name}"`);
   }
 
-  /**
-   * Parse JSON subtask array from the leader's output text.
-   * The TUI output can mangle whitespace, so we try multiple strategies.
-   */
+  // ========== CLI RUNNER (--print mode, no Orchestrator) ==========
+
+  _runCLI({ teamId, agentId, prompt, repoPath, label, onSuccess, onFailure }) {
+    const terminalId = `team-${teamId.slice(0, 8)}-${agentId.slice(0, 8)}-${Date.now()}`;
+    const agent = this.agentRegistry.getAgent(agentId);
+    const provider = agent?.provider || 'claude';
+
+    // Build --print command (auto-exits, clean output)
+    let command, args;
+    if (provider === 'claude') {
+      command = 'claude';
+      args = ['--print', '--verbose', '--dangerously-skip-permissions', '--max-turns', '50', '-p', prompt];
+    } else if (provider === 'codex') {
+      command = 'codex';
+      args = ['exec', '--full-auto', prompt];
+    } else {
+      command = 'gemini';
+      args = ['--yolo', prompt];
+    }
+
+    // Create worktree for this task
+    let cwd = repoPath;
+    try {
+      const repoRoot = this.workspaceManager.resolveRepositoryRoot(repoPath);
+      const repoName = path.basename(repoRoot);
+      const branchName = `team/${teamId.slice(0, 8)}/${agentId.slice(0, 8)}`;
+      const team = this.teamStore.getTeam(teamId);
+      const wsParent = path.join(GLOBAL_WORKTREE_DIR, repoName);
+      const wsPath = path.join(wsParent, branchName.replace(/\//g, '-'));
+
+      if (!fs.existsSync(wsPath)) {
+        const result = this.workspaceManager.createWorkspace({
+          name: branchName,
+          repoPath: repoRoot,
+          branchName,
+          baseBranch: team?.baseBranch || 'HEAD',
+          workspaceParent: wsParent,
+        });
+        cwd = result.workspacePath;
+      } else {
+        cwd = wsPath;
+      }
+    } catch (e) {
+      this.debugLog(`[Team] Worktree creation failed, using repo directly: ${e.message}`);
+    }
+
+    const termResult = this.terminalManager.createTerminal(terminalId, { cwd, command, args });
+    if (!termResult.success) {
+      onFailure(`Terminal spawn failed: ${termResult.error}`);
+      return;
+    }
+
+    // Collect output
+    let output = '';
+    const untapOutput = this.terminalManager.tapOutput(terminalId, (data) => {
+      output += data;
+    });
+
+    const untapExit = this.terminalManager.tapExit(terminalId, (exitCode) => {
+      untapOutput();
+      untapExit();
+      this.activeJobs.delete(`${teamId}:${agentId}`);
+
+      // Save output
+      const clean = cleanTerminalOutput(output);
+      try {
+        fs.mkdirSync(TEAM_OUTPUT_DIR, { recursive: true });
+        fs.writeFileSync(path.join(TEAM_OUTPUT_DIR, `${terminalId}.txt`), clean, 'utf-8');
+      } catch {}
+
+      if (exitCode === 0) {
+        this.debugLog(`[Team] CLI done (${label}): exit 0, ${clean.length} chars`);
+        onSuccess(clean);
+      } else {
+        onFailure(`CLI exited with code ${exitCode}`);
+      }
+    });
+
+    this.activeJobs.set(`${teamId}:${agentId}`, { terminalId });
+    this.debugLog(`[Team] CLI started: ${label} (${terminalId.slice(0, 16)})`);
+  }
+
+  // ========== HELPERS ==========
+
+  _failTeam(teamId, errorMessage) {
+    const team = this.teamStore.getTeam(teamId);
+    if (!team) return;
+
+    // Kill active jobs
+    for (const [key, job] of this.activeJobs) {
+      if (key.startsWith(teamId)) {
+        if (this.terminalManager.hasTerminal(job.terminalId)) {
+          this.terminalManager.destroyTerminal(job.terminalId);
+        }
+        this.activeJobs.delete(key);
+      }
+    }
+
+    this._cleanupTeamWorktrees(team);
+
+    for (const memberId of team.memberAgentIds) {
+      this.agentManager.updateAgent({ registryId: memberId, state: 'Offline', teamId: null, teamName: null }, 'team');
+    }
+
+    this.teamStore.updateTeam(teamId, { status: 'failed', errorMessage, completedAt: Date.now() });
+    this.emit('team:failed', this.teamStore.getTeam(teamId));
+    this.emit('team:updated', this.teamStore.getTeam(teamId));
+    this.debugLog(`[Team] Failed: ${teamId.slice(0, 8)} — ${errorMessage}`);
+  }
+
+  _cleanupTeamWorktrees(team) {
+    if (!team) return;
+    try {
+      const repoRoot = this.workspaceManager.resolveRepositoryRoot(team.repositoryPath);
+      const prefix = `team/${team.id.slice(0, 8)}/`;
+      // List and remove worktree branches
+      const branches = this.workspaceManager.listLocalBranches(repoRoot);
+      for (const branch of branches) {
+        if (branch.startsWith(prefix)) {
+          try { this.workspaceManager.runGit(repoRoot, ['worktree', 'remove', '--force', branch]); } catch {}
+          try { this.workspaceManager.runGit(repoRoot, ['branch', '-D', branch]); } catch {}
+        }
+      }
+    } catch (e) {
+      this.debugLog(`[Team] Worktree cleanup error: ${e.message}`);
+    }
+  }
+
   _parseSubtasks(output) {
     if (!output) return null;
 
-    // Strategy 1: find ```json ... ``` code block
-    const codeBlockPatterns = [
-      /```json\s*\n([\s\S]*?)\n\s*```/g,
-      /```\s*\n([\s\S]*?)\n\s*```/g,
-    ];
+    // Strategy 1: ```json ... ``` code block
+    const codeBlockPatterns = [/```json\s*\n([\s\S]*?)\n\s*```/g, /```\s*\n([\s\S]*?)\n\s*```/g];
     for (const pattern of codeBlockPatterns) {
       let match;
       while ((match = pattern.exec(output)) !== null) {
-        const result = this._tryParseSubtaskJson(match[1]);
+        const result = this._tryParse(match[1]);
         if (result && result.length > 1) return result;
       }
     }
 
-    // Strategy 2: find {"subtasks": [...]} — may span messy lines
+    // Strategy 2: {"subtasks": [...]}
     const objMatch = output.match(/\{[\s\S]*?"subtasks"\s*:\s*\[[\s\S]*?\]\s*\}/g);
     if (objMatch) {
-      // Try each match, prefer the one with real assignee names (not template placeholders)
       for (const candidate of objMatch) {
-        const result = this._tryParseSubtaskJson(candidate);
+        const result = this._tryParse(candidate);
         if (result && result.length > 1 && !result[0]?.assignee?.includes('member name')) return result;
       }
     }
 
-    // Strategy 3: scan for individual subtask objects and reconstruct
-    const subtaskPattern = /"assignee"\s*:\s*"([^"]+)"[\s\S]*?"title"\s*:\s*"([^"]+)"[\s\S]*?"prompt"\s*:\s*"((?:[^"\\]|\\.)*)"/g;
+    // Strategy 3: individual field scanning
+    const pat = /"assignee"\s*:\s*"([^"]+)"[\s\S]*?"title"\s*:\s*"([^"]+)"[\s\S]*?"prompt"\s*:\s*"((?:[^"\\]|\\.)*)"/g;
     const found = [];
     let m;
-    while ((m = subtaskPattern.exec(output)) !== null) {
-      if (m[1].includes('member name')) continue; // skip template
-      found.push({
-        assignee: m[1],
-        title: m[2],
-        prompt: m[3].replace(/\\n/g, '\n').replace(/\\"/g, '"'),
-        dependsOn: [],
-      });
+    while ((m = pat.exec(output)) !== null) {
+      if (m[1].includes('member name')) continue;
+      found.push({ assignee: m[1], title: m[2], prompt: m[3].replace(/\\n/g, '\n').replace(/\\"/g, '"'), dependsOn: [] });
     }
-    if (found.length > 0) {
-      this.debugLog(`[Team] Extracted ${found.length} subtasks via field scanning`);
-      return found;
-    }
-
+    if (found.length > 0) return found;
     return null;
   }
 
-  _tryParseSubtaskJson(text) {
+  _tryParse(text) {
     try {
-      const parsed = JSON.parse(text);
-      if (Array.isArray(parsed)) return parsed;
-      if (parsed.subtasks && Array.isArray(parsed.subtasks)) return parsed.subtasks;
+      const p = JSON.parse(text);
+      if (Array.isArray(p)) return p;
+      if (p.subtasks && Array.isArray(p.subtasks)) return p.subtasks;
     } catch {}
     return null;
-  }
-
-  /**
-   * Cancel a team and all its running tasks.
-   */
-  cancelTeam(teamId) {
-    const team = this.teamStore.getTeam(teamId);
-    if (!team) throw new Error('Team not found');
-
-    // Cancel running tasks
-    const allTaskIds = [team.planningTaskId, ...team.subtaskIds].filter(Boolean);
-    for (const taskId of allTaskIds) {
-      const task = this.orchestrator.getTask(taskId);
-      if (task && !['succeeded', 'failed', 'cancelled'].includes(task.status)) {
-        try { this.orchestrator.cancelTask(taskId); } catch {}
-      }
-    }
-
-    // Clear team membership
-    for (const memberId of team.memberAgentIds) {
-      this.agentManager.updateAgent({
-        registryId: memberId,
-        teamId: null,
-        teamName: null,
-      }, 'team');
-    }
-
-    this.teamStore.updateTeam(teamId, {
-      status: 'cancelled',
-      completedAt: Date.now(),
-    });
-
-    this.emit('team:cancelled', this.teamStore.getTeam(teamId));
-    this.emit('team:updated', this.teamStore.getTeam(teamId));
-    return this.teamStore.getTeam(teamId);
   }
 }
 
