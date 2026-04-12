@@ -112,6 +112,8 @@ class TerminalManager {
     }
 
     const env = Object.assign({}, process.env);
+    // Prevent "nested Claude Code session" error when spawning claude CLI
+    delete env.CLAUDECODE;
     // Ensure color support
     env.COLORTERM = 'truecolor';
     env.TERM = 'xterm-256color';

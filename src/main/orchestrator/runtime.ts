@@ -16,7 +16,7 @@ const STDIN_POST_READY_MS = 400;
 const IDLE_EXIT_MS = 30000;
 const TEAM_IDLE_EXIT_MS = 120000; // 2 minutes for team subtasks (complex work needs longer thinking)
 const IDLE_ARM_BYTES = 500;
-const CLAUDE_READY_MARKER = /╰[─━]/;
+const CLAUDE_READY_MARKER = /[❯⏵]|bypass permissions/;
 
 async function dispatchTask(orchestrator, task) {
   orchestrator.taskStore.updateTask(task.id, { status: 'provisioning', updatedAt: Date.now() });
