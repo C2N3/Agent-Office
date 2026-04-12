@@ -105,6 +105,10 @@ async function dispatchTask(orchestrator, task) {
   const terminalId = agentRegistryId;
   if (orchestrator.terminalManager.hasTerminal(terminalId)) {
     orchestrator.terminalManager.destroyTerminal(terminalId);
+    // Wait for Windows to release process handles after kill
+    if (process.platform === 'win32') {
+      await new Promise(r => setTimeout(r, 1000));
+    }
   }
   const termResult = orchestrator.terminalManager.createTerminal(terminalId, {
     cwd: workspacePath || task.repositoryPath,
