@@ -66,6 +66,8 @@ export type DashboardAgent = {
   type?: 'main' | 'subagent' | 'teammate' | string;
   lastMessage?: string | null;
   reportTaskId?: string | null;
+  reportTeamId?: string | null;
+  teamId?: string | null;
   timing?: {
     elapsed?: number;
     active?: boolean;
