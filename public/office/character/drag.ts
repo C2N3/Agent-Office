@@ -33,6 +33,22 @@ export function unpinCharacter(agentId) {
   }
 }
 
+// Compute the total walking distance of a path (sum of segment lengths).
+function _pathLength(path, startX, startY) {
+  if (!path || path.length === 0) return Infinity;
+  let len = 0;
+  let px = startX;
+  let py = startY;
+  for (let i = 0; i < path.length; i++) {
+    const dx = path[i].x - px;
+    const dy = path[i].y - py;
+    len += Math.sqrt(dx * dx + dy * dy);
+    px = path[i].x;
+    py = path[i].y;
+  }
+  return len;
+}
+
 export function dropCharacterAt(agentId, x, y) {
   const char = this.characters.get(agentId);
   if (!char) return;
@@ -54,21 +70,21 @@ export function dropCharacterAt(agentId, x, y) {
     const deskCoords = officeCoords.desk || [];
     let bestIdx = -1;
     let bestDist = Infinity;
+    let bestPath = null;
     for (let i = 0; i < deskCoords.length; i++) {
       if (usedDesks.has(i)) continue;
-      const ddx = deskCoords[i].x - x;
-      const ddy = deskCoords[i].y - y;
-      const dd = ddx * ddx + ddy * ddy;
-      if (dd < bestDist) {
-        bestDist = dd;
+      const p = officePathfinder.findPath(x, y, deskCoords[i].x, deskCoords[i].y);
+      const d = _pathLength(p, x, y);
+      if (d < bestDist) {
+        bestDist = d;
         bestIdx = i;
+        bestPath = p;
       }
     }
     if (bestIdx >= 0) {
       char.deskIndex = bestIdx;
       this.seatAssignments.set(bestIdx, agentId);
-      const target = deskCoords[bestIdx];
-      char.path = officePathfinder.findPath(char.x, char.y, target.x, target.y);
+      char.path = bestPath;
       char.pathIndex = 0;
     } else {
       char.deskOverflow = true;
@@ -91,19 +107,20 @@ export function dropCharacterAt(agentId, x, y) {
   });
   let bestSpot = null;
   let bestDist = Infinity;
+  let bestPath = null;
   for (let i = 0; i < idleCoords.length; i++) {
     const point = idleCoords[i];
     if (occupied[`${Math.floor(point.x)},${Math.floor(point.y)}`]) continue;
-    const ddx = point.x - x;
-    const ddy = point.y - y;
-    const dd = ddx * ddx + ddy * ddy;
-    if (dd < bestDist) {
-      bestDist = dd;
+    const p = officePathfinder.findPath(x, y, point.x, point.y);
+    const d = _pathLength(p, x, y);
+    if (d < bestDist) {
+      bestDist = d;
       bestSpot = point;
+      bestPath = p;
     }
   }
-  if (bestSpot) {
-    char.path = officePathfinder.findPath(char.x, char.y, bestSpot.x, bestSpot.y);
+  if (bestPath) {
+    char.path = bestPath;
     char.pathIndex = 0;
   }
 }
