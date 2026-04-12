@@ -97,11 +97,14 @@ export const officeRenderer: any = {
     const h = Math.max(1, Math.round((parent && parent.clientHeight) || canvas.clientHeight || 1));
     if (canvas.width !== w) canvas.width = w;
     if (canvas.height !== h) canvas.height = h;
-    if (centerCamera) {
-      // Center the world inside the canvas at zoom=1 so the map sits in
-      // the middle and any extra panel space is visible around it.
-      this.camera.panX = (w - officeLayers.width) / 2;
-      this.camera.panY = (h - officeLayers.height) / 2;
+    if (centerCamera && officeLayers.width > 0 && officeLayers.height > 0) {
+      // Fit the entire map within the visible canvas area.
+      const zoomX = w / officeLayers.width;
+      const zoomY = h / officeLayers.height;
+      const fitZoom = Math.min(zoomX, zoomY);
+      this.camera.zoom = Math.max(this.camera.minZoom, Math.min(fitZoom, this.camera.maxZoom));
+      this.camera.panX = (w - officeLayers.width * this.camera.zoom) / 2;
+      this.camera.panY = (h - officeLayers.height * this.camera.zoom) / 2;
     }
   },
 

@@ -66,9 +66,11 @@ export function setupCameraControls(renderer, canvas, officeLayers) {
   }, true);
 
   canvas.addEventListener('dblclick', function () {
-    cam.zoom = 1;
-    cam.panX = (canvas.width - officeLayers.width) / 2;
-    cam.panY = (canvas.height - officeLayers.height) / 2;
+    const zoomX = canvas.width / officeLayers.width;
+    const zoomY = canvas.height / officeLayers.height;
+    cam.zoom = Math.max(cam.minZoom, Math.min(Math.min(zoomX, zoomY), cam.maxZoom));
+    cam.panX = (canvas.width - officeLayers.width * cam.zoom) / 2;
+    cam.panY = (canvas.height - officeLayers.height * cam.zoom) / 2;
   });
 }
 
