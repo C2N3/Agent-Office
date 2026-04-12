@@ -165,13 +165,10 @@ export function setupOfficeClickHandler(openTerminalForAgent: (agentId: string, 
     if (Array.isArray(mutable.path)) mutable.path = [];
     mutable.pathIndex = 0;
     mutable.manualPinned = true;
-    // Face the direction of cursor motion and play the matching walk anim so
-    // the held character keeps animating naturally instead of looking frozen.
-    if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
-      const dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
-      mutable.facingDir = dir;
-      mutable.currentAnim = 'walk_' + dir;
-    }
+    // Always show front-facing walk animation while being dragged so
+    // the character looks natural and recognisable during the drag.
+    mutable.facingDir = 'down';
+    mutable.currentAnim = 'walk_down';
   };
 
   canvas.addEventListener('mousedown', (event) => {

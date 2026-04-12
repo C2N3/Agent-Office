@@ -67,6 +67,9 @@ export function dropCharacterAt(agentId, x, y) {
     if (bestIdx >= 0) {
       char.deskIndex = bestIdx;
       this.seatAssignments.set(bestIdx, agentId);
+      const target = deskCoords[bestIdx];
+      char.path = officePathfinder.findPath(char.x, char.y, target.x, target.y);
+      char.pathIndex = 0;
     } else {
       char.deskOverflow = true;
     }
