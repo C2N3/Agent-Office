@@ -84,23 +84,65 @@ class TerminalManager {
     // On Windows, when spawning a direct command (e.g. `claude` from Agent
     // Tasks), the ConPTY inherits the system code page — CP949 on Korean
     // Windows — and mis-decodes UTF-8 output from Node-based CLIs as mojibake.
-    // Wrap the command in `cmd.exe /d /c "chcp 65001>nul & <original>"` so the
-    // console switches to UTF-8 before the target process starts.
-    // Shell profiles (Git Bash, pwsh, cmd, WSL) are left alone — they manage
-    // their own encoding and may rely on specific codepages.
+    //
+    // Previously we wrapped in `cmd.exe /d /c "chcp 65001>nul && <cmd>"`, but
+    // when the target is an npm .cmd shim (like `claude.cmd`) the double
+    // cmd.exe nesting — outer `/c` + inner `goto #_undefined_#` trick — causes
+    // ConPTY to send CTRL_C_EVENT to the process group, immediately killing the
+    // child with STATUS_CONTROL_C_EXIT (-1073741510 / 0xC000013A).
+    //
+    // Fix: for .cmd shims that wrap a Node script, resolve the actual .js entry
+    // point and spawn `node.exe` directly. This avoids cmd.exe entirely and
+    // keeps UTF-8 encoding via the `chcp` fallback only when truly needed.
     if (process.platform === 'win32' && options.command) {
-      // Pass args as separate tokens (not one joined string) so cmd.exe's
-      // /c outer-quote-stripping rule doesn't mangle quoted arguments. node-pty
-      // CRT-escapes each arg individually, and cmd sees a natural pipeline:
-      // `chcp 65001 >nul && <exe> <arg1> <arg2> ...`
-      const originalCommand = command;
-      const originalArgs = args;
-      command = process.env.ComSpec || 'cmd.exe';
-      args = [
-        '/d', '/c', 'chcp', '65001', '>nul', '&&',
-        escapeCmdMetacharsForUnquoted(originalCommand),
-        ...originalArgs.map(escapeCmdMetacharsForUnquoted),
-      ];
+      let resolved = false;
+
+      // Try to resolve .cmd shim → node.exe + script.js (avoids cmd.exe entirely)
+      if (/\.cmd$/i.test(command)) {
+        try {
+          const cmdContent = fs.readFileSync(command, 'utf8');
+          // Match npm .cmd shim pattern: "%_prog%" "%dp0%\path\to\cli.js" %*
+          // or simpler: "%dp0%\node_modules\...\cli.js"
+          const jsMatch = cmdContent.match(/"%dp0%\\([^"]+\.js)"/);
+          if (jsMatch) {
+            const path = require('path');
+            const scriptPath = path.join(path.dirname(command), jsMatch[1]);
+            if (fs.existsSync(scriptPath)) {
+              const originalArgs = args;
+              // process.execPath returns the Electron binary in packaged apps,
+              // not node.exe. Resolve node via the .cmd shim's own logic or PATH.
+              let nodeBin = 'node';
+              const shimNodePath = path.join(path.dirname(command), 'node.exe');
+              if (fs.existsSync(shimNodePath)) {
+                nodeBin = shimNodePath;
+              } else {
+                try {
+                  const { execFileSync } = require('child_process');
+                  nodeBin = execFileSync('where', ['node'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim().split(/\r?\n/)[0];
+                } catch {}
+              }
+              command = nodeBin;
+              args = [scriptPath, ...originalArgs];
+              resolved = true;
+              this.debugLog(`[Terminal] Resolved .cmd shim to node: ${nodeBin} ${scriptPath}`);
+            }
+          }
+        } catch (e) {
+          this.debugLog(`[Terminal] .cmd shim resolution failed: ${e.message}`);
+        }
+      }
+
+      // Fallback: wrap in cmd.exe /c chcp for non-.cmd commands or if resolution failed
+      if (!resolved) {
+        const originalCommand = command;
+        const originalArgs = args;
+        command = process.env.ComSpec || 'cmd.exe';
+        args = [
+          '/d', '/c', 'chcp', '65001', '>nul', '&&',
+          escapeCmdMetacharsForUnquoted(originalCommand),
+          ...originalArgs.map(escapeCmdMetacharsForUnquoted),
+        ];
+      }
     }
 
     try {
@@ -117,6 +159,11 @@ class TerminalManager {
     // Ensure color support
     env.COLORTERM = 'truecolor';
     env.TERM = 'xterm-256color';
+    // Hint UTF-8 locale for child processes spawned directly (without cmd.exe
+    // chcp wrapper). Node.js CLIs already emit UTF-8; this helps any sub-shells.
+    if (process.platform === 'win32') {
+      env.LANG = env.LANG || 'en_US.UTF-8';
+    }
 
     try {
       const ptyProcess = pty.spawn(command, args, {
@@ -180,7 +227,7 @@ class TerminalManager {
         this.outputTaps.delete(agentId);
       });
 
-      this.debugLog(`[Terminal] Created: ${agentId.slice(0, 8)} cmd=${command} profile=${profile?.id || 'custom'} cwd=${cwd}`);
+      this.debugLog(`[Terminal] Created: ${agentId.slice(0, 8)} cmd=${command} args=${JSON.stringify(args)} profile=${profile?.id || 'custom'} cwd=${cwd}`);
       return {
         success: true,
         pid: ptyProcess.pid,
