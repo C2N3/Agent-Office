@@ -195,6 +195,23 @@ function handleTaskOutput(orchestrator, taskId, data, outputParser) {
   const prevBytes = orchestrator.taskOutputBytes.get(taskId) || 0;
   const newBytes = prevBytes + (data ? data.length : 0);
   orchestrator.taskOutputBytes.set(taskId, newBytes);
+
+  // Fast exit: if we already sent the prompt (substantial output) and
+  // the TUI shows the ready marker again, Claude has finished responding.
+  // Send /exit immediately instead of waiting for the idle timeout.
+  if (newBytes >= 2000 && CLAUDE_READY_MARKER.test(data)) {
+    if (!orchestrator._exitSent?.has(taskId)) {
+      const t = orchestrator.taskStore.getTask(taskId);
+      if (t && t.status === 'running' && t.terminalId && orchestrator.terminalManager.hasTerminal(t.terminalId)) {
+        orchestrator.debugLog(`[Orchestrator] Ready marker detected after response, sending /exit: ${taskId.slice(0, 8)}`);
+        orchestrator.terminalManager.writeToTerminal(t.terminalId, '/exit\r');
+        if (!orchestrator._exitSent) orchestrator._exitSent = new Set();
+        orchestrator._exitSent.add(taskId);
+        return;
+      }
+    }
+  }
+
   if (newBytes >= IDLE_ARM_BYTES) {
     resetIdleTimer(orchestrator, taskId);
   }
