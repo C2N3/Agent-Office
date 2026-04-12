@@ -46,6 +46,8 @@ type PixelAgent = {
   endReason?: string | null;
   provider?: string | null;
   reportTaskId?: string | null;
+  reportTeamId?: string | null;
+  teamId?: string | null;
   firstSeen?: number | null;
 };
 
@@ -151,6 +153,8 @@ function adaptAgentToDashboard(pixelAgent: PixelAgent): DashboardAgent & { token
     tokenUsage: normalizeTokenUsage(pixelAgent.tokenUsage),
     currentTool: pixelAgent.currentTool || null,
     reportTaskId: pixelAgent.reportTaskId || null,
+    reportTeamId: pixelAgent.reportTeamId || null,
+    teamId: pixelAgent.teamId || null,
     lastMessage: pixelAgent.lastMessage || null,
     avatarIndex: pixelAgent.avatarIndex !== undefined ? pixelAgent.avatarIndex : null,
     metadata: {
