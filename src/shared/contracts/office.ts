@@ -16,6 +16,7 @@ export type OfficeBubble = {
   expiresAt: number;
   isReport?: boolean;
   taskId?: string;
+  teamId?: string;
 };
 
 export type OfficeCharacter = {
