@@ -61,6 +61,10 @@ export function setBubble(char, agentData) {
     char.bubble = { text: '작업 완료! 보고드릴게요', icon: null, expiresAt: Infinity, isReport: true, taskId: agentData.reportTaskId };
     return;
   }
+  if (agentData.reportTeamId) {
+    char.bubble = { text: '팀 작업 완료! 보고드릴게요', icon: null, expiresAt: Infinity, isReport: true, teamId: agentData.reportTeamId };
+    return;
+  }
 
   if (char.bubble && char.bubble.isReport) return;
 
