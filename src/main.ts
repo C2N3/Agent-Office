@@ -77,17 +77,29 @@ let hookServer = null;
 let codexEventServer = null;
 let enabledProviders = [];
 
-// Scan public/characters/ and regenerate avatars.json
+// Scan public/characters/ subfolders and regenerate avatars.json
 function syncAvatarFiles() {
   const charDir = path.join(__dirname, '..', 'public', 'characters');
   const jsonPath = path.join(__dirname, '..', 'public', 'shared', 'avatars.json');
+  const imgRegex = /\.(webp|png|jpg|jpeg|gif)$/i;
   try {
-    const files = fs.readdirSync(charDir)
-      .filter(f => /\.(webp|png|jpg|jpeg|gif)$/i.test(f))
-      .sort();
-    if (files.length > 0) {
-      fs.writeFileSync(jsonPath, JSON.stringify(files, null, 2) + '\n');
-      debugLog(`[Main] avatars.json synced: ${files.length} files`);
+    const entries = fs.readdirSync(charDir, { withFileTypes: true });
+    const categories = [];
+    const allFiles = [];
+    for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+      if (!entry.isDirectory()) continue;
+      const folderFiles = fs.readdirSync(path.join(charDir, entry.name))
+        .filter(f => imgRegex.test(f))
+        .sort();
+      const prefixed = folderFiles.map(f => `${entry.name}/${f}`);
+      if (prefixed.length > 0) {
+        categories.push({ name: entry.name, files: prefixed });
+        allFiles.push(...prefixed);
+      }
+    }
+    if (allFiles.length > 0) {
+      fs.writeFileSync(jsonPath, JSON.stringify({ categories, allFiles }, null, 2) + '\n');
+      debugLog(`[Main] avatars.json synced: ${allFiles.length} files in ${categories.length} categories`);
     }
   } catch (e) {
     console.error('[Main] Failed to sync avatars.json:', e.message);

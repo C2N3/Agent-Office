@@ -87,7 +87,7 @@ html {
   height: 64px;
   display: block;
   overflow: hidden;
-  background-image: url('./public/characters/avatar_0.webp');
+  background-image: url('./public/characters/Origin/avatar_0.webp');
   background-size: 384px 576px;
   /* 1x native: 8cols*48=384, 9rows*64=576 */
   background-repeat: no-repeat;

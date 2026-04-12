@@ -138,10 +138,11 @@ export let AVATAR_FILES: string[] = [];
 export async function loadAvatarFiles() {
   try {
     const res = await fetch('/public/shared/avatars.json');
-    AVATAR_FILES = await res.json();
+    const data = await res.json();
+    AVATAR_FILES = Array.isArray(data) ? data : (data.allFiles || []);
   } catch (e) {
     console.error('[OfficeConfig] Failed to load avatars.json, using fallback');
-    AVATAR_FILES = ['avatar_0.webp'];
+    AVATAR_FILES = ['Origin/avatar_0.webp'];
   }
 }
 

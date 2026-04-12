@@ -149,13 +149,27 @@ function handleGetHealth(_req: RequestLike, res: ResponseLike): void {
 
 function handleGetAvatars(_req: RequestLike, res: ResponseLike): void {
   const charDir = path.join(PROJECT_ROOT, 'public', 'characters');
+  const imgRegex = /\.(webp|png|jpg|jpeg|gif)$/i;
   try {
-    const files = fs.readdirSync(charDir).filter((f) => /\.(webp|png|jpg|jpeg|gif)$/i.test(f)).sort();
+    const entries = fs.readdirSync(charDir, { withFileTypes: true });
+    const categories: { name: string; files: string[] }[] = [];
+    const allFiles: string[] = [];
+    for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+      if (!entry.isDirectory()) continue;
+      const folderFiles = fs.readdirSync(path.join(charDir, entry.name))
+        .filter((f) => imgRegex.test(f))
+        .sort();
+      const prefixed = folderFiles.map((f) => `${entry.name}/${f}`);
+      if (prefixed.length > 0) {
+        categories.push({ name: entry.name, files: prefixed });
+        allFiles.push(...prefixed);
+      }
+    }
     res.writeHead(200, jsonHeader);
-    res.end(JSON.stringify(files));
+    res.end(JSON.stringify({ categories, allFiles }));
   } catch {
     res.writeHead(200, jsonHeader);
-    res.end('["avatar_0.webp"]');
+    res.end(JSON.stringify({ categories: [], allFiles: [] }));
   }
 }
 

@@ -79,7 +79,19 @@ export type {
 
 export const REGISTERED_FILTER_STORAGE_KEY = 'mc-filter-registered-only';
 
-export const SHARED_AVATAR_FILES = ['avatar_0.webp', 'avatar_1.webp', 'avatar_2.webp', 'avatar_3.webp'] as const;
+export type AvatarCategory = { name: string; files: string[] };
+export type AvatarData = { categories: AvatarCategory[]; allFiles: string[] };
+
+export const SHARED_AVATAR_DATA: AvatarData = {
+  categories: [
+    { name: 'Origin', files: ['Origin/avatar_0.webp', 'Origin/avatar_1.webp', 'Origin/avatar_2.webp', 'Origin/avatar_3.webp'] },
+    { name: 'Vocaloid', files: ['Vocaloid/HatsuneMiku.webp'] },
+  ],
+  allFiles: ['Origin/avatar_0.webp', 'Origin/avatar_1.webp', 'Origin/avatar_2.webp', 'Origin/avatar_3.webp', 'Vocaloid/HatsuneMiku.webp'],
+};
+
+// Flat list for backward compatibility (indexing)
+export const SHARED_AVATAR_FILES = SHARED_AVATAR_DATA.allFiles;
 
 export type DisplayValue = string | number | boolean | null | undefined;
 
