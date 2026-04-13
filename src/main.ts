@@ -76,30 +76,52 @@ let hookServer = null;
 let codexEventServer = null;
 let enabledProviders = [];
 
-// Scan public/characters/ subfolders and regenerate avatars.json
+// Scan public/characters/ subfolders and update avatars.json.
+// Preserves the existing file order — new files are appended to the end
+// so that previously assigned avatarIndex values remain valid.
 function syncAvatarFiles() {
   const charDir = path.join(__dirname, '..', 'public', 'characters');
   const jsonPath = path.join(__dirname, '..', 'public', 'shared', 'avatars.json');
   const imgRegex = /\.(webp|png|jpg|jpeg|gif)$/i;
   try {
+    // Load existing JSON to preserve current order
+    let existingAllFiles: string[] = [];
+    try {
+      const existing = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+      existingAllFiles = Array.isArray(existing) ? existing : (existing.allFiles || []);
+    } catch (_) { /* file missing or invalid — start fresh */ }
+
+    // Collect all files currently on disk (sorted within each folder)
     const entries = fs.readdirSync(charDir, { withFileTypes: true });
-    const categories = [];
-    const allFiles = [];
+    const diskFiles: string[] = [];
     for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
       if (!entry.isDirectory()) continue;
       const folderFiles = fs.readdirSync(path.join(charDir, entry.name))
         .filter(f => imgRegex.test(f))
         .sort();
-      const prefixed = folderFiles.map(f => `${entry.name}/${f}`);
-      if (prefixed.length > 0) {
-        categories.push({ name: entry.name, files: prefixed });
-        allFiles.push(...prefixed);
-      }
+      diskFiles.push(...folderFiles.map(f => `${entry.name}/${f}`));
     }
-    if (allFiles.length > 0) {
-      fs.writeFileSync(jsonPath, JSON.stringify({ categories, allFiles }, null, 2) + '\n');
-      debugLog(`[Main] avatars.json synced: ${allFiles.length} files in ${categories.length} categories`);
+
+    if (diskFiles.length === 0) return;
+
+    // Build final list: keep existing order, append genuinely new files at the end
+    const diskSet = new Set(diskFiles);
+    const kept = existingAllFiles.filter(f => diskSet.has(f));
+    const keptSet = new Set(kept);
+    const added = diskFiles.filter(f => !keptSet.has(f));
+    const allFiles = [...kept, ...added];
+
+    // Rebuild categories from allFiles order
+    const categoryMap = new Map<string, string[]>();
+    for (const f of allFiles) {
+      const folder = f.split('/')[0];
+      if (!categoryMap.has(folder)) categoryMap.set(folder, []);
+      categoryMap.get(folder)!.push(f);
     }
+    const categories = Array.from(categoryMap.entries()).map(([name, files]) => ({ name, files }));
+
+    fs.writeFileSync(jsonPath, JSON.stringify({ categories, allFiles }, null, 2) + '\n');
+    debugLog(`[Main] avatars.json synced: ${allFiles.length} files (${added.length} new) in ${categories.length} categories`);
   } catch (e) {
     console.error('[Main] Failed to sync avatars.json:', e.message);
   }
