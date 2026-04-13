@@ -82,6 +82,12 @@ export function updateCharacter(agentData) {
   char.metadata.type = agentData.type || char.metadata.type;
   char.metadata.lastMessage = agentData.lastMessage || char.metadata.lastMessage;
 
+  if (agentData.avatarIndex != null && agentData.avatarIndex !== char.skinIndex) {
+    const avatarFile = AVATAR_FILES[agentData.avatarIndex] || AVATAR_FILES[0];
+    char.avatarFile = avatarFile;
+    char.skinIndex = agentData.avatarIndex;
+  }
+
   if (oldState !== newState) {
     const oldZone = STATE_ZONE_MAP[oldState] || 'idle';
     const newZone = STATE_ZONE_MAP[newState] || 'idle';

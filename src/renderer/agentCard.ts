@@ -45,6 +45,18 @@ export function updateAgentState(agentId, container, agentOrState) {
   // Play animation
   playAnimation(agentId, character, config.anim);
 
+  // Update avatar if changed
+  if (isAgentObj && agentOrState.avatarIndex != null && character) {
+    const newAvatarFile = AVATAR_FILES[agentOrState.avatarIndex];
+    if (newAvatarFile) {
+      const currentCached = agentAvatars.get(agentId);
+      if (currentCached !== newAvatarFile) {
+        agentAvatars.set(agentId, newAvatarFile);
+        character.style.backgroundImage = `url('./public/characters/${newAvatarFile}')`;
+      }
+    }
+  }
+
   // Get agent state
   let agentState = agentStates.get(agentId);
   if (!agentState) {
