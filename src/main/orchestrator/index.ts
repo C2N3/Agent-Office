@@ -243,8 +243,28 @@ class Orchestrator extends EventEmitter {
           completedAt: Date.now(),
           updatedAt: Date.now(),
         });
-        this.emit('task:failed', this.taskStore.getTask(task.id));
-        this.emit('task:updated', this.taskStore.getTask(task.id));
+
+        // Restore agent state so a failed dispatch doesn't leave the agent stuck in "Working".
+        // Without this, the agent stays in Working and never accepts another task until restart.
+        const failedTask = this.taskStore.getTask(task.id);
+        const registryId = failedTask?.agentRegistryId;
+        if (registryId && this.agentManager) {
+          try {
+            const existingAgent = this.agentRegistry?.getAgent?.(registryId);
+            this.agentManager.updateAgent({
+              registryId,
+              displayName: existingAgent?.name,
+              role: existingAgent?.role,
+              state: 'Error',
+              lastError: e.message,
+            }, 'orchestrator');
+          } catch (agentErr) {
+            this.debugLog(`[Orchestrator] Agent state restore failed for ${task.id}: ${agentErr.message}`);
+          }
+        }
+
+        this.emit('task:failed', failedTask);
+        this.emit('task:updated', failedTask);
       });
     }
   }

@@ -34,7 +34,7 @@ class TeamCoordinator extends EventEmitter {
     let baseBranch = team.baseBranch;
     try {
       const repoRoot = this.workspaceManager.resolveRepositoryRoot(team.repositoryPath);
-      baseBranch = this.workspaceManager.getCurrentBranch(repoRoot) || 'HEAD';
+      baseBranch = this.workspaceManager.resolveBaseBranch(repoRoot, team.baseBranch);
     } catch {}
 
     this.teamStore.updateTeam(team.id, {

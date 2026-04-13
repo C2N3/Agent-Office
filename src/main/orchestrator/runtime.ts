@@ -58,7 +58,12 @@ async function dispatchTask(orchestrator, task) {
     });
   }
 
-  orchestrator.taskStore.updateTask(task.id, { workspacePath, currentProvider: provider });
+  const resolvedBaseBranch = workspaceMetadata?.baseBranch || task.baseBranch || null;
+  orchestrator.taskStore.updateTask(task.id, {
+    workspacePath,
+    currentProvider: provider,
+    ...(resolvedBaseBranch ? { baseBranch: resolvedBaseBranch } : {}),
+  });
 
   let agentRegistryId = task.agentRegistryId;
   if (!agentRegistryId) {

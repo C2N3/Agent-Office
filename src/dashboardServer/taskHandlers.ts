@@ -161,7 +161,7 @@ async function handleTaskReport(_req: RequestLike, res: ResponseLike, taskId: st
       // Compare only the agent's own commits: diff from the branch point (merge-base)
       // to the current worktree HEAD, so unrelated master commits don't appear.
       const branchName = task.branchName || `task/${taskId.slice(0, 8)}`;
-      const baseBranch = task.baseBranch || 'master';
+      const baseBranch = workspaceManager.resolveBaseBranch(task.workspacePath, task.baseBranch);
       const mergeBase = workspaceManager.runGit(task.workspacePath, ['merge-base', baseBranch, 'HEAD']).trim();
       diffSummary = workspaceManager.runGit(task.workspacePath, ['diff', '--stat', mergeBase]).trim();
       diff = workspaceManager.runGit(task.workspacePath, ['diff', mergeBase]).trim();

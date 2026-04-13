@@ -51,11 +51,21 @@ describe('WorkspaceManager', () => {
       }
 
       if (gitArgs[0] === 'rev-parse' && gitArgs[1] === '--verify') {
-        if (branchExists) {
+        // Argument after --verify (and optional --quiet) is the ref being checked.
+        const refArg = gitArgs.slice(2).find((a) => !a.startsWith('--')) || '';
+        const bareRef = refArg.replace(/^refs\/heads\//, '');
+        const knownBranch = branches.includes(bareRef);
+        if (branchExists || knownBranch) {
           return 'abc123\n';
         }
         const error = new Error('missing branch');
         error.stderr = Buffer.from('fatal: Needed a single revision');
+        throw error;
+      }
+
+      if (gitArgs[0] === 'symbolic-ref') {
+        const error = new Error('no remote HEAD');
+        error.stderr = Buffer.from('fatal: ref refs/remotes/origin/HEAD is not a symbolic ref');
         throw error;
       }
 

@@ -64,6 +64,50 @@ class WorkspaceManager {
     }
   }
 
+  refExists(repoPath, ref) {
+    if (!ref || ref === 'HEAD') return true;
+    try {
+      this.runGit(repoPath, ['rev-parse', '--verify', '--quiet', ref]);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  getDefaultRemoteBranch(repoPath) {
+    try {
+      const head = this.runGit(repoPath, ['symbolic-ref', '--quiet', 'refs/remotes/origin/HEAD']);
+      const match = head && head.match(/refs\/remotes\/origin\/(.+)$/);
+      if (match) return match[1].trim();
+    } catch {}
+    return null;
+  }
+
+  // Resolves a usable base branch ref for operations like worktree add / merge-base.
+  // Resolution order:
+  //   1. explicit hint — trusted; returned as-is (caller-intent wins)
+  //   2. current branch, only if its ref actually resolves
+  //   3. origin/HEAD's target branch, only if it actually resolves
+  //   4. 'main' or 'master' if either actually resolves
+  //   5. 'HEAD' as final fallback
+  // Existence checks on auto-detected candidates avoid the `fatal: invalid reference: master`
+  // case where `git branch --show-current` reports a name whose ref has been pruned.
+  resolveBaseBranch(repoPath, hint) {
+    const trimmedHint = typeof hint === 'string' ? hint.trim() : '';
+    if (trimmedHint) return trimmedHint;
+
+    const current = this.getCurrentBranch(repoPath);
+    if (current && current !== 'HEAD' && this.refExists(repoPath, current)) return current;
+
+    const remoteDefault = this.getDefaultRemoteBranch(repoPath);
+    if (remoteDefault && this.refExists(repoPath, remoteDefault)) return remoteDefault;
+
+    for (const candidate of ['main', 'master']) {
+      if (this.refExists(repoPath, candidate)) return candidate;
+    }
+    return 'HEAD';
+  }
+
   listLocalBranches(repoPath) {
     const output = this.runGit(repoPath, ['for-each-ref', '--format=%(refname:short)', 'refs/heads']);
     return output
@@ -113,9 +157,9 @@ class WorkspaceManager {
     const repoRoot = this.resolveRepositoryRoot(options.repoPath || options.projectPath);
     const repositoryName = path.basename(repoRoot);
     const branchName = slugifyBranchName(options.branchName || name);
-    const detectedBaseBranch = this.getCurrentBranch(repoRoot);
-    const baseBranch = String(options.baseBranch || detectedBaseBranch || 'HEAD').trim() || 'HEAD';
-    const startPoint = String(options.startPoint || baseBranch).trim() || baseBranch;
+    const baseBranch = this.resolveBaseBranch(repoRoot, options.baseBranch);
+    const startPointHint = String(options.startPoint || '').trim();
+    const startPoint = startPointHint && this.refExists(repoRoot, startPointHint) ? startPointHint : baseBranch;
     const defaultParent = path.join(GLOBAL_WORKTREE_DIR, repositoryName);
     const workspaceParent = path.resolve(sanitizeProjectPath(options.workspaceParent) || defaultParent);
     const workspacePath = path.resolve(sanitizeProjectPath(options.workspacePath) || path.join(workspaceParent, branchName));
@@ -196,7 +240,7 @@ class WorkspaceManager {
     const repoRoot = this.resolveRepositoryRoot(workspace.repositoryPath || workspace.worktreePath);
     const worktreePath = path.resolve(sanitizeProjectPath(workspace.worktreePath || ''));
     const branchName = String(workspace.branch || '').trim();
-    const targetBranch = String(workspace.baseBranch || this.getCurrentBranch(repoRoot) || 'main').trim();
+    const targetBranch = this.resolveBaseBranch(repoRoot, workspace.baseBranch);
 
     if (!worktreePath || !branchName) {
       throw new Error('Workspace branch metadata is incomplete');

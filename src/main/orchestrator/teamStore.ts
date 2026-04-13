@@ -53,7 +53,7 @@ class TeamStore {
       name: input.name || `Team-${Date.now().toString(36).slice(-5)}`,
       goal: input.goal || '',
       repositoryPath: input.repositoryPath || '',
-      baseBranch: input.baseBranch || 'master',
+      baseBranch: input.baseBranch || null,
       integrationBranch: null, // set during provisioning
       leaderAgentId: input.leaderAgentId || '',
       memberAgentIds: input.memberAgentIds || [],

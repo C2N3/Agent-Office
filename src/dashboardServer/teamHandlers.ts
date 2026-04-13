@@ -110,7 +110,8 @@ export async function handleTeamReport(req: RequestLike, res: ResponseLike, team
   if (team.integrationBranch && workspaceManager) {
     try {
       const repoRoot = workspaceManager.resolveRepositoryRoot(team.repositoryPath);
-      const mergeBase = workspaceManager.runGit(repoRoot, ['merge-base', team.baseBranch, team.integrationBranch]).trim();
+      const baseBranch = workspaceManager.resolveBaseBranch(repoRoot, team.baseBranch);
+      const mergeBase = workspaceManager.runGit(repoRoot, ['merge-base', baseBranch, team.integrationBranch]).trim();
       diffSummary = workspaceManager.runGit(repoRoot, ['diff', '--stat', mergeBase, team.integrationBranch]).trim();
       diff = workspaceManager.runGit(repoRoot, ['diff', mergeBase, team.integrationBranch]).trim();
     } catch {}
@@ -146,9 +147,10 @@ export async function handleTeamMerge(req: RequestLike, res: ResponseLike, teamI
 
   try {
     const repoRoot = workspaceManager.resolveRepositoryRoot(team.repositoryPath);
+    const baseBranch = workspaceManager.resolveBaseBranch(repoRoot, team.baseBranch);
 
     // Merge integration branch into base branch
-    workspaceManager.runGit(repoRoot, ['checkout', team.baseBranch]);
+    workspaceManager.runGit(repoRoot, ['checkout', baseBranch]);
     workspaceManager.runGit(repoRoot, ['merge', '--no-edit', team.integrationBranch]);
 
     // Cleanup: delete integration branch and subtask branches
@@ -191,7 +193,8 @@ export async function handleTeamReject(req: RequestLike, res: ResponseLike, team
     const repoRoot = workspaceManager.resolveRepositoryRoot(team.repositoryPath);
 
     // Delete integration branch and subtask branches
-    try { workspaceManager.runGit(repoRoot, ['checkout', team.baseBranch]); } catch {}
+    const baseBranch = workspaceManager.resolveBaseBranch(repoRoot, team.baseBranch);
+    try { workspaceManager.runGit(repoRoot, ['checkout', baseBranch]); } catch {}
     try { workspaceManager.runGit(repoRoot, ['branch', '-D', team.integrationBranch]); } catch {}
     for (const taskId of team.subtaskIds) {
       const task = teamCoordinator.orchestrator.getTask(taskId);
