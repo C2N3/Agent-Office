@@ -14,6 +14,12 @@
       "files": [
         "Vocaloid/HatsuneMiku.webp"
       ]
+    },
+    {
+      "name": "Custom",
+      "files": [
+        "Custom/DT.png"
+      ]
     }
   ],
   "allFiles": [
@@ -21,6 +27,7 @@
     "Origin/avatar_1.webp",
     "Origin/avatar_2.webp",
     "Origin/avatar_3.webp",
-    "Vocaloid/HatsuneMiku.webp"
+    "Vocaloid/HatsuneMiku.webp",
+    "Custom/DT.png"
   ]
 }

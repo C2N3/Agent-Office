@@ -90,8 +90,9 @@ export const SHARED_AVATAR_DATA: AvatarData = {
   categories: [
     { name: 'Origin', files: ['Origin/avatar_0.webp', 'Origin/avatar_1.webp', 'Origin/avatar_2.webp', 'Origin/avatar_3.webp'] },
     { name: 'Vocaloid', files: ['Vocaloid/HatsuneMiku.webp'] },
+    { name: 'Custom', files: ['Custom/DT.png'] },
   ],
-  allFiles: ['Origin/avatar_0.webp', 'Origin/avatar_1.webp', 'Origin/avatar_2.webp', 'Origin/avatar_3.webp', 'Vocaloid/HatsuneMiku.webp'],
+  allFiles: ['Origin/avatar_0.webp', 'Origin/avatar_1.webp', 'Origin/avatar_2.webp', 'Origin/avatar_3.webp', 'Vocaloid/HatsuneMiku.webp', 'Custom/DT.png'],
 };
 
 // Flat list for backward compatibility (indexing)
