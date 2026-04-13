@@ -272,6 +272,39 @@ class Orchestrator extends EventEmitter {
     return dispatchTask(this, task);
   }
 
+  // Called by hookProcessor / codexProcessor when the underlying CLI emits a
+  // completion signal (Claude `Stop` hook → `turn.complete`, Codex `task_complete` →
+  // `turn.complete`, or `session.end` from either). This is the authoritative
+  // "agent finished" signal from the provider; we use it to end the task rather
+  // than heuristics on TUI output.
+  handleProviderTaskComplete(info) {
+    if (!info) return;
+    const { registryId, sessionId, reason } = info;
+    if (!registryId) return;
+
+    // Find the running task attached to this agent registry entry.
+    // Most recent running task wins if somehow multiple (shouldn't happen —
+    // orchestrator dispatches one task per agent at a time).
+    let target = null;
+    for (const task of this.taskStore.getAllTasks()) {
+      if (task.agentRegistryId !== registryId) continue;
+      if (task.status !== 'running') continue;
+      if (!target || (task.startedAt || 0) > (target.startedAt || 0)) target = task;
+    }
+    if (!target) return;
+
+    if (this._exitSent?.has(target.id)) return;
+    if (!target.terminalId || !this.terminalManager.hasTerminal(target.terminalId)) return;
+
+    this.debugLog(
+      `[Orchestrator] Provider completion signal for ${target.id.slice(0, 8)} `
+      + `(reason=${reason}, session=${(sessionId || '').slice(0, 8)}) — sending /exit`,
+    );
+    this.terminalManager.writeToTerminal(target.terminalId, '/exit\r');
+    if (!this._exitSent) this._exitSent = new Set();
+    this._exitSent.add(target.id);
+  }
+
   _handleTaskOutput(taskId, data, outputParser) {
     return handleTaskOutput(this, taskId, data, outputParser);
   }

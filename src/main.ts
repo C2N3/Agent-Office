@@ -195,6 +195,17 @@ app.whenReady().then(() => {
   });
   orchestrator.teamCoordinator = teamCoordinator;
 
+  // Route provider completion events (Claude Stop hook, Codex task_complete,
+  // session.end) into the orchestrator so it can end tasks based on the CLI's
+  // own signal instead of guessing from TUI output.
+  const completionHandler = (info: any) => orchestrator.handleProviderTaskComplete(info);
+  if (hookProcessor && typeof (hookProcessor as any).setTaskCompletionHandler === 'function') {
+    (hookProcessor as any).setTaskCompletionHandler(completionHandler);
+  }
+  if (codexProcessor && typeof (codexProcessor as any).setTaskCompletionHandler === 'function') {
+    (codexProcessor as any).setTaskCompletionHandler(completionHandler);
+  }
+
   // 5. Register IPC handlers
   registerIpcHandlers({
     agentManager,

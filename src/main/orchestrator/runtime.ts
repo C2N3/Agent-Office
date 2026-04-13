@@ -12,9 +12,6 @@ const {
 
 const STDIN_READY_TIMEOUT_MS = 8000;
 const STDIN_POST_READY_MS = 400;
-const IDLE_EXIT_MS = 30000;
-const TEAM_IDLE_EXIT_MS = 120000; // 2 minutes for team subtasks (complex work needs longer thinking)
-const IDLE_ARM_BYTES = 500;
 const CLAUDE_READY_MARKER = /[❯⏵]|bypass permissions/;
 
 async function dispatchTask(orchestrator, task) {
@@ -200,56 +197,16 @@ function handleTaskOutput(orchestrator, taskId, data, outputParser) {
     }
   }
 
+  // Track cumulative bytes for output saving/telemetry only. Task completion is
+  // driven by provider events (Stop hook / task_complete / session.end) via
+  // Orchestrator.handleProviderTaskComplete, not by TUI heuristics.
   const prevBytes = orchestrator.taskOutputBytes.get(taskId) || 0;
-  const newBytes = prevBytes + (data ? data.length : 0);
-  orchestrator.taskOutputBytes.set(taskId, newBytes);
-
-  // Fast exit: if we already sent the prompt (substantial output) and
-  // the TUI shows the ready marker again, Claude has finished responding.
-  // Send /exit immediately instead of waiting for the idle timeout.
-  if (newBytes >= 2000 && CLAUDE_READY_MARKER.test(data)) {
-    if (!orchestrator._exitSent?.has(taskId)) {
-      const t = orchestrator.taskStore.getTask(taskId);
-      if (t && t.status === 'running' && t.terminalId && orchestrator.terminalManager.hasTerminal(t.terminalId)) {
-        orchestrator.debugLog(`[Orchestrator] Ready marker detected after response, sending /exit: ${taskId.slice(0, 8)}`);
-        orchestrator.terminalManager.writeToTerminal(t.terminalId, '/exit\r');
-        if (!orchestrator._exitSent) orchestrator._exitSent = new Set();
-        orchestrator._exitSent.add(taskId);
-        return;
-      }
-    }
-  }
-
-  if (newBytes >= IDLE_ARM_BYTES) {
-    resetIdleTimer(orchestrator, taskId);
-  }
+  orchestrator.taskOutputBytes.set(taskId, prevBytes + (data ? data.length : 0));
 }
 
-function resetIdleTimer(orchestrator, taskId) {
-  if (orchestrator._exitSent?.has(taskId)) return;
-
-  const existing = orchestrator.idleTimers.get(taskId);
-  if (existing) clearTimeout(existing);
-
-  // Use longer timeout for team tasks (subtasks involve complex analysis)
-  const task = orchestrator.taskStore.getTask(taskId);
-  const isTeamTask = task && task.parentTaskId;
-  const timeout = isTeamTask ? TEAM_IDLE_EXIT_MS : IDLE_EXIT_MS;
-
-  const timer = setTimeout(() => {
-    orchestrator.idleTimers.delete(taskId);
-    const t = orchestrator.taskStore.getTask(taskId);
-    if (!t || t.status !== 'running') return;
-    if (t.terminalId && orchestrator.terminalManager.hasTerminal(t.terminalId)) {
-      orchestrator.debugLog(`[Orchestrator] Idle timeout for ${taskId.slice(0, 8)}, sending /exit`);
-      orchestrator.terminalManager.writeToTerminal(t.terminalId, '/exit\r');
-      if (!orchestrator._exitSent) orchestrator._exitSent = new Set();
-      orchestrator._exitSent.add(taskId);
-    }
-  }, timeout);
-
-  orchestrator.idleTimers.set(taskId, timer);
-}
+// No-op kept for backward compatibility with any external callers; idle-based
+// auto-exit was removed in favor of provider completion events.
+function resetIdleTimer(_orchestrator, _taskId) {}
 
 function handleTaskExit(orchestrator, taskId, exitCode) {
   const task = orchestrator.taskStore.getTask(taskId);

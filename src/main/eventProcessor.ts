@@ -15,6 +15,7 @@ function createEventProcessor({
   logPrefix = 'Event',
   createSource = 'event',
   updateSource = 'event',
+  getTaskCompletionHandler,
 }) {
   const state = createSessionState({
     agentManager,
@@ -35,6 +36,7 @@ function createEventProcessor({
     createSource,
     updateSource,
     state,
+    getTaskCompletionHandler,
   });
 }
 

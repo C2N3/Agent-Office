@@ -6,6 +6,7 @@ const { createEventProcessor } = require('./eventProcessor');
 const { getCodexWorkspacePath, normalizeCodexEvent } = require('./codex/events');
 
 function createCodexProcessor({ agentManager, agentRegistry, sessionPids, debugLog, detectPidByTranscript = null }) {
+  let taskCompletionHandler = null;
   const processor = createEventProcessor({
     agentManager,
     agentRegistry,
@@ -15,6 +16,7 @@ function createCodexProcessor({ agentManager, agentRegistry, sessionPids, debugL
     logPrefix: 'Codex',
     createSource: 'codex',
     updateSource: 'codex',
+    getTaskCompletionHandler: () => taskCompletionHandler,
   });
   const pendingFunctionCalls = new Map(); // callId -> { sessionId, name, args }
   const latestTokenUsageBySession = new Map();
@@ -255,6 +257,7 @@ function processSessionEntry(entry, context: { sessionId?: string | null; runtim
     attachRegisteredAgent: processor.attachRegisteredAgent,
     flushPendingStarts: processor.flushPendingStarts,
     cleanup: processor.cleanup,
+    setTaskCompletionHandler(fn) { taskCompletionHandler = typeof fn === 'function' ? fn : null; },
     get firstToolUseDone() { return processor.firstToolUseDone; },
   };
 }

@@ -11,7 +11,18 @@ export function createProcessEventHandler(options: any) {
     handlePidReconnect,
     handleSessionStart,
     handleSessionEnd,
+    getTaskCompletionHandler,
   } = options;
+
+  function notifyTaskCompletion(sessionId: string, reason: string, detail: any) {
+    const fn = typeof getTaskCompletionHandler === 'function' ? getTaskCompletionHandler() : null;
+    if (typeof fn !== 'function') return;
+    try {
+      fn({ sessionId, registryId: state.resolveAgentId(sessionId) || null, reason, detail });
+    } catch (err: any) {
+      debugLog(`[${logPrefix}] Task completion handler error: ${err && err.message}`);
+    }
+  }
 
   const {
     resolveSessionId,
@@ -128,6 +139,7 @@ export function createProcessEventHandler(options: any) {
         if (event.reason) {
           debugLog(`[${logPrefix}] SessionEnd reason: ${event.reason} for ${sessionId.slice(0, 8)}`);
         }
+        notifyTaskCompletion(sessionId, 'session.end', { reason: event.reason || null });
         handleSessionEnd(sessionId);
         break;
       case 'prompt.submit':
@@ -153,6 +165,9 @@ export function createProcessEventHandler(options: any) {
             }, updateSource);
           }
         }
+        notifyTaskCompletion(sessionId, 'turn.complete', {
+          lastAssistantMessage: event.lastAssistantMessage || null,
+        });
         break;
       case 'usage.update':
         break;

@@ -120,6 +120,7 @@ function normalizeHookEvent(data) {
 }
 
 function createHookProcessor({ agentManager, agentRegistry, sessionPids, debugLog, detectClaudePidByTranscript }) {
+  let taskCompletionHandler = null;
   const processor = createEventProcessor({
     agentManager,
     agentRegistry,
@@ -129,6 +130,7 @@ function createHookProcessor({ agentManager, agentRegistry, sessionPids, debugLo
     logPrefix: 'Hook',
     createSource: 'http',
     updateSource: 'hook',
+    getTaskCompletionHandler: () => taskCompletionHandler,
   });
 
   function processHookEvent(data) {
@@ -145,6 +147,7 @@ function createHookProcessor({ agentManager, agentRegistry, sessionPids, debugLo
     attachRegisteredAgent: processor.attachRegisteredAgent,
     flushPendingStarts: processor.flushPendingStarts,
     cleanup: processor.cleanup,
+    setTaskCompletionHandler(fn) { taskCompletionHandler = typeof fn === 'function' ? fn : null; },
     get firstPreToolUseDone() { return processor.firstToolUseDone; },
   };
 }

@@ -18,6 +18,7 @@ type EventHandlerOptions = {
   createSource?: string;
   updateSource?: string;
   state: SessionState;
+  getTaskCompletionHandler?: (() => ((info: any) => void) | null) | null;
 };
 
 export function createEventHandlers({
@@ -30,6 +31,7 @@ export function createEventHandlers({
   createSource = 'event',
   updateSource = 'event',
   state,
+  getTaskCompletionHandler,
 }: EventHandlerOptions) {
   const { createProcessEventHandler } = require('./process.js') as {
     createProcessEventHandler: (options: any) => (event: any) => void;
@@ -63,6 +65,7 @@ export function createEventHandlers({
       logPrefix,
       updateSource,
       state,
+      getTaskCompletionHandler,
       ...lifecycle,
     }),
     handleSessionStart: lifecycle.handleSessionStart,
