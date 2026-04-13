@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Office Pathfinder — A* pathfinding on collision map
  * Ported from pixel_office pathfinding.ts (simplified — zone/flow/accessibility removed)

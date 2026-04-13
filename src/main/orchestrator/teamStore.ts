@@ -1,4 +1,3 @@
-// @ts-nocheck
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -7,7 +6,28 @@ const crypto = require('crypto');
 const PERSIST_DIR = path.join(os.homedir(), '.agent-office');
 const TEAM_FILE = path.join(PERSIST_DIR, 'teams.json');
 
+type TeamRecord = {
+  id: string;
+  name: string;
+  goal: string;
+  repositoryPath: string;
+  baseBranch: string;
+  integrationBranch: string | null;
+  leaderAgentId: string;
+  memberAgentIds: string[];
+  planningTaskId: string | null;
+  subtaskIds: string[];
+  status: string;
+  createdAt: number;
+  updatedAt: number;
+  completedAt: number | null;
+  errorMessage: string | null;
+};
+
 class TeamStore {
+  declare debugLog: (message: string) => void;
+  declare teams: Map<string, TeamRecord>;
+
   constructor(debugLog) {
     this.debugLog = debugLog || (() => {});
     this.teams = new Map();

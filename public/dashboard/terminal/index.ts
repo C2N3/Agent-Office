@@ -1,4 +1,3 @@
-// @ts-nocheck
 
 import { dashboardResumeUtils, getDashboardAPI, termState } from '../shared.js';
 import {
@@ -14,6 +13,7 @@ import {
   initTerminalProfileMenu as initTerminalProfileMenuHelper,
   refreshTerminalProfiles,
 } from './profiles.js';
+import type { DashboardOpenOptions } from '../shared.js';
 
 export function initTerminals() {
   const dashboardAPI = getDashboardAPI();
@@ -29,7 +29,7 @@ export function initTerminals() {
         const buf = termState._pendingData;
         buf.set(agentId, (buf.get(agentId) || '') + data);
       }
-    });
+    }) || null;
   }
 
   if (dashboardAPI.onTerminalExit) {
@@ -40,7 +40,7 @@ export function initTerminals() {
         const dot = terminal.tab?.querySelector('.terminal-tab-dot');
         if (dot) dot.classList.add('exited');
       }
-    });
+    }) || null;
   }
 
   if (dashboardAPI.onPsPolicyBlocked) {
@@ -60,7 +60,7 @@ export function initTerminals() {
   }
 }
 
-export async function openTerminalForAgent(agentId, openOptions = {}) {
+export async function openTerminalForAgent(agentId: string, openOptions: DashboardOpenOptions = {}) {
   if (termState.terminals.has(agentId)) {
     activateTerminalTab(agentId);
     return;

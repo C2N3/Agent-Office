@@ -1,4 +1,3 @@
-// @ts-nocheck
 
 const { createWindowManager } = require('../windowing');
 const { savePersistedState } = require('../sessionPersistence');
@@ -67,7 +66,7 @@ function attachAgentBroadcasts({
       broadcast('agent-updated', 'dashboard-agent-updated', agent, adaptAgentToDashboard(agent));
     },
     onRemoved: (data) => {
-      broadcast('agent-removed', 'dashboard-agent-removed', data);
+      broadcast('agent-removed', 'dashboard-agent-removed', data, data);
     },
     onCleaned: (data) => {
       broadcast('agents-cleaned', 'dashboard-agent-removed', data, { type: 'batch', ...data });

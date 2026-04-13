@@ -1,4 +1,3 @@
-// @ts-nocheck
 
 const { cleanupTaskRuntime, cleanupTaskWorktree } = require('./cleanup');
 const { autoCommitTaskChanges } = require('./output');

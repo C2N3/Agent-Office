@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Office UI — Name tags, speech bubbles, camera controls
  * Ported from pixel_office nameTagRenderer.ts

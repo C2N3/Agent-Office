@@ -1,4 +1,3 @@
-// @ts-nocheck
 
 import { STATE_ZONE_MAP } from '../officeConfig.js';
 import { officeCoords } from '../officeCoords.js';

@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Renderer Config — constants, sprite settings, state maps
  */
@@ -47,7 +46,7 @@ export const agentStates = new Map();
 
 // --- Avatar management ---
 // Loaded from public/shared/avatars.json (single source of truth)
-export const AVATAR_FILES = AVATAR_FILES_DATA.allFiles || AVATAR_FILES_DATA;
+export const AVATAR_FILES = (AVATAR_FILES_DATA.allFiles || AVATAR_FILES_DATA) as string[];
 export const agentAvatars = new Map();
 
 /** Agent ID -> deterministic avatar filename (produces same result as office view) */

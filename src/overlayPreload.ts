@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Overlay Preload Script
  * Provides secure IPC bridge for overlay window

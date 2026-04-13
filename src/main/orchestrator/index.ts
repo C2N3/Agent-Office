@@ -1,4 +1,3 @@
-// @ts-nocheck
 const EventEmitter = require('events');
 const { transitionTask } = require('./taskStateMachine');
 const {

@@ -1,9 +1,14 @@
-// @ts-nocheck
 const path = require('path');
 const { formatSlugToDisplayName, sanitizeProjectPath } = require('../utils');
 const AVATAR_FILES_DATA = require('../../public/shared/avatars.json');
 const AVATAR_FILES = AVATAR_FILES_DATA.allFiles || AVATAR_FILES_DATA;
 const AVATAR_COUNT = AVATAR_FILES.length;
+
+type AgentLike = {
+  id?: string;
+  parentId?: string | null;
+  state?: string;
+};
 
 function formatDisplayName(slug, projectPath) {
   if (slug) return formatSlugToDisplayName(slug);
@@ -39,7 +44,7 @@ function releaseAvatarIndex(avatarIndex, usedAvatarIndices) {
   }
 }
 
-function getAgentWithEffectiveState(agents, agentId) {
+function getAgentWithEffectiveState(agents: Map<string, AgentLike>, agentId) {
   const agent = agents.get(agentId);
   if (!agent) return null;
   if (agent.state === 'Help' || agent.state === 'Error') return agent;

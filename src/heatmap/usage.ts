@@ -1,4 +1,3 @@
-// @ts-nocheck
 
 const MODEL_PRICING = {
   'claude-opus-4-6': { inputPerMillion: 15, outputPerMillion: 75 },

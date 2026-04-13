@@ -1,4 +1,3 @@
-// @ts-nocheck
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
@@ -13,9 +12,30 @@ const {
   copyIntoWorkspace,
   symlinkIntoWorkspace,
 } = require('./helpers');
+import type { DashboardWorkspace } from '../../shared/contracts/index.js';
+
+type WorkspaceManagerOptions = {
+  debugLog?: (message: string) => void;
+};
+
+type WorkspaceCreateOptions = {
+  name?: string;
+  repoPath?: string;
+  projectPath?: string;
+  branchName?: string;
+  baseBranch?: string;
+  startPoint?: string;
+  workspaceParent?: string;
+  workspacePath?: string;
+  copyPaths?: string[];
+  symlinkPaths?: string[];
+  bootstrapCommand?: string;
+};
 
 class WorkspaceManager {
-  constructor({ debugLog } = {}) {
+  declare debugLog: (message: string) => void;
+
+  constructor({ debugLog }: WorkspaceManagerOptions = {}) {
     this.debugLog = debugLog || (() => {});
   }
 
@@ -104,7 +124,7 @@ class WorkspaceManager {
     return symlinkIntoWorkspace(repoRoot, workspacePath, relativePath);
   }
 
-  createWorkspace(options = {}) {
+  createWorkspace(options: WorkspaceCreateOptions = {}) {
     const name = String(options.name || '').trim();
     if (!name) {
       throw new Error('Workspace name is required');
@@ -188,7 +208,7 @@ class WorkspaceManager {
     }
   }
 
-  mergeWorkspace(workspace) {
+  mergeWorkspace(workspace: DashboardWorkspace) {
     if (!workspace || typeof workspace !== 'object') {
       throw new Error('Workspace metadata is required');
     }
@@ -248,7 +268,7 @@ class WorkspaceManager {
     }
   }
 
-  removeWorkspace(workspace, options = {}) {
+  removeWorkspace(workspace: DashboardWorkspace, options: { deleteBranch?: boolean } = {}) {
     if (!workspace || typeof workspace !== 'object') {
       throw new Error('Workspace metadata is required');
     }

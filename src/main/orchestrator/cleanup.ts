@@ -1,4 +1,3 @@
-// @ts-nocheck
 
 function cleanupTaskRuntime(orchestrator, taskId) {
   const idleTimer = orchestrator.idleTimers.get(taskId);

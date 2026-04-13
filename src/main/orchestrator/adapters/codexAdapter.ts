@@ -1,4 +1,3 @@
-// @ts-nocheck
 const { execFileSync } = require('child_process');
 
 class CodexAdapter {

@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-// @ts-nocheck
 /**
  * Forward `codex exec --json` JSONL output to the local Codex event server.
  *

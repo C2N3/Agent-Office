@@ -1,6 +1,11 @@
-// @ts-nocheck
 
-function rekeyAgent(manager, currentId, nextId, fields = {}) {
+type AgentIdentityFields = {
+  sessionId?: string | null;
+  runtimeSessionId?: string | null;
+  resumeSessionId?: string | null;
+};
+
+function rekeyAgent(manager, currentId, nextId, fields: AgentIdentityFields = {}) {
   if (!currentId || !nextId) return null;
 
   const current = manager.agents.get(currentId);

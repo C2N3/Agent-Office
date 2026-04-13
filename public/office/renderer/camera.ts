@@ -1,4 +1,3 @@
-// @ts-nocheck
 
 export function setupCameraControls(renderer, canvas, officeLayers) {
   const cam = renderer.camera;

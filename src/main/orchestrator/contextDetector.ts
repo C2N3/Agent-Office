@@ -1,4 +1,3 @@
-// @ts-nocheck
 
 const CLAUDE_PATTERNS = [
   /context.*(full|exhaust|limit|exceeded)/i,

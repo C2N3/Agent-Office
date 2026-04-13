@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Office Sprite — Sprite sheet loading, drawing, animation ticking
  * Ported from pixel_office spriteSheet.ts

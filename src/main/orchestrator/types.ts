@@ -1,4 +1,3 @@
-// @ts-nocheck
 
 export type TaskStatus =
   | 'pending'
@@ -31,9 +30,9 @@ export interface TaskDefinition {
 
   // Workspace
   repositoryPath: string;
-  branchName?: string;
-  baseBranch?: string;
-  workspaceParent?: string;
+  branchName?: string | null;
+  baseBranch?: string | null;
+  workspaceParent?: string | null;
   copyPaths?: string[];
   symlinkPaths?: string[];
   bootstrapCommand?: string;
@@ -56,6 +55,7 @@ export interface TaskDefinition {
   exitCode?: number | null;
   errorMessage?: string | null;
   lastOutput?: string | null;
+  outputPath?: string | null;
 
   // Merge config
   autoMergeOnSuccess: boolean;

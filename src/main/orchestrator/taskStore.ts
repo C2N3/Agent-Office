@@ -1,13 +1,16 @@
-// @ts-nocheck
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
+import type { TaskDefinition } from './types.js';
 
 const PERSIST_DIR = path.join(os.homedir(), '.agent-office');
 const PERSIST_FILE = path.join(PERSIST_DIR, 'task-queue.json');
 
 class TaskStore {
+  declare debugLog: (message: string) => void;
+  declare tasks: Map<string, TaskDefinition>;
+
   constructor(debugLog) {
     this.debugLog = debugLog || (() => {});
     this.tasks = new Map();
@@ -48,7 +51,7 @@ class TaskStore {
   }
 
   createTask(input) {
-    const task = {
+    const task: TaskDefinition = {
       id: crypto.randomUUID(),
       title: input.title || 'Untitled Task',
       prompt: input.prompt || '',

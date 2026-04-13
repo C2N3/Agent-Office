@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Provider-agnostic event processor.
  * Normalizes Claude/Codex events into a shared session lifecycle model.

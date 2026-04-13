@@ -1,4 +1,3 @@
-// @ts-nocheck
 
 const { BrowserWindow, screen, shell } = require('electron');
 const path = require('path');

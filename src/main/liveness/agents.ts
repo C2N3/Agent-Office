@@ -1,4 +1,3 @@
-// @ts-nocheck
 
 function removeOrOffline(agentManager, agentRegistry, agent, debugLog) {
   if (agent.isRegistered) {

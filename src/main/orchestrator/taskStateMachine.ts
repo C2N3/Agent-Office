@@ -1,4 +1,3 @@
-// @ts-nocheck
 const { TaskStatus, TaskDefinition } = require('./types');
 
 const VALID_TRANSITIONS: Record<string, string[]> = {

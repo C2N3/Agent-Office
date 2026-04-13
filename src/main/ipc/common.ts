@@ -1,4 +1,3 @@
-// @ts-nocheck
 function createWindowSenderHelpers({ windowManager }) {
   function getDashboardSenderWindow(event) {
     const senderId = event?.sender?.id;

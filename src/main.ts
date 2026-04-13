@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Agent-Office — Main Process Orchestrator
  * Module initialization, event wiring, and app lifecycle management

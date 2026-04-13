@@ -1,6 +1,6 @@
-// @ts-nocheck
 const path = require('path');
 const { sanitizeProjectPath } = require('../../utils');
+import type { AgentRegistryLike, PersistentAgent, PersistentSessionHistoryEntry } from './types.js';
 
 function convertWslPathToWindowsDrivePath(rawPath) {
   if (typeof rawPath !== 'string' || !rawPath) return rawPath;
@@ -76,7 +76,7 @@ function sanitizeWorkspace(workspace, fallbackProjectPath = '') {
   };
 }
 
-function buildSessionHistoryEntry(entry = {}) {
+function buildSessionHistoryEntry(entry: Partial<PersistentSessionHistoryEntry> = {}) {
   const runtimeSessionId = entry.runtimeSessionId || entry.sessionId || null;
   const resumeSessionId = entry.resumeSessionId || entry.sessionId || null;
   const sessionId = entry.sessionId || resumeSessionId || runtimeSessionId || null;
@@ -98,7 +98,14 @@ function sessionEntryMatches(entry, sessionId) {
     || entry.resumeSessionId === sessionId;
 }
 
-function linkAgentSession(registry, agent, registryId, sessionId, transcriptPath, options = {}) {
+function linkAgentSession(
+  registry: AgentRegistryLike,
+  agent: PersistentAgent | null | undefined,
+  registryId: string,
+  sessionId: string | null,
+  transcriptPath: string | null,
+  options: Partial<PersistentSessionHistoryEntry> = {},
+) {
   if (!agent) return;
   const runtimeSessionId = options.runtimeSessionId !== undefined ? options.runtimeSessionId : sessionId;
   const resumeSessionId = options.resumeSessionId !== undefined ? options.resumeSessionId : sessionId;
@@ -165,7 +172,15 @@ function updateAgentTranscriptPath(registry, agent, sessionId, transcriptPath) {
   }
 }
 
-function replaceAgentSessionId(registry, agent, registryId, previousSessionId, nextSessionId, transcriptPath = null, options = {}) {
+function replaceAgentSessionId(
+  registry: AgentRegistryLike,
+  agent: PersistentAgent | null | undefined,
+  registryId: string,
+  previousSessionId: string | null,
+  nextSessionId: string | null,
+  transcriptPath: string | null = null,
+  options: Partial<PersistentSessionHistoryEntry> = {},
+) {
   if (!agent || !previousSessionId || !nextSessionId) return false;
   const runtimeSessionId = options.runtimeSessionId !== undefined ? options.runtimeSessionId : previousSessionId;
   const resumeSessionId = options.resumeSessionId !== undefined ? options.resumeSessionId : nextSessionId;
@@ -198,7 +213,7 @@ function replaceAgentSessionId(registry, agent, registryId, previousSessionId, n
     nextEntry.runtimeSessionId = nextEntry.runtimeSessionId || previousEntry.runtimeSessionId || runtimeSessionId || previousSessionId;
     nextEntry.resumeSessionId = nextEntry.resumeSessionId || previousEntry.resumeSessionId || resumeSessionId || nextSessionId;
     nextEntry.transcriptPath = nextEntry.transcriptPath || previousEntry.transcriptPath || transcriptPath || null;
-    nextEntry.startedAt = Math.min(nextEntry.startedAt || Infinity, previousEntry.startedAt || Infinity);
+    nextEntry.startedAt = Math.min(Number(nextEntry.startedAt) || Infinity, Number(previousEntry.startedAt) || Infinity);
     if (!Number.isFinite(nextEntry.startedAt)) nextEntry.startedAt = previousEntry.startedAt || null;
     nextEntry.endedAt = nextEntry.endedAt || previousEntry.endedAt || null;
     agent.sessionHistory = agent.sessionHistory.filter((entry) => entry !== previousEntry);
@@ -240,7 +255,11 @@ function findAgentSessionHistoryEntry(agent, sessionId) {
   return entry ? buildSessionHistoryEntry(entry) : null;
 }
 
-function findAgentByProjectPath(agents, rawPath, options = {}) {
+function findAgentByProjectPath(
+  agents: Iterable<PersistentAgent>,
+  rawPath: string | null | undefined,
+  options: { includeArchived?: boolean; requireEnabled?: boolean; requireIdle?: boolean } = {},
+) {
   if (!rawPath) return null;
   const normalized = normalizePath(rawPath);
   for (const agent of agents) {

@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * IPC Handlers
  * Aggregate domain-specific IPC registrations.

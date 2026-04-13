@@ -1,4 +1,3 @@
-// @ts-nocheck
 const { BrowserWindow, screen } = require('electron');
 const path = require('path');
 const { createSecondaryWindowControls } = require('./secondary/windows');

@@ -1,10 +1,9 @@
-// @ts-nocheck
 
 import { lastAgents } from '../config.js';
 import { findParentCard, isSatelliteCandidate } from './satellites.js';
 
 export function updateGridLayoutElements(agentGrid, idleContainer) {
-  const cards = Array.from(agentGrid.querySelectorAll('.agent-card'));
+  const cards = Array.from(agentGrid.querySelectorAll('.agent-card')) as HTMLElement[];
   if (cards.length === 0) {
     agentGrid.classList.remove('has-multiple');
     agentGrid.querySelectorAll('.agent-party-bg').forEach(el => el.remove());
@@ -43,14 +42,14 @@ export function updateGridLayoutElements(agentGrid, idleContainer) {
   let col = 1;
   let currentRow = 1;
 
-  agentGrid.querySelectorAll('.agent-party-bg').forEach(el => el.remove());
+  (Array.from(agentGrid.querySelectorAll('.agent-party-bg')) as HTMLElement[]).forEach(el => el.remove());
 
   sorted.forEach(item => {
     if (col > 10) { col = 1; currentRow++; }
 
     item.card.classList.remove('group-start');
-    item.card.style.gridColumn = col;
-    item.card.style.gridRow = currentRow;
+    item.card.style.gridColumn = String(col);
+    item.card.style.gridRow = String(currentRow);
 
     if (item.card.parentNode !== agentGrid) {
       agentGrid.appendChild(item.card);
@@ -60,7 +59,7 @@ export function updateGridLayoutElements(agentGrid, idleContainer) {
   });
 
   const sortedIds = new Set(sorted.map(s => s.card.dataset.agentId));
-  Array.from(agentGrid.querySelectorAll('.agent-card')).forEach(card => {
+  (Array.from(agentGrid.querySelectorAll('.agent-card')) as HTMLElement[]).forEach(card => {
     if (!sortedIds.has(card.dataset.agentId)) {
       card.remove();
     }

@@ -1,5 +1,13 @@
-// @ts-nocheck
 const { normalizePath } = require('../../registry');
+import type { DashboardPathRegistrationStrategy } from '../../../shared/contracts/index.js';
+
+type RegistrationPreviewInput = {
+  strategy?: DashboardPathRegistrationStrategy;
+  workspacePath?: string;
+  name?: string;
+  provider?: string | null;
+  branchName?: string;
+};
 
 function normalizeStrategy(value) {
   return value === 'worktree' || value === 'existing' ? value : 'auto';
@@ -82,7 +90,7 @@ function createWorkspaceRegistrationService({
     });
   }
 
-  function resolveRegistrationPreview(data = {}) {
+  function resolveRegistrationPreview(data: RegistrationPreviewInput = {}) {
     const requestedStrategy = normalizeStrategy(data.strategy);
     const preview = workspaceManager.inspectWorkspacePath(data.workspacePath, {
       name: data.name,

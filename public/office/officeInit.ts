@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Office Init — Entry point: agent sync, render loop start
  * SSE events are received from dashboard's connectSSE() — no separate connection needed.

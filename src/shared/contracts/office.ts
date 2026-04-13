@@ -62,6 +62,7 @@ export type TerminalLike = {
   loadAddon: (addon: TerminalLoadableAddon) => void;
   open: (element: Element) => void;
   focus: () => void;
+  scrollToBottom: () => void;
   dispose: () => void;
   onData: (callback: (data: string) => void) => void;
   hasSelection: () => boolean;

@@ -1,4 +1,3 @@
-// @ts-nocheck
 const fs = require('fs');
 const { ipcMain } = require('electron');
 const { parseConversation, getConversationSummary } = require('../conversationParser');

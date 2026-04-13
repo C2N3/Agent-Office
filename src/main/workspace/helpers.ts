@@ -1,4 +1,3 @@
-// @ts-nocheck
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -6,7 +5,16 @@ const { sanitizeProjectPath } = require('../../utils');
 
 const GLOBAL_WORKTREE_DIR = path.join(os.homedir(), '.agent-office', 'worktrees');
 
-function buildSuggestedBranchName({ name, provider } = {}) {
+type BranchSuggestionOptions = {
+  name?: string;
+  provider?: string | null;
+};
+
+type WorkspaceInspectionOptions = BranchSuggestionOptions & {
+  branchName?: string;
+};
+
+function buildSuggestedBranchName({ name, provider }: BranchSuggestionOptions = {}) {
   const normalizedProvider = String(provider || 'general').trim().toLowerCase() || 'general';
   const slug = slugifyBranchName(name || 'agent').replace(/\//g, '-');
   return slugifyBranchName(`workspace/${normalizedProvider}/${slug}`);
@@ -57,7 +65,7 @@ function ensureMissingDestination(destinationPath, sourceLabel) {
   }
 }
 
-function inspectWorkspacePath(workspaceManager, inputPath, options = {}) {
+function inspectWorkspacePath(workspaceManager, inputPath, options: WorkspaceInspectionOptions = {}) {
   const normalizedPath = sanitizeProjectPath(inputPath);
   if (!normalizedPath) {
     throw new Error('Workspace path is required');

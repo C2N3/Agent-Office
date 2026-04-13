@@ -1,4 +1,3 @@
-// @ts-nocheck
 'use strict';
 
 const DEFAULT_CONTEXT_WINDOW = 200_000;

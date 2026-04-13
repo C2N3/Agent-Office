@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Office Config — Constants, sprite frame map, seat configs, state mappings
  * Ported from pixel_office spriteSheet.ts, types.ts, seatConfigs.ts

@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Universal hook script for all Claude CLI events.
  * Receives JSON from stdin and forwards to the local HTTP hook server.

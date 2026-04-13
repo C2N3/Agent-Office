@@ -1,4 +1,3 @@
-// @ts-nocheck
 
 import {
   SHARED_AVATAR_FILES,
@@ -51,7 +50,7 @@ export function setupAvatarPicker(updateAgentUI) {
   SHARED_AVATAR_FILES.forEach((file, index) => {
     const item = document.createElement('div');
     item.className = 'avatar-picker-item';
-    item.dataset.index = index;
+    item.dataset.index = String(index);
     item.dataset.category = fileCategoryMap.get(file) || '';
     item.style.backgroundImage = `url('./public/characters/${file}')`;
     item.style.backgroundSize = `${displayWidth * columns}px auto`;
@@ -90,7 +89,7 @@ export function setupAvatarPicker(updateAgentUI) {
   });
 
   function filterGrid() {
-    grid.querySelectorAll('.avatar-picker-item').forEach((item: HTMLElement) => {
+    grid.querySelectorAll<HTMLElement>('.avatar-picker-item').forEach((item) => {
       if (activeTab === 'All') {
         item.style.display = '';
       } else {

@@ -1,4 +1,3 @@
-// @ts-nocheck
 const { ClaudeAdapter } = require('./adapters/claudeAdapter');
 const { CodexAdapter } = require('./adapters/codexAdapter');
 const { GeminiAdapter } = require('./adapters/geminiAdapter');

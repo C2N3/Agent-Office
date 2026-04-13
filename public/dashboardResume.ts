@@ -1,4 +1,5 @@
-// @ts-nocheck
+
+import type { DashboardAgent, DashboardOpenOptions } from './dashboard/shared.js';
 
 function toTimestamp(value) {
   return Number.isFinite(value) ? value : 0;
@@ -31,13 +32,13 @@ export function findLatestResumableSession(history) {
   return latest;
 }
 
-export function shouldAutoResumeRegisteredAgent(agent, openOptions = {}) {
+export function shouldAutoResumeRegisteredAgent(agent: DashboardAgent | undefined, openOptions: DashboardOpenOptions = {}) {
   if (openOptions.skipAutoResume) return false;
   if (!agent || !agent.isRegistered || !agent.registryId) return false;
   return agent.status === 'offline';
 }
 
-export function getDirectResumeSessionId(agent, openOptions = {}) {
+export function getDirectResumeSessionId(agent: DashboardAgent | undefined, openOptions: DashboardOpenOptions = {}) {
   if (openOptions.skipAutoResume) return null;
   if (!agent || typeof agent !== 'object') return null;
 

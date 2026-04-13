@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Office Character — Agent ↔ character mapping, movement, state→zone logic
  * Ported from pixel_office renderer.ts (agent management parts)
