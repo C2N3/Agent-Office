@@ -85,9 +85,11 @@ class WorkspaceManager {
   }
 
   refExists(repoPath, ref) {
-    if (!ref || ref === 'HEAD') return true;
+    if (!ref) return false;
     try {
-      this.runGit(repoPath, ['rev-parse', '--verify', '--quiet', ref]);
+      // Using `<ref>^{commit}` forces resolution to a commit object, so a dangling
+      // HEAD in a repo with no commits is correctly reported as non-existent.
+      this.runGit(repoPath, ['rev-parse', '--verify', '--quiet', `${ref}^{commit}`]);
       return true;
     } catch {
       return false;
@@ -177,9 +179,23 @@ class WorkspaceManager {
     const repoRoot = this.resolveRepositoryRoot(options.repoPath || options.projectPath);
     const repositoryName = path.basename(repoRoot);
     const branchName = slugifyBranchName(options.branchName || name);
+    const explicitBaseBranch = typeof options.baseBranch === 'string' && options.baseBranch.trim().length > 0;
     const baseBranch = this.resolveBaseBranch(repoRoot, options.baseBranch);
     const startPointHint = String(options.startPoint || '').trim();
     const startPoint = startPointHint && this.refExists(repoRoot, startPointHint) ? startPointHint : baseBranch;
+
+    // When we auto-detected the start point and it still doesn't resolve to a commit
+    // (empty repo, dangling HEAD, pruned branches), fail fast with a clear error instead
+    // of letting `git worktree add` bubble up a cryptic `fatal: invalid reference: HEAD`.
+    // Explicit user-provided baseBranch is trusted as-is; git will surface its own error.
+    if (!explicitBaseBranch && !startPointHint && !this.refExists(repoRoot, startPoint)) {
+      throw new Error(
+        `Cannot create worktree in ${repoRoot}: no valid base commit to branch from. `
+        + `The repository appears to have no commits yet, or HEAD is detached/broken. `
+        + `Create an initial commit in the repository, or pass an explicit baseBranch that `
+        + `resolves to a commit.`,
+      );
+    }
     const defaultParent = path.join(GLOBAL_WORKTREE_DIR, repositoryName);
     const workspaceParent = path.resolve(sanitizeProjectPath(options.workspaceParent) || defaultParent);
     const workspacePath = path.resolve(sanitizeProjectPath(options.workspacePath) || path.join(workspaceParent, branchName));

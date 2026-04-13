@@ -53,7 +53,9 @@ describe('WorkspaceManager', () => {
       if (gitArgs[0] === 'rev-parse' && gitArgs[1] === '--verify') {
         // Argument after --verify (and optional --quiet) is the ref being checked.
         const refArg = gitArgs.slice(2).find((a) => !a.startsWith('--')) || '';
-        const bareRef = refArg.replace(/^refs\/heads\//, '');
+        const bareRef = refArg
+          .replace(/\^\{commit\}$/, '')
+          .replace(/^refs\/heads\//, '');
         const knownBranch = branches.includes(bareRef);
         if (branchExists || knownBranch) {
           return 'abc123\n';
