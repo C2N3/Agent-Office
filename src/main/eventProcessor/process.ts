@@ -14,11 +14,19 @@ export function createProcessEventHandler(options: any) {
     getTaskCompletionHandler,
   } = options;
 
-  function notifyTaskCompletion(sessionId: string, reason: string, detail: any) {
+  function notifyTaskCompletion(sessionId: string, reason: string, detail: any, event: any) {
     const fn = typeof getTaskCompletionHandler === 'function' ? getTaskCompletionHandler() : null;
     if (typeof fn !== 'function') return;
+    const cached = state.getSessionContext ? state.getSessionContext(sessionId) : null;
+    const cwd = (event && event.cwd) || (cached && cached.cwd) || null;
     try {
-      fn({ sessionId, registryId: state.resolveAgentId(sessionId) || null, reason, detail });
+      fn({
+        sessionId,
+        registryId: state.resolveAgentId(sessionId) || null,
+        reason,
+        cwd,
+        detail,
+      });
     } catch (err: any) {
       debugLog(`[${logPrefix}] Task completion handler error: ${err && err.message}`);
     }
@@ -139,7 +147,7 @@ export function createProcessEventHandler(options: any) {
         if (event.reason) {
           debugLog(`[${logPrefix}] SessionEnd reason: ${event.reason} for ${sessionId.slice(0, 8)}`);
         }
-        notifyTaskCompletion(sessionId, 'session.end', { reason: event.reason || null });
+        notifyTaskCompletion(sessionId, 'session.end', { reason: event.reason || null }, event);
         handleSessionEnd(sessionId);
         break;
       case 'prompt.submit':
@@ -167,7 +175,7 @@ export function createProcessEventHandler(options: any) {
         }
         notifyTaskCompletion(sessionId, 'turn.complete', {
           lastAssistantMessage: event.lastAssistantMessage || null,
-        });
+        }, event);
         break;
       case 'usage.update':
         break;

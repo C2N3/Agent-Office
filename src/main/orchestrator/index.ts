@@ -277,19 +277,32 @@ class Orchestrator extends EventEmitter {
   // `turn.complete`, or `session.end` from either). This is the authoritative
   // "agent finished" signal from the provider; we use it to end the task rather
   // than heuristics on TUI output.
+  //
+  // Correlation strategy:
+  //   1. session_id → agentRegistryId via sessionToRegistry (hook system state)
+  //   2. fallback: match the running task by workspacePath against event.cwd —
+  //      Claude Code hooks include cwd, and a task's workspace is always a
+  //      unique worktree path, so this is a reliable tie-breaker when the
+  //      registered agent's session wasn't linked (happens when the agent
+  //      was registered as a non-code terminal and the CLI session is fresh).
   handleProviderTaskComplete(info) {
     if (!info) return;
-    const { registryId, sessionId, reason } = info;
-    if (!registryId) return;
+    const { registryId, sessionId, cwd, reason } = info;
 
-    // Find the running task attached to this agent registry entry.
-    // Most recent running task wins if somehow multiple (shouldn't happen —
-    // orchestrator dispatches one task per agent at a time).
+    const normalize = (p) => String(p || '').replace(/[\\/]+/g, '/').replace(/\/+$/, '').toLowerCase();
+    const normalizedCwd = normalize(cwd);
+
     let target = null;
+    let matchedBy = null;
     for (const task of this.taskStore.getAllTasks()) {
-      if (task.agentRegistryId !== registryId) continue;
       if (task.status !== 'running') continue;
-      if (!target || (task.startedAt || 0) > (target.startedAt || 0)) target = task;
+      const byRegistry = registryId && task.agentRegistryId === registryId;
+      const byCwd = normalizedCwd && task.workspacePath && normalize(task.workspacePath) === normalizedCwd;
+      if (!byRegistry && !byCwd) continue;
+      if (!target || (task.startedAt || 0) > (target.startedAt || 0)) {
+        target = task;
+        matchedBy = byRegistry ? 'registry' : 'cwd';
+      }
     }
     if (!target) return;
 
@@ -298,7 +311,7 @@ class Orchestrator extends EventEmitter {
 
     this.debugLog(
       `[Orchestrator] Provider completion signal for ${target.id.slice(0, 8)} `
-      + `(reason=${reason}, session=${(sessionId || '').slice(0, 8)}) — sending /exit`,
+      + `(reason=${reason}, session=${(sessionId || '').slice(0, 8)}, matchedBy=${matchedBy}) — sending /exit`,
     );
     this.terminalManager.writeToTerminal(target.terminalId, '/exit\r');
     if (!this._exitSent) this._exitSent = new Set();
