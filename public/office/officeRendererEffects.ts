@@ -1,4 +1,3 @@
-// @ts-nocheck
 
 import { OFFICE } from './officeConfig.js';
 

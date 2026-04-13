@@ -1,4 +1,3 @@
-// @ts-nocheck
 
 async function launchExternalResumeTerminal({ cwd, resumeCommand, terminalProfileService }) {
   const { spawn, execFile } = require('child_process');

@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Central Error Handler
  * Captures, classifies, logs, and forwards all errors to the UI
@@ -6,11 +5,18 @@
 const { app } = require('electron');
 const path = require('path');
 const fs = require('fs');
+import type { BrowserWindow } from 'electron';
 
 const { ErrorSeverity, ErrorCategory } = require('./errorConstants');
 const { getMessageByErrorCode } = require('./errorMessages');
 
 class ErrorHandler {
+  declare mainWindow: BrowserWindow | null;
+  declare logPath: string;
+  declare currentLogFile: string | null;
+  declare errorCount: number;
+  declare deduplicationSet: Set<string>;
+
   constructor() {
     this.mainWindow = null;
     this.logPath = path.join(app.getPath('userData'), 'logs');

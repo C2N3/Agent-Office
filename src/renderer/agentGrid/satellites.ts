@@ -1,4 +1,3 @@
-// @ts-nocheck
 
 import { stateConfig, lastAgents, agentStates, agentAvatars } from '../config.js';
 import { animationManager, playAnimation } from '../animationManager.js';
@@ -75,7 +74,7 @@ export function removeSatelliteAvatar(parentCard, agentId) {
 }
 
 export function migrateSatellites(agentGrid, parentCard, parentId) {
-  const cards = Array.from(agentGrid.querySelectorAll('.agent-card'));
+  const cards = Array.from(agentGrid.querySelectorAll('.agent-card')) as HTMLElement[];
   let migrated = false;
 
   cards.forEach(card => {

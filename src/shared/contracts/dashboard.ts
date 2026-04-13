@@ -109,6 +109,8 @@ export type DashboardHistoryResponse = {
 export type DashboardTerminalProfile = {
   id: string;
   title: string;
+  command?: string;
+  args?: string[];
 };
 
 export type DashboardTerminalEntry = {
@@ -129,6 +131,7 @@ export type DashboardOpenOptions = {
   args?: string[];
   cols?: number;
   rows?: number;
+  forceTerminalTab?: boolean;
 };
 
 export type DashboardActionResult = {

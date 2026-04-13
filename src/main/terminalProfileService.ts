@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Terminal Profile Service
  * Detects available shell profiles and persists the user's default profile.
@@ -12,7 +11,18 @@ const { execFileSync } = require('child_process');
 const PERSIST_DIR = path.join(os.homedir(), '.agent-office');
 const PERSIST_FILE = path.join(PERSIST_DIR, 'terminal-preferences.json');
 
+type TerminalProfile = {
+  id: string;
+  title: string;
+  command: string;
+  args: string[];
+};
+
 class TerminalProfileService {
+  declare debugLog: (message: string) => void;
+  declare preferences: { defaultProfileId: string | null };
+  declare profileCache: TerminalProfile[] | null;
+
   constructor(debugLog) {
     this.debugLog = debugLog || (() => {});
     this.preferences = { defaultProfileId: null };

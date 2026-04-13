@@ -1,4 +1,3 @@
-// @ts-nocheck
 
 import { OFFICE, SPRITE_FRAMES } from '../office/officeConfig.js';
 import { getOfficeSkinImage } from '../office/officeSprite.js';
@@ -102,7 +101,7 @@ export function createCharacterRenderer({ agents, overlayBridge, getMode }) {
       sx, sy, OFFICE.SRC_FRAME_W, OFFICE.SRC_FRAME_H,
       x, y, CHAR_W, CHAR_H
     );
-    drawLabel(agent, x, y, isActive);
+    drawLabel(agent, x, y);
     if (!isActive) ctx.globalAlpha = 1.0;
   }
 

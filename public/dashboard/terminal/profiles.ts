@@ -1,4 +1,3 @@
-// @ts-nocheck
 
 import { escapeText, getDashboardAPI, termState } from '../shared.js';
 
@@ -153,7 +152,8 @@ export function initTerminalProfileMenu(openTerminalForAgent) {
   });
 
   document.addEventListener('click', (event) => {
-    if (!menu.contains(event.target) && !newButton.contains(event.target)) {
+    const target = event.target instanceof Node ? event.target : null;
+    if (!menu.contains(target) && !newButton.contains(target)) {
       closeTerminalProfileMenu();
     }
   });

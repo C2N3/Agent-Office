@@ -1,4 +1,3 @@
-// @ts-nocheck
 
 import { SHEET } from './config.js';
 import { getSpriteYOffset } from './animationManager.js';

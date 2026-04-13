@@ -1,4 +1,3 @@
-// @ts-nocheck
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
@@ -16,11 +15,15 @@ const {
   findAgentSessionHistoryEntry,
   findAgentByProjectPath,
 } = require('./shared');
+import type { PersistentAgent } from './types.js';
 
 const PERSIST_DIR = path.join(os.homedir(), '.agent-office');
 const PERSIST_FILE = path.join(PERSIST_DIR, 'agent-registry.json');
 
 class AgentRegistry {
+  declare debugLog: (message: string) => void;
+  declare agents: Map<string, PersistentAgent>;
+
   constructor(debugLog) {
     this.debugLog = debugLog || (() => {});
     /** @type {Map<string, object>} registryId → PersistentAgent */

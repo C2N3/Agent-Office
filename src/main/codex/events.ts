@@ -1,4 +1,3 @@
-// @ts-nocheck
 
 function getCodexWorkspacePath(data) {
   return data.cwd || data.workspacePath || data.workspace_path || '';

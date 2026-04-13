@@ -1,4 +1,3 @@
-// @ts-nocheck
 
 import { state, getDashboardAPI } from '../shared.js';
 

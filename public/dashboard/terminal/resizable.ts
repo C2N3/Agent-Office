@@ -1,4 +1,3 @@
-// @ts-nocheck
 
 export function setupTerminalResizableHandles(fitActiveTerminal) {
   const resizeVertical = document.getElementById('resizeV');

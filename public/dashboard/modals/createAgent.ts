@@ -1,6 +1,5 @@
-// @ts-nocheck
 
-import { getDashboardAPI } from '../shared.js';
+import { getDashboardAPI, type DashboardPathRegistrationStrategy } from '../shared.js';
 import {
   buildFallbackBranchName,
   pickDirectory,
@@ -13,7 +12,7 @@ import {
 
 export function setupAgentModal(openTerminalForAgent) {
   const modal = document.getElementById('createAgentModal');
-  const form = document.getElementById('createAgentForm');
+  const form = document.getElementById('createAgentForm') as HTMLFormElement | null;
   const openBtn = document.getElementById('createAgentBtn');
   const cancelBtn = document.getElementById('cancelCreateBtn');
   const errorEl = document.getElementById('createAgentError');
@@ -141,7 +140,7 @@ export function setupAgentModal(openTerminalForAgent) {
       workspacePath: trimmedPath,
       name: document.getElementById('agentNameInput')?.value.trim() || '',
       provider: selectedProvider,
-      strategy: strategyInput.value,
+      strategy: strategyInput.value as DashboardPathRegistrationStrategy,
       branchName: branchInput?.value.trim() || '',
     });
     if (!result?.success) {

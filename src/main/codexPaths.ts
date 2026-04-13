@@ -1,8 +1,21 @@
-// @ts-nocheck
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
+import type { ExecFileSyncOptionsWithStringEncoding } from 'child_process';
+
+type CodexSessionRootsOptions = {
+  env?: NodeJS.ProcessEnv;
+  existsSync?: (path: string) => boolean;
+  homedir?: string;
+  localRoot?: string | null;
+  wslRoot?: string | null;
+  runExec?: (
+    file: string,
+    args: string[],
+    options: ExecFileSyncOptionsWithStringEncoding,
+  ) => string | Buffer;
+};
 
 function getLocalCodexSessionsRoot(homedir = os.homedir()) {
   return path.join(homedir, '.codex', 'sessions');
@@ -23,7 +36,7 @@ function getWindowsAccessibleWslCodexRoot(runExec = execFileSync) {
   }
 }
 
-function getCodexSessionRoots(options = {}) {
+function getCodexSessionRoots(options: CodexSessionRootsOptions = {}) {
   const env = options.env || process.env;
   const existsSync = options.existsSync || fs.existsSync;
   const localRoot = options.localRoot || getLocalCodexSessionsRoot(options.homedir);

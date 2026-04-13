@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * UI State Persistence
  * Saves and restores lightweight UI state (e.g. overlay open/closed)

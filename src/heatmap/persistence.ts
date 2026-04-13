@@ -1,13 +1,28 @@
-// @ts-nocheck
 const fs = require('fs');
+import type { DashboardDayStats } from '../shared/contracts/index.js';
 
 const MAX_AGE_DAYS = 400;
+
+type PersistedDayStats = DashboardDayStats & {
+  projects?: string[];
+  _sessions?: Set<string>;
+  _projects?: Set<string>;
+};
+
+type HeatmapScannerLike = {
+  persistDir: string;
+  persistFile: string;
+  days: Record<string, PersistedDayStats>;
+  lastScan: number;
+  fileOffsets: Record<string, number>;
+  debugLog: (message: string) => void;
+};
 
 function roundCost(value) {
   return Math.round((Number(value) || 0) * 1_000_000) / 1_000_000;
 }
 
-function pruneOldDays(scanner) {
+function pruneOldDays(scanner: HeatmapScannerLike) {
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - MAX_AGE_DAYS);
   const cutoffStr = cutoff.toISOString().slice(0, 10);
@@ -16,13 +31,13 @@ function pruneOldDays(scanner) {
   }
 }
 
-function savePersisted(scanner) {
+function savePersisted(scanner: HeatmapScannerLike) {
   try {
     if (!fs.existsSync(scanner.persistDir)) {
       fs.mkdirSync(scanner.persistDir, { recursive: true });
     }
 
-    const serialDays = {};
+    const serialDays: Record<string, PersistedDayStats> = {};
     for (const [date, stats] of Object.entries(scanner.days)) {
       const { _sessions, _projects, ...rest } = stats;
       rest.estimatedCost = roundCost(rest.estimatedCost);
@@ -44,12 +59,12 @@ function savePersisted(scanner) {
   }
 }
 
-function loadPersisted(scanner) {
+function loadPersisted(scanner: HeatmapScannerLike) {
   try {
     if (!fs.existsSync(scanner.persistFile)) return;
     const data = JSON.parse(fs.readFileSync(scanner.persistFile, 'utf-8'));
     if (data.days) {
-      for (const [date, stats] of Object.entries(data.days)) {
+      for (const [date, stats] of Object.entries(data.days) as Array<[string, PersistedDayStats]>) {
         scanner.days[date] = {
           ...stats,
           byModel: stats.byModel || {},

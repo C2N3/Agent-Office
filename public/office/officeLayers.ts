@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Office Layers — Background/foreground image loading
  * Ported from pixel_office layerCache.ts

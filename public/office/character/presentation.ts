@@ -1,4 +1,3 @@
-// @ts-nocheck
 
 import { avatarIndexFromId } from '../officeConfig.js';
 import { officeCoords } from '../officeCoords.js';

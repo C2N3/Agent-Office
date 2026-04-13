@@ -1,4 +1,3 @@
-// @ts-nocheck
 
 function focusTerminalByPid(pid, label, debugLog) {
   const { execFile } = require('child_process');

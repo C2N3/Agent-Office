@@ -1,10 +1,10 @@
-// @ts-nocheck
 
 import {
   dashboardResumeUtils,
   getDashboardAPI,
   state,
   termState,
+  type DashboardOpenOptions,
 } from '../shared.js';
 import { setupTerminalResizableHandles } from './resizable.js';
 
@@ -24,7 +24,7 @@ export async function resumeLatestRegisteredSession(registryId, label, resumeReg
       ? dashboardResumeUtils.findLatestResumableSession(history)
       : history
         .filter((entry) => !!entry?.sessionId)
-        .sort((left, right) => Math.max(right.startedAt || 0, right.endedAt || 0) - Math.max(left.startedAt || 0, left.endedAt || 0))[0];
+        .sort((left, right) => Math.max(Number(right.startedAt) || 0, Number(right.endedAt) || 0) - Math.max(Number(left.startedAt) || 0, Number(left.endedAt) || 0))[0];
     const latestResumeSessionId = latest?.resumeSessionId || latest?.sessionId;
     if (!latestResumeSessionId) {
       return { attempted: false, success: false, error: 'No resumable session found' };
@@ -243,7 +243,7 @@ export function initResizableHandles() {
   setupTerminalResizableHandles(fitActiveTerminal);
 }
 
-export function getTerminalOpenContext(agentId, openOptions = {}) {
+export function getTerminalOpenContext(agentId: string, openOptions: DashboardOpenOptions = {}) {
   const agent = state.agents.get(agentId);
   const cwd = openOptions.cwd || agent?.metadata?.projectPath || agent?.project || '';
   const provider = agent?.metadata?.provider || null;

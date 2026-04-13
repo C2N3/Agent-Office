@@ -1,4 +1,3 @@
-// @ts-nocheck
 const { createCLIAdapter } = require('./cliAdapter');
 const { OutputParser } = require('./outputParser');
 const { isTerminalStatus } = require('./taskStateMachine');

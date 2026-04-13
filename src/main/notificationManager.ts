@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Desktop Notification Manager
  * Shows native OS notifications for important agent state changes

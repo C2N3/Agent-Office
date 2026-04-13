@@ -1,4 +1,3 @@
-// @ts-nocheck
 'use strict';
 
 const fs = require('fs');
@@ -31,7 +30,11 @@ function getRoots() {
     roots.push(claudeRoot);
   }
   const codexEnv = process.env.NODE_ENV === 'test' ? {} : process.env;
-  for (const codexRoot of getCodexSessionRoots({ env: codexEnv, homedir: os.homedir() })) {
+  for (const codexRoot of getCodexSessionRoots({
+    env: codexEnv,
+    homedir: os.homedir(),
+    wslRoot: process.env.NODE_ENV === 'test' ? null : undefined,
+  })) {
     roots.push(codexRoot);
   }
   return roots;

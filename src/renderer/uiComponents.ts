@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * UI Components — Dashboard button, keyboard shortcuts, context menu
  */

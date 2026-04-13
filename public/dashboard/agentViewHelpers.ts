@@ -1,4 +1,3 @@
-// @ts-nocheck
 
 export function getStateColor(status: string) {
   const map: Record<string, string> = {

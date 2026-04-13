@@ -1,6 +1,9 @@
-// @ts-nocheck
 
 import { escapeText, getDashboardAPI } from '../shared.js';
+import type {
+  DashboardPathRegistrationStrategy,
+  DashboardRegistrationPreview,
+} from '../shared.js';
 import {
   getEffectiveRegistrationStrategy,
   getRegistrationDecisionMessage,
@@ -76,6 +79,11 @@ export async function pickDirectory({
   title,
   fallbackInputId,
   errorEl,
+}: {
+  inputId: string;
+  title: string;
+  fallbackInputId?: string;
+  errorEl?: HTMLElement | null;
 }) {
   const input = document.getElementById(inputId);
   if (!input) return;
@@ -116,6 +124,18 @@ export async function submitAgentCreateForm({
   openTerminalForAgent,
   closeModal,
   resetFormState,
+}: {
+  errorEl?: HTMLElement | null;
+  workspacePathInput?: HTMLInputElement | null;
+  strategyInput?: HTMLSelectElement | null;
+  branchInput?: HTMLInputElement | null;
+  baseBranchInput?: HTMLInputElement | null;
+  workspaceParentInput?: HTMLInputElement | null;
+  startPointInput?: HTMLInputElement | null;
+  selectedProvider?: string | null;
+  openTerminalForAgent?: (agentId: string, openOptions?: any) => Promise<void> | void;
+  closeModal?: () => void;
+  resetFormState?: () => void;
 }) {
   if (errorEl) errorEl.textContent = '';
 
@@ -142,7 +162,7 @@ export async function submitAgentCreateForm({
     role,
     provider: selectedProvider,
     workspacePath,
-    strategy: strategyInput?.value || 'auto',
+    strategy: (strategyInput?.value || 'auto') as DashboardPathRegistrationStrategy,
     branchName: branchInput?.value.trim() || '',
     baseBranch: baseBranchInput?.value.trim() || '',
     workspaceParent: workspaceParentInput?.value.trim() || '',

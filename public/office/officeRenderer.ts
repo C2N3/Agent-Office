@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Office Renderer — Canvas render loop, layer compositing, effects
  * Ported from pixel_office renderer.ts (rendering parts)
@@ -56,7 +55,7 @@ export const officeRenderer: any = {
       return src + sep + 'v=' + ts;
     };
 
-    const promises = [loadAllOfficeSkins()];
+    const promises: Promise<unknown>[] = [loadAllOfficeSkins()];
     directions.forEach(function (d) {
       const states = laptopStates[d] || {};
       promises.push(new Promise<void>(function (resolve) {

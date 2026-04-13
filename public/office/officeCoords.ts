@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Office Coords — Parse office_xy.webp and office_laptop.webp for coordinates
  * Ported from pixel_office coordinateParser.ts

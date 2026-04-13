@@ -14,6 +14,20 @@ import type {
 } from './shared/contracts/index.js';
 
 declare global {
+  interface Element {
+    checked: boolean;
+    dataset: DOMStringMap;
+    disabled: boolean;
+    focus(options?: FocusOptions): void;
+    style: CSSStyleDeclaration;
+    value: string;
+  }
+
+  interface EventTarget {
+    classList: DOMTokenList;
+    closest(selectors: string): Element | null;
+  }
+
   interface Window {
     dashboardAPI?: DashboardAPI;
     dashboardResumeUtils?: DashboardResumeUtils;

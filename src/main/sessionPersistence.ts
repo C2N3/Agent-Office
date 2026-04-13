@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Session Persistence
  * state.json save/restore — recover active sessions on app restart
@@ -111,7 +110,7 @@ function recoverExistingSessions({ agentManager, sessionPids, firstPreToolUseDon
       const restoredSessionId = agent.sessionId || agent.id;
       const restoredRegistryId = agent.registryId || (agent.isRegistered ? agent.id : null);
 
-      const pid = savedPids.get(agent.id) || savedPids.get(restoredSessionId);
+      const pid = Number(savedPids.get(agent.id) || savedPids.get(restoredSessionId) || 0);
 
       if (!pid) {
         if (provider === 'codex' && isCodexSessionFileActive(agent.jsonlPath)) {

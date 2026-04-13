@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Conversation Parser
  * Parses Claude and Codex JSONL transcript files into a structured conversation message array.
@@ -28,7 +27,7 @@ function resolveTranscriptPath(filePath) {
  * @param {number} [options.offset] - Skip this many messages from start
  * @returns {{ messages: Array, totalCount: number, sessionId: string|null } | null}
  */
-function parseConversation(filePath, options = {}) {
+function parseConversation(filePath, options: { limit?: number; offset?: number } = {}) {
   const resolved = resolveTranscriptPath(filePath);
   if (!resolved) return null;
 

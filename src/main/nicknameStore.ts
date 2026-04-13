@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Nickname Store
  * Persists agent nicknames to ~/.agent-office/nicknames.json
@@ -12,6 +11,9 @@ const PERSIST_DIR = path.join(os.homedir(), '.agent-office');
 const PERSIST_FILE = path.join(PERSIST_DIR, 'nicknames.json');
 
 class NicknameStore {
+  declare debugLog: (message: string) => void;
+  declare nicknames: Map<string, string>;
+
   constructor(debugLog) {
     this.debugLog = debugLog || (() => {});
     /** @type {Map<string, string>} sessionId → nickname */

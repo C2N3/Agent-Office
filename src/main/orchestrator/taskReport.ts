@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Build a human-readable conversation report for a finished task.
  *

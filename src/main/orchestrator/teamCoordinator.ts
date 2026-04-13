@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * TeamCoordinator — fully independent team execution pipeline.
  * Does NOT use Orchestrator's task queue, idle timers, or session handling.

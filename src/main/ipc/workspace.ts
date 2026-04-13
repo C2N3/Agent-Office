@@ -1,7 +1,7 @@
-// @ts-nocheck
 const { dialog, ipcMain } = require('electron');
 const { dashboardIpcChannels } = require('../../shared/contracts/ipc');
 const { createWorkspaceRegistrationService } = require('./workspace/registration');
+import type { DashboardDirectoryPickerOptions } from '../../shared/contracts/index.js';
 
 function registerWorkspaceHandlers({
   agentManager,
@@ -19,7 +19,7 @@ function registerWorkspaceHandlers({
     attachRegisteredAgent,
   });
 
-  ipcMain.handle(dashboardIpcChannels.dialogPickDirectory, async (event, options = {}) => {
+  ipcMain.handle(dashboardIpcChannels.dialogPickDirectory, async (event, options: DashboardDirectoryPickerOptions = {}) => {
     const senderWindow = getDashboardSenderWindow(event);
     if (!senderWindow) {
       return { success: false, error: 'Directory picker is only available from an Agent-Office app window.' };

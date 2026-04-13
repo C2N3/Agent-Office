@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Heatmap Scanner
  * Scans JSONL transcripts under Claude and Codex session roots to aggregate
@@ -19,8 +18,22 @@ const {
   savePersisted,
   scanFile,
 } = require('./helpers');
+import type { DashboardDayStats } from '../shared/contracts/index.js';
+
+type HeatmapDayStats = DashboardDayStats & {
+  _sessions?: Set<string>;
+  _projects?: Set<string>;
+};
 
 class HeatmapScanner {
+  declare debugLog: (message: string) => void;
+  declare scanInterval: NodeJS.Timeout | null;
+  declare persistDir: string;
+  declare persistFile: string;
+  declare days: Record<string, HeatmapDayStats>;
+  declare lastScan: number;
+  declare fileOffsets: Record<string, number>;
+
   constructor(debugLog = () => {}) {
     this.debugLog = debugLog;
     this.scanInterval = null;

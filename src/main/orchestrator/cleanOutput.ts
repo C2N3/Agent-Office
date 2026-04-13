@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Clean raw PTY/terminal output for human-readable display.
  *

@@ -19,7 +19,9 @@ import type {
   DashboardNicknameResult,
   DashboardOfficeConfig,
   DashboardOpenOptions,
+  DashboardPathRegistrationStrategy,
   DashboardRecoveryActionResult,
+  DashboardRegistrationPreview,
   DashboardRepoInspectionResult,
   DashboardResumeUtils,
   DashboardSessionHistoryEntry,
@@ -51,7 +53,9 @@ export type {
   DashboardNicknameResult,
   DashboardOfficeConfig,
   DashboardOpenOptions,
+  DashboardPathRegistrationStrategy,
   DashboardRecoveryActionResult,
+  DashboardRegistrationPreview,
   DashboardRepoInspection,
   DashboardRepoInspectionResult,
   DashboardResizeRequest,
@@ -128,6 +132,7 @@ export type TermState = {
   exitCleanup: CleanupFn | null;
   profiles: DashboardTerminalProfile[];
   defaultProfileId: string | null;
+  _pendingData?: Map<string, string>;
 };
 
 export const state: DashboardState = {

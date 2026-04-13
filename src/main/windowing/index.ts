@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Window Manager
  * Main window, dashboard window, keep-alive, resize, dashboard server management

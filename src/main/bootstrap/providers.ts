@@ -1,4 +1,3 @@
-// @ts-nocheck
 
 const { HOOK_SERVER_PORT, registerClaudeHooks } = require('../hookRegistration');
 const { startHookServer } = require('../hookServer');

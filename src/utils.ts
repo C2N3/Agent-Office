@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Shared Utilities for Agent-Office
  * Eliminates code duplication across modules

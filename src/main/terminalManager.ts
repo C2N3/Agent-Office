@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Terminal Manager
  * Manages node-pty instances for embedded terminals
@@ -7,6 +6,22 @@
 const fs = require('fs');
 const os = require('os');
 const { resolveProjectPathForPlatform } = require('../utils');
+import type { BrowserWindow } from 'electron';
+import type { DashboardOpenOptions, DashboardTerminalProfile } from '../shared/contracts/index.js';
+
+type DebugLog = (message: string) => void;
+type TerminalProfileServiceLike = {
+  resolveProfile(profileId?: string | null): (DashboardTerminalProfile & {
+    command: string;
+    args?: string[];
+  }) | null;
+};
+type TerminalEntry = {
+  pty: import('node-pty').IPty;
+  cols: number;
+  rows: number;
+  dataBuf: string;
+};
 
 /**
  * Escape cmd.exe metacharacters (`&`, `|`, `<`, `>`, `^`, `(`, `)`) with `^`
@@ -22,6 +37,14 @@ function escapeCmdMetacharsForUnquoted(arg) {
 }
 
 class TerminalManager {
+  declare debugLog: DebugLog;
+  declare getWindow: () => BrowserWindow | null;
+  declare terminalProfileService: TerminalProfileServiceLike | null;
+  declare terminals: Map<string, TerminalEntry>;
+  declare outputTaps: Map<string, Array<(data: string) => void>>;
+  declare exitTaps: Map<string, Array<(exitCode: number) => void>>;
+  declare _policyBlockedNotified: boolean;
+
   constructor({ debugLog, getWindow, terminalProfileService }) {
     this.debugLog = debugLog || (() => {});
     this.getWindow = getWindow || (() => null);
@@ -41,7 +64,7 @@ class TerminalManager {
    * @param {string} agentId
    * @param {{ cwd?: string, shell?: string, command?: string, args?: string[], cols?: number, rows?: number }} options
    */
-  createTerminal(agentId, options = {}) {
+  createTerminal(agentId, options: DashboardOpenOptions = {}) {
     if (this.terminals.has(agentId)) {
       this.debugLog(`[Terminal] Already exists: ${agentId.slice(0, 8)}`);
       return { success: true, existing: true };

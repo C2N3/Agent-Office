@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Renderer Init — initialization, visibility handling
  */

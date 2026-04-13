@@ -1,9 +1,14 @@
-// @ts-nocheck
+
+import type { CLIAdapter } from './types.js';
 
 const MAX_BUFFER_SIZE = 4000;
 const MAX_FULL_BUFFER_SIZE = 100000; // 100KB for full output capture
 
 class OutputParser {
+  declare adapter: CLIAdapter;
+  declare buffer: string;
+  declare fullBuffer: string;
+
   constructor(adapter) {
     this.adapter = adapter;
     this.buffer = '';

@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Session Scanner
  * Parses JSONL transcripts to extract token/cost/session statistics and
@@ -18,7 +17,29 @@ const {
     parseJsonLines,
     resolveTranscriptPath,
 } = require('./sessionScanner/parser');
+
+type SessionStats = {
+    model: string | null;
+    sessionId: string | null;
+    userMessages: number;
+    assistantMessages: number;
+    toolUses: number;
+    inputTokens: number;
+    outputTokens: number;
+    cacheReadTokens: number;
+    cacheCreationTokens: number;
+    estimatedCost: number;
+    firstMessageAt: string | null;
+    lastMessageAt: string | null;
+    lastActivity: string | null;
+};
+
 class SessionScanner {
+    declare agentManager: any;
+    declare debugLog: (message: string) => void;
+    declare scanInterval: NodeJS.Timeout | null;
+    declare lastScanResults: Map<string, SessionStats>;
+
     /**
      * @param {import('./agentManager')} agentManager
      * @param {(msg: string) => void} [debugLog]
@@ -106,7 +127,7 @@ class SessionScanner {
      * @param {{ providerHint?: string }} [options]
      * @returns {SessionStats | null}
      */
-    parseSessionFile(filePath, options = {}) {
+    parseSessionFile(filePath, options: { providerHint?: string } = {}) {
         const resolvedPath = resolveTranscriptPath(filePath);
         if (!resolvedPath) return null;
 

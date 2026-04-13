@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Codex exec --json event adapter.
  */
@@ -56,7 +55,7 @@ function createCodexProcessor({ agentManager, agentRegistry, sessionPids, debugL
     }
   }
 
-function processSessionEntry(entry, context = {}) {
+function processSessionEntry(entry, context: { sessionId?: string | null; runtimeSessionId?: string | null; transcriptPath?: string | null } = {}) {
     if (!entry || !entry.type) return { sessionId: null };
     const contextSessionId = resolveCodexSessionId(context.sessionId || null);
     const transcriptPath = context.transcriptPath || null;

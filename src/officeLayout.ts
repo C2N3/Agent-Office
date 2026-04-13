@@ -1,4 +1,3 @@
-// @ts-nocheck
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -77,6 +76,8 @@ const VALID_DIRS = new Set(['up', 'down', 'left', 'right']);
 const VALID_ANIM_TYPES = new Set(['sit', 'stand']);
 const VALID_IDLE_VALUES = new Set(['up', 'down', 'left', 'right', 'dance']);
 const VALID_DECOR_LAYERS = new Set(['bg', 'fg']);
+
+type PlainObject = Record<string, any>;
 const DEFAULT_LAYOUT_FOLDER = path.resolve(__dirname, '..', 'office-layout');
 
 function cloneDefaultLayout() {
@@ -107,7 +108,7 @@ function toClientAssetUrl(assetPath) {
 }
 
 function mergeLaptopStates(inputStates, fallbackStates) {
-  const result = {};
+  const result: PlainObject = {};
   ['down', 'up', 'left', 'right'].forEach((dir) => {
     const input = inputStates && typeof inputStates === 'object' ? inputStates[dir] : null;
     const fallback = fallbackStates[dir];
@@ -121,13 +122,14 @@ function mergeLaptopStates(inputStates, fallbackStates) {
 
 function normalizeSeatMap(value, fallback) {
   if (!value || typeof value !== 'object') return { ...fallback };
-  const next = { ...fallback };
+  const next: PlainObject = { ...fallback };
 
   Object.entries(value).forEach(([key, config]) => {
+    const seatConfig = config as PlainObject;
     if (!/^\d+$/.test(String(key)) || !config || typeof config !== 'object') return;
     next[String(key)] = {
-      dir: VALID_DIRS.has(config.dir) ? config.dir : 'down',
-      animType: VALID_ANIM_TYPES.has(config.animType) ? config.animType : 'sit',
+      dir: VALID_DIRS.has(seatConfig.dir) ? seatConfig.dir : 'down',
+      animType: VALID_ANIM_TYPES.has(seatConfig.animType) ? seatConfig.animType : 'sit',
     };
   });
 
@@ -136,10 +138,10 @@ function normalizeSeatMap(value, fallback) {
 
 function normalizeIdleSeatMap(value, fallback) {
   if (!value || typeof value !== 'object') return { ...fallback };
-  const next = { ...fallback };
+  const next: PlainObject = { ...fallback };
 
   Object.entries(value).forEach(([key, dir]) => {
-    if (!/^\d+$/.test(String(key)) || !VALID_IDLE_VALUES.has(dir)) return;
+    if (!/^\d+$/.test(String(key)) || !VALID_IDLE_VALUES.has(String(dir))) return;
     next[String(key)] = dir;
   });
 
@@ -148,7 +150,7 @@ function normalizeIdleSeatMap(value, fallback) {
 
 function normalizeLaptopSeatMap(value, fallback) {
   if (!value || typeof value !== 'object') return { ...fallback };
-  const next = { ...fallback };
+  const next: PlainObject = { ...fallback };
 
   Object.entries(value).forEach(([key, seatId]) => {
     if (!/^\d+$/.test(String(key)) || !Number.isInteger(seatId)) return;
@@ -166,7 +168,7 @@ function normalizeDecor(value) {
     const src = toClientAssetUrl(item.src);
     if (!src || !Number.isFinite(item.x) || !Number.isFinite(item.y)) return null;
 
-    const next = {
+    const next: PlainObject = {
       id: typeof item.id === 'string' && item.id.trim() ? item.id.trim() : 'decor-' + index,
       src,
       x: item.x,
