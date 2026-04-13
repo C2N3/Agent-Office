@@ -69,15 +69,28 @@ export function setupTaskReportModal() {
   const titleEl = document.getElementById('taskReportTitle');
   const mergeBtn = document.getElementById('taskReportMergeBtn');
   const rejectBtn = document.getElementById('taskReportRejectBtn');
+  const followUpBtn = document.getElementById('taskReportFollowUpBtn') as HTMLButtonElement | null;
+  const followUpPrompt = document.getElementById('taskReportFollowUpPrompt') as HTMLTextAreaElement | null;
+  const followUpError = document.getElementById('taskReportFollowUpError');
   if (!modal || !outputEl || !changesEl || !mergeBtn || !rejectBtn) return;
 
   let currentTaskId = '';
   let currentAgentId = '';
+  let currentRepositoryPath = '';
+  let currentProvider = 'claude';
+  let currentModel: string | null = null;
+  let currentTitle = '';
 
   function closeModal() {
     modal.style.display = 'none';
     currentTaskId = '';
     currentAgentId = '';
+    currentRepositoryPath = '';
+    currentProvider = 'claude';
+    currentModel = null;
+    currentTitle = '';
+    if (followUpPrompt) followUpPrompt.value = '';
+    if (followUpError) followUpError.textContent = '';
   }
 
   closeBtn?.addEventListener('click', closeModal);
@@ -94,6 +107,10 @@ export function setupTaskReportModal() {
       const res = await fetch(`/api/tasks/${taskId}/report`);
       const data = await res.json();
       currentAgentId = data.agentRegistryId || '';
+      currentRepositoryPath = data.repositoryPath || '';
+      currentProvider = data.provider || 'claude';
+      currentModel = data.model || null;
+      currentTitle = data.title || '';
       if (titleEl) titleEl.textContent = data.title || 'Task Report';
       const cleanedOutput = (data.output || '').trim();
       if (cleanedOutput) {
@@ -156,6 +173,52 @@ export function setupTaskReportModal() {
     } finally {
       rejectBtn.disabled = false;
       rejectBtn.textContent = 'Reject';
+    }
+  });
+
+  followUpBtn?.addEventListener('click', async () => {
+    if (!currentTaskId) return;
+    const prompt = (followUpPrompt?.value || '').trim();
+    if (followUpError) followUpError.textContent = '';
+    if (!prompt) {
+      if (followUpError) followUpError.textContent = 'Follow-up prompt is required.';
+      return;
+    }
+    followUpBtn.disabled = true;
+    followUpBtn.textContent = 'Sending...';
+    try {
+      const title = `Follow-up: ${prompt.slice(0, 60)}`;
+      const body: Record<string, any> = {
+        title,
+        prompt,
+        agentRegistryId: currentAgentId,
+        parentTaskId: currentTaskId,
+        provider: currentProvider,
+        model: currentModel,
+        maxTurns: 30,
+        priority: 'normal',
+      };
+      if (currentRepositoryPath) body.repositoryPath = currentRepositoryPath;
+      const res = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (data && data.error) {
+        if (followUpError) followUpError.textContent = data.error;
+        return;
+      }
+      // Follow-up queued — close the report modal. The new task will appear in
+      // the dashboard once the orchestrator picks it up.
+      const officeChars = (globalThis as any).officeCharacters;
+      if (officeChars?.clearReportBubble && currentAgentId) officeChars.clearReportBubble(currentAgentId);
+      closeModal();
+    } catch (e: any) {
+      if (followUpError) followUpError.textContent = 'Follow-up request failed.';
+    } finally {
+      followUpBtn.disabled = false;
+      followUpBtn.textContent = 'Send Follow-up';
     }
   });
 

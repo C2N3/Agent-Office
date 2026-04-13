@@ -85,6 +85,23 @@
   border-top: 1px solid var(--color-border);
   justify-content: flex-end;
 }
+.task-report-followup-section {
+  padding: 12px 16px;
+  border-top: 1px solid var(--color-border);
+  background: rgba(255, 255, 255, 0.02);
+}
+.task-report-followup-help {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-bottom: 8px;
+}
+#taskReportFollowUpPrompt {
+  width: 100%;
+  min-height: 60px;
+  resize: vertical;
+}
+#taskReportFollowUpError:empty { display: none; }
+#taskReportFollowUpError { color: var(--color-state-error); font-size: 12px; margin-top: 6px; }
 .btn-danger {
   background: var(--color-state-error);
   color: #fff;

@@ -185,6 +185,9 @@ async function handleTaskReport(_req: RequestLike, res: ResponseLike, taskId: st
     agentRegistryId: task.agentRegistryId,
     workspacePath: task.workspacePath,
     branchName: task.branchName,
+    repositoryPath: task.repositoryPath,
+    provider: task.currentProvider || task.provider || null,
+    model: task.model || null,
   }));
 }
 
