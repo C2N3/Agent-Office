@@ -37,9 +37,7 @@ export async function loadSpriteFrames() {
     OFFICE.SRC_FRAME_H = data.sheet.frameHeight;
     OFFICE.COLS = data.sheet.cols;
     OFFICE.ROWS = data.sheet.rows;
-    // Display size stays fixed (office map designed for 106×140)
 
-    // Map canonical names → office direction-based keys
     SPRITE_FRAMES = {
       down_idle:      f.front_idle,
       walk_down:      f.front_walk,
@@ -101,7 +99,6 @@ const DEFAULT_IDLE_SEAT_MAP = {
   24: 'dance',
   19: 'right',
   29: 'right',
-  // all others default to 'down' (front_sit_idle)
 };
 
 // Dashboard status → office zone mapping
@@ -115,7 +112,7 @@ export const STATE_ZONE_MAP = {
   'offline':   'idle',
 };
 
-// State colors for nametags (unified palette — synced with styles.css, dashboard.html)
+// State colors for nametags
 export const STATE_COLORS = {
   idle:      '#94a3b8',
   working:   '#f97316',
@@ -130,10 +127,9 @@ export const STATE_COLORS = {
   offline:   '#475569',
 };
 
-// Loaded from public/shared/avatars.json at init time (single source of truth)
+// Loaded from public/shared/avatars.json at init time
 export let AVATAR_FILES: string[] = [];
 
-/** Fetch avatar list from shared JSON. Must be called before office init. */
 export async function loadAvatarFiles() {
   try {
     const res = await fetch('/public/shared/avatars.json');
@@ -145,16 +141,12 @@ export async function loadAvatarFiles() {
   }
 }
 
-/**
- * Deterministic avatar index from agentId (same result for same id, everywhere)
- * Used by both taskbar renderer and office to sync avatars.
- */
 export function avatarIndexFromId(id) {
   let hash = 0;
   const str = id || '';
   for (let i = 0; i < str.length; i++) {
     hash = ((hash << 5) - hash) + str.charCodeAt(i);
-    hash |= 0; // 32-bit int
+    hash |= 0;
   }
   return Math.abs(hash) % AVATAR_FILES.length;
 }
@@ -167,39 +159,55 @@ const DEFAULT_LAPTOP_ID_MAP = {
   12: 4, 13: 5, 14: 6, 15: 7,
 };
 
+function buildRoomTemplateAssets(roomDir) {
+  return {
+    background: `/public/office/${roomDir}/map/office_bg_32.webp`,
+    foreground: `/public/office/${roomDir}/map/office_fg_32.webp`,
+    coordinates: `/public/office/${roomDir}/map/office_xy.webp`,
+    collision: `/public/office/${roomDir}/map/office_collision.webp`,
+    laptopSpots: `/public/office/${roomDir}/ojects/office_laptop.webp`,
+    laptopStates: {
+      down: {
+        closed: `/public/office/${roomDir}/ojects/office_laptop_front_close.webp`,
+        open: `/public/office/${roomDir}/ojects/office_laptop_front_open.webp`,
+      },
+      up: {
+        closed: `/public/office/${roomDir}/ojects/office_laptop_back_close.webp`,
+        open: `/public/office/${roomDir}/ojects/office_laptop_back_open.webp`,
+      },
+      left: {
+        closed: `/public/office/${roomDir}/ojects/office_laptop_left_close.webp`,
+        open: `/public/office/${roomDir}/ojects/office_laptop_left_open.webp`,
+      },
+      right: {
+        closed: `/public/office/${roomDir}/ojects/office_laptop_right_close.webp`,
+        open: `/public/office/${roomDir}/ojects/office_laptop_right_open.webp`,
+      },
+    },
+  };
+}
+
+function buildDefaultRoom(id, roomDir) {
+  return {
+    id,
+    name: id,
+    assets: buildRoomTemplateAssets(roomDir),
+    seatMap: DEFAULT_SEAT_MAP,
+    idleSeatMap: DEFAULT_IDLE_SEAT_MAP,
+    laptopSeatMap: DEFAULT_LAPTOP_ID_MAP,
+    decor: [],
+  };
+}
+
 export let OFFICE_LAYOUT: any = {
   name: 'Default Office',
   mapScale: OFFICE.MAP_SCALE,
   tileSize: OFFICE.TILE_SIZE,
-  assets: {
-    background: '/public/office/map/office_bg_32.webp',
-    foreground: '/public/office/map/office_fg_32.webp',
-    coordinates: '/public/office/map/office_xy.webp',
-    collision: '/public/office/map/office_collision.webp',
-    laptopSpots: '/public/office/ojects/office_laptop.webp',
-    laptopStates: {
-      down: {
-        closed: '/public/office/ojects/office_laptop_front_close.webp',
-        open: '/public/office/ojects/office_laptop_front_open.webp',
-      },
-      up: {
-        closed: '/public/office/ojects/office_laptop_back_close.webp',
-        open: '/public/office/ojects/office_laptop_back_open.webp',
-      },
-      left: {
-        closed: '/public/office/ojects/office_laptop_left_close.webp',
-        open: '/public/office/ojects/office_laptop_left_open.webp',
-      },
-      right: {
-        closed: '/public/office/ojects/office_laptop_right_close.webp',
-        open: '/public/office/ojects/office_laptop_right_open.webp',
-      },
-    },
-  },
-  seatMap: DEFAULT_SEAT_MAP,
-  idleSeatMap: DEFAULT_IDLE_SEAT_MAP,
-  laptopSeatMap: DEFAULT_LAPTOP_ID_MAP,
-  decor: [],
+  roomGap: 0,
+  rooms: [
+    buildDefaultRoom('room1', 'rooms/room1'),
+    buildDefaultRoom('room2', 'rooms/room2'),
+  ],
 };
 
 export async function loadOfficeLayout() {
@@ -222,7 +230,23 @@ export async function loadOfficeLayout() {
   }
 }
 
-export function getSeatConfig(id) {
-  const seatMap = (OFFICE_LAYOUT && OFFICE_LAYOUT.seatMap) || DEFAULT_SEAT_MAP;
+function findRoomConfig(roomId) {
+  const rooms = OFFICE_LAYOUT && Array.isArray(OFFICE_LAYOUT.rooms) ? OFFICE_LAYOUT.rooms : null;
+  if (!rooms) return null;
+  for (let i = 0; i < rooms.length; i++) {
+    if (rooms[i] && rooms[i].id === roomId) return rooms[i];
+  }
+  return rooms[0] || null;
+}
+
+export function getSeatConfig(roomId, id) {
+  const roomCfg = findRoomConfig(roomId);
+  const seatMap = (roomCfg && roomCfg.seatMap) || DEFAULT_SEAT_MAP;
   return seatMap[id] || { dir: 'down', animType: 'sit' };
+}
+
+export function getIdleSeatEntry(roomId, id) {
+  const roomCfg = findRoomConfig(roomId);
+  const idleMap = (roomCfg && roomCfg.idleSeatMap) || DEFAULT_IDLE_SEAT_MAP;
+  return idleMap[id];
 }

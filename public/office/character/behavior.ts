@@ -3,16 +3,37 @@ import {
   AVATAR_FILES,
   avatarIndexFromId,
   OFFICE,
-  OFFICE_LAYOUT,
   STATE_COLORS,
   STATE_ZONE_MAP,
   getSeatConfig,
+  getIdleSeatEntry,
 } from '../officeConfig.js';
-import { officeCoords } from '../officeCoords.js';
-import { officeLayers } from '../officeLayers.js';
+import { officeCoordsByRoom } from '../officeCoords.js';
+import { officeLayers, officeRooms, officeRoomOrder, getRoomAtWorld, getNearestRoom } from '../officeLayers.js';
 import { officePathfinder } from '../officePathfinder.js';
 import { officeRenderer } from '../officeRenderer.js';
 import { animKeyFromDir, tickOfficeAnimation } from '../officeSprite.js';
+
+function seatKey(roomId, deskIndex) {
+  return roomId + ':' + deskIndex;
+}
+
+function pickInitialRoomId(agentId) {
+  if (officeRoomOrder.length === 0) return null;
+  const idx = avatarIndexFromId(agentId) % officeRoomOrder.length;
+  return officeRoomOrder[idx];
+}
+
+function roomCenter(roomId) {
+  const room = officeRooms[roomId];
+  if (!room) {
+    return { x: (officeLayers.width || 1750) / 2, y: (officeLayers.height || 1750) / 2 };
+  }
+  return {
+    x: room.originX + room.width / 2,
+    y: room.originY + room.height / 2,
+  };
+}
 
 export function addCharacter(agentData) {
   if (this.characters.has(agentData.id)) {
@@ -25,10 +46,14 @@ export function addCharacter(agentData) {
     ? agentData.avatarIndex : avatarIndexFromId(agentData.id);
   const avatarFile = AVATAR_FILES[avatarIdx] || AVATAR_FILES[0];
 
+  const roomId = pickInitialRoomId(agentData.id);
+  const center = roomId ? roomCenter(roomId) : { x: 875, y: 875 };
+
   const char = {
     id: agentData.id,
-    x: (officeLayers.width || 1750) / 2 + (Math.random() - 0.5) * 175,
-    y: (officeLayers.height || 1750) / 2 + (Math.random() - 0.5) * 175,
+    roomId,
+    x: center.x + (Math.random() - 0.5) * 175,
+    y: center.y + (Math.random() - 0.5) * 175,
     path: [],
     pathIndex: 0,
     facingDir: 'down',
@@ -63,6 +88,7 @@ export function addCharacter(agentData) {
   this._updateTarget(char);
   this._setBubble(char, agentData);
 }
+
 export function updateCharacter(agentData) {
   const char = this.characters.get(agentData.id);
   if (!char) {
@@ -120,10 +146,19 @@ export function removeCharacter(agentId) {
 export function assignDesk(agentId) {
   const char = this.characters.get(agentId);
   if (!char || char.deskIndex !== undefined) return;
+  if (!char.roomId) char.roomId = pickInitialRoomId(agentId);
+  const roomId = char.roomId;
+  if (!roomId) return;
 
-  const usedDesks = new Set(this.seatAssignments.keys());
-  const deskCoords = officeCoords.desk || [];
-  const available = [];
+  const roomCoords = officeCoordsByRoom[roomId];
+  const deskCoords = (roomCoords && roomCoords.desk) || [];
+  const usedDesks = new Set<number>();
+  this.seatAssignments.forEach(function (_id, key) {
+    const parts = String(key).split(':');
+    if (parts[0] === roomId) usedDesks.add(Number(parts[1]));
+  });
+
+  const available: number[] = [];
   for (let i = 0; i < deskCoords.length; i++) {
     if (!usedDesks.has(i)) available.push(i);
   }
@@ -136,14 +171,14 @@ export function assignDesk(agentId) {
   const hash = avatarIndexFromId(agentId);
   const idx = available[hash % available.length];
   char.deskIndex = idx;
-  this.seatAssignments.set(idx, agentId);
+  this.seatAssignments.set(seatKey(roomId, idx), agentId);
 }
 
 export function releaseDesk(agentId) {
   const char = this.characters.get(agentId);
   if (!char) return;
-  if (char.deskIndex !== undefined) {
-    this.seatAssignments.delete(char.deskIndex);
+  if (char.deskIndex !== undefined && char.roomId) {
+    this.seatAssignments.delete(seatKey(char.roomId, char.deskIndex));
     char.deskIndex = undefined;
   }
   char.deskOverflow = false;
@@ -162,7 +197,8 @@ export function updateAll(deltaSec, deltaMs) {
 }
 
 export function updateTarget(char) {
-  const coords = officeCoords;
+  if (!char.roomId) char.roomId = pickInitialRoomId(char.id);
+  const coords = officeCoordsByRoom[char.roomId];
   if (!coords || !coords.desk || !coords.idle) return;
 
   if (char.manualPinned) {
@@ -180,7 +216,7 @@ export function updateTarget(char) {
       const nearIdle = this._findNearDeskIdleSpot(char);
       if (nearIdle) {
         if (Math.abs(char.x - nearIdle.x) < 5 && Math.abs(char.y - nearIdle.y) < 5) return;
-        char.path = officePathfinder.findPath(char.x, char.y, nearIdle.x, nearIdle.y);
+        char.path = officePathfinder.findPath(char.roomId, char.x, char.y, nearIdle.x, nearIdle.y);
         char.pathIndex = 0;
       }
       return;
@@ -197,7 +233,7 @@ export function updateTarget(char) {
         if (Math.floor(last.x) === tx && Math.floor(last.y) === ty) return;
       }
 
-      char.path = officePathfinder.findPath(char.x, char.y, tx, ty);
+      char.path = officePathfinder.findPath(char.roomId, char.x, char.y, tx, ty);
       char.pathIndex = 0;
     }
     return;
@@ -211,6 +247,7 @@ export function updateTarget(char) {
   const occupied = {};
   this.characters.forEach((a) => {
     if (a.id === char.id) return;
+    if (a.roomId !== char.roomId) return;
     let ax = Math.floor(a.x);
     let ay = Math.floor(a.y);
     if (a.path.length > 0) {
@@ -224,7 +261,7 @@ export function updateTarget(char) {
   const valid = coords.idle.filter((p) => !occupied[`${Math.floor(p.x)},${Math.floor(p.y)}`]);
   if (valid.length > 0) {
     const dest = valid[Math.floor(Math.random() * valid.length)];
-    char.path = officePathfinder.findPath(char.x, char.y, dest.x, dest.y);
+    char.path = officePathfinder.findPath(char.roomId, char.x, char.y, dest.x, dest.y);
     char.pathIndex = 0;
   }
 }
@@ -239,7 +276,8 @@ export function updateMovement(char, deltaSec) {
   const isArrived = char.path.length === 0 || char.pathIndex >= char.path.length;
 
   if (isArrived) {
-    const allSpots = (officeCoords.desk || []).concat(officeCoords.idle || []);
+    const coords = officeCoordsByRoom[char.roomId] || { desk: [], idle: [] };
+    const allSpots = (coords.desk || []).concat(coords.idle || []);
     let currentSpot = null;
     for (let i = 0; i < allSpots.length; i++) {
       if (Math.abs(allSpots[i].x - char.x) < 5 && Math.abs(allSpots[i].y - char.y) < 5) {
@@ -250,8 +288,7 @@ export function updateMovement(char, deltaSec) {
 
     if (char.agentState === 'done' || char.agentState === 'completed') {
       if (currentSpot && currentSpot.type === 'idle') {
-        const idleSeatMap = (typeof OFFICE_LAYOUT !== 'undefined' && OFFICE_LAYOUT.idleSeatMap) || {};
-        const entry = idleSeatMap[currentSpot.id];
+        const entry = getIdleSeatEntry(char.roomId, currentSpot.id);
         char.currentAnim = entry === 'dance' ? 'dance' : `sit_${entry || 'down'}`;
       } else {
         char.currentAnim = `sit_${char.facingDir || 'down'}`;
@@ -262,11 +299,11 @@ export function updateMovement(char, deltaSec) {
     } else if (char.agentState === 'error') {
       char.currentAnim = 'alert_jump';
     } else if (currentSpot && currentSpot.type === 'idle') {
-      const idleConfig = getSeatConfig(currentSpot.id);
+      const idleConfig = getSeatConfig(char.roomId, currentSpot.id);
       char.facingDir = idleConfig.dir;
       char.currentAnim = idleConfig.animType === 'sit' ? `sit_${idleConfig.dir}` : `${idleConfig.dir}_idle`;
     } else {
-      const config = currentSpot ? getSeatConfig(currentSpot.id) : { dir: 'down', animType: 'sit' };
+      const config = currentSpot ? getSeatConfig(char.roomId, currentSpot.id) : { dir: 'down', animType: 'sit' };
       char.facingDir = config.dir;
       if (config.animType === 'sit') {
         const isWorking = char.agentState === 'working' || char.agentState === 'thinking' || char.agentState === 'help';

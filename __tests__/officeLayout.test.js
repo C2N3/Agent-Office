@@ -61,13 +61,19 @@ describe('officeLayout', () => {
     expect(layout.name).toBe('Custom Office');
     expect(layout.mapScale).toBe(3);
     expect(layout.tileSize).toBe(96);
-    expect(layout.assets.background).toBe('/api/office-layout/assets/map/bg.webp');
-    expect(layout.assets.laptopStates.down.open).toBe('/api/office-layout/assets/objects/laptop-down-open.webp');
-    expect(layout.assets.laptopStates.up.open).toBe(DEFAULT_LAYOUT.assets.laptopStates.up.open);
-    expect(layout.seatMap['99']).toEqual({ dir: 'left', animType: 'stand' });
-    expect(layout.idleSeatMap['42']).toBe('dance');
-    expect(layout.laptopSeatMap['3']).toBe(99);
-    expect(layout.decor).toEqual([
+
+    // Legacy top-level manifest fields are wrapped into a single room.
+    expect(Array.isArray(layout.rooms)).toBe(true);
+    expect(layout.rooms).toHaveLength(1);
+    const room = layout.rooms[0];
+    expect(room.id).toBe('room1');
+    expect(room.assets.background).toBe('/api/office-layout/assets/map/bg.webp');
+    expect(room.assets.laptopStates.down.open).toBe('/api/office-layout/assets/objects/laptop-down-open.webp');
+    expect(room.assets.laptopStates.up.open).toBe(DEFAULT_LAYOUT.rooms[0].assets.laptopStates.up.open);
+    expect(room.seatMap['99']).toEqual({ dir: 'left', animType: 'stand' });
+    expect(room.idleSeatMap['42']).toBe('dance');
+    expect(room.laptopSeatMap['3']).toBe(99);
+    expect(room.decor).toEqual([
       {
         id: 'plant',
         src: '/api/office-layout/assets/decor/plant.webp',
@@ -77,6 +83,34 @@ describe('officeLayout', () => {
         scale: 1.5,
       },
     ]);
+  });
+
+  test('accepts an explicit rooms array and places each room', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-office-layout-'));
+    process.env.AGENT_OFFICE_LAYOUT_DIR = tempDir;
+
+    fs.writeFileSync(path.join(tempDir, 'manifest.json'), JSON.stringify({
+      name: 'Two Room Office',
+      rooms: [
+        {
+          id: 'alpha',
+          assets: { background: 'alpha/bg.webp' },
+        },
+        {
+          id: 'beta',
+          originX: 3000,
+          assets: { background: 'beta/bg.webp' },
+        },
+      ],
+    }, null, 2));
+
+    const layout = loadOfficeLayoutManifest();
+    expect(layout.rooms).toHaveLength(2);
+    expect(layout.rooms[0].id).toBe('alpha');
+    expect(layout.rooms[0].assets.background).toBe('/api/office-layout/assets/alpha/bg.webp');
+    expect(layout.rooms[1].id).toBe('beta');
+    expect(layout.rooms[1].originX).toBe(3000);
+    expect(layout.rooms[1].assets.background).toBe('/api/office-layout/assets/beta/bg.webp');
   });
 
   test('rejects traversal outside the configured layout directory', () => {

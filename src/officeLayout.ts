@@ -3,6 +3,7 @@ const path = require('node:path');
 
 const DEFAULT_MAP_SCALE = 2.1875;
 const DEFAULT_TILE_SIZE = 70;
+const DEFAULT_ROOM_GAP = 0;
 
 const DEFAULT_SEAT_MAP = {
   10: { dir: 'right', animType: 'sit' },
@@ -37,39 +38,55 @@ const DEFAULT_LAPTOP_SEAT_MAP = {
   12: 4, 13: 5, 14: 6, 15: 7,
 };
 
+function buildRoomTemplateAssets(roomDir) {
+  return {
+    background: `/public/office/${roomDir}/map/office_bg_32.webp`,
+    foreground: `/public/office/${roomDir}/map/office_fg_32.webp`,
+    coordinates: `/public/office/${roomDir}/map/office_xy.webp`,
+    collision: `/public/office/${roomDir}/map/office_collision.webp`,
+    laptopSpots: `/public/office/${roomDir}/ojects/office_laptop.webp`,
+    laptopStates: {
+      down: {
+        closed: `/public/office/${roomDir}/ojects/office_laptop_front_close.webp`,
+        open: `/public/office/${roomDir}/ojects/office_laptop_front_open.webp`,
+      },
+      up: {
+        closed: `/public/office/${roomDir}/ojects/office_laptop_back_close.webp`,
+        open: `/public/office/${roomDir}/ojects/office_laptop_back_open.webp`,
+      },
+      left: {
+        closed: `/public/office/${roomDir}/ojects/office_laptop_left_close.webp`,
+        open: `/public/office/${roomDir}/ojects/office_laptop_left_open.webp`,
+      },
+      right: {
+        closed: `/public/office/${roomDir}/ojects/office_laptop_right_close.webp`,
+        open: `/public/office/${roomDir}/ojects/office_laptop_right_open.webp`,
+      },
+    },
+  };
+}
+
+function buildDefaultRoom(id, roomDir) {
+  return {
+    id,
+    name: id,
+    assets: buildRoomTemplateAssets(roomDir),
+    seatMap: DEFAULT_SEAT_MAP,
+    idleSeatMap: DEFAULT_IDLE_SEAT_MAP,
+    laptopSeatMap: DEFAULT_LAPTOP_SEAT_MAP,
+    decor: [],
+  };
+}
+
 const DEFAULT_LAYOUT = {
   name: 'Default Office',
   mapScale: DEFAULT_MAP_SCALE,
   tileSize: DEFAULT_TILE_SIZE,
-  assets: {
-    background: '/public/office/map/office_bg_32.webp',
-    foreground: '/public/office/map/office_fg_32.webp',
-    coordinates: '/public/office/map/office_xy.webp',
-    collision: '/public/office/map/office_collision.webp',
-    laptopSpots: '/public/office/ojects/office_laptop.webp',
-    laptopStates: {
-      down: {
-        closed: '/public/office/ojects/office_laptop_front_close.webp',
-        open: '/public/office/ojects/office_laptop_front_open.webp',
-      },
-      up: {
-        closed: '/public/office/ojects/office_laptop_back_close.webp',
-        open: '/public/office/ojects/office_laptop_back_open.webp',
-      },
-      left: {
-        closed: '/public/office/ojects/office_laptop_left_close.webp',
-        open: '/public/office/ojects/office_laptop_left_open.webp',
-      },
-      right: {
-        closed: '/public/office/ojects/office_laptop_right_close.webp',
-        open: '/public/office/ojects/office_laptop_right_open.webp',
-      },
-    },
-  },
-  seatMap: DEFAULT_SEAT_MAP,
-  idleSeatMap: DEFAULT_IDLE_SEAT_MAP,
-  laptopSeatMap: DEFAULT_LAPTOP_SEAT_MAP,
-  decor: [],
+  roomGap: DEFAULT_ROOM_GAP,
+  rooms: [
+    buildDefaultRoom('room1', 'rooms/room1'),
+    buildDefaultRoom('room2', 'rooms/room2'),
+  ],
 };
 
 const VALID_DIRS = new Set(['up', 'down', 'left', 'right']);
@@ -185,28 +202,74 @@ function normalizeDecor(value) {
   }).filter(Boolean);
 }
 
+function normalizeRoomAssets(assets, fallbackAssets) {
+  const input = assets && typeof assets === 'object' ? assets : {};
+  return {
+    background: toClientAssetUrl(input.background) || fallbackAssets.background,
+    foreground: toClientAssetUrl(input.foreground) || fallbackAssets.foreground,
+    coordinates: toClientAssetUrl(input.coordinates) || fallbackAssets.coordinates,
+    collision: toClientAssetUrl(input.collision) || fallbackAssets.collision,
+    laptopSpots: toClientAssetUrl(input.laptopSpots) || fallbackAssets.laptopSpots,
+    laptopStates: mergeLaptopStates(input.laptopStates, fallbackAssets.laptopStates),
+  };
+}
+
+function normalizeRoom(room, fallbackRoom, index) {
+  const input = room && typeof room === 'object' ? room : {};
+  const id = typeof input.id === 'string' && input.id.trim()
+    ? input.id.trim()
+    : (fallbackRoom && fallbackRoom.id) || 'room' + (index + 1);
+
+  const next: PlainObject = {
+    id,
+    name: typeof input.name === 'string' && input.name.trim()
+      ? input.name.trim()
+      : (fallbackRoom && fallbackRoom.name) || id,
+    assets: normalizeRoomAssets(input.assets, (fallbackRoom && fallbackRoom.assets) || DEFAULT_LAYOUT.rooms[0].assets),
+    seatMap: normalizeSeatMap(input.seatMap, (fallbackRoom && fallbackRoom.seatMap) || DEFAULT_SEAT_MAP),
+    idleSeatMap: normalizeIdleSeatMap(input.idleSeatMap, (fallbackRoom && fallbackRoom.idleSeatMap) || DEFAULT_IDLE_SEAT_MAP),
+    laptopSeatMap: normalizeLaptopSeatMap(input.laptopSeatMap, (fallbackRoom && fallbackRoom.laptopSeatMap) || DEFAULT_LAPTOP_SEAT_MAP),
+    decor: normalizeDecor(input.decor),
+  };
+
+  if (Number.isFinite(input.originX)) next.originX = input.originX;
+  if (Number.isFinite(input.originY)) next.originY = input.originY;
+
+  return next;
+}
+
+function normalizeRooms(value, fallbackRooms) {
+  const rooms = Array.isArray(value) ? value : null;
+  if (!rooms || rooms.length === 0) {
+    return fallbackRooms.map((room, idx) => normalizeRoom(room, room, idx));
+  }
+  return rooms.map((room, idx) => normalizeRoom(room, fallbackRooms[idx] || fallbackRooms[0], idx));
+}
+
 function normalizeLayout(manifest) {
   const layout = cloneDefaultLayout();
   const input = manifest && typeof manifest === 'object' ? manifest : {};
-  const assets = input.assets && typeof input.assets === 'object' ? input.assets : {};
 
   if (typeof input.name === 'string' && input.name.trim()) layout.name = input.name.trim();
   if (Number.isFinite(input.mapScale) && input.mapScale > 0) layout.mapScale = input.mapScale;
   if (Number.isFinite(input.tileSize) && input.tileSize > 0) layout.tileSize = input.tileSize;
+  if (Number.isFinite(input.roomGap) && input.roomGap >= 0) layout.roomGap = input.roomGap;
 
-  layout.assets = {
-    background: toClientAssetUrl(assets.background) || layout.assets.background,
-    foreground: toClientAssetUrl(assets.foreground) || layout.assets.foreground,
-    coordinates: toClientAssetUrl(assets.coordinates) || layout.assets.coordinates,
-    collision: toClientAssetUrl(assets.collision) || layout.assets.collision,
-    laptopSpots: toClientAssetUrl(assets.laptopSpots) || layout.assets.laptopSpots,
-    laptopStates: mergeLaptopStates(assets.laptopStates, layout.assets.laptopStates),
-  };
-
-  layout.seatMap = normalizeSeatMap(input.seatMap, layout.seatMap);
-  layout.idleSeatMap = normalizeIdleSeatMap(input.idleSeatMap, layout.idleSeatMap);
-  layout.laptopSeatMap = normalizeLaptopSeatMap(input.laptopSeatMap, layout.laptopSeatMap);
-  layout.decor = normalizeDecor(input.decor);
+  // Legacy single-room manifest: promote top-level assets/seatMap/etc into a single room.
+  if (!Array.isArray(input.rooms) && (input.assets || input.seatMap || input.idleSeatMap || input.decor)) {
+    const legacyRoom = {
+      id: 'room1',
+      name: 'room1',
+      assets: input.assets,
+      seatMap: input.seatMap,
+      idleSeatMap: input.idleSeatMap,
+      laptopSeatMap: input.laptopSeatMap,
+      decor: input.decor,
+    };
+    layout.rooms = [normalizeRoom(legacyRoom, DEFAULT_LAYOUT.rooms[0], 0)];
+  } else {
+    layout.rooms = normalizeRooms(input.rooms, DEFAULT_LAYOUT.rooms);
+  }
 
   return layout;
 }

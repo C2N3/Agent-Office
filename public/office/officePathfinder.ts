@@ -1,22 +1,42 @@
 /**
- * Office Pathfinder — A* pathfinding on collision map
- * Ported from pixel_office pathfinding.ts (simplified — zone/flow/accessibility removed)
+ * Office Pathfinder — A* pathfinding on collision map, per-room.
+ * Public API takes world-space coordinates; each room keeps its own grid
+ * in local coordinates and converts at the boundary.
  */
 
 /* eslint-disable no-unused-vars */
 
-import { OFFICE, OFFICE_LAYOUT } from './officeConfig.js';
-import { loadOfficeImage } from './officeLayers.js';
+import { OFFICE } from './officeConfig.js';
+import { loadOfficeImage, officeRooms, officeRoomOrder } from './officeLayers.js';
+
+interface RoomGrid {
+  grid: boolean[][];
+  gridW: number;
+  gridH: number;
+  originX: number;
+  originY: number;
+  tile: number;
+  width: number;
+  height: number;
+}
 
 export const officePathfinder: any = {
-  grid: [],
-  gridW: 0,
-  gridH: 0,
+  rooms: {} as Record<string, RoomGrid>,
 
-  async init(bgW, bgH) {
+  async init() {
+    this.rooms = {};
+    for (let i = 0; i < officeRoomOrder.length; i++) {
+      const roomId = officeRoomOrder[i];
+      await this.initRoom(roomId);
+    }
+  },
+
+  async initRoom(roomId: string) {
+    const room = officeRooms[roomId];
+    if (!room) return;
     const TILE = OFFICE.TILE_SIZE;
-    const assets = (typeof OFFICE_LAYOUT !== 'undefined' && OFFICE_LAYOUT.assets) || {};
-    const src = assets.collision || '/public/office/map/office_collision.webp';
+    const assets = room.assets || {};
+    const src = assets.collision || '/public/office/rooms/room1/map/office_collision.webp';
     const sep = src.indexOf('?') === -1 ? '?' : '&';
     const img = await loadOfficeImage(src + sep + 't=' + Date.now());
     const canvas = document.createElement('canvas');
@@ -28,60 +48,89 @@ export const officePathfinder: any = {
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const data = imageData.data;
 
-    this.gridW = Math.ceil(bgW / TILE);
-    this.gridH = Math.ceil(bgH / TILE);
+    const gridW = Math.ceil(room.width / TILE);
+    const gridH = Math.ceil(room.height / TILE);
+    const scaleX = canvas.width / room.width;
+    const scaleY = canvas.height / room.height;
 
-    const scaleX = canvas.width / bgW;
-    const scaleY = canvas.height / bgH;
-
-    this.grid = [];
-    for (let gy = 0; gy < this.gridH; gy++) {
-      this.grid[gy] = [];
-      for (let gx = 0; gx < this.gridW; gx++) {
+    const grid: boolean[][] = [];
+    for (let gy = 0; gy < gridH; gy++) {
+      grid[gy] = [];
+      for (let gx = 0; gx < gridW; gx++) {
         const px = Math.floor((gx + 0.5) * TILE * scaleX);
         const py = Math.floor((gy + 0.5) * TILE * scaleY);
         const idx = (py * canvas.width + px) * 4;
-        this.grid[gy][gx] = data[idx + 3] < 128; // transparent = walkable
+        grid[gy][gx] = data[idx + 3] < 128;
       }
     }
+
+    this.rooms[roomId] = {
+      grid,
+      gridW,
+      gridH,
+      originX: room.originX,
+      originY: room.originY,
+      tile: TILE,
+      width: room.width,
+      height: room.height,
+    };
   },
 
-  isWalkable(gx, gy) {
-    if (gx < 0 || gy < 0 || gx >= this.gridW || gy >= this.gridH) return false;
-    return this.grid[gy][gx];
+  _roomFromWorld(worldX: number, worldY: number) {
+    for (let i = 0; i < officeRoomOrder.length; i++) {
+      const r = this.rooms[officeRoomOrder[i]];
+      if (!r) continue;
+      if (worldX >= r.originX && worldX < r.originX + r.width &&
+          worldY >= r.originY && worldY < r.originY + r.height) {
+        return { roomId: officeRoomOrder[i], room: r };
+      }
+    }
+    return null;
   },
 
-  findNearestWalkable(gx, gy) {
+  isWalkable(roomId: string, gx: number, gy: number) {
+    const r = this.rooms[roomId];
+    if (!r) return false;
+    if (gx < 0 || gy < 0 || gx >= r.gridW || gy >= r.gridH) return false;
+    return r.grid[gy][gx];
+  },
+
+  findNearestWalkable(roomId: string, gx: number, gy: number) {
     for (let r = 1; r < 10; r++) {
       for (let dy = -r; dy <= r; dy++) {
         for (let dx = -r; dx <= r; dx++) {
-          if (this.isWalkable(gx + dx, gy + dy)) return { x: gx + dx, y: gy + dy };
+          if (this.isWalkable(roomId, gx + dx, gy + dy)) return { x: gx + dx, y: gy + dy };
         }
       }
     }
     return { x: gx, y: gy };
   },
 
-  findPath(startX, startY, endX, endY) {
-    const TILE = OFFICE.TILE_SIZE;
-    if (this.gridW === 0) return [{ x: endX, y: endY }];
+  findPath(roomId: string, startX: number, startY: number, endX: number, endY: number) {
+    const r: RoomGrid = this.rooms[roomId];
+    if (!r || r.gridW === 0) return [{ x: endX, y: endY }];
 
-    let sgx = Math.max(0, Math.min(this.gridW - 1, Math.floor(startX / TILE)));
-    let sgy = Math.max(0, Math.min(this.gridH - 1, Math.floor(startY / TILE)));
-    let egx = Math.max(0, Math.min(this.gridW - 1, Math.floor(endX / TILE)));
-    let egy = Math.max(0, Math.min(this.gridH - 1, Math.floor(endY / TILE)));
+    const TILE = r.tile;
+    const localSX = startX - r.originX;
+    const localSY = startY - r.originY;
+    const localEX = endX - r.originX;
+    const localEY = endY - r.originY;
 
-    if (!this.isWalkable(sgx, sgy)) {
-      const ns = this.findNearestWalkable(sgx, sgy);
+    let sgx = Math.max(0, Math.min(r.gridW - 1, Math.floor(localSX / TILE)));
+    let sgy = Math.max(0, Math.min(r.gridH - 1, Math.floor(localSY / TILE)));
+    let egx = Math.max(0, Math.min(r.gridW - 1, Math.floor(localEX / TILE)));
+    let egy = Math.max(0, Math.min(r.gridH - 1, Math.floor(localEY / TILE)));
+
+    if (!this.isWalkable(roomId, sgx, sgy)) {
+      const ns = this.findNearestWalkable(roomId, sgx, sgy);
       sgx = ns.x; sgy = ns.y;
     }
-    if (!this.isWalkable(egx, egy)) {
-      const ne = this.findNearestWalkable(egx, egy);
+    if (!this.isWalkable(roomId, egx, egy)) {
+      const ne = this.findNearestWalkable(roomId, egx, egy);
       egx = ne.x; egy = ne.y;
     }
     if (sgx === egx && sgy === egy) return [{ x: endX, y: endY }];
 
-    // A* search
     const openSet: any[] = [];
     const closedSet: Record<string, boolean> = {};
     const h0 = Math.abs(sgx - egx) + Math.abs(sgy - egy);
@@ -95,14 +144,16 @@ export const officePathfinder: any = {
       const key = current.x + ',' + current.y;
 
       if (current.x === egx && current.y === egy) {
-        // reconstruct
         const path: any[] = [];
         let node: any = current;
         while (node) {
-          path.unshift({ x: node.x * TILE + Math.floor(TILE / 2), y: node.y * TILE + Math.floor(TILE / 2) });
+          path.unshift({
+            x: node.x * TILE + Math.floor(TILE / 2) + r.originX,
+            y: node.y * TILE + Math.floor(TILE / 2) + r.originY,
+          });
           node = node.parent;
         }
-        path.shift(); // remove start
+        path.shift();
         if (path.length > 0) {
           path[path.length - 1] = { x: endX, y: endY };
         }
@@ -114,7 +165,7 @@ export const officePathfinder: any = {
       for (let i = 0; i < dirs.length; i++) {
         const dx = dirs[i][0], dy = dirs[i][1];
         const nx = current.x + dx, ny = current.y + dy;
-        if (!this.isWalkable(nx, ny) || closedSet[nx + ',' + ny]) continue;
+        if (!this.isWalkable(roomId, nx, ny) || closedSet[nx + ',' + ny]) continue;
 
         const cost = (dx !== 0 && dy !== 0) ? 1.4 : 1;
         const g = current.g + cost;

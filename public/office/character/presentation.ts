@@ -1,6 +1,6 @@
 
 import { avatarIndexFromId } from '../officeConfig.js';
-import { officeCoords } from '../officeCoords.js';
+import { officeCoordsByRoom } from '../officeCoords.js';
 
 export function humanizeToolName(toolName, provider) {
   if (!toolName) return null;
@@ -105,7 +105,7 @@ export function clearReportBubble(agentId) {
 }
 
 export function findNearDeskIdleSpot(char) {
-  const coords = officeCoords;
+  const coords = officeCoordsByRoom[char.roomId];
   if (!coords || !coords.idle || !coords.desk || coords.desk.length === 0) return null;
 
   let avgX = 0;
@@ -120,6 +120,7 @@ export function findNearDeskIdleSpot(char) {
   const occupied = {};
   this.characters.forEach((a) => {
     if (a.id === char.id) return;
+    if (a.roomId !== char.roomId) return;
     let ax = Math.floor(a.x);
     let ay = Math.floor(a.y);
     if (a.path.length > 0) {
