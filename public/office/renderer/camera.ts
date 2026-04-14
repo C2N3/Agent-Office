@@ -4,6 +4,7 @@ export function setupCameraControls(renderer, canvas, officeLayers) {
 
   canvas.addEventListener('wheel', function (e) {
     e.preventDefault();
+    renderer.clearFollow?.();
     const rect = canvas.getBoundingClientRect();
     const mouseX = (e.clientX - rect.left) / rect.width * canvas.width;
     const mouseY = (e.clientY - rect.top) / rect.height * canvas.height;
@@ -27,6 +28,7 @@ export function setupCameraControls(renderer, canvas, officeLayers) {
   canvas.addEventListener('mousedown', function (e) {
     if (e.button !== 2) return;
     e.preventDefault();
+    renderer.clearFollow?.();
     dragging = true;
     dragMoved = false;
     dragStartX = e.clientX;
@@ -65,6 +67,7 @@ export function setupCameraControls(renderer, canvas, officeLayers) {
   }, true);
 
   canvas.addEventListener('dblclick', function () {
+    renderer.clearFollow?.();
     const zoomX = canvas.width / officeLayers.width;
     const zoomY = canvas.height / officeLayers.height;
     cam.zoom = Math.max(cam.minZoom, Math.min(Math.min(zoomX, zoomY), cam.maxZoom));

@@ -30,7 +30,7 @@ import {
   refreshTerminalProfiles,
   resumeRegisteredSession,
 } from './terminal/index.js';
-import { initOffice } from '../office/index.js';
+import { initOffice, officeRenderer } from '../office/index.js';
 import {
   setupAgentModal,
   setupAssignTaskModal,
@@ -206,7 +206,11 @@ function initAgentPanelEvents() {
 
     const card = target.closest('.mc-agent-card') as HTMLDivElement | null;
     if (card?.dataset.id) {
-      openTerminalForAgent(card.dataset.id);
+      agentPanel.querySelectorAll('.mc-agent-card.is-focused').forEach((el) => {
+        if (el !== card) el.classList.remove('is-focused');
+      });
+      card.classList.add('is-focused');
+      officeRenderer.focusOnCharacter?.(card.dataset.id);
     }
   });
 }
