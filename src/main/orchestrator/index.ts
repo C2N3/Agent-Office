@@ -24,11 +24,13 @@ class Orchestrator extends EventEmitter {
     super();
     this.taskStore = options.taskStore;
     this.terminalManager = options.terminalManager;
+    this.processManager = options.processManager || null;
     this.workspaceManager = options.workspaceManager;
     this.agentRegistry = options.agentRegistry;
     this.agentManager = options.agentManager;
     this.debugLog = options.debugLog || (() => {});
     this.maxConcurrentTasks = options.maxConcurrentTasks || MAX_CONCURRENT_TASKS;
+    this.broadcastTaskOutput = options.broadcastTaskOutput || null;
 
     // Runtime maps
     this.outputParsers = new Map();   // taskId -> OutputParser
@@ -62,6 +64,10 @@ class Orchestrator extends EventEmitter {
     }
     this.cleanupFns.clear();
     this.outputParsers.clear();
+    // Kill all headless processes
+    if (this.processManager) {
+      this.processManager.killAll().catch(() => {});
+    }
     this.debugLog('[Orchestrator] Stopped');
   }
 
@@ -307,6 +313,16 @@ class Orchestrator extends EventEmitter {
     if (!target) return;
 
     if (this._exitSent?.has(target.id)) return;
+
+    // Headless tasks (--print mode) auto-exit when done — no /exit needed
+    if (this.processManager?.isRunning(target.id)) {
+      this.debugLog(
+        `[Orchestrator] Provider completion for headless task ${target.id.slice(0, 8)} — process will auto-exit`,
+      );
+      return;
+    }
+
+    // Legacy PTY path (manual terminals)
     if (!target.terminalId || !this.terminalManager.hasTerminal(target.terminalId)) return;
 
     this.debugLog(

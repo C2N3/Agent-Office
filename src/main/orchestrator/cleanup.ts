@@ -16,11 +16,21 @@ function cleanupTaskRuntime(orchestrator, taskId) {
     orchestrator.cleanupFns.delete(taskId);
   }
   orchestrator.outputParsers.delete(taskId);
+
+  // Kill headless process if still running
+  if (orchestrator.processManager?.isRunning(taskId)) {
+    orchestrator.processManager.kill(taskId).catch(() => {});
+  }
 }
 
 function cleanupTaskWorktree(orchestrator, taskId) {
   const task = orchestrator.taskStore.getTask(taskId);
   if (!task || !task.workspacePath) return;
+
+  // Kill headless process if still running
+  if (orchestrator.processManager?.isRunning(taskId)) {
+    orchestrator.processManager.kill(taskId).catch(() => {});
+  }
 
   if (task.terminalId && orchestrator.terminalManager.hasTerminal(task.terminalId)) {
     orchestrator.terminalManager.destroyTerminal(task.terminalId);

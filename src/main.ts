@@ -194,11 +194,16 @@ app.whenReady().then(() => {
     terminalProfileService,
   });
 
-  // 4.6. Create orchestrator and team coordinator
+  // 4.6. Create process manager for headless task execution
+  const { ProcessManager } = require('./main/orchestrator/processManager');
+  const processManager = new ProcessManager({ debugLog });
+
+  // 4.7. Create orchestrator and team coordinator
   taskStore = new TaskStore(debugLog);
   orchestrator = new Orchestrator({
     taskStore,
     terminalManager,
+    processManager,
     workspaceManager,
     agentRegistry,
     agentManager,
@@ -210,6 +215,7 @@ app.whenReady().then(() => {
   const teamCoordinator = new TeamCoordinator({
     teamStore,
     terminalManager,
+    processManager,
     agentRegistry,
     agentManager,
     workspaceManager,

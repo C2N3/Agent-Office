@@ -131,6 +131,7 @@
     "ajv": "^8.18.0",
     "marked": "^18.0.0",
     "node-addon-api": "^8.7.0",
-    "node-pty": "^1.1.0"
+    "node-pty": "^1.1.0",
+    "tree-kill": "^1.2.2"
   }
 }

@@ -10,10 +10,6 @@ const {
   handleTaskSuccess,
 } = require('./completion');
 
-const STDIN_READY_TIMEOUT_MS = 8000;
-const STDIN_POST_READY_MS = 400;
-const CLAUDE_READY_MARKER = /[❯⏵]|bypass permissions/;
-
 async function dispatchTask(orchestrator, task) {
   orchestrator.taskStore.updateTask(task.id, { status: 'provisioning', updatedAt: Date.now() });
   orchestrator.emit('task:updated', orchestrator.taskStore.getTask(task.id));
@@ -103,71 +99,65 @@ async function dispatchTask(orchestrator, task) {
     maxTurns: task.maxTurns,
   });
 
-  const terminalId = agentRegistryId;
-  if (orchestrator.terminalManager.hasTerminal(terminalId)) {
-    orchestrator.terminalManager.destroyTerminal(terminalId);
-    // Wait for Windows to release process handles after kill
-    if (process.platform === 'win32') {
-      await new Promise(r => setTimeout(r, 1000));
-    }
-  }
-  const termResult = orchestrator.terminalManager.createTerminal(terminalId, {
-    cwd: workspacePath || task.repositoryPath,
-    command: spawnConfig.command,
-    args: spawnConfig.args,
-  });
-  if (!termResult.success) {
-    throw new Error(`Terminal spawn failed: ${termResult.error}`);
-  }
+  // Spawn headless process via processManager (no PTY/ConPTY)
+  const taskCwd = workspacePath || task.repositoryPath;
+  const { pid, stdout, stderr, stdin, exitPromise } = await orchestrator.processManager.spawn(
+    task.id,
+    {
+      command: spawnConfig.command,
+      args: spawnConfig.args,
+      cwd: taskCwd,
+      env: spawnConfig.env,
+    },
+  );
 
-  orchestrator.taskStore.updateTask(task.id, { terminalId });
-  const outputParser = new OutputParser(adapter);
+  // Deliver prompt via stdin pipe immediately (no TUI ready-marker detection needed)
+  if (adapter.buildStdinPrompt) {
+    stdin.write(adapter.buildStdinPrompt(task.prompt));
+  }
+  stdin.end();
+
+  // Set up output parsing with the correct format
+  const outputParser = new OutputParser(adapter, spawnConfig.outputFormat);
   orchestrator.outputParsers.set(task.id, outputParser);
 
-  const cleanups = [];
-  const stdinState = (spawnConfig.promptDelivery === 'stdin' && adapter.buildStdinPrompt)
-    ? { written: false, fallbackTimer: null, postReadyTimer: null }
-    : null;
+  // Stream stdout
+  stdout.setEncoding('utf8');
+  stdout.on('data', (chunk) => {
+    const events = outputParser.feedStdout(chunk);
+    handleTaskOutput(orchestrator, task.id, events, outputParser);
+    // Broadcast parsed events to dashboard with type info for chat UI
+    if (orchestrator.broadcastTaskOutput) {
+      for (const evt of events) {
+        if (evt.message) {
+          orchestrator.broadcastTaskOutput(task.id, JSON.stringify({
+            text: evt.message,
+            type: evt.type || 'text',
+            toolName: evt.toolName || null,
+          }), 'stdout');
+        }
+      }
+    }
+  });
 
-  const writePromptOnce = () => {
-    if (!stdinState || stdinState.written) return;
-    stdinState.written = true;
-    if (stdinState.fallbackTimer) {
-      clearTimeout(stdinState.fallbackTimer);
-      stdinState.fallbackTimer = null;
+  // Stream stderr
+  stderr.setEncoding('utf8');
+  stderr.on('data', (chunk) => {
+    const stderrEvents = outputParser.feedStderr(chunk);
+    // Broadcast parsed stderr to dashboard
+    if (orchestrator.broadcastTaskOutput) {
+      for (const evt of stderrEvents) {
+        if (evt.message) {
+          orchestrator.broadcastTaskOutput(task.id, evt.message, 'stderr');
+        }
+      }
     }
-    if (stdinState.postReadyTimer) {
-      clearTimeout(stdinState.postReadyTimer);
-      stdinState.postReadyTimer = null;
-    }
-    orchestrator.terminalManager.writeToTerminal(terminalId, adapter.buildStdinPrompt(task.prompt));
-    orchestrator.debugLog(`[Orchestrator] Prompt delivered via stdin: ${task.id.slice(0, 8)}`);
-  };
+  });
 
-  cleanups.push(orchestrator.terminalManager.tapOutput(terminalId, (data) => {
-    if (stdinState && !stdinState.written && !stdinState.postReadyTimer
-        && CLAUDE_READY_MARKER.test(data)) {
-      stdinState.postReadyTimer = setTimeout(writePromptOnce, STDIN_POST_READY_MS);
-    }
-    handleTaskOutput(orchestrator, task.id, data, outputParser);
-  }));
-  cleanups.push(orchestrator.terminalManager.tapExit(terminalId, (exitCode) => {
-    if (stdinState) {
-      if (stdinState.fallbackTimer) clearTimeout(stdinState.fallbackTimer);
-      if (stdinState.postReadyTimer) clearTimeout(stdinState.postReadyTimer);
-    }
+  // Handle exit via exitPromise (replaces terminalManager.tapExit)
+  exitPromise.then((exitCode) => {
     handleTaskExit(orchestrator, task.id, exitCode);
-  }));
-  orchestrator.cleanupFns.set(task.id, cleanups);
-
-  if (stdinState) {
-    stdinState.fallbackTimer = setTimeout(() => {
-      stdinState.fallbackTimer = null;
-      if (stdinState.written) return;
-      orchestrator.debugLog(`[Orchestrator] TUI readiness marker not seen in ${STDIN_READY_TIMEOUT_MS}ms - writing prompt anyway: ${task.id.slice(0, 8)}`);
-      writePromptOnce();
-    }, STDIN_READY_TIMEOUT_MS);
-  }
+  });
 
   orchestrator.taskStore.updateTask(task.id, {
     status: 'running',
@@ -176,14 +166,13 @@ async function dispatchTask(orchestrator, task) {
   });
   orchestrator.emit('task:running', orchestrator.taskStore.getTask(task.id));
   orchestrator.emit('task:updated', orchestrator.taskStore.getTask(task.id));
-  orchestrator.debugLog(`[Orchestrator] Task running: ${task.id} provider=${provider}`);
+  orchestrator.debugLog(`[Orchestrator] Task running: ${task.id} provider=${provider} pid=${pid}`);
 }
 
-function handleTaskOutput(orchestrator, taskId, data, outputParser) {
+function handleTaskOutput(orchestrator, taskId, events, outputParser) {
   const task = orchestrator.taskStore.getTask(taskId);
   if (!task || task.status !== 'running') return;
 
-  const events = outputParser.feed(data);
   orchestrator.taskStore.updateTask(taskId, { lastOutput: outputParser.getRecentOutput(500) });
 
   if (outputParser.isContextExhausted()) {
@@ -196,12 +185,6 @@ function handleTaskOutput(orchestrator, taskId, data, outputParser) {
       return;
     }
   }
-
-  // Track cumulative bytes for output saving/telemetry only. Task completion is
-  // driven by provider events (Stop hook / task_complete / session.end) via
-  // Orchestrator.handleProviderTaskComplete, not by TUI heuristics.
-  const prevBytes = orchestrator.taskOutputBytes.get(taskId) || 0;
-  orchestrator.taskOutputBytes.set(taskId, prevBytes + (data ? data.length : 0));
 }
 
 // No-op kept for backward compatibility with any external callers; idle-based

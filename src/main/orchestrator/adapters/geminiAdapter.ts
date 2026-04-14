@@ -18,17 +18,23 @@ class GeminiAdapter {
   }
 
   buildSpawnConfig(options) {
-    const args = ['--yolo'];
+    // --prompt= (empty value) enables headless mode; actual prompt delivered via stdin pipe.
+    // Must use --prompt= (single arg) instead of -p '' because Windows cmd.exe drops empty string args.
+    const args = ['--yolo', '--prompt='];
     if (options.model) {
       args.push('--model', options.model);
     }
-    args.push(options.prompt);
     return {
       command: 'gemini',
       args,
-      promptDelivery: 'arg',
+      promptDelivery: 'stdin',
+      outputFormat: 'text',
       env: {},
     };
+  }
+
+  buildStdinPrompt(prompt) {
+    return prompt + '\n';
   }
 
   parseOutput(chunk, buffer) {

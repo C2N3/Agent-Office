@@ -80,6 +80,7 @@ export interface CLISpawnResult {
   args: string[];
   promptDelivery: 'stdin' | 'arg';
   env: Record<string, string>;
+  outputFormat?: 'text' | 'stream-json';
 }
 
 export interface OutputParseResult {

@@ -71,6 +71,9 @@ export function attachOrchestratorBroadcasts(orchestrator: any): void {
       broadcastUpdate(event, task);
     });
   }
+
+  // Inject task output broadcaster for headless process streaming
+  orchestrator.broadcastTaskOutput = broadcastTaskOutput;
 }
 
 export function attachTeamCoordinatorBroadcasts(teamCoordinator: any): void {
@@ -84,6 +87,11 @@ export function attachTeamCoordinatorBroadcasts(teamCoordinator: any): void {
       broadcastUpdate(event, team);
     });
   }
+}
+
+export function broadcastTaskOutput(taskId: string, text: string, stream: 'stdout' | 'stderr'): void {
+  broadcastSSE('task.output', { taskId, text, stream });
+  broadcastUpdate('task:output', { taskId, text, stream });
 }
 
 export function getAgentManager(): any {

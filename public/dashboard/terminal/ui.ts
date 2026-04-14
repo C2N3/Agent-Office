@@ -43,6 +43,10 @@ export async function resumeLatestRegisteredSession(registryId, label, resumeReg
   }
 }
 
+export function addTerminalTabHelper(agentId, label, activateTerminalTabFn, closeTerminalFn) {
+  return addTerminalTab(agentId, label, activateTerminalTabFn, closeTerminalFn);
+}
+
 function addTerminalTab(agentId, label, activateTerminalTab, closeTerminal) {
   const list = document.getElementById('terminalTabsList');
   const tab = document.createElement('div');

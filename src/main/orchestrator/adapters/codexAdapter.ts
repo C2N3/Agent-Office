@@ -18,18 +18,23 @@ class CodexAdapter {
   }
 
   buildSpawnConfig(options) {
+    // Prompt delivered via stdin pipe instead of trailing argument to avoid
+    // Windows command-line length limits and shell escaping issues.
     const args = ['exec', '--full-auto'];
     if (options.model) {
       args.push('--model', options.model);
     }
-    // Codex takes prompt as trailing argument
-    args.push(options.prompt);
     return {
       command: 'codex',
       args,
-      promptDelivery: 'arg',
+      promptDelivery: 'stdin',
+      outputFormat: 'text',
       env: {},
     };
+  }
+
+  buildStdinPrompt(prompt) {
+    return prompt + '\n';
   }
 
   parseOutput(chunk, buffer) {

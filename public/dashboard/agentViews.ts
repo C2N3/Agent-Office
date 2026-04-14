@@ -13,6 +13,7 @@ import {
 import { updateConnectionStatus } from './connectionStatus.js';
 import { getStateColor } from './agentViewHelpers.js';
 import { buildAgentCardHtml } from './agentCard/markup.js';
+import { openTaskLogTab, appendTaskChatMessage } from './terminal/index.js';
 
 export { getStateColor };
 
@@ -73,15 +74,34 @@ export function connectSSE() {
   });
   eventSource.addEventListener('task.running', (event: MessageEvent) => {
     try {
-      const data = JSON.parse(event.data) as { data: { agentRegistryId?: string; terminalId?: string; title?: string } };
+      const data = JSON.parse(event.data) as { data: { id?: string; agentRegistryId?: string; terminalId?: string; title?: string } };
       const task = data.data;
       if (task.terminalId && typeof (globalThis as any).openTerminalForAgent === 'function') {
+        // Legacy PTY terminal path (manual terminals)
         (globalThis as any).openTerminalForAgent(task.terminalId, {
           forceTerminalTab: true,
           skipProviderBoot: true,
           skipAutoResume: true,
           label: task.title || 'Task',
         });
+      } else if (task.id && task.agentRegistryId) {
+        // Headless task: open a log-only tab (no PTY)
+        openTaskLogTab(task.id, task.agentRegistryId, task.title || 'Task');
+      }
+    } catch {}
+  });
+  eventSource.addEventListener('task.output', (event: MessageEvent) => {
+    try {
+      const data = JSON.parse(event.data) as { data: { taskId?: string; text?: string; stream?: string } };
+      const { taskId, text } = data.data;
+      if (taskId && text) {
+        try {
+          const parsed = JSON.parse(text) as { text: string; type: string; toolName?: string | null };
+          appendTaskChatMessage(taskId, parsed);
+        } catch {
+          // Fallback: plain text
+          appendTaskChatMessage(taskId, { text: text, type: 'text' });
+        }
       }
     } catch {}
   });

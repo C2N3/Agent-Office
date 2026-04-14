@@ -1,7 +1,7 @@
 /**
  * TeamCoordinator — fully independent team execution pipeline.
  * Does NOT use Orchestrator's task queue, idle timers, or session handling.
- * Spawns Claude CLI in --print mode (auto-exits, clean output, no TUI issues).
+ * Spawns CLI in --print mode via processManager (headless, no PTY/ConPTY).
  */
 const EventEmitter = require('events');
 const fs = require('fs');
@@ -13,15 +13,16 @@ const TEAM_OUTPUT_DIR = path.join(os.homedir(), '.agent-office', 'team-output');
 const GLOBAL_WORKTREE_DIR = path.join(os.homedir(), '.agent-office', 'worktrees');
 
 class TeamCoordinator extends EventEmitter {
-  constructor({ teamStore, terminalManager, agentRegistry, agentManager, workspaceManager, debugLog }) {
+  constructor({ teamStore, terminalManager, processManager, agentRegistry, agentManager, workspaceManager, debugLog }) {
     super();
     this.teamStore = teamStore;
     this.terminalManager = terminalManager;
+    this.processManager = processManager;
     this.agentRegistry = agentRegistry;
     this.agentManager = agentManager;
     this.workspaceManager = workspaceManager;
     this.debugLog = debugLog || (() => {});
-    this.activeJobs = new Map(); // teamId:agentId -> { terminalId, output }
+    this.activeJobs = new Map(); // teamId:agentId -> { jobId }
   }
 
   // ========== PUBLIC API ==========
@@ -62,11 +63,11 @@ class TeamCoordinator extends EventEmitter {
     const team = this.teamStore.getTeam(teamId);
     if (!team) throw new Error('Team not found');
 
-    // Kill all active terminals
+    // Kill all active processes
     for (const [key, job] of this.activeJobs) {
       if (key.startsWith(teamId)) {
-        if (this.terminalManager.hasTerminal(job.terminalId)) {
-          this.terminalManager.destroyTerminal(job.terminalId);
+        if (this.processManager?.isRunning(job.jobId)) {
+          this.processManager.kill(job.jobId).catch(() => {});
         }
       }
     }
@@ -253,24 +254,24 @@ class TeamCoordinator extends EventEmitter {
     this.emit('team:updated', this.teamStore.getTeam(teamId));
   }
 
-  // ========== CLI RUNNER (--print mode, no Orchestrator) ==========
+  // ========== CLI RUNNER (headless spawn via processManager) ==========
 
   _runCLI({ teamId, agentId, prompt, repoPath, label, onSuccess, onFailure }) {
-    const terminalId = `team-${teamId.slice(0, 8)}-${agentId.slice(0, 8)}-${Date.now()}`;
+    const jobId = `team-${teamId.slice(0, 8)}-${agentId.slice(0, 8)}-${Date.now()}`;
     const agent = this.agentRegistry.getAgent(agentId);
     const provider = agent?.provider || 'claude';
 
-    // Build --print command (auto-exits, clean output)
+    // Build headless command — prompt delivered via stdin pipe
     let command, args;
     if (provider === 'claude') {
       command = 'claude';
-      args = ['--print', '--verbose', '--dangerously-skip-permissions', '--max-turns', '50', '-p', prompt];
+      args = ['--print', '--verbose', '--dangerously-skip-permissions', '--max-turns', '50', '--output-format', 'stream-json'];
     } else if (provider === 'codex') {
       command = 'codex';
-      args = ['exec', '--full-auto', prompt];
+      args = ['exec', '--full-auto'];
     } else {
       command = 'gemini';
-      args = ['--yolo', prompt];
+      args = ['--yolo', '--prompt='];
     }
 
     // Create worktree for this task
@@ -299,40 +300,44 @@ class TeamCoordinator extends EventEmitter {
       this.debugLog(`[Team] Worktree creation failed, using repo directly: ${e.message}`);
     }
 
-    const termResult = this.terminalManager.createTerminal(terminalId, { cwd, command, args });
-    if (!termResult.success) {
-      onFailure(`Terminal spawn failed: ${termResult.error}`);
-      return;
-    }
+    // Spawn headless process via processManager
+    this.processManager.spawn(jobId, { command, args, cwd })
+      .then(({ stdout, stderr, stdin, exitPromise }) => {
+        // Deliver prompt via stdin pipe
+        stdin.write(prompt + '\n');
+        stdin.end();
 
-    // Collect output
-    let output = '';
-    const untapOutput = this.terminalManager.tapOutput(terminalId, (data) => {
-      output += data;
-    });
+        // Collect output
+        let output = '';
+        stdout.setEncoding('utf8');
+        stdout.on('data', (chunk) => { output += chunk; });
+        stderr.setEncoding('utf8');
+        stderr.on('data', (chunk) => { output += chunk; });
 
-    const untapExit = this.terminalManager.tapExit(terminalId, (exitCode) => {
-      untapOutput();
-      untapExit();
-      this.activeJobs.delete(`${teamId}:${agentId}`);
+        this.activeJobs.set(`${teamId}:${agentId}`, { jobId });
+        this.debugLog(`[Team] CLI started: ${label} (${jobId.slice(0, 16)})`);
 
-      // Save output
-      const clean = cleanTerminalOutput(output);
-      try {
-        fs.mkdirSync(TEAM_OUTPUT_DIR, { recursive: true });
-        fs.writeFileSync(path.join(TEAM_OUTPUT_DIR, `${terminalId}.txt`), clean, 'utf-8');
-      } catch {}
+        exitPromise.then((exitCode) => {
+          this.activeJobs.delete(`${teamId}:${agentId}`);
 
-      if (exitCode === 0) {
-        this.debugLog(`[Team] CLI done (${label}): exit 0, ${clean.length} chars`);
-        onSuccess(clean);
-      } else {
-        onFailure(`CLI exited with code ${exitCode}`);
-      }
-    });
+          // Clean output and save
+          const clean = cleanTerminalOutput(output);
+          try {
+            fs.mkdirSync(TEAM_OUTPUT_DIR, { recursive: true });
+            fs.writeFileSync(path.join(TEAM_OUTPUT_DIR, `${jobId}.txt`), clean, 'utf-8');
+          } catch {}
 
-    this.activeJobs.set(`${teamId}:${agentId}`, { terminalId });
-    this.debugLog(`[Team] CLI started: ${label} (${terminalId.slice(0, 16)})`);
+          if (exitCode === 0) {
+            this.debugLog(`[Team] CLI done (${label}): exit 0, ${clean.length} chars`);
+            onSuccess(clean);
+          } else {
+            onFailure(`CLI exited with code ${exitCode}`);
+          }
+        });
+      })
+      .catch((err) => {
+        onFailure(`Spawn failed: ${err.message}`);
+      });
   }
 
   // ========== HELPERS ==========
@@ -344,8 +349,8 @@ class TeamCoordinator extends EventEmitter {
     // Kill active jobs
     for (const [key, job] of this.activeJobs) {
       if (key.startsWith(teamId)) {
-        if (this.terminalManager.hasTerminal(job.terminalId)) {
-          this.terminalManager.destroyTerminal(job.terminalId);
+        if (this.processManager?.isRunning(job.jobId)) {
+          this.processManager.kill(job.jobId).catch(() => {});
         }
         this.activeJobs.delete(key);
       }

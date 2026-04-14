@@ -1,7 +1,8 @@
 
-import { dashboardResumeUtils, getDashboardAPI, termState } from '../shared.js';
+import { dashboardResumeUtils, getDashboardAPI, SHARED_AVATAR_FILES, state, termState } from '../shared.js';
 import {
   activateTerminalTab,
+  addTerminalTabHelper,
   createXtermInstance,
   fitActiveTerminal,
   getTerminalOpenContext,
@@ -154,6 +155,133 @@ export function initTerminalProfileMenu() {
 
 export function initResizableHandles() {
   return initResizableHandlesHelper();
+}
+
+// ─── Task Chat UI (messenger-style log for headless tasks) ───
+
+type TaskChatEntry = {
+  chatEl: HTMLDivElement;
+  tab: HTMLDivElement;
+  element: HTMLDivElement;
+  avatarFile: string;
+  agentName: string;
+  lastBubble: HTMLDivElement | null;
+  lastType: string | null;
+};
+
+const taskChatMap = new Map<string, TaskChatEntry>();
+
+/**
+ * Open a messenger-style chat tab for a headless task.
+ */
+export function openTaskLogTab(taskId: string, agentRegistryId: string, label: string) {
+  const tabId = `task-${taskId}`;
+
+  if (termState.terminals.has(tabId)) {
+    activateTerminalTab(tabId);
+    return;
+  }
+
+  // Resolve agent avatar and name
+  const agent = state.agents.get(agentRegistryId);
+  const avatarIndex = agent?.avatarIndex != null ? agent.avatarIndex : 0;
+  const avatarFile = SHARED_AVATAR_FILES[avatarIndex] || SHARED_AVATAR_FILES[0] || 'Origin/avatar_0.webp';
+  const agentName = agent?.nickname || agent?.name || label || 'Agent';
+
+  // Create chat container (replaces xterm)
+  const container = document.getElementById('terminalContainer');
+  const emptyState = document.getElementById('terminalEmptyState');
+  if (emptyState) emptyState.style.display = 'none';
+
+  const element = document.createElement('div');
+  element.className = 'terminal-instance active';
+  element.dataset.agentId = tabId;
+  container!.appendChild(element);
+  container!.querySelectorAll('.terminal-instance').forEach((inst) => {
+    if (inst !== element) inst.classList.remove('active');
+  });
+
+  const chatEl = document.createElement('div');
+  chatEl.className = 'task-chat-container';
+
+  // Initial group with avatar
+  const group = document.createElement('div');
+  group.className = 'task-chat-group';
+  group.innerHTML = `
+    <div class="task-chat-avatar" style="background-image:url('./public/characters/${avatarFile}')"></div>
+    <div class="task-chat-body">
+      <div class="task-chat-name">${agentName}</div>
+    </div>
+  `;
+  chatEl.appendChild(group);
+  element.appendChild(chatEl);
+
+  // Create tab via ui.ts helper
+  const tab = addTerminalTabHelper(tabId, label || 'Task', activateTerminalTab, closeTerminal);
+
+  // Store in termState with a dummy xterm-like object so closeTerminal works
+  const dummyXterm = { dispose() {}, write() {}, writeln() {} };
+  termState.terminals.set(tabId, { xterm: dummyXterm as any, fitAddon: null, element, tab });
+  termState.activeId = tabId;
+
+  // Store chat-specific state
+  taskChatMap.set(taskId, {
+    chatEl,
+    tab,
+    element,
+    avatarFile,
+    agentName,
+    lastBubble: null,
+    lastType: null,
+  });
+}
+
+/**
+ * Append a message to the task chat UI.
+ */
+export function appendTaskChatMessage(taskId: string, data: { text: string; type: string; toolName?: string | null }) {
+  const chat = taskChatMap.get(taskId);
+  if (!chat) return;
+
+  const body = chat.chatEl.querySelector('.task-chat-body') as HTMLDivElement;
+  if (!body) return;
+
+  if (data.type === 'tool_use') {
+    // Tool use → separate line
+    const toolEl = document.createElement('div');
+    toolEl.className = 'task-chat-tool';
+    toolEl.innerHTML = `<span class="task-chat-tool-icon">&gt;</span><span>${escapeHtml(data.text)}</span>`;
+    body.appendChild(toolEl);
+    chat.lastBubble = null;
+    chat.lastType = 'tool_use';
+  } else if (data.type === 'error' || data.type === 'context_exhaustion') {
+    // Error → red line
+    const errEl = document.createElement('div');
+    errEl.className = 'task-chat-error';
+    errEl.textContent = data.text;
+    body.appendChild(errEl);
+    chat.lastBubble = null;
+    chat.lastType = 'error';
+  } else {
+    // Text → chat bubble (append to existing if consecutive)
+    if (chat.lastType === 'text' && chat.lastBubble) {
+      chat.lastBubble.textContent += '\n' + data.text;
+    } else {
+      const bubble = document.createElement('div');
+      bubble.className = 'task-chat-bubble';
+      bubble.textContent = data.text;
+      body.appendChild(bubble);
+      chat.lastBubble = bubble;
+    }
+    chat.lastType = 'text';
+  }
+
+  // Auto-scroll to bottom
+  chat.chatEl.scrollTop = chat.chatEl.scrollHeight;
+}
+
+function escapeHtml(str: string): string {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 export {

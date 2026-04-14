@@ -18,14 +18,14 @@ class ClaudeAdapter {
   }
 
   buildSpawnConfig(options) {
-    // Run in interactive mode (no --print) so the full TUI is visible
-    // in the terminal: tool calls, file reads/writes, streaming, etc.
-    // Note: do NOT pass the prompt as a positional arg — `claude "prompt"`
-    // runs in one-shot mode and exits after responding, leaving the user
-    // unable to continue the conversation. Instead spawn claude bare and
-    // deliver the prompt via stdin so the TUI stays interactive.
+    // Headless --print mode: Claude auto-exits on completion and emits
+    // structured JSON lines via --output-format stream-json.
+    // Prompt is delivered via stdin pipe (not as a command arg) to avoid
+    // Windows shell escaping issues and command-line length limits.
     const args = [
+      '--print',
       '--verbose',
+      '--output-format', 'stream-json',
       '--dangerously-skip-permissions',
       '--max-turns', String(options.maxTurns || 30),
     ];
@@ -36,6 +36,7 @@ class ClaudeAdapter {
       command: 'claude',
       args,
       promptDelivery: 'stdin',
+      outputFormat: 'stream-json',
       env: {},
     };
   }
@@ -72,7 +73,8 @@ class ClaudeAdapter {
   }
 
   buildStdinPrompt(prompt) {
-    return prompt + '\r';
+    // Piped stdin uses \n (not \r which is for PTY terminals)
+    return prompt + '\n';
   }
 }
 
