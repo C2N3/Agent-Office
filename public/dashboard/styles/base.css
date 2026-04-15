@@ -81,6 +81,24 @@ body {
   scrollbar-color: var(--color-border) var(--color-bg);
 }
 
+.ao-tooltip {
+  position: fixed;
+  z-index: 10000;
+  max-width: 240px;
+  padding: 6px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  background: rgba(13, 17, 23, 0.98);
+  color: var(--color-text);
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
+  white-space: normal;
+  pointer-events: none;
+  box-shadow: var(--shadow-md);
+}
+
 /* ─── Layout ─── */
 .app-layout {
   display: flex;

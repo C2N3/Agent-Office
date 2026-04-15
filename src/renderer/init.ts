@@ -7,6 +7,7 @@ import { playAnimation } from './animationManager.js';
 import { addAgent, updateAgent, removeAgent, cleanupAgents, updateGridLayout, showIdleAvatar } from './agentGrid.js';
 import { createWebDashboardButton, setupKeyboardShortcuts, setupContextMenu } from './uiComponents.js';
 import { createErrorUI } from './errorUI.js';
+import { installHoverTooltips } from '../../public/uiTooltip.js';
 
 let availableAvatars = [];
 let idleAvatar = 'avatar_0.webp';
@@ -19,6 +20,9 @@ async function init() {
 
   setupKeyboardShortcuts();
   setupContextMenu();
+  installHoverTooltips({
+    selector: '.agent-card [data-tooltip], .agent-card [title], #web-dashboard-btn[title]',
+  });
 
   // Load avatar list
   if (window.electronAPI.getAvatars) {
