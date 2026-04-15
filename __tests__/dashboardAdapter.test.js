@@ -62,6 +62,7 @@ describe('dashboardAdapter', () => {
           branch: 'feature/test',
         },
         state: 'Working',
+        provider: 'codex',
         model: 'claude-sonnet-4-6',
         tokenUsage: { inputTokens: 1000, outputTokens: 200, estimatedCost: 0.01 },
         currentTool: 'Read',
@@ -87,6 +88,7 @@ describe('dashboardAdapter', () => {
       expect(result.project).toBe('my-app');
       expect(result.status).toBe('working');
       expect(result.type).toBe('main');
+      expect(result.provider).toBe('codex');
       expect(result.model).toBe('claude-sonnet-4-6');
       expect(result.tokenUsage.inputTokens).toBe(1000);
       expect(result.currentTool).toBe('Read');
@@ -101,6 +103,7 @@ describe('dashboardAdapter', () => {
       expect(result.metadata.runtimeSessionId).toBe('sess-123');
       expect(result.metadata.resumeSessionId).toBe('sess-123');
       expect(result.metadata.source).toBe('agent-office');
+      expect(result.metadata.provider).toBe('codex');
       expect(result.timing.elapsed).toBeGreaterThan(0);
       expect(result.timing.active).toBe(true);
     });

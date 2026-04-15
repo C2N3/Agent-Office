@@ -43,7 +43,7 @@ export function setupAssignTaskModal() {
   }
 
   function getSelectedProvider() {
-    return providerInputs.find((input) => input.checked)?.value || currentAgent?.provider || 'claude';
+    return providerInputs.find((input) => input.checked)?.value || resolveAgentProvider(currentAgent);
   }
 
   function setSelectedProvider(provider: string) {
@@ -63,6 +63,10 @@ export function setupAssignTaskModal() {
     executionEnvironmentInputs.forEach((input) => {
       input.checked = input.value === normalized;
     });
+  }
+
+  function resolveAgentProvider(agent: any) {
+    return agent?.provider || agent?.metadata?.provider || 'claude';
   }
 
   function resolveTaskRepositoryPath(agent: any) {
@@ -143,7 +147,7 @@ export function setupAssignTaskModal() {
 
   (globalThis as any).openAssignTaskModal = function (agent: any) {
     currentAgent = agent;
-    const provider = agent.provider || 'claude';
+    const provider = resolveAgentProvider(agent);
     (form as HTMLFormElement).reset();
     if (agentNameEl) agentNameEl.textContent = agent.displayName || agent.name || 'Agent';
     setSelectedProvider(provider);

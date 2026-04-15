@@ -150,6 +150,7 @@ function adaptAgentToDashboard(pixelAgent: PixelAgent): DashboardAgent & { token
     status: mapPixelStateToDashboardState(pixelAgent.state),
     type: determineAgentType(pixelAgent),
     model: pixelAgent.model || null,
+    provider: pixelAgent.provider || null,
     tokenUsage: normalizeTokenUsage(pixelAgent.tokenUsage),
     currentTool: pixelAgent.currentTool || null,
     reportTaskId: pixelAgent.reportTaskId || null,
