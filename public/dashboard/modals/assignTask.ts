@@ -1,5 +1,6 @@
 
 import { getDashboardAPI } from '../shared.js';
+import { getProviderModels, normalizeProvider } from '../providerCatalog.js';
 
 export function setupAssignTaskModal() {
   const modal = document.getElementById('assignTaskModal');
@@ -12,31 +13,11 @@ export function setupAssignTaskModal() {
   const modelSelect = document.getElementById('taskModelInput') as HTMLSelectElement | null;
   if (!modal || !form) return;
 
-  const MODELS_BY_PROVIDER: Record<string, { value: string; label: string }[]> = {
-    claude: [
-      { value: '', label: 'Default' },
-      { value: 'claude-opus-4-6', label: 'Claude Opus 4.6' },
-      { value: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6' },
-      { value: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5' },
-    ],
-    codex: [
-      { value: '', label: 'Default' },
-      { value: 'o4-mini', label: 'o4-mini' },
-      { value: 'o3', label: 'o3' },
-      { value: 'gpt-4.1', label: 'GPT-4.1' },
-    ],
-    gemini: [
-      { value: '', label: 'Default' },
-      { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
-      { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
-    ],
-  };
-
   let currentAgent: any = null;
 
   function populateModels(provider: string) {
     if (!modelSelect) return;
-    const models = MODELS_BY_PROVIDER[provider] || [{ value: '', label: 'Default' }];
+    const models = getProviderModels(provider);
     modelSelect.innerHTML = models
       .map((m) => `<option value="${m.value}">${m.label}</option>`)
       .join('');
@@ -47,7 +28,7 @@ export function setupAssignTaskModal() {
   }
 
   function setSelectedProvider(provider: string) {
-    const normalized = providerInputs.some((input) => input.value === provider) ? provider : 'claude';
+    const normalized = normalizeProvider(provider);
     providerInputs.forEach((input) => {
       input.checked = input.value === normalized;
     });
@@ -66,7 +47,7 @@ export function setupAssignTaskModal() {
   }
 
   function resolveAgentProvider(agent: any) {
-    return agent?.provider || agent?.metadata?.provider || 'claude';
+    return normalizeProvider(agent?.provider || agent?.metadata?.provider);
   }
 
   function resolveTaskRepositoryPath(agent: any) {

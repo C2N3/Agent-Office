@@ -1,7 +1,8 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { getCodexSessionRoots } = require('./codexPaths');
+const { getCodexSessionRoots } = require('./providers/codex/paths');
+const { normalizeProvider } = require('./providers/registry');
 
 function resolveTranscriptPath(transcriptPath) {
   if (!transcriptPath || typeof transcriptPath !== 'string') return null;
@@ -227,7 +228,10 @@ function findClaudeResumeSessionIdForCwd({ requestedSessionId, cwd }) {
 }
 
 function resolveResumeSessionId({ provider, requestedSessionId, transcriptPath, sessionRoots, cwd }) {
-  const normalizedProvider = String(provider || '').trim().toLowerCase();
+  const normalizedProvider = normalizeProvider(provider, String(provider || '').trim() ? null : undefined);
+  if (!normalizedProvider) {
+    return requestedSessionId || null;
+  }
 
   if (normalizedProvider === 'codex') {
     const resolvedFromTranscript = readCodexSessionIdFromTranscript(transcriptPath, null);
@@ -245,9 +249,9 @@ function resolveResumeSessionId({ provider, requestedSessionId, transcriptPath, 
     return requestedSessionId || null;
   }
 
-  // Claude (default): scope the UUID to the current cwd so a stale ID from a
-  // previous workspace doesn't produce "No conversation found".
-  if (cwd) {
+  // Claude: scope the UUID to the current cwd so a stale ID from a previous
+  // workspace doesn't produce "No conversation found".
+  if (normalizedProvider === 'claude' && cwd) {
     const resolvedForCwd = findClaudeResumeSessionIdForCwd({ requestedSessionId, cwd });
     if (resolvedForCwd) return resolvedForCwd;
   }

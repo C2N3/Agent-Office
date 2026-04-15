@@ -1,5 +1,6 @@
 
 import { getDashboardAPI, type DashboardPathRegistrationStrategy } from '../shared.js';
+import { DEFAULT_PROVIDER_ID, normalizeProvider } from '../providerCatalog.js';
 import {
   buildFallbackBranchName,
   pickDirectory,
@@ -29,7 +30,7 @@ export function setupAgentModal(openTerminalForAgent) {
   const inspectStatusEl = document.getElementById('agentRepoInspectStatus');
   if (!modal || !form || !openBtn || !workspacePathInput || !strategyInput || !worktreeFields) return;
 
-  let selectedProvider = 'claude';
+  let selectedProvider = DEFAULT_PROVIDER_ID;
   let branchMode = 'auto';
   let baseBranchTouched = false;
   let startPointTouched = false;
@@ -41,7 +42,7 @@ export function setupAgentModal(openTerminalForAgent) {
     btn.addEventListener('click', () => {
       providerBtns.forEach((item) => item.classList.remove('active'));
       btn.classList.add('active');
-      selectedProvider = btn.dataset.provider;
+      selectedProvider = normalizeProvider(btn.dataset.provider);
       syncAutoBranch();
       refreshRegistrationPreview().catch((error) => {
         console.error('[Workspace Resolve]', error);
@@ -52,7 +53,7 @@ export function setupAgentModal(openTerminalForAgent) {
   function resetProviderSelection() {
     providerBtns.forEach((btn) => btn.classList.remove('active'));
     if (providerBtns[0]) providerBtns[0].classList.add('active');
-    selectedProvider = 'claude';
+    selectedProvider = DEFAULT_PROVIDER_ID;
   }
 
   function updateBranchModeLabel() {

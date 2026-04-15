@@ -15,6 +15,7 @@ const errorHandler = require('./errorHandler');
 const { getWindowSizeForAgents } = require('./utils');
 
 const { getEnabledProviders } = require('./main/providerConfig');
+const { providerSupportsLiveness } = require('./main/providers/registry');
 const { sessionPids, startLivenessChecker, detectClaudePidByTranscript, detectProviderPidBySessionFile } = require('./main/livenessChecker');
 const { registerIpcHandlers } = require('./main/ipcHandlers');
 const { NicknameStore } = require('./main/nicknameStore');
@@ -271,7 +272,7 @@ app.whenReady().then(() => {
     debugLog('[Main] Orchestrator started');
   }
 
-  if (enabledProviders.some((provider) => provider === 'claude' || provider === 'codex')) {
+  if (enabledProviders.some((provider) => providerSupportsLiveness(provider))) {
     livenessIntervals = startLivenessChecker({ agentManager, agentRegistry, taskStore, terminalManager, debugLog });
   }
 

@@ -1,4 +1,6 @@
 
+import { DEFAULT_PROVIDER_ID, normalizeProvider } from '../providerCatalog.js';
+
 function escapeHtml(str) {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
@@ -77,7 +79,7 @@ export function setupTaskReportModal() {
   let currentTaskId = '';
   let currentAgentId = '';
   let currentRepositoryPath = '';
-  let currentProvider = 'claude';
+  let currentProvider = DEFAULT_PROVIDER_ID;
   let currentExecutionEnvironment = 'auto';
   let currentModel: string | null = null;
   let currentTitle = '';
@@ -87,7 +89,7 @@ export function setupTaskReportModal() {
     currentTaskId = '';
     currentAgentId = '';
     currentRepositoryPath = '';
-    currentProvider = 'claude';
+    currentProvider = DEFAULT_PROVIDER_ID;
     currentExecutionEnvironment = 'auto';
     currentModel = null;
     currentTitle = '';
@@ -110,7 +112,7 @@ export function setupTaskReportModal() {
       const data = await res.json();
       currentAgentId = data.agentRegistryId || '';
       currentRepositoryPath = data.repositoryPath || '';
-      currentProvider = data.provider || 'claude';
+      currentProvider = normalizeProvider(data.provider);
       currentExecutionEnvironment = data.executionEnvironment || 'auto';
       currentModel = data.model || null;
       currentTitle = data.title || '';

@@ -13,14 +13,14 @@ jest.mock('fs', () => ({
   closeSync: jest.fn(),
 }));
 
-jest.mock('../src/main/codexPaths', () => ({
+jest.mock('../src/main/providers/codex/paths', () => ({
   getCodexSessionRoots: jest.fn(() => []),
 }));
 
 const fs = require('fs');
 const path = require('path');
-const { getCodexSessionRoots } = require('../src/main/codexPaths');
-const { createCodexSessionMonitor } = require('../src/main/codexSessionMonitor');
+const { getCodexSessionRoots } = require('../src/main/providers/codex/paths');
+const { createCodexSessionMonitor } = require('../src/main/providers/codex/sessionMonitor');
 
 describe('codexSessionMonitor', () => {
   beforeEach(() => {

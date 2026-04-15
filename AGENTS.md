@@ -38,12 +38,20 @@ Repository-wide instructions for agents working in this project.
 - The 300-line rule targets source, styles, and scripts that agents need to read and edit. Generated output, lockfiles, binary media, and test fixtures may be larger when splitting them would not reduce agent context.
 - When modularizing, create a directory for the related files and move the split modules into it.
 - Do not repeat the directory name as a redundant filename prefix for files inside that directory.
-- Prefer feature directories with role-named files over broad sibling names. For example, use `src/main/codex/events.ts` instead of `src/main/codexEvents.ts`, and `src/main/liveness/agents.ts` instead of `src/main/livenessAgents.ts`.
+- Prefer feature directories with role-named files over broad sibling names. For example, use `src/main/providers/codex/events.ts` instead of `src/main/codexEvents.ts`, and `src/main/liveness/agents.ts` instead of `src/main/livenessAgents.ts`.
 - Prefer modules that are understandable from a small, local context. A task should usually be explainable by reading a few nearby files, not a long dependency chain.
 - Keep abstractions thin and explainable. If an abstraction hides important behavior, add a short nearby note or module-level comment that states where the real work happens.
 - Use specific, role-revealing names for files, functions, and exports. Avoid generic names like `process`, `handle`, or `manager` when the behavior can be named directly.
 - Keep short documentation close to the code it explains: entrypoints, orchestration flows, and modules with non-obvious dependencies should include concise local context.
 - Avoid over-splitting. Each extracted module should be a self-contained chunk with one clear responsibility and enough context to support retrieval and review.
+
+## Provider Abstraction
+
+- Any feature that starts, resumes, monitors, scans, displays, prices, or recovers a CLI provider must go through the provider abstraction instead of hardcoding Claude, Codex, Gemini, or provider-specific defaults inline.
+- Main-process provider behavior belongs in `src/main/providers/registry.ts`: provider IDs, labels, CLI command names, resume commands, process matching rules, liveness support, transcript support, and recovery capabilities.
+- Dashboard provider UI behavior belongs in `public/dashboard/providerCatalog.ts`: provider IDs, labels, model options, and terminal boot commands.
+- When adding a provider or changing provider behavior, update the relevant registry/catalog first, then wire feature code to consume it. Do not add new `provider === 'claude' ? ... : ...` branches unless the branch is implementing a provider-specific adapter or processor behind the abstraction.
+- If a provider does not support a capability, represent that explicitly in the registry/catalog and let callers no-op or return a clear unsupported result. Do not fall back to Claude behavior for an unknown or unsupported provider.
 
 ## Practical Rule For Agents
 

@@ -4,6 +4,7 @@ const { parseConversation, getConversationSummary } = require('../conversationPa
 const { resolveResumeSessionId } = require('../sessionIdResolver');
 const { resolveProjectPathForPlatform } = require('../../utils');
 const { dashboardIpcChannels } = require('../../shared/contracts/ipc');
+const { buildProviderResumeCommand } = require('../providers/registry');
 
 function registerRegistryHandlers({
   agentManager,
@@ -31,10 +32,7 @@ function registerRegistryHandlers({
   }
 
   function buildResumeCommand(provider, sessionId) {
-    if (!sessionId) return null;
-    return String(provider || '').trim().toLowerCase() === 'codex'
-      ? `codex resume ${sessionId}\r`
-      : `claude --resume ${sessionId}\r`;
+    return buildProviderResumeCommand(provider, sessionId);
   }
 
   ipcMain.handle(dashboardIpcChannels.registryCreate, async (_event, data) => {
@@ -151,10 +149,15 @@ function registerRegistryHandlers({
     // Compute cwd up front so the Claude resolver can scope the UUID lookup
     // to ~/.claude/projects/<encoded-cwd>/ and fall back to the latest session
     // in that directory if the requested UUID belongs to a previous workspace.
-    let cwd = resolveProjectPathForPlatform(agent.workspace?.worktreePath || agent.projectPath) || undefined;
+    const sourceCwd = agent.workspace?.worktreePath || agent.projectPath;
+    let cwd = resolveProjectPathForPlatform(sourceCwd) || undefined;
     if (cwd) {
       try {
-        if (!fs.existsSync(cwd) || !fs.statSync(cwd).isDirectory()) cwd = undefined;
+        if (!fs.existsSync(cwd) || !fs.statSync(cwd).isDirectory()) {
+          cwd = sourceCwd && sourceCwd !== cwd && fs.existsSync(sourceCwd) && fs.statSync(sourceCwd).isDirectory()
+            ? sourceCwd
+            : undefined;
+        }
       } catch {
         cwd = undefined;
       }

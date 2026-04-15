@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
+const { normalizeProvider } = require('../providers/registry');
 import type { TaskDefinition } from './types.js';
 
 const PERSIST_DIR = path.join(os.homedir(), '.agent-office');
@@ -51,11 +52,16 @@ class TaskStore {
   }
 
   createTask(input) {
+    const provider = normalizeProvider(input.provider, input.provider ? null : undefined);
+    if (!provider) {
+      throw new Error(`Unknown CLI provider: ${input.provider}`);
+    }
+
     const task: TaskDefinition = {
       id: crypto.randomUUID(),
       title: input.title || 'Untitled Task',
       prompt: input.prompt || '',
-      provider: input.provider || 'claude',
+      provider,
       fallbackProviders: input.fallbackProviders || [],
       executionEnvironment: input.executionEnvironment || 'auto',
       model: input.model || null,

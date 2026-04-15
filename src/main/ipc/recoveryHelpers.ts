@@ -61,12 +61,10 @@ if ($hwnd -ne [IntPtr]::Zero) {
   });
 }
 
+const { buildProviderResumeCommand } = require('../providers/registry');
+
 function buildResumeCommand(provider, sessionId) {
-  if (!sessionId) return null;
-  const normalizedProvider = String(provider || '').trim().toLowerCase();
-  return normalizedProvider === 'codex'
-    ? `codex resume ${sessionId}\r`
-    : `claude --resume ${sessionId}\r`;
+  return buildProviderResumeCommand(provider, sessionId);
 }
 
 function isPidAlive(pid) {

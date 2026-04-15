@@ -17,12 +17,12 @@ jest.mock('fs', () => ({
   closeSync: jest.fn(),
 }));
 
-jest.mock('../src/main/codexPaths', () => ({
+jest.mock('../src/main/providers/codex/paths', () => ({
   getCodexSessionRoots: jest.fn(() => []),
 }));
 
 const SessionScanner = require('../src/sessionScanner');
-const { getCodexSessionRoots } = require('../src/main/codexPaths');
+const { getCodexSessionRoots } = require('../src/main/providers/codex/paths');
 
 // Helper: build JSONL content from entries
 function buildJsonl(entries) {

@@ -1,9 +1,11 @@
 const { ClaudeAdapter } = require('./adapters/claudeAdapter');
 const { CodexAdapter } = require('./adapters/codexAdapter');
 const { GeminiAdapter } = require('./adapters/geminiAdapter');
+const { normalizeProvider } = require('../providers/registry');
 
 function createCLIAdapter(provider) {
-  switch (provider) {
+  const normalizedProvider = normalizeProvider(provider, String(provider || '').trim() ? null : undefined);
+  switch (normalizedProvider) {
     case 'claude':
       return new ClaudeAdapter();
     case 'codex':

@@ -3,7 +3,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { getCodexSessionRoots } = require('../main/codexPaths');
+const { getCodexSessionRoots } = require('../main/providers/codex/paths');
 const { pruneOldDays, savePersisted, loadPersisted } = require('./persistence');
 const { scanFile } = require('./scan/file');
 

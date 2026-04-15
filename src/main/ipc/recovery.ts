@@ -134,10 +134,15 @@ function registerRecoveryHandlers({
 
     const provider = registryAgent.provider || agent.provider || null;
 
-    let cwd = resolveProjectPathForPlatform(registryAgent.workspace?.worktreePath || registryAgent.projectPath) || undefined;
+    const sourceCwd = registryAgent.workspace?.worktreePath || registryAgent.projectPath;
+    let cwd = resolveProjectPathForPlatform(sourceCwd) || undefined;
     if (cwd) {
       try {
-        if (!fs.existsSync(cwd) || !fs.statSync(cwd).isDirectory()) cwd = undefined;
+        if (!fs.existsSync(cwd) || !fs.statSync(cwd).isDirectory()) {
+          cwd = sourceCwd && sourceCwd !== cwd && fs.existsSync(sourceCwd) && fs.statSync(sourceCwd).isDirectory()
+            ? sourceCwd
+            : undefined;
+        }
       } catch {
         cwd = undefined;
       }

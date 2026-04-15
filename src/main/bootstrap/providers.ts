@@ -1,10 +1,10 @@
 
 const { HOOK_SERVER_PORT, registerClaudeHooks } = require('../hookRegistration');
 const { startHookServer } = require('../hookServer');
-const { CODEX_EVENT_SERVER_PORT, startCodexEventServer } = require('../codexEventServer');
+const { CODEX_EVENT_SERVER_PORT, startCodexEventServer } = require('../providers/codex/eventServer');
 const { createHookProcessor } = require('../hookProcessor');
-const { createCodexProcessor } = require('../codexProcessor');
-const { createCodexSessionMonitor } = require('../codexSessionMonitor');
+const { createCodexProcessor } = require('../providers/codex/processor');
+const { createCodexSessionMonitor } = require('../providers/codex/sessionMonitor');
 
 function autoRegisterProviders({ enabledProviders, debugLog }) {
   if (enabledProviders.includes('claude')) {

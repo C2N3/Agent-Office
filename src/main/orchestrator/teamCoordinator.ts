@@ -7,6 +7,7 @@ const EventEmitter = require('events');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { createCLIAdapter } = require('./cliAdapter');
 const { cleanTerminalOutput } = require('./cleanOutput');
 
 const TEAM_OUTPUT_DIR = path.join(os.homedir(), '.agent-office', 'team-output');
@@ -259,20 +260,7 @@ class TeamCoordinator extends EventEmitter {
   _runCLI({ teamId, agentId, prompt, repoPath, label, onSuccess, onFailure }) {
     const jobId = `team-${teamId.slice(0, 8)}-${agentId.slice(0, 8)}-${Date.now()}`;
     const agent = this.agentRegistry.getAgent(agentId);
-    const provider = agent?.provider || 'claude';
-
-    // Build headless command — prompt delivered via stdin pipe
-    let command, args;
-    if (provider === 'claude') {
-      command = 'claude';
-      args = ['--print', '--verbose', '--dangerously-skip-permissions', '--max-turns', '50', '--output-format', 'stream-json'];
-    } else if (provider === 'codex') {
-      command = 'codex';
-      args = ['exec', '--full-auto'];
-    } else {
-      command = 'gemini';
-      args = ['--yolo', '--prompt='];
-    }
+    const adapter = createCLIAdapter(agent?.provider);
 
     // Create worktree for this task
     let cwd = repoPath;
@@ -301,10 +289,22 @@ class TeamCoordinator extends EventEmitter {
     }
 
     // Spawn headless process via processManager
-    this.processManager.spawn(jobId, { command, args, cwd })
+    const spawnConfig = adapter.buildSpawnConfig({
+      cwd,
+      prompt,
+      model: agent?.model || null,
+      maxTurns: 50,
+    });
+
+    this.processManager.spawn(jobId, {
+      command: spawnConfig.command,
+      args: spawnConfig.args,
+      cwd,
+      env: spawnConfig.env,
+    })
       .then(({ stdout, stderr, stdin, exitPromise }) => {
         // Deliver prompt via stdin pipe
-        stdin.write(prompt + '\n');
+        stdin.write(adapter.buildStdinPrompt ? adapter.buildStdinPrompt(prompt) : `${prompt}\n`);
         stdin.end();
 
         // Collect output

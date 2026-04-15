@@ -2,8 +2,8 @@
  * Codex exec --json event adapter.
  */
 
-const { createEventProcessor } = require('./eventProcessor');
-const { getCodexWorkspacePath, normalizeCodexEvent } = require('./codex/events');
+const { createEventProcessor } = require('../../eventProcessor');
+const { getCodexWorkspacePath, normalizeCodexEvent } = require('./events');
 
 function createCodexProcessor({ agentManager, agentRegistry, sessionPids, debugLog, detectPidByTranscript = null }) {
   let taskCompletionHandler = null;

@@ -6,7 +6,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { getCodexSessionRoots } = require('./codexPaths');
+const { getCodexSessionRoots } = require('./paths');
 
 const DISCOVERY_INTERVAL_MS = 5000;
 const ACTIVE_SESSION_WINDOW_MS = 30 * 60 * 1000;

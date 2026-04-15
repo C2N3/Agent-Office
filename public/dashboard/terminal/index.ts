@@ -1,5 +1,6 @@
 
 import { dashboardResumeUtils, getDashboardAPI, SHARED_AVATAR_FILES, state, termState } from '../shared.js';
+import { getTerminalBootCommand } from '../providerCatalog.js';
 import {
   activateTerminalTab,
   addTerminalTabHelper,
@@ -120,13 +121,10 @@ export async function openTerminalForAgent(agentId: string, openOptions: Dashboa
   }
 
   createXtermInstance(agentId, openOptions.label || agent?.nickname || agent?.name || result?.profileLabel || 'Terminal');
-  if (provider === 'codex' && dashboardAPI.writeTerminal && !openOptions.skipProviderBoot) {
+  const providerBootCommand = getTerminalBootCommand(provider, directResumeSessionId);
+  if (providerBootCommand && dashboardAPI.writeTerminal && !openOptions.skipProviderBoot) {
     setTimeout(() => {
-      if (directResumeSessionId) {
-        dashboardAPI.writeTerminal(agentId, `codex resume ${directResumeSessionId}\r`);
-        return;
-      }
-      dashboardAPI.writeTerminal(agentId, 'codex\r');
+      dashboardAPI.writeTerminal(agentId, providerBootCommand);
     }, 250);
   }
 }

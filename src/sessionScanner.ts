@@ -7,7 +7,8 @@
 'use strict';
 
 const fs = require('fs');
-const { getCodexSessionRoots } = require('./main/codexPaths');
+const { getCodexSessionRoots } = require('./main/providers/codex/paths');
+const { normalizeProvider, providerSupportsTranscriptStats } = require('./main/providers/registry');
 const {
     detectSessionFormat,
     getEntrySessionId,
@@ -78,8 +79,9 @@ class SessionScanner {
         let updated = 0;
 
         for (const agent of agents) {
-            const provider = agent.provider || 'claude';
-            if (agent.provider && provider !== 'claude' && provider !== 'codex') continue;
+            const provider = normalizeProvider(agent.provider, agent.provider ? null : undefined);
+            if (!provider) continue;
+            if (!providerSupportsTranscriptStats(provider)) continue;
 
             let stats = null;
             if (provider === 'codex') {

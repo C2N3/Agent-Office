@@ -20,6 +20,10 @@ describe('providerConfig', () => {
     expect(getEnabledProviders({ PIXEL_AGENT_PROVIDER: 'codex' })).toEqual(['codex']);
   });
 
+  test('supports explicit Gemini only mode', () => {
+    expect(getEnabledProviders({ PIXEL_AGENT_PROVIDER: 'gemini' })).toEqual(['gemini']);
+  });
+
   test('detects Codex from an explicit session root override', () => {
     jest.spyOn(fs, 'existsSync').mockImplementation((target) => target === '/custom/codex/sessions');
     expect(getEnabledProviders({ PIXEL_AGENT_CODEX_SESSION_ROOT: '/custom/codex/sessions' })).toEqual(['claude', 'codex']);
@@ -30,7 +34,7 @@ describe('providerConfig', () => {
   });
 
   test('supports all alias', () => {
-    expect(getEnabledProviders({ PIXEL_AGENT_PROVIDER: 'all' })).toEqual(['claude', 'codex']);
+    expect(getEnabledProviders({ PIXEL_AGENT_PROVIDER: 'all' })).toEqual(['claude', 'codex', 'gemini']);
   });
 
   test('falls back to Claude when value is invalid', () => {

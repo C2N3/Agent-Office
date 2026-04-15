@@ -7,9 +7,9 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 const { hasActiveOrchestratorTask, removeOrOffline } = require('./liveness/agents');
+const { getProviderDefinition, normalizeProvider } = require('./providers/registry');
 
 const sessionPids = new Map(); // sessionId → actual CLI process PID
-const KNOWN_PROVIDERS = new Set(['claude', 'codex']);
 
 async function checkLivenessTier1(agentId, pid) {
   try {
@@ -20,10 +20,6 @@ async function checkLivenessTier1(agentId, pid) {
   }
 }
 
-function getProviderPattern(provider) {
-  return provider === 'codex' ? 'codex' : 'claude';
-}
-
 /**
  * Function to accurately find the CLI PID for a session using its JSONL file.
  * Linux/macOS: lsof -t <path>
@@ -31,7 +27,11 @@ function getProviderPattern(provider) {
  */
 function detectProviderPidBySessionFile(provider, jsonlPath, callback) {
   const { execFile } = require('child_process');
-  const resolvedProvider = KNOWN_PROVIDERS.has(provider) ? provider : 'claude';
+  const resolvedProvider = normalizeProvider(provider, null);
+  if (!resolvedProvider) {
+    callback(null);
+    return;
+  }
 
   if (!jsonlPath) {
     detectProviderPidsFallback(resolvedProvider, callback);
@@ -69,9 +69,10 @@ function detectProviderPidBySessionFile(provider, jsonlPath, callback) {
 
 function detectProviderPidsFallback(provider, callback) {
   const { execFile } = require('child_process');
-  const providerPattern = getProviderPattern(provider);
+  const definition = getProviderDefinition(provider);
+  const providerPattern = definition.processPattern;
   if (process.platform === 'win32') {
-    const psCmd = provider === 'claude'
+    const psCmd = definition.windowsNodeProcessOnly
       ? `Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.Name -eq 'node.exe' -and $_.CommandLine -like '*${providerPattern}*' } | Select-Object -ExpandProperty ProcessId`
       : `Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like '*${providerPattern}*' } | Select-Object -ExpandProperty ProcessId`;
     execFile('powershell.exe', ['-NoProfile', '-Command', psCmd], { timeout: 6000 }, (err, stdout) => {
@@ -80,7 +81,7 @@ function detectProviderPidsFallback(provider, callback) {
       callback(pids.length > 0 ? pids : null);
     });
   } else {
-    const pattern = provider === 'claude' ? 'node.*claude' : providerPattern;
+    const pattern = definition.unixProcessPattern;
     execFile('pgrep', ['-f', pattern], { timeout: 3000 }, (err, stdout) => {
       if (err || !stdout) return callback(null);
       const pids = stdout.trim().split('\n').map(p => parseInt(p.trim(), 10)).filter(p => !isNaN(p) && p > 0);
@@ -125,9 +126,10 @@ function retryPidDetection(sessionId, provider, agentManager, debugLog) {
  */
 function countProviderProcesses(provider, callback) {
   const { execFile } = require('child_process');
-  const providerPattern = getProviderPattern(provider);
+  const definition = getProviderDefinition(provider);
+  const providerPattern = definition.processPattern;
   if (process.platform === 'win32') {
-    const psCmd = provider === 'claude'
+    const psCmd = definition.windowsNodeProcessOnly
       ? `(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.Name -eq 'node.exe' -and $_.CommandLine -like '*${providerPattern}*' }).Count`
       : `(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like '*${providerPattern}*' }).Count`;
     execFile('powershell.exe', ['-NoProfile', '-Command', psCmd], { timeout: 6000 }, (err, stdout) => {
@@ -135,7 +137,7 @@ function countProviderProcesses(provider, callback) {
       callback(parseInt(stdout.trim(), 10) || 0);
     });
   } else {
-    const pattern = provider === 'claude' ? 'node.*claude' : providerPattern;
+    const pattern = definition.unixProcessPattern;
     execFile('pgrep', ['-fc', pattern], { timeout: 3000 }, (err, stdout) => {
       callback(parseInt((stdout || '').trim(), 10) || 0);
     });
@@ -171,7 +173,8 @@ function zombieSweep(agentManager, agentRegistry, taskStore, debugLog) {
     // Skip agents with a live terminal — terminal is the source of truth
     const termId = agent.registryId || agent.id;
     if (_terminalManagerRef?.hasTerminal?.(termId)) continue;
-    const provider = KNOWN_PROVIDERS.has(agent.provider) ? agent.provider : 'claude';
+    const provider = normalizeProvider(agent.provider, agent.provider ? null : undefined);
+    if (!provider) continue;
     if (!providerAgents.has(provider)) {
       providerAgents.set(provider, []);
     }
@@ -229,7 +232,8 @@ function startLivenessChecker({ agentManager, agentRegistry, taskStore, terminal
   const livenessCheckId = setInterval(async () => {
     if (!agentManager) return;
     for (const agent of agentManager.getAllAgents()) {
-      const provider = KNOWN_PROVIDERS.has(agent.provider) ? agent.provider : 'claude';
+      const provider = normalizeProvider(agent.provider, agent.provider ? null : undefined);
+      if (!provider) continue;
       // Skip offline registered agents — they have no session to check
       if (agent.isRegistered && agent.state === 'Offline') continue;
       if (agent.firstSeen && (Date.now() - agent.firstSeen) < GRACE_MS) continue;
