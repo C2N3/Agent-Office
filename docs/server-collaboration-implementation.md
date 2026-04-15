@@ -2,6 +2,8 @@
 
 이 문서는 [../SERVER_COLLABORATION_ROADMAP.md](../SERVER_COLLABORATION_ROADMAP.md)의 보조 문서다. 최상위 로드맵에서 결정한 방향을 구현할 때 필요한 API, protocol, data model 초안을 더 구체화한다.
 
+중앙 서버를 Go로 작성할 때의 goroutine, channel, context 설계는 [server-collaboration-go-runtime.md](server-collaboration-go-runtime.md)를 따른다.
+
 ## 권장 HTTP API
 
 초기에는 dashboard가 읽기 중심으로 동작하게 하고, 이후 mutating API를 권한 체크와 함께 확장한다.
@@ -242,4 +244,3 @@ Audit record 필드:
 - 일반 브라우저에서 `/api/agents` 초기 조회
 - 일반 브라우저에서 `/api/events` agent/task output 구독
 - Electron IPC 없는 환경에서 terminal/workspace 버튼 unavailable 처리
-
