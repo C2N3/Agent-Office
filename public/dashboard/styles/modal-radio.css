@@ -1,0 +1,30 @@
+.modal-radio-group {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.modal-radio-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 6px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.modal-radio-option input {
+  accent-color: var(--color-primary);
+}
+
+.modal-radio-option:has(input:checked) {
+  background: var(--color-primary-dim);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}

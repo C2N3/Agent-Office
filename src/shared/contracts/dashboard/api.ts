@@ -23,6 +23,7 @@ import type {
 } from '../dashboard.js';
 
 export type DashboardAPI = {
+  platform?: NodeJS.Platform;
   getInitialAgents?: () => Promise<DashboardAgent[]>;
   onInitialData?: (callback: (data: DashboardAgent[]) => void) => CleanupFn | void;
   onAgentAdded?: (callback: (data: DashboardAgent) => void) => CleanupFn | void;

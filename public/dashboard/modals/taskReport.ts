@@ -78,6 +78,7 @@ export function setupTaskReportModal() {
   let currentAgentId = '';
   let currentRepositoryPath = '';
   let currentProvider = 'claude';
+  let currentExecutionEnvironment = 'auto';
   let currentModel: string | null = null;
   let currentTitle = '';
 
@@ -87,6 +88,7 @@ export function setupTaskReportModal() {
     currentAgentId = '';
     currentRepositoryPath = '';
     currentProvider = 'claude';
+    currentExecutionEnvironment = 'auto';
     currentModel = null;
     currentTitle = '';
     if (followUpPrompt) followUpPrompt.value = '';
@@ -109,6 +111,7 @@ export function setupTaskReportModal() {
       currentAgentId = data.agentRegistryId || '';
       currentRepositoryPath = data.repositoryPath || '';
       currentProvider = data.provider || 'claude';
+      currentExecutionEnvironment = data.executionEnvironment || 'auto';
       currentModel = data.model || null;
       currentTitle = data.title || '';
       if (titleEl) titleEl.textContent = data.title || 'Task Report';
@@ -194,6 +197,7 @@ export function setupTaskReportModal() {
         agentRegistryId: currentAgentId,
         parentTaskId: currentTaskId,
         provider: currentProvider,
+        executionEnvironment: currentExecutionEnvironment,
         model: currentModel,
         maxTurns: 30,
         priority: 'normal',

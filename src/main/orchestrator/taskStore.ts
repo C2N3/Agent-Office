@@ -57,6 +57,7 @@ class TaskStore {
       prompt: input.prompt || '',
       provider: input.provider || 'claude',
       fallbackProviders: input.fallbackProviders || [],
+      executionEnvironment: input.executionEnvironment || 'auto',
       model: input.model || null,
       maxTurns: input.maxTurns || 30,
 

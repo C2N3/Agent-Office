@@ -18,12 +18,14 @@ try {
 }
 
 type DebugLog = (message: string) => void;
+type TaskExecutionEnvironment = 'auto' | 'native' | 'wsl';
 
 interface SpawnConfig {
   command: string;
   args: string[];
   cwd: string;
   env?: Record<string, string>;
+  executionEnvironment?: TaskExecutionEnvironment;
 }
 
 interface SpawnResult {
@@ -37,6 +39,38 @@ interface SpawnResult {
 interface ManagedProcess {
   child: import('child_process').ChildProcess;
   pid: number;
+}
+
+function toWslPath(rawPath: string): string {
+  const normalized = String(rawPath || '').replace(/\\/g, '/');
+  if (!normalized) return '~';
+
+  const driveMatch = normalized.match(/^([a-zA-Z]):\/?(.*)$/);
+  if (driveMatch) {
+    const [, driveLetter, rest = ''] = driveMatch;
+    return `/mnt/${driveLetter.toLowerCase()}${rest ? `/${rest}` : ''}`;
+  }
+
+  const uncMatch = normalized.match(/^\/\/wsl(?:\.localhost)?\/[^/]+(\/.*)?$/i);
+  if (uncMatch) {
+    return uncMatch[1] || '/';
+  }
+
+  return normalized;
+}
+
+function buildWslSpawn(config: SpawnConfig) {
+  const wslCwd = toWslPath(config.cwd);
+  return {
+    command: 'wsl.exe',
+    args: [
+      '--cd', wslCwd,
+      '--exec', 'bash', '-lc',
+      'export LANG="${LANG:-C.UTF-8}"; exec "$0" "$@"',
+      config.command,
+      ...config.args,
+    ],
+  };
 }
 
 class ProcessManager {
@@ -71,12 +105,18 @@ class ProcessManager {
 
       let child: import('child_process').ChildProcess;
       try {
-        child = spawn(config.command, config.args, {
-          cwd: config.cwd,
+        const useWsl = process.platform === 'win32' && config.executionEnvironment === 'wsl';
+        const spawnConfig = useWsl ? buildWslSpawn(config) : config;
+        if (useWsl) {
+          this.debugLog(`[ProcessManager] Spawning via WSL: ${config.command} cwd=${toWslPath(config.cwd)}`);
+        }
+
+        child = spawn(spawnConfig.command, spawnConfig.args, {
+          cwd: useWsl ? undefined : config.cwd,
           stdio: ['pipe', 'pipe', 'pipe'],
           // shell: true on Windows to resolve .cmd shims (claude.cmd, codex.cmd, gemini.cmd)
           // Safe: prompts are delivered via stdin pipe, not as command-line arguments
-          shell: process.platform === 'win32',
+          shell: process.platform === 'win32' && !useWsl,
           windowsHide: true,
           env,
         });

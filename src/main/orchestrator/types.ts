@@ -12,6 +12,8 @@ export type TaskStatus =
 
 export type CLIProvider = 'claude' | 'codex' | 'gemini';
 
+export type TaskExecutionEnvironment = 'auto' | 'native' | 'wsl';
+
 export type TaskPriority = 'low' | 'normal' | 'high' | 'critical';
 
 export interface TaskDefinition {
@@ -20,6 +22,7 @@ export interface TaskDefinition {
   prompt: string;
   provider: CLIProvider;
   fallbackProviders: CLIProvider[];
+  executionEnvironment: TaskExecutionEnvironment;
   model?: string | null;
   maxTurns?: number;
 

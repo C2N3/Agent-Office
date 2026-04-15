@@ -108,6 +108,7 @@ async function dispatchTask(orchestrator, task) {
       args: spawnConfig.args,
       cwd: taskCwd,
       env: spawnConfig.env,
+      executionEnvironment: task.executionEnvironment || 'auto',
     },
   );
 

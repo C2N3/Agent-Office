@@ -7,7 +7,8 @@ export function setupAssignTaskModal() {
   const cancelBtn = document.getElementById('cancelAssignTaskBtn');
   const errorEl = document.getElementById('assignTaskError');
   const agentNameEl = document.getElementById('assignTaskAgentName');
-  const providerSelect = document.getElementById('taskProviderInput') as HTMLSelectElement | null;
+  const providerInputs = Array.from(document.querySelectorAll<HTMLInputElement>('input[name="taskProvider"]'));
+  const executionEnvironmentInputs = Array.from(document.querySelectorAll<HTMLInputElement>('input[name="taskExecutionEnvironment"]'));
   const modelSelect = document.getElementById('taskModelInput') as HTMLSelectElement | null;
   if (!modal || !form) return;
 
@@ -41,6 +42,29 @@ export function setupAssignTaskModal() {
       .join('');
   }
 
+  function getSelectedProvider() {
+    return providerInputs.find((input) => input.checked)?.value || currentAgent?.provider || 'claude';
+  }
+
+  function setSelectedProvider(provider: string) {
+    const normalized = providerInputs.some((input) => input.value === provider) ? provider : 'claude';
+    providerInputs.forEach((input) => {
+      input.checked = input.value === normalized;
+    });
+    populateModels(normalized);
+  }
+
+  function getSelectedExecutionEnvironment() {
+    return executionEnvironmentInputs.find((input) => input.checked)?.value || 'native';
+  }
+
+  function setSelectedExecutionEnvironment(value = 'native') {
+    const normalized = executionEnvironmentInputs.some((input) => input.value === value) ? value : 'native';
+    executionEnvironmentInputs.forEach((input) => {
+      input.checked = input.value === normalized;
+    });
+  }
+
   function resolveTaskRepositoryPath(agent: any) {
     const workspaceRepo = agent?.metadata?.workspace?.repositoryPath || '';
     const metadataProjectPath = agent?.metadata?.projectPath || '';
@@ -50,8 +74,10 @@ export function setupAssignTaskModal() {
     return workspaceRepo || metadataProjectPath || projectPath || worktreePath || '';
   }
 
-  providerSelect?.addEventListener('change', () => {
-    populateModels(providerSelect.value || 'claude');
+  providerInputs.forEach((input) => {
+    input.addEventListener('change', () => {
+      populateModels(getSelectedProvider());
+    });
   });
 
   function closeModal() {
@@ -79,7 +105,8 @@ export function setupAssignTaskModal() {
       return;
     }
 
-    const provider = providerSelect?.value || currentAgent.provider || 'claude';
+    const provider = getSelectedProvider();
+    const executionEnvironment = getSelectedExecutionEnvironment();
     const model = modelSelect?.value || null;
     const maxTurns = parseInt((document.getElementById('taskMaxTurnsInput') as HTMLInputElement).value, 10) || 30;
     const priority = (document.getElementById('taskPriorityInput') as HTMLSelectElement).value || 'normal';
@@ -93,6 +120,7 @@ export function setupAssignTaskModal() {
           title: `${currentAgent.displayName || currentAgent.name}: ${prompt.slice(0, 50)}`,
           prompt,
           provider,
+          executionEnvironment,
           model,
           maxTurns,
           repositoryPath: resolveTaskRepositoryPath(currentAgent),
@@ -118,8 +146,8 @@ export function setupAssignTaskModal() {
     const provider = agent.provider || 'claude';
     (form as HTMLFormElement).reset();
     if (agentNameEl) agentNameEl.textContent = agent.displayName || agent.name || 'Agent';
-    if (providerSelect) providerSelect.value = provider;
-    populateModels(provider);
+    setSelectedProvider(provider);
+    setSelectedExecutionEnvironment('native');
     if (errorEl) errorEl.textContent = '';
     modal.style.display = '';
     requestAnimationFrame(() => {

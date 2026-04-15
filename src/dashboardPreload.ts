@@ -35,6 +35,7 @@ function requestResponse<T>(requestChannel: string, responseChannel: string): Pr
 }
 
 const dashboardAPI: DashboardAPI = {
+  platform: process.platform,
   getInitialAgents: () => requestResponse<DashboardAgent[]>(
     dashboardIpcChannels.getDashboardAgents,
     dashboardIpcChannels.dashboardAgentsResponse,
