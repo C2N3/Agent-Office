@@ -439,6 +439,46 @@ describe('codexProcessor', () => {
     );
   });
 
+  test('session JSONL entries mark Codex spawned agents as subagents', () => {
+    processor.processSessionEntry({
+      type: 'session_meta',
+      payload: {
+        id: 'parent-session',
+        workspacePath: '/workspace/app',
+        model_slug: 'gpt-5-codex',
+      },
+    });
+
+    processor.processSessionEntry({
+      type: 'session_meta',
+      payload: {
+        id: 'sub-session',
+        workspacePath: '/workspace/app',
+        model_slug: 'gpt-5-codex',
+        source: {
+          subagent: {
+            thread_spawn: {
+              parent_thread_id: 'parent-session',
+              depth: 1,
+              agent_nickname: 'Ohm',
+              agent_role: 'explorer',
+            },
+          },
+        },
+        agent_nickname: 'Ohm',
+        agent_role: 'explorer',
+      },
+    });
+
+    expect(agentManager.getAgent('sub-session')).toEqual(expect.objectContaining({
+      sessionId: 'sub-session',
+      provider: 'codex',
+      isSubagent: true,
+      parentId: 'parent-session',
+      agentType: 'explorer',
+    }));
+  });
+
   test('transcript canonical id rekeys a live codex thread id', () => {
     processor.processCodexEvent({
       type: 'thread.started',
@@ -565,6 +605,29 @@ describe('normalizeCodexEvent', () => {
       expect.objectContaining({
         sessionId: 'thread-1234',
         cwd: '/workspace/app',
+      })
+    ]);
+  });
+
+  test('preserves Codex subagent metadata on thread events', () => {
+    expect(normalizeCodexEvent({
+      type: 'thread.started',
+      thread_id: 'sub-session',
+      workspacePath: '/workspace/app',
+      source: {
+        subagent: {
+          thread_spawn: {
+            parent_thread_id: 'parent-session',
+            agent_role: 'worker',
+          },
+        },
+      },
+    })).toEqual([
+      expect.objectContaining({
+        sessionId: 'sub-session',
+        isSubagent: true,
+        parentId: 'parent-session',
+        agentType: 'worker',
       })
     ]);
   });

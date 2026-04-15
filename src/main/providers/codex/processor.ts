@@ -3,7 +3,7 @@
  */
 
 const { createEventProcessor } = require('../../eventProcessor');
-const { getCodexWorkspacePath, normalizeCodexEvent } = require('./events');
+const { getCodexSubagentInfo, getCodexWorkspacePath, normalizeCodexEvent } = require('./events');
 
 function createCodexProcessor({ agentManager, agentRegistry, sessionPids, debugLog, detectPidByTranscript = null }) {
   let taskCompletionHandler = null;
@@ -57,7 +57,7 @@ function createCodexProcessor({ agentManager, agentRegistry, sessionPids, debugL
     }
   }
 
-function processSessionEntry(entry, context: { sessionId?: string | null; runtimeSessionId?: string | null; transcriptPath?: string | null } = {}) {
+  function processSessionEntry(entry, context: { sessionId?: string | null; runtimeSessionId?: string | null; transcriptPath?: string | null } = {}) {
     if (!entry || !entry.type) return { sessionId: null };
     const contextSessionId = resolveCodexSessionId(context.sessionId || null);
     const transcriptPath = context.transcriptPath || null;
@@ -67,6 +67,10 @@ function processSessionEntry(entry, context: { sessionId?: string | null; runtim
         const payload = entry.payload || {};
         const sessionId = payload.id || null;
         if (!sessionId) return { sessionId: null };
+        const subagentInfo = getCodexSubagentInfo(payload);
+        const parentId = subagentInfo.parentId
+          ? (resolveCodexSessionId(subagentInfo.parentId) || subagentInfo.parentId)
+          : null;
         processor.processEvent({
           type: 'session.start',
           rawType: 'session_meta',
@@ -80,6 +84,9 @@ function processSessionEntry(entry, context: { sessionId?: string | null; runtim
           model: payload.model || payload.model_slug || 'codex',
           source: 'startup',
           initialState: 'Waiting',
+          isSubagent: subagentInfo.isSubagent,
+          parentId,
+          agentType: subagentInfo.agentType,
         });
         return { sessionId };
       }

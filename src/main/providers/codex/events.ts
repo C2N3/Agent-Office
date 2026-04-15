@@ -3,8 +3,19 @@ function getCodexWorkspacePath(data) {
   return data.cwd || data.workspacePath || data.workspace_path || '';
 }
 
+function getCodexSubagentInfo(data) {
+  const source = data && typeof data.source === 'object' ? data.source : null;
+  const threadSpawn = source?.subagent?.thread_spawn || null;
+  return {
+    isSubagent: !!threadSpawn || !!data.isSubagent,
+    parentId: threadSpawn?.parent_thread_id || data.parent_thread_id || null,
+    agentType: data.agent_role || threadSpawn?.agent_role || data.agent_nickname || threadSpawn?.agent_nickname || null,
+  };
+}
+
 function normalizeCodexEvent(data) {
   const sessionId = data.session_id || data.sessionId || data.thread_id;
+  const subagentInfo = getCodexSubagentInfo(data);
   const base = {
     sessionId,
     runtimeSessionId: data.thread_id || data.session_id || data.sessionId || null,
@@ -12,6 +23,9 @@ function normalizeCodexEvent(data) {
     cwd: getCodexWorkspacePath(data),
     model: data.model || 'codex',
     provider: 'codex',
+    isSubagent: subagentInfo.isSubagent,
+    parentId: subagentInfo.parentId,
+    agentType: subagentInfo.agentType,
     raw: data,
     rawType: data.type || 'unknown',
   };
@@ -98,4 +112,4 @@ function extractCodexToolInput(item) {
   return null;
 }
 
-module.exports = { getCodexWorkspacePath, normalizeCodexEvent };
+module.exports = { getCodexSubagentInfo, getCodexWorkspacePath, normalizeCodexEvent };
