@@ -58,6 +58,7 @@ npm run test:watch      # Watch mode for development
 - **No frameworks** — keep the current Electron, vanilla DOM/canvas, and small HTTP server approach
 - **Tests** — use Jest 30; place test files in `__tests__/` and prefer source TypeScript entrypoints over `dist/` runtime imports
 - **Keep it simple** — avoid abstractions until they're clearly needed
+- **Provider changes** — update `src/main/providers/registry.ts` and `public/dashboard/providerCatalog.ts` first, then wire call sites to consume those definitions
 
 ## Architecture Rules
 
@@ -67,6 +68,7 @@ These constraints exist by design. Do not change them:
 - **Hook schema** must keep `additionalProperties: true` (future-proofing for new Claude Code fields)
 - **Avatar file list** is defined in `public/shared/avatars.json` and `public/shared/sprite-frames.json` (single source of truth) — do not duplicate in individual modules
 - **Agent lifecycle** is PID-based only — do not add manual dismiss or timer-based removal
+- **Provider behavior** must go through the provider registry/catalog instead of adding scattered Claude/Codex/Gemini conditionals
 
 ## Art Assets
 

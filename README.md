@@ -4,11 +4,11 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Electron](https://img.shields.io/badge/Electron-32+-47848F?logo=electron&logoColor=white)](https://www.electronjs.org/)
 
-> Standalone Electron app that visualizes Claude Code CLI and Codex CLI sessions as animated pixel avatars in real time.
+> Standalone Electron app that visualizes Claude Code, Codex, and Gemini CLI sessions as animated pixel avatars in real time.
 
 Korean README: [README.ko.md](README.ko.md)
 
-Agent-Office receives [Claude Code](https://docs.anthropic.com/en/docs/claude-code) hook events and can also ingest [Codex](https://developers.openai.com/codex/) `exec --json` streams. It renders each agent session as an animated pixel character and provides a virtual office view, activity heatmaps, token usage analysis, and a browser-based dashboard.
+Agent-Office receives [Claude Code](https://docs.anthropic.com/en/docs/claude-code) hook events, can ingest [Codex](https://developers.openai.com/codex/) `exec --json` streams, and can launch supported CLI providers through a shared provider abstraction. It renders each agent session as an animated pixel character and provides a virtual office view, activity heatmaps, token usage analysis, and a browser-based dashboard.
 
 ![Demo](docs/demo.gif)
 
@@ -28,13 +28,14 @@ Agent-Office receives [Claude Code](https://docs.anthropic.com/en/docs/claude-co
 - **Managed Workspaces** with `git worktree` creation, copy/symlink setup, and cleanup actions
 - **PiP mode** so the office can stay visible while you work
 - **Automatic recovery** after app restarts
+- **Provider catalog** for Claude, Codex, and Gemini runtime selection
 - **Codex session support** through both `exec --json` forwarding and `~/.codex/sessions` scanning
 - **Claude sub-agent and team support**
 
 ## Requirements
 
 - **Node.js** 20+
-- **Claude Code CLI** with hooks enabled, or **Codex CLI** with session files / `exec --json`
+- **Claude Code CLI** with hooks enabled, **Codex CLI** with session files / `exec --json`, or **Gemini CLI** for task execution
 - **OS:** Windows, macOS, or Linux
 
 ## Quick Start
@@ -46,7 +47,7 @@ npm install
 npm start
 ```
 
-`npm install` automatically registers the Claude hook in `~/.claude/settings.json`. Codex does not use that hook registration path and instead relies on session files or the `exec --json` forwarder.
+`npm install` automatically registers the Claude hook in `~/.claude/settings.json`. Codex does not use that hook registration path and instead relies on session files or the `exec --json` forwarder. Gemini is available as a provider for launched tasks and terminals when the CLI is installed.
 
 ## Runtime Model
 
@@ -55,6 +56,22 @@ npm start
 - `npm run dev` watches `src/`, `public/`, HTML/CSS, and tsconfig files, rebuilds `dist/`, and restarts Electron
 - If you run a `node dist/...` entrypoint directly, build once first with `npm run build:dist`
 - TypeScript uses the TypeScript 7 preview toolchain through `tsgo`, not plain `tsc`
+
+## Providers
+
+Agent-Office uses a provider registry for runtime behavior and a dashboard provider catalog for UI behavior. Keep those in sync when adding or changing providers:
+
+- `src/main/providers/registry.ts` for CLI commands, resume commands, liveness, transcript support, and recovery capabilities
+- `public/dashboard/providerCatalog.ts` for dashboard labels, model options, and terminal boot commands
+
+Enable providers with `PIXEL_AGENT_PROVIDERS`:
+
+```bash
+PIXEL_AGENT_PROVIDERS=all npm start
+PIXEL_AGENT_PROVIDERS=claude,codex,gemini npm start
+```
+
+The default runtime always enables Claude. Codex is also enabled automatically when Codex session roots are detected.
 
 ## Codex
 
@@ -74,6 +91,7 @@ Notes:
 
 - Codex supports recovery, session scanning, heatmaps, and conversation history paths
 - Claude-only hook metadata such as some sub-agent and team events still comes from the Claude hook path
+- Gemini supports launched task/terminal provider selection, but does not currently provide transcript statistics
 - The Codex forwarder posts to `http://127.0.0.1:47822/codex-event` by default
 - Override the Codex event port with `PIXEL_AGENT_CODEX_PORT`
 
@@ -164,6 +182,7 @@ GitHub Actions release signing/notarization uses these repository secrets:
 
 - For Claude, confirm `~/.claude/settings.json` contains the Agent-Office hook
 - For Codex, confirm session files appear under `~/.codex/sessions` or use `codex exec --json ... | node dist/src/codex-forward.js`
+- For Gemini, confirm the Gemini CLI is installed and on `PATH`, then enable it with `PIXEL_AGENT_PROVIDERS=all` or `PIXEL_AGENT_PROVIDERS=claude,codex,gemini`
 - A `404` response from `curl http://localhost:47821/hook` is normal and confirms the hook server is listening
 
 **Ghost avatars remain**
