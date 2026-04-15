@@ -135,6 +135,7 @@ async function dispatchTask(orchestrator, task) {
             text: evt.message,
             type: evt.type || 'text',
             toolName: evt.toolName || null,
+            merge: evt.merge !== false,
           }), 'stdout');
         }
       }

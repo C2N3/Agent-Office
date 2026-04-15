@@ -20,7 +20,7 @@ class CodexAdapter {
   buildSpawnConfig(options) {
     // Prompt delivered via stdin pipe instead of trailing argument to avoid
     // Windows command-line length limits and shell escaping issues.
-    const args = ['exec', '--full-auto'];
+    const args = ['exec', '--json', '--full-auto'];
     if (options.model) {
       args.push('--model', options.model);
     }
@@ -28,7 +28,7 @@ class CodexAdapter {
       command: 'codex',
       args,
       promptDelivery: 'stdin',
-      outputFormat: 'text',
+      outputFormat: 'codex-json',
       env: {},
     };
   }

@@ -237,7 +237,7 @@ export function openTaskLogTab(taskId: string, agentRegistryId: string, label: s
 /**
  * Append a message to the task chat UI.
  */
-export function appendTaskChatMessage(taskId: string, data: { text: string; type: string; toolName?: string | null }) {
+export function appendTaskChatMessage(taskId: string, data: { text: string; type: string; toolName?: string | null; merge?: boolean }) {
   const chat = taskChatMap.get(taskId);
   if (!chat) return;
 
@@ -262,7 +262,7 @@ export function appendTaskChatMessage(taskId: string, data: { text: string; type
     chat.lastType = 'error';
   } else {
     // Text → chat bubble (append to existing if consecutive)
-    if (chat.lastType === 'text' && chat.lastBubble) {
+    if (data.merge !== false && chat.lastType === 'text' && chat.lastBubble) {
       chat.lastBubble.textContent += '\n' + data.text;
     } else {
       const bubble = document.createElement('div');

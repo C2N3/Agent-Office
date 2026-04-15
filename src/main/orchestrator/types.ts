@@ -83,13 +83,14 @@ export interface CLISpawnResult {
   args: string[];
   promptDelivery: 'stdin' | 'arg';
   env: Record<string, string>;
-  outputFormat?: 'text' | 'stream-json';
+  outputFormat?: 'text' | 'stream-json' | 'codex-json';
 }
 
 export interface OutputParseResult {
   type: 'progress' | 'tool_use' | 'completion' | 'error' | 'context_exhaustion' | 'text';
   toolName?: string;
   message?: string;
+  merge?: boolean;
   tokenUsage?: { input: number; output: number };
   isContextExhausted?: boolean;
   exitReason?: string;

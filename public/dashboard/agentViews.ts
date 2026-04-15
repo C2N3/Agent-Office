@@ -96,7 +96,7 @@ export function connectSSE() {
       const { taskId, text } = data.data;
       if (taskId && text) {
         try {
-          const parsed = JSON.parse(text) as { text: string; type: string; toolName?: string | null };
+          const parsed = JSON.parse(text) as { text: string; type: string; toolName?: string | null; merge?: boolean };
           appendTaskChatMessage(taskId, parsed);
         } catch {
           // Fallback: plain text

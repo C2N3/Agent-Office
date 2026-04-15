@@ -6,14 +6,15 @@ const MAX_FULL_BUFFER_SIZE = 100000; // 100KB for full output capture
 
 class OutputParser {
   declare adapter: CLIAdapter;
-  declare outputFormat: 'text' | 'stream-json';
+  declare outputFormat: 'text' | 'stream-json' | 'codex-json';
   declare buffer: string;
   declare fullBuffer: string;
   declare humanBuffer: string;    // Human-readable text extracted from JSON events
   declare stdoutLineBuf: string;  // Incomplete line buffer for stream-json parsing
   declare contextExhausted: boolean;
+  declare lastAssistantMessage: string | null;
 
-  constructor(adapter: CLIAdapter, outputFormat?: 'text' | 'stream-json') {
+  constructor(adapter: CLIAdapter, outputFormat?: 'text' | 'stream-json' | 'codex-json') {
     this.adapter = adapter;
     this.outputFormat = outputFormat || 'text';
     this.buffer = '';
@@ -21,6 +22,7 @@ class OutputParser {
     this.humanBuffer = '';
     this.stdoutLineBuf = '';
     this.contextExhausted = false;
+    this.lastAssistantMessage = null;
   }
 
   /**
@@ -53,6 +55,9 @@ class OutputParser {
     if (this.outputFormat === 'stream-json') {
       return this._parseStreamJson(chunk);
     }
+    if (this.outputFormat === 'codex-json') {
+      return this._parseCodexJson(chunk);
+    }
 
     // Text mode: strip ANSI (output should be clean from spawn, but just in case)
     this.buffer += chunk;
@@ -75,6 +80,9 @@ class OutputParser {
     if (this.outputFormat === 'stream-json') {
       // stderr in stream-json mode may also contain JSON lines
       return this._parseStreamJson(chunk);
+    }
+    if (this.outputFormat === 'codex-json') {
+      return this._parseCodexJson(chunk);
     }
 
     // Text mode: accumulate as errors
@@ -192,6 +200,68 @@ class OutputParser {
     }
   }
 
+  private _parseCodexJson(chunk: string): OutputParseResult[] {
+    const results: OutputParseResult[] = [];
+    this.stdoutLineBuf += chunk;
+    const lines = this.stdoutLineBuf.split('\n');
+    this.stdoutLineBuf = lines.pop() || '';
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+
+      let event: Record<string, any>;
+      try {
+        event = JSON.parse(trimmed);
+      } catch {
+        continue;
+      }
+
+      if (event.type === 'item.completed' && event.item?.type === 'agent_message') {
+        this._pushAssistantMessage(results, event.item.text || '');
+      } else if (event.type === 'event_msg') {
+        this._parseCodexEventMessage(results, event.payload || {});
+      } else if (event.type === 'response_item') {
+        this._parseCodexResponseItem(results, event.payload || {});
+      } else if (event.type === 'turn.failed' || event.type === 'error') {
+        const message = event.error || event.message || 'Codex task failed';
+        results.push({ type: 'error', message: String(message) });
+        this._appendHuman(`[Error] ${String(message)}`);
+      }
+    }
+
+    this.buffer = this.humanBuffer.slice(-MAX_BUFFER_SIZE);
+    return results;
+  }
+
+  private _parseCodexEventMessage(results: OutputParseResult[], payload: any): void {
+    if (payload.type === 'agent_message') {
+      this._pushAssistantMessage(results, payload.message || '');
+      return;
+    }
+    if (payload.type === 'task_complete' && payload.last_agent_message) {
+      this._pushAssistantMessage(results, payload.last_agent_message);
+    }
+  }
+
+  private _parseCodexResponseItem(results: OutputParseResult[], payload: any): void {
+    if (payload.type !== 'message' || !Array.isArray(payload.content)) return;
+    const text = payload.content
+      .filter((item) => item && item.type === 'output_text' && typeof item.text === 'string')
+      .map((item) => item.text)
+      .join('\n')
+      .trim();
+    this._pushAssistantMessage(results, text);
+  }
+
+  private _pushAssistantMessage(results: OutputParseResult[], text: string): void {
+    const message = String(text || '').trim();
+    if (!message || message === this.lastAssistantMessage) return;
+    this.lastAssistantMessage = message;
+    this._appendHuman(message);
+    results.push({ type: 'text', message, merge: false });
+  }
+
   private _appendHuman(text: string): void {
     if (!text) return;
     this.humanBuffer += text + '\n';
@@ -203,14 +273,14 @@ class OutputParser {
   }
 
   getRecentOutput(chars = 500): string {
-    if (this.outputFormat === 'stream-json') {
+    if (this.outputFormat !== 'text') {
       return this.humanBuffer.slice(-chars);
     }
     return this.buffer.slice(-chars);
   }
 
   getFullOutput(): string {
-    if (this.outputFormat === 'stream-json') {
+    if (this.outputFormat !== 'text') {
       return this.humanBuffer;
     }
     return this.fullBuffer;
@@ -222,6 +292,7 @@ class OutputParser {
     this.humanBuffer = '';
     this.stdoutLineBuf = '';
     this.contextExhausted = false;
+    this.lastAssistantMessage = null;
   }
 }
 
