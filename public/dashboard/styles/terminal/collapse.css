@@ -1,0 +1,65 @@
+.terminal-collapse-btn {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.terminal-collapse-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--color-text);
+}
+
+.office-terminal-layout.terminal-collapsed .office-left-col {
+  flex: 1 1 auto;
+  width: auto !important;
+}
+
+.office-terminal-layout.terminal-collapsed .resize-handle-v {
+  display: none;
+}
+
+.office-terminal-layout.terminal-collapsed .office-right-col {
+  flex: 0 0 44px;
+  min-width: 44px;
+  width: 44px;
+}
+
+.office-terminal-layout.terminal-collapsed .terminal-tabs {
+  height: 100%;
+  padding: 4px;
+  justify-content: center;
+  border-bottom: none;
+}
+
+.office-terminal-layout.terminal-collapsed .terminal-tabs-list,
+.office-terminal-layout.terminal-collapsed .terminal-new-btn,
+.office-terminal-layout.terminal-collapsed .terminal-container {
+  display: none;
+}
+
+.office-terminal-layout.terminal-collapsed .terminal-toolbar {
+  height: 100%;
+  align-items: flex-start;
+}
+
+@media (max-width: 900px) {
+  .office-terminal-layout.terminal-collapsed .office-right-col {
+    flex-basis: 40px;
+    min-width: 100%;
+    width: 100%;
+  }
+
+  .office-terminal-layout.terminal-collapsed .terminal-tabs {
+    height: 40px;
+  }
+}

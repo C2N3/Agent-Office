@@ -6,6 +6,7 @@ import {
   termState,
   type DashboardOpenOptions,
 } from '../shared.js';
+import { initTerminalPanelCollapse, revealTerminalPanel } from './collapse.js';
 import { setupTerminalResizableHandles } from './resizable.js';
 
 export async function resumeLatestRegisteredSession(registryId, label, resumeRegisteredSession) {
@@ -48,6 +49,7 @@ export function addTerminalTabHelper(agentId, label, activateTerminalTabFn, clos
 }
 
 function addTerminalTab(agentId, label, activateTerminalTab, closeTerminal) {
+  revealTerminalPanel();
   const list = document.getElementById('terminalTabsList');
   const tab = document.createElement('div');
   tab.className = 'terminal-tab';
@@ -71,6 +73,7 @@ function addTerminalTab(agentId, label, activateTerminalTab, closeTerminal) {
 }
 
 export function activateTerminalTab(agentId) {
+  revealTerminalPanel(fitActiveTerminal);
   for (const terminal of termState.terminals.values()) {
     terminal.element.classList.remove('active');
     terminal.tab.classList.remove('active');
@@ -244,6 +247,7 @@ export function fitActiveTerminal() {
 }
 
 export function initResizableHandles() {
+  initTerminalPanelCollapse(fitActiveTerminal);
   setupTerminalResizableHandles(fitActiveTerminal);
 }
 
