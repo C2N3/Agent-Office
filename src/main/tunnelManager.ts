@@ -5,7 +5,13 @@ import os from 'os';
 import path from 'path';
 
 function findCloudflared(): string | null {
-  // 1. Shell PATH lookup (works regardless of install method)
+  // 1. npm cloudflared package (bundled with this project)
+  try {
+    const { bin } = require('cloudflared');
+    if (bin && fs.existsSync(bin)) return bin;
+  } catch {}
+
+  // 2. Shell PATH lookup (works regardless of install method)
   try {
     const cmd = process.platform === 'win32' ? 'where cloudflared' : 'which cloudflared';
     const result = execSync(cmd, { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] });
@@ -13,7 +19,7 @@ function findCloudflared(): string | null {
     if (first && fs.existsSync(first)) return first;
   } catch {}
 
-  // 2. WinGet packages directory (winget installs here but doesn't always update PATH immediately)
+  // 3. WinGet packages directory (winget installs here but doesn't always update PATH immediately)
   if (process.platform === 'win32') {
     const wingetBase = path.join(os.homedir(), 'AppData', 'Local', 'Microsoft', 'WinGet', 'Packages');
     try {
@@ -27,7 +33,7 @@ function findCloudflared(): string | null {
       }
     } catch {}
 
-    // 3. Common Windows install paths
+    // 4. Common Windows install paths
     for (const p of [
       path.join(process.env.ProgramFiles || 'C:\\Program Files', 'cloudflared', 'cloudflared.exe'),
       path.join(process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)', 'cloudflared', 'cloudflared.exe'),
@@ -73,7 +79,7 @@ class TunnelManager extends EventEmitter {
 
     const bin = findCloudflared();
     if (!bin) {
-      this._error = 'cloudflared를 찾을 수 없습니다. 설치: winget install Cloudflare.cloudflared';
+      this._error = 'cloudflared를 찾을 수 없습니다. npm install을 다시 실행해 주세요.';
       this._startedAt = null;
       return { ok: false, message: this._error };
     }
