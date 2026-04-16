@@ -69,6 +69,13 @@ describe('codexProcessor', () => {
   });
 
   test('thread.started creates a Codex agent', () => {
+    agentRegistry.findByProjectPath.mockReturnValue({
+      id: 'reg-codex-1',
+      name: 'Codex App',
+      role: '',
+      avatarIndex: 0,
+    });
+
     processor.processCodexEvent({
       type: 'thread.started',
       thread_id: 'thread-1234',
@@ -78,14 +85,27 @@ describe('codexProcessor', () => {
 
     expect(agentManager.updateAgent).toHaveBeenCalledWith(
       expect.objectContaining({
+        registryId: 'reg-codex-1',
         sessionId: 'thread-1234',
         provider: 'codex',
-        displayName: 'app',
+        displayName: 'Codex App',
         state: 'Waiting',
         model: 'gpt-5-codex',
+        isRegistered: true,
       }),
       'codex'
     );
+  });
+
+  test('thread.started blocks unregistered Codex session', () => {
+    processor.processCodexEvent({
+      type: 'thread.started',
+      thread_id: 'thread-1234',
+      cwd: '/workspace/app',
+      model: 'gpt-5-codex',
+    });
+
+    expect(agentManager.updateAgent).not.toHaveBeenCalled();
   });
 
   test('turn.started moves agent to Thinking', () => {
@@ -257,22 +277,20 @@ describe('codexProcessor', () => {
     });
 
     expect(agentRegistry.linkSession).not.toHaveBeenCalled();
-    expect(agentManager.getAgent('thread-1234')).toEqual(expect.objectContaining({
-      sessionId: 'thread-1234',
-      projectPath: '/workspace/app',
-      displayName: 'app',
-      state: 'Waiting',
-      provider: 'codex',
-    }));
+    expect(agentManager.updateAgent).not.toHaveBeenCalled();
+    expect(agentManager.getAgent('thread-1234')).toBeNull();
   });
 
-  test('late registry creation reattaches an active desktop session by project path', () => {
+  test('late registry creation cannot reattach when unregistered sessions are blocked', () => {
+    // Unregistered session is blocked — no ephemeral agent to attach to
     processor.processCodexEvent({
       type: 'thread.started',
       thread_id: 'thread-1234',
       cwd: '/workspace/app',
       model: 'gpt-5-codex',
     });
+
+    expect(agentManager.getAgent('thread-1234')).toBeNull();
 
     const attachedSessionId = processor.attachRegisteredAgent({
       id: 'registry-1',
@@ -283,32 +301,12 @@ describe('codexProcessor', () => {
       provider: 'codex',
     });
 
-    expect(attachedSessionId).toBe('thread-1234');
-    expect(agentRegistry.linkSession).toHaveBeenCalledWith('registry-1', 'thread-1234', null, {
-      runtimeSessionId: 'thread-1234',
-      resumeSessionId: null,
-    });
-    expect(agentManager.removeAgent).toHaveBeenCalledWith('thread-1234');
-    expect(agentManager.getAgent('registry-1')).toEqual(expect.objectContaining({
-      registryId: 'registry-1',
-      sessionId: 'thread-1234',
-      displayName: 'Desktop Agent',
-      projectPath: '/workspace/app',
-      isRegistered: true,
-    }));
-
-    processor.processCodexEvent({
-      type: 'turn.started',
-      thread_id: 'thread-1234',
-    });
-
-    expect(agentManager.getAgent('registry-1')).toEqual(expect.objectContaining({
-      state: 'Thinking',
-    }));
-    expect(agentManager.getAgent('thread-1234')).toBeNull();
+    expect(attachedSessionId).toBeNull();
+    expect(agentRegistry.linkSession).not.toHaveBeenCalled();
   });
 
   test('late registry creation skips characters that are already bound', () => {
+    // Unregistered session is blocked — no ephemeral agent exists
     processor.processCodexEvent({
       type: 'thread.started',
       thread_id: 'thread-1234',
@@ -328,13 +326,11 @@ describe('codexProcessor', () => {
 
     expect(attachedSessionId).toBeNull();
     expect(agentRegistry.linkSession).not.toHaveBeenCalled();
-    expect(agentManager.getAgent('thread-1234')).toEqual(expect.objectContaining({
-      sessionId: 'thread-1234',
-      displayName: 'app',
-    }));
+    expect(agentManager.getAgent('thread-1234')).toBeNull();
   });
 
-  test('reactivated unbound session auto-creates a new character using cached workspace path', () => {
+  test('reactivated unbound session stays blocked after initial rejection', () => {
+    // Unregistered session is blocked
     processor.processCodexEvent({
       type: 'thread.started',
       thread_id: 'thread-1234',
@@ -342,25 +338,25 @@ describe('codexProcessor', () => {
       model: 'gpt-5-codex',
     });
 
-    processor.endSession('thread-1234');
-
     expect(agentManager.getAgent('thread-1234')).toBeNull();
 
+    // Subsequent events for rejected sessions are also blocked
     processor.processCodexEvent({
       type: 'turn.started',
       thread_id: 'thread-1234',
     });
 
-    expect(agentManager.getAgent('thread-1234')).toEqual(expect.objectContaining({
-      sessionId: 'thread-1234',
-      projectPath: '/workspace/app',
-      displayName: 'app',
-      state: 'Thinking',
-      provider: 'codex',
-    }));
+    expect(agentManager.getAgent('thread-1234')).toBeNull();
   });
 
   test('session JSONL entries reconstruct state for codex desktop or cli sessions', () => {
+    agentRegistry.findByProjectPath.mockReturnValue({
+      id: 'reg-codex-1',
+      name: 'Codex App',
+      role: '',
+      avatarIndex: 0,
+    });
+
     processor.processSessionEntry({
       type: 'session_meta',
       payload: {
@@ -480,6 +476,13 @@ describe('codexProcessor', () => {
   });
 
   test('transcript canonical id rekeys a live codex thread id', () => {
+    agentRegistry.findByProjectPath.mockReturnValue({
+      id: 'reg-codex-1',
+      name: 'Codex App',
+      role: '',
+      avatarIndex: 0,
+    });
+
     processor.processCodexEvent({
       type: 'thread.started',
       thread_id: 'thread-1234',
@@ -504,22 +507,32 @@ describe('codexProcessor', () => {
       },
     }, { sessionId: metaResult.sessionId, transcriptPath: '/tmp/codex.jsonl' });
 
-    expect(agentManager.rekeyAgent).toHaveBeenCalledWith('thread-1234', 'session-9999', {
+    // Registered agents rekey via replaceSessionId on the registry, not rekeyAgent
+    expect(agentRegistry.replaceSessionId).toHaveBeenCalledWith(
+      'reg-codex-1',
+      'thread-1234',
+      'session-9999',
+      '/tmp/codex.jsonl',
+      expect.objectContaining({
+        runtimeSessionId: 'thread-1234',
+        resumeSessionId: 'session-9999',
+      })
+    );
+    expect(agentManager.getAgent('reg-codex-1')).toEqual(expect.objectContaining({
       sessionId: 'session-9999',
-      runtimeSessionId: 'thread-1234',
+      runtimeSessionId: expect.any(String),
       resumeSessionId: 'session-9999',
-    });
-    expect(agentManager.getAgent('thread-1234')).toBeNull();
-    expect(agentManager.getAgent('session-9999')).toEqual(expect.objectContaining({
-      id: 'session-9999',
-      sessionId: 'session-9999',
-      runtimeSessionId: 'thread-1234',
-      resumeSessionId: 'session-9999',
-      projectPath: '/workspace/app',
     }));
   });
 
   test('registered codex agents rekey their saved session history to the canonical id', () => {
+    agentRegistry.findByProjectPath.mockReturnValue({
+      id: 'registry-1',
+      name: 'Desktop Agent',
+      role: 'Implementer',
+      avatarIndex: 3,
+    });
+
     processor.processCodexEvent({
       type: 'thread.started',
       thread_id: 'thread-1234',
@@ -527,16 +540,7 @@ describe('codexProcessor', () => {
       model: 'gpt-5-codex',
     });
 
-    const attachedSessionId = processor.attachRegisteredAgent({
-      id: 'registry-1',
-      name: 'Desktop Agent',
-      role: 'Implementer',
-      projectPath: '/workspace/app',
-      avatarIndex: 3,
-      provider: 'codex',
-    });
-
-    expect(attachedSessionId).toBe('thread-1234');
+    expect(agentRegistry.linkSession).toHaveBeenCalledWith('registry-1', 'thread-1234', null, expect.anything());
 
     const metaResult = processor.processSessionEntry({
       type: 'session_meta',

@@ -127,11 +127,15 @@ function handleAPIRequest(req: RequestLike, res: ResponseLike, url: URL): void {
   }
 
   if (WRITE_METHODS.has(req.method || '') && url.pathname !== '/api/health') {
-    const token = extractToken(req);
-    if (!isValidToken(token)) {
-      res.writeHead(401, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Unauthorized: valid token required for write operations' }));
-      return;
+    const host = (req.headers.host || '').replace(/:\d+$/, '');
+    const isLocal = host === 'localhost' || host === '127.0.0.1' || host === '::1';
+    if (!isLocal) {
+      const token = extractToken(req);
+      if (!isValidToken(token)) {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Unauthorized: valid token required for write operations' }));
+        return;
+      }
     }
   }
 

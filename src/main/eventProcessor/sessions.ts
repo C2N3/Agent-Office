@@ -99,6 +99,9 @@ export function createSessionLifecycleHandlers(options: any) {
         parentId,
       }, createSource);
       debugLog(`[${logPrefix}] SessionStart -> registered agent: ${(registeredAgent.id as string).slice(0, 8)} "${registeredAgent.name}" ← session ${sessionId.slice(0, 8)}`);
+    } else if (agentRegistry && !isSubagent && !isTeammate) {
+      debugLog(`[${logPrefix}] SessionStart -> skipped unregistered session: ${sessionId.slice(0, 8)} (${resolvedCwd ? path.basename(resolvedCwd) : 'unknown'})`);
+      return;
     } else {
       const displayName = resolvedCwd ? path.basename(resolvedCwd) : 'Agent';
       agentManager.updateAgent({
