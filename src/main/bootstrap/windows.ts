@@ -27,6 +27,24 @@ function createApplicationWindowManager({
 function startDashboardRuntime({ windowManager, orchestrator, workspaceManager, terminalManager, teamCoordinator, debugLog }) {
   windowManager.startDashboardServer();
 
+  // Initialize remote access token and print info
+  try {
+    const { loadOrCreateToken } = require('../../dashboardServer/remoteAuth.js');
+    const token = loadOrCreateToken();
+    const port = 3000;
+    debugLog(`[Remote] Token: ${token}`);
+    debugLog(`[Remote] Local:  http://localhost:${port}/remote?token=${token}`);
+    debugLog(`[Remote] Run start-tunnel.bat to expose via Cloudflare`);
+    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('  Remote Access Token:', token);
+    console.log(`  Local URL: http://localhost:${port}/remote?token=${token}`);
+    console.log('  Token file: ~/.agent-office/remote-token.txt');
+    console.log('  Run start-tunnel.bat for Cloudflare public URL');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+  } catch (error) {
+    debugLog(`[Remote] Failed to initialize token: ${error.message}`);
+  }
+
   if (!orchestrator) {
     return;
   }

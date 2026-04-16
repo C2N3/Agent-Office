@@ -52,6 +52,17 @@
           </svg>
           Archive
         </button>
+
+        <div class="nav-label" style="margin-top: 20px">Access</div>
+        <button class="nav-item" data-view="remote" id="remoteNavBtn">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="2" y1="12" x2="22" y2="12"></line>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+          </svg>
+          Remote
+          <span id="tunnelStatusDot" style="margin-left:auto;width:6px;height:6px;border-radius:50%;background:#555;flex-shrink:0"></span>
+        </button>
       </nav>
       <div class="sidebar-footer">
         <div class="status-dot disconnected" id="statusIndicator"></div>
@@ -224,6 +235,12 @@
         </div>
 
         <!-- Usage View removed -->
+
+        <div id="remoteView" class="view-section">
+          <div class="panel remote-panel">
+            <div class="standby-state">Loading…</div>
+          </div>
+        </div>
 
         <div id="archiveView" class="view-section">
           <div class="panel archive-panel">

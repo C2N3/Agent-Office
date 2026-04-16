@@ -22,6 +22,7 @@ const runtimeFiles = [
   'dashboard.html',
   'pip.html',
   'overlay.html',
+  'remote.html',
   'styles.css',
 ];
 

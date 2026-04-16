@@ -9,6 +9,8 @@ import {
   handleTaskApiRoute,
   handleTeamApiRoute,
 } from './apiHandlers.js';
+import { extractToken, isValidToken } from './remoteAuth.js';
+import { handleGetTunnel, handleStartTunnel, handleStopTunnel } from './tunnelHandlers.js';
 
 interface ResponseLike {
   writeHead(statusCode: number, headers?: Record<string, string>): void;
@@ -62,6 +64,11 @@ function handleRequest(req: RequestLike, res: ResponseLike): void {
     serveFile(res, HTML_FILE, 'text/html; charset=utf-8', undefined, 500);
     return;
   }
+  if (pathname === '/remote') {
+    const remoteFile = path.join(PROJECT_ROOT, 'remote.html');
+    serveFile(res, remoteFile, 'text/html; charset=utf-8', undefined, 500);
+    return;
+  }
   if (pathname === '/pip') {
     serveFile(res, PIP_FILE, 'text/html; charset=utf-8', undefined, 500);
     return;
@@ -106,15 +113,26 @@ function handleRequest(req: RequestLike, res: ResponseLike): void {
   res.end('Not Found');
 }
 
+const WRITE_METHODS = new Set(['POST', 'DELETE', 'PATCH', 'PUT']);
+
 function handleAPIRequest(req: RequestLike, res: ResponseLike, url: URL): void {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Remote-Token');
 
   if (req.method === 'OPTIONS') {
     res.writeHead(200);
     res.end();
     return;
+  }
+
+  if (WRITE_METHODS.has(req.method || '') && url.pathname !== '/api/health') {
+    const token = extractToken(req);
+    if (!isValidToken(token)) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Unauthorized: valid token required for write operations' }));
+      return;
+    }
   }
 
   const routeKey = `${req.method} ${url.pathname}`;
@@ -130,6 +148,10 @@ function handleAPIRequest(req: RequestLike, res: ResponseLike, url: URL): void {
   if (handleTaskApiRoute(req as any, res as any, url)) return;
   if (handleTeamApiRoute(req as any, res as any, url)) return;
   if (handleAgentApiRoute(req as any, res as any, url)) return;
+
+  if (url.pathname === '/api/tunnel' && req.method === 'GET') { handleGetTunnel(req, res); return; }
+  if (url.pathname === '/api/tunnel/start' && req.method === 'POST') { handleStartTunnel(req, res); return; }
+  if (url.pathname === '/api/tunnel/stop' && req.method === 'POST') { handleStopTunnel(req, res); return; }
 
   res.writeHead(404, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify({ error: 'API endpoint not found' }));

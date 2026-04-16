@@ -149,6 +149,24 @@ function initArchiveEvents() {
   });
 }
 
+function initTunnelStatusDot() {
+  const dot = document.getElementById('tunnelStatusDot');
+  if (!dot) return;
+
+  async function update() {
+    try {
+      const res = await fetch('/api/tunnel');
+      if (!res.ok) return;
+      const status = await res.json() as { running: boolean; url: string | null };
+      dot.style.background = status.running && status.url ? '#4ade80' : status.running ? '#fbbf24' : '#555';
+      dot.style.boxShadow = status.running && status.url ? '0 0 5px #4ade80' : 'none';
+    } catch {}
+  }
+
+  update();
+  setInterval(update, 5000);
+}
+
 function initApp() {
   globalThis.openTerminalForAgent = openTerminalForAgent;
 
@@ -158,6 +176,7 @@ function initApp() {
   initPipControls();
   initOverlayControls();
   initInitialView();
+  initTunnelStatusDot();
 
   connectSSE();
   initTerminals();

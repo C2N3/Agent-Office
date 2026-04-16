@@ -1,0 +1,151 @@
+.remote-panel {
+  padding: 20px;
+  max-width: 640px;
+}
+
+.remote-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin-bottom: 16px;
+}
+
+.remote-status-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.remote-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background 0.3s, box-shadow 0.3s;
+}
+
+.remote-status-label {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.remote-uptime {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.remote-action-btn {
+  padding: 6px 16px;
+  font-size: 13px;
+  border-radius: 6px;
+}
+
+.remote-error {
+  background: rgba(248, 113, 113, 0.1);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: #f87171;
+  margin-bottom: 16px;
+  font-family: var(--font-mono, monospace);
+}
+
+.remote-info-block {
+  margin-bottom: 16px;
+}
+
+.remote-info-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-muted);
+  margin-bottom: 6px;
+}
+
+.remote-url-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--color-bg-input, rgba(255,255,255,0.05));
+  border: 1px solid var(--color-border, rgba(255,255,255,0.1));
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+
+.remote-url-text {
+  flex: 1;
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  color: var(--color-text);
+  word-break: break-all;
+  min-width: 0;
+}
+
+.remote-token-text {
+  letter-spacing: 0.5px;
+}
+
+.remote-copy-btn {
+  flex-shrink: 0;
+  background: transparent;
+  border: 1px solid var(--color-border, rgba(255,255,255,0.15));
+  border-radius: 4px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.remote-copy-btn:hover {
+  border-color: var(--color-accent, #4ade80);
+  color: var(--color-accent, #4ade80);
+}
+
+.remote-hint {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-top: 6px;
+}
+
+.remote-hint code {
+  font-family: var(--font-mono, monospace);
+  background: rgba(255,255,255,0.07);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.remote-open-link {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--color-accent, #4ade80);
+  text-decoration: none;
+}
+
+.remote-open-link:hover {
+  text-decoration: underline;
+}
+
+.remote-guide {
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.remote-guide li {
+  font-size: 13px;
+  color: var(--color-text-dark, #aaa);
+  line-height: 1.5;
+}
+
+.remote-guide li strong {
+  color: var(--color-text);
+}

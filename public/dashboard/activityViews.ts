@@ -233,6 +233,13 @@ export function initViewControls() {
       if (target === 'heatmap') renderHeatmapView();
       else if (target === 'usage') renderUsageView();
       else if (target === 'archive') renderArchiveView();
+      else if (target === 'remote') {
+        import('./remoteView.js').then((m) => { m.renderRemoteView(); m.startRemoteViewPolling(); });
+      }
+
+      if (target !== 'remote') {
+        import('./remoteView.js').then((m) => m.stopRemoteViewPolling());
+      }
     };
   });
 }
