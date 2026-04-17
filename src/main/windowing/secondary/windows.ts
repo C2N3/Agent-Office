@@ -141,13 +141,7 @@ function createSecondaryWindowControls(options) {
         debugLog('[MissionControl] Window closed');
         refs.dashboardWindow = null;
         closePipWindow();
-        if (agentManager) {
-          const activeAgents = agentManager.getAllAgents().filter((a) => a.state !== 'Offline');
-          if (activeAgents.length > 0 && (!refs.overlayWindow || refs.overlayWindow.isDestroyed())) {
-            createOverlayWindow();
-            debugLog(`[Overlay] Auto-shown with ${activeAgents.length} active agent(s)`);
-          }
-        }
+        closeOverlayWindow();
       });
 
       debugLog('[MissionControl] Window created');
