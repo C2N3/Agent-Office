@@ -10,6 +10,7 @@ import {
   officeOnAgentRemoved,
   officeOnAgentUpdated,
 } from '../office/index.js';
+import { floorManager } from '../office/floorManager.js';
 import { updateConnectionStatus } from './connectionStatus.js';
 import { getStateColor } from './agentViewHelpers.js';
 import { buildAgentCardHtml } from './agentCard/markup.js';
@@ -167,7 +168,10 @@ export function isRegisteredOnlyFilterEnabled() {
 }
 
 export function shouldDisplayAgent(agent: DashboardAgent) {
-  return !isRegisteredOnlyFilterEnabled() || !!agent.isRegistered;
+  if (isRegisteredOnlyFilterEnabled() && !agent.isRegistered) return false;
+  // Floor filter: only show agents on the current floor
+  if (!floorManager.isAgentOnCurrentFloor(agent.id)) return false;
+  return true;
 }
 
 export function getVisibleAgents() {

@@ -19,9 +19,10 @@ function seatKey(roomId, deskIndex) {
 }
 
 function pickInitialRoomId(agentId) {
+  // In floor mode, there's always exactly one room loaded (the current floor's room).
+  // So just pick the first available room.
   if (officeRoomOrder.length === 0) return null;
-  const idx = avatarIndexFromId(agentId) % officeRoomOrder.length;
-  return officeRoomOrder[idx];
+  return officeRoomOrder[0];
 }
 
 function roomCenter(roomId) {
@@ -52,6 +53,7 @@ export function addCharacter(agentData) {
   const char = {
     id: agentData.id,
     roomId,
+    floorId: agentData._floorId || null,
     x: center.x + (Math.random() - 0.5) * 175,
     y: center.y + (Math.random() - 0.5) * 175,
     path: [],

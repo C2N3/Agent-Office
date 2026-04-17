@@ -1,0 +1,281 @@
+/* Floor Tabs — horizontal tab strip for switching between floors */
+
+.floor-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: var(--color-bg-alt, #161b22);
+  border-bottom: 1px solid var(--color-border, #30363d);
+  padding: 0 8px;
+  min-height: 34px;
+  overflow: hidden;
+}
+
+.floor-tabs-list {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  overflow-x: auto;
+  flex: 1;
+  scrollbar-width: none;
+}
+
+.floor-tabs-list::-webkit-scrollbar {
+  display: none;
+}
+
+.floor-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-text-muted, #8b949e);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  font-family: inherit;
+}
+
+.floor-tab:hover {
+  color: var(--color-text, #c9d1d9);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.floor-tab.active {
+  color: var(--color-text, #c9d1d9);
+  border-bottom-color: var(--color-accent, #58a6ff);
+}
+
+.floor-tab-name {
+  pointer-events: none;
+}
+
+.floor-tab-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text-muted, #8b949e);
+  background: transparent;
+  border: 1px dashed var(--color-border, #30363d);
+  border-radius: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  font-family: inherit;
+  margin-left: 4px;
+}
+
+.floor-tab-add:hover {
+  color: var(--color-text, #c9d1d9);
+  border-color: var(--color-text-muted, #8b949e);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.floor-tab-manage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  color: var(--color-text-muted, #8b949e);
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.15s, background 0.15s;
+  margin-left: 2px;
+}
+
+.floor-tab-manage:hover {
+  color: var(--color-text, #c9d1d9);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* Create Floor Dialog */
+.floor-create-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.floor-create-dialog {
+  background: var(--color-bg-panel, #0d1117);
+  border: 1px solid var(--color-border, #30363d);
+  border-radius: 8px;
+  padding: 20px;
+  min-width: 300px;
+  max-width: 400px;
+}
+
+.floor-create-dialog h3 {
+  margin: 0 0 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text, #c9d1d9);
+}
+
+.floor-create-dialog input[type="text"] {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 0.8rem;
+  background: var(--color-bg-alt, #161b22);
+  border: 1px solid var(--color-border, #30363d);
+  border-radius: 4px;
+  color: var(--color-text, #c9d1d9);
+  outline: none;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.floor-create-dialog input[type="text"]:focus {
+  border-color: var(--color-accent, #58a6ff);
+}
+
+.floor-create-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.floor-create-actions button {
+  padding: 6px 14px;
+  font-size: 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+  border: 1px solid var(--color-border, #30363d);
+}
+
+.floor-create-actions .floor-cancel-btn {
+  background: transparent;
+  color: var(--color-text-muted, #8b949e);
+}
+
+.floor-create-actions .floor-confirm-btn {
+  background: var(--color-accent, #58a6ff);
+  color: #fff;
+  border-color: var(--color-accent, #58a6ff);
+}
+
+.floor-create-actions .floor-confirm-btn:hover {
+  opacity: 0.9;
+}
+
+/* ─── Floor Manager Modal ─── */
+
+.floor-mgr-dialog {
+  min-width: 340px;
+  max-width: 420px;
+}
+
+.floor-mgr-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.floor-mgr-header h3 {
+  margin: 0;
+}
+
+.floor-mgr-close {
+  background: none;
+  border: none;
+  color: var(--color-text-muted, #8b949e);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.floor-mgr-close:hover {
+  color: var(--color-text, #c9d1d9);
+}
+
+.floor-mgr-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.floor-mgr-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: var(--color-bg-alt, #161b22);
+  border: 1px solid var(--color-border, #30363d);
+  border-radius: 6px;
+}
+
+.floor-mgr-name {
+  flex: 1;
+  padding: 4px 8px !important;
+  font-size: 0.8rem !important;
+  min-width: 0;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  border-radius: 3px;
+  color: var(--color-text, #c9d1d9);
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.floor-mgr-name:focus {
+  border-color: var(--color-accent, #58a6ff) !important;
+  background: var(--color-bg-panel, #0d1117) !important;
+}
+
+.floor-mgr-count {
+  font-size: 0.7rem;
+  color: var(--color-text-muted, #8b949e);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.floor-mgr-current {
+  font-size: 0.65rem;
+  color: var(--color-accent, #58a6ff);
+  background: rgba(88, 166, 255, 0.1);
+  padding: 1px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.floor-mgr-delete {
+  background: none;
+  border: none;
+  color: var(--color-text-muted, #8b949e);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  transition: color 0.15s, background 0.15s;
+}
+
+.floor-mgr-delete:hover {
+  color: #f85149;
+  background: rgba(248, 81, 73, 0.15);
+}

@@ -89,9 +89,13 @@ async function loadRoomDecor(roomCfg: any, originX: number, originY: number) {
   };
 }
 
-export async function buildOfficeLayers() {
+/**
+ * Build office layers. If roomFilter is provided, only rooms whose IDs are
+ * in the array will be loaded (used for floor-based rendering).
+ */
+export async function buildOfficeLayers(roomFilter?: string[]) {
   const layout: any = OFFICE_LAYOUT || {};
-  const rooms: any[] = Array.isArray(layout.rooms) && layout.rooms.length > 0
+  let rooms: any[] = Array.isArray(layout.rooms) && layout.rooms.length > 0
     ? layout.rooms
     : [{
         id: 'room1',
@@ -102,6 +106,19 @@ export async function buildOfficeLayers() {
         laptopSeatMap: layout.laptopSeatMap,
         decor: layout.decor,
       }];
+
+  // Floor filter: only load the room(s) belonging to the active floor
+  if (roomFilter && roomFilter.length > 0) {
+    const filtered = rooms.filter(function (r) { return roomFilter.indexOf(r.id) !== -1; });
+    // If filter matches nothing, fallback to first room with the requested id
+    if (filtered.length > 0) {
+      rooms = filtered;
+    } else {
+      // Use first room as template but assign the requested roomId
+      rooms = [Object.assign({}, rooms[0], { id: roomFilter[0], name: roomFilter[0] })];
+    }
+  }
+
   const gap = Number.isFinite(layout.roomGap) && layout.roomGap >= 0 ? layout.roomGap : 0;
   const scale = (OFFICE && OFFICE.MAP_SCALE) || 1;
   const ts = Date.now();

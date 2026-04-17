@@ -39,12 +39,16 @@ export const officeRenderer: any = {
   camera: { zoom: 1, panX: 0, panY: 0, minZoom: 0.15, maxZoom: 3 },
   followTarget: null as { agentId: string; zoom: number } | null,
 
-  async init(canvas) {
+  async initWithFloor(canvas, roomFilter?: string[]) {
+    return this.init(canvas, roomFilter);
+  },
+
+  async init(canvas, roomFilter?: string[]) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
 
-    // 1. Load layers for every room
-    await buildOfficeLayers();
+    // 1. Load layers (optionally filtered by floor)
+    await buildOfficeLayers(roomFilter);
     this._fitCanvasToContainer(true);
 
     // 2. Build pathfinder grid per room
@@ -178,6 +182,68 @@ export const officeRenderer: any = {
     const targetPanY = this.canvas.height / 2 - char.y * cam.zoom;
     cam.panX += (targetPanX - cam.panX) * alpha;
     cam.panY += (targetPanY - cam.panY) * alpha;
+  },
+
+  /** Switch to a different floor. Rebuilds layers, pathfinder, coords, laptops. */
+  async switchToFloor(roomFilter: string[]) {
+    this.stop();
+
+    // 1. Rebuild layers for the target floor's room(s)
+    await buildOfficeLayers(roomFilter);
+    this._fitCanvasToContainer(true);
+
+    // 2. Rebuild pathfinder
+    await officePathfinder.init();
+
+    // 3. Re-parse coordinates
+    for (let i = 0; i < officeRoomOrder.length; i++) {
+      await parseRoomMapCoordinates(officeRoomOrder[i]);
+    }
+
+    // 4. Reload laptop images
+    const directions = ['down', 'up', 'left', 'right'];
+    const self = this;
+    const ts = Date.now();
+    const cacheBust = function (src) {
+      if (!src) return src;
+      const sep = src.indexOf('?') === -1 ? '?' : '&';
+      return src + sep + 'v=' + ts;
+    };
+
+    const promises: Promise<unknown>[] = [];
+    officeRoomOrder.forEach(function (roomId) {
+      const room = officeRooms[roomId];
+      const laptopStates = (room && room.assets && room.assets.laptopStates) || {};
+      self.laptopImagesByRoom[roomId] = { down: null, up: null, left: null, right: null };
+      self.laptopOpenImagesByRoom[roomId] = { down: null, up: null, left: null, right: null };
+      directions.forEach(function (d) {
+        const states = laptopStates[d] || {};
+        promises.push(new Promise<void>(function (resolve) {
+          if (!states.closed) return resolve();
+          const img = new Image();
+          img.src = cacheBust(states.closed);
+          img.onload = function () { self.laptopImagesByRoom[roomId][d] = img; resolve(); };
+          img.onerror = function () { resolve(); };
+        }));
+        promises.push(new Promise<void>(function (resolve) {
+          if (!states.open) return resolve();
+          const img = new Image();
+          img.src = cacheBust(states.open);
+          img.onload = function () { self.laptopOpenImagesByRoom[roomId][d] = img; resolve(); };
+          img.onerror = function () { resolve(); };
+        }));
+      });
+    });
+    await Promise.all(promises);
+
+    // 5. Re-parse laptop object coords
+    for (let i = 0; i < officeRoomOrder.length; i++) {
+      await parseRoomObjectCoordinates(officeRoomOrder[i]);
+    }
+
+    // 6. Resume render loop
+    this.lastTime = performance.now();
+    this.loop(this.lastTime);
   },
 
   stop: function () {
