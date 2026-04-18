@@ -258,6 +258,18 @@ describe('dashboard-server', () => {
       expect(body.agents).toBe(1);
     });
 
+    test('GET /api/server/config returns central server proxy config', () => {
+      const { req, res } = createMockReqRes('GET', '/api/server/config');
+      handler(req, res);
+
+      expect(res.writeHead).toHaveBeenCalledWith(200, { 'Content-Type': 'application/json' });
+      const body = JSON.parse(res.end.mock.calls[0][0]);
+      expect(body.baseUrl).toBe('http://127.0.0.1:47823');
+      expect(body.healthPath).toBe('/api/server/health');
+      expect(body.workersPath).toBe('/api/server/workers');
+      expect(body.eventsPath).toBe('/api/server/events');
+    });
+
     test('GET /api/heatmap returns 503 when no heatmap scanner', () => {
       const { req, res } = createMockReqRes('GET', '/api/heatmap');
       handler(req, res);

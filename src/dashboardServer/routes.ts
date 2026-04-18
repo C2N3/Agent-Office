@@ -9,6 +9,7 @@ import {
   handleTaskApiRoute,
   handleTeamApiRoute,
 } from './apiHandlers.js';
+import { handleCentralServerRoute } from './centralServerProxy.js';
 import { extractToken, isValidToken } from './remoteAuth.js';
 import { handleGetTunnel, handleStartTunnel, handleStopTunnel } from './tunnelHandlers.js';
 
@@ -140,6 +141,8 @@ function handleAPIRequest(req: RequestLike, res: ResponseLike, url: URL): void {
   }
 
   const routeKey = `${req.method} ${url.pathname}`;
+  if (handleCentralServerRoute(req as any, res as any, url)) return;
+
   const handler = apiRoutes[routeKey as keyof typeof apiRoutes];
   if (handler) {
     handler(req as any, res as any, url);
