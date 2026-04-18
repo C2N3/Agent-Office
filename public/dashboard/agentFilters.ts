@@ -6,13 +6,13 @@ export function isRegisteredOnlyFilterEnabled() {
 }
 
 export function shouldDisplayAgent(agent: DashboardAgent) {
-  if (isRegisteredOnlyFilterEnabled() && !agent.isRegistered) return false;
   ensureAgentAssignedToCurrentFloor(agent.id);
+  if (isRegisteredOnlyFilterEnabled() && !agent.isRegistered) return false;
   if (!floorManager.isAgentOnCurrentFloor(agent.id)) return false;
   return true;
 }
 
-function ensureAgentAssignedToCurrentFloor(agentId: string) {
+export function ensureAgentAssignedToCurrentFloor(agentId: string) {
   if (!agentId || floorManager.getAgentFloor(agentId)) return;
   const currentFloor = floorManager.getCurrentFloor();
   if (!currentFloor) return;
