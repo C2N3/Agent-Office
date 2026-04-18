@@ -1,3 +1,11 @@
+import {
+  bindCentralServerControls,
+  fetchCentralServerSnapshot,
+  renderCentralServerCard,
+  startCentralServerConnection,
+  stopCentralServerConnection,
+} from './serverConnection.js';
+
 let pollInterval: ReturnType<typeof setInterval> | null = null;
 
 interface TunnelStatus {
@@ -125,14 +133,16 @@ export async function renderRemoteView(): Promise<void> {
   const container = document.getElementById('remoteView');
   if (!container) return;
 
-  const status = await fetchTunnelStatus();
+  const [status, centralServer] = await Promise.all([
+    fetchTunnelStatus(),
+    fetchCentralServerSnapshot(),
+  ]);
 
-  if (!status) {
-    container.innerHTML = '<div class="panel remote-panel"><div class="standby-state">Tunnel API unavailable</div></div>';
-    return;
-  }
-
-  container.innerHTML = renderTunnelCard(status);
+  container.innerHTML = renderCentralServerCard(centralServer)
+    + (status
+      ? renderTunnelCard(status)
+      : '<div class="panel remote-panel"><div class="standby-state">Tunnel API unavailable</div></div>');
+  bindCentralServerControls();
 
   document.getElementById('tunnelStartBtn')?.addEventListener('click', async () => {
     const btn = document.getElementById('tunnelStartBtn') as HTMLButtonElement | null;
@@ -153,6 +163,7 @@ export async function renderRemoteView(): Promise<void> {
 }
 
 export function startRemoteViewPolling(): void {
+  startCentralServerConnection();
   if (pollInterval) return;
   pollInterval = setInterval(() => {
     const remoteView = document.getElementById('remoteView');
@@ -164,4 +175,5 @@ export function startRemoteViewPolling(): void {
 
 export function stopRemoteViewPolling(): void {
   if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+  stopCentralServerConnection();
 }

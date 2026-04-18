@@ -330,6 +330,9 @@ function initInitialView() {
   if (target === 'heatmap') renderHeatmapView();
   else if (target === 'usage') renderUsageView();
   else if (target === 'archive') renderArchiveView();
+  else if (target === 'remote') {
+    import('./remoteView.js').then((m) => { m.renderRemoteView(); m.startRemoteViewPolling(); });
+  }
 }
 
 function initArchiveEvents() {
