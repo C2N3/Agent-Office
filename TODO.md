@@ -19,3 +19,5 @@ This file tracks client-side work that is planned, discovered, blocked, or compl
 ## Done
 
 - [x] Move server collaboration roadmap ownership to the server repository and remove duplicate client-side roadmap docs.
+- [x] Auto-detect and symlink existing dependency folders such as `node_modules` when creating managed worktrees.
+- [x] Add dashboard force-terminate support for active agent sessions.
