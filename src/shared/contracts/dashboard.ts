@@ -196,6 +196,7 @@ export type DashboardRegistrationPreview = {
     baseBranch?: string | null;
     startPoint?: string | null;
     workspaceParent?: string | null;
+    symlinkPaths?: string[];
   } | null;
 };
 

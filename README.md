@@ -130,7 +130,7 @@ Advanced options let you override the strategy and configure worktree-specific s
 - branch name, base branch, and start point
 - custom worktree parent directory
 - copied setup files such as `.env.local`
-- symlinked large directories such as `node_modules`
+- symlinked large directories such as `node_modules`; existing dependency folders are detected and linked by default
 - bootstrap commands such as `npm install`
 
 Workspace agents also expose lifecycle actions in the dashboard:

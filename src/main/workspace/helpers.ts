@@ -4,6 +4,7 @@ const os = require('os');
 const { sanitizeProjectPath } = require('../../utils');
 
 const GLOBAL_WORKTREE_DIR = path.join(os.homedir(), '.agent-office', 'worktrees');
+const DEPENDENCY_SYMLINK_CANDIDATES = ['node_modules'];
 
 type BranchSuggestionOptions = {
   name?: string;
@@ -42,6 +43,29 @@ function normalizePathList(value) {
   return rawList
     .map((entry) => sanitizeProjectPath(entry))
     .filter(Boolean);
+}
+
+function mergePathLists(...lists) {
+  const merged = [];
+  const seen = new Set();
+  for (const entry of lists.flat()) {
+    const normalized = sanitizeProjectPath(entry);
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    merged.push(normalized);
+  }
+  return merged;
+}
+
+function detectDependencySymlinkPaths(repoRoot) {
+  return DEPENDENCY_SYMLINK_CANDIDATES.filter((entry) => {
+    const sourcePath = path.join(repoRoot, entry);
+    try {
+      return fs.existsSync(sourcePath) && fs.lstatSync(sourcePath).isDirectory();
+    } catch {
+      return false;
+    }
+  });
 }
 
 function formatCommandError(error) {
@@ -97,6 +121,7 @@ function inspectWorkspacePath(workspaceManager, inputPath, options: WorkspaceIns
         baseBranch,
         startPoint: baseBranch,
         workspaceParent: defaultParent,
+        symlinkPaths: detectDependencySymlinkPaths(repository.repositoryPath),
       },
     };
   } catch (error) {
@@ -113,6 +138,7 @@ function inspectWorkspacePath(workspaceManager, inputPath, options: WorkspaceIns
         baseBranch: null,
         startPoint: null,
         workspaceParent: null,
+        symlinkPaths: [],
       },
       error: error.message,
     };
@@ -154,6 +180,8 @@ module.exports = {
   buildSuggestedBranchName,
   slugifyBranchName,
   normalizePathList,
+  mergePathLists,
+  detectDependencySymlinkPaths,
   formatCommandError,
   inspectWorkspacePath,
   copyIntoWorkspace,

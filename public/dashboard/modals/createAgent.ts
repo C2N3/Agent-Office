@@ -27,6 +27,7 @@ export function setupAgentModal(openTerminalForAgent) {
   const baseBranchList = document.getElementById('agentBaseBranchList');
   const branchModeInput = document.getElementById('agentBranchModeInput') as HTMLInputElement | null;
   const startPointInput = document.getElementById('agentStartPointInput') as HTMLInputElement | null;
+  const symlinkPathsInput = document.getElementById('agentSymlinkPathsInput') as HTMLTextAreaElement | null;
   const inspectStatusEl = document.getElementById('agentRepoInspectStatus');
   if (!modal || !form || !openBtn || !workspacePathInput || !strategyInput || !worktreeFields) return;
 
@@ -34,6 +35,7 @@ export function setupAgentModal(openTerminalForAgent) {
   let branchMode = 'auto';
   let baseBranchTouched = false;
   let startPointTouched = false;
+  let symlinkPathsTouched = false;
   let previewTimer = null;
   let registrationPreview = null;
 
@@ -87,12 +89,14 @@ export function setupAgentModal(openTerminalForAgent) {
     branchMode = 'auto';
     baseBranchTouched = false;
     startPointTouched = false;
+    symlinkPathsTouched = false;
     registrationPreview = null;
     if (strategyInput) strategyInput.value = 'auto';
     if (baseBranchList) baseBranchList.innerHTML = '';
     if (workspaceParentInput) workspaceParentInput.value = '';
     if (baseBranchInput) baseBranchInput.value = '';
     if (startPointInput) startPointInput.value = '';
+    if (symlinkPathsInput) symlinkPathsInput.value = '';
     updateBranchModeLabel();
     updatePreviewCopy({
       previewStatusEl,
@@ -160,6 +164,10 @@ export function setupAgentModal(openTerminalForAgent) {
     if (workspaceParentInput && !workspaceParentInput.value.trim()) {
       workspaceParentInput.value = registrationPreview?.worktreeDefaults?.workspaceParent || '';
     }
+    const defaultSymlinkPaths = registrationPreview?.worktreeDefaults?.symlinkPaths || [];
+    if (symlinkPathsInput && !symlinkPathsTouched && defaultSymlinkPaths.length > 0) {
+      symlinkPathsInput.value = defaultSymlinkPaths.join('\n');
+    }
     syncStartPointToBaseBranch();
     syncAutoBranch();
     updatePreviewCopy({
@@ -218,6 +226,9 @@ export function setupAgentModal(openTerminalForAgent) {
   });
   startPointInput?.addEventListener('input', () => {
     startPointTouched = !!startPointInput.value.trim();
+  });
+  symlinkPathsInput?.addEventListener('input', () => {
+    symlinkPathsTouched = true;
   });
   workspacePathInput?.addEventListener('input', () => {
     scheduleRegistrationPreview();
