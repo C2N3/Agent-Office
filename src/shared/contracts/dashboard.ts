@@ -156,6 +156,7 @@ export type DashboardAgentRecord = {
   name?: string | null;
   role?: string | null;
   provider?: string | null;
+  model?: string | null;
   projectPath?: string | null;
   avatarIndex?: number | null;
   workspace?: DashboardWorkspace | null;

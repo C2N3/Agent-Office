@@ -9,7 +9,9 @@ import {
   clearUnregisteredAgents,
   connectSSE,
   initFilterControls,
+  removeAgent,
   renderAgentList,
+  updateAgent,
   updateAgentUI,
   updateBulkArchiveButton,
 } from './agentViews.js';
@@ -44,6 +46,7 @@ import {
   setupTeamReportModal,
 } from './modals/index.js';
 import { installHoverTooltips } from '../uiTooltip.js';
+import { startCentralAgentSync } from './centralAgents.js';
 
 type DashboardUiError = Error | { message?: string } | DisplayValue;
 
@@ -406,6 +409,10 @@ function initApp() {
   initTunnelStatusDot();
 
   connectSSE();
+  startCentralAgentSync({
+    upsertAgent: updateAgent,
+    removeAgent,
+  });
   initTerminals();
   initTerminalProfileMenu();
   refreshTerminalProfiles().catch((error: DashboardUiError) => console.error('[Terminal Profiles]', error));

@@ -3,6 +3,8 @@ interface CentralServerConfig {
   healthPath: string;
   workersPath: string;
   eventsPath: string;
+  agentsPath: string;
+  agentSyncEnabled: boolean;
 }
 
 interface CentralServerHealth {
@@ -65,11 +67,11 @@ async function fetchJSON<T>(path: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-async function saveCentralServerBaseUrl(baseUrl: string): Promise<CentralServerConfig> {
+async function saveCentralServerConfig(baseUrl: string, agentSyncEnabled: boolean): Promise<CentralServerConfig> {
   const res = await fetch('/api/server/config', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ baseUrl }),
+    body: JSON.stringify({ baseUrl, agentSyncEnabled }),
   });
   const payload = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -176,6 +178,11 @@ export function renderCentralServerCard(snapshot: CentralServerSnapshot): string
       </div>
     </form>
     <div class="remote-hint">포트만 입력해도 됩니다. 예: <code>47824</code> 또는 <code>http://127.0.0.1:47824</code></div>
+    <label class="modal-checkbox" style="margin-top:10px">
+      <input type="checkbox" id="centralAgentSyncInput" ${snapshot.config?.agentSyncEnabled ? 'checked' : ''}>
+      <span>Sync agent characters through this server</span>
+    </label>
+    <div class="remote-hint">When enabled, newly registered agents and avatar/archive changes are mirrored to the central server.</div>
     <div class="remote-error" id="centralServerUrlError" style="display:none;margin-top:8px;margin-bottom:0"></div>
   </div>
 
@@ -239,6 +246,7 @@ export function bindCentralServerControls(): void {
   document.getElementById('centralServerUrlForm')?.addEventListener('submit', async (event) => {
     event.preventDefault();
     const input = document.getElementById('centralServerUrlInput') as HTMLInputElement | null;
+    const syncInput = document.getElementById('centralAgentSyncInput') as HTMLInputElement | null;
     const button = document.getElementById('centralServerUrlSaveBtn') as HTMLButtonElement | null;
     const errorEl = document.getElementById('centralServerUrlError');
     if (!input) return;
@@ -247,9 +255,10 @@ export function bindCentralServerControls(): void {
     if (button) { button.disabled = true; button.textContent = 'Saving...'; }
 
     try {
-      await saveCentralServerBaseUrl(input.value);
+      await saveCentralServerConfig(input.value, !!syncInput?.checked);
       stopCentralServerConnection();
       await refreshCentralServerCard(true);
+      window.dispatchEvent(new CustomEvent('central-agent-sync-config-changed'));
       startCentralServerConnection();
     } catch (error) {
       if (errorEl) { errorEl.textContent = formatError(error); errorEl.style.display = 'block'; }
@@ -272,7 +281,7 @@ export function startCentralServerConnection(): void {
     scheduleRefresh();
   };
 
-  ['worker.connected', 'worker.disconnected', 'worker.heartbeat'].forEach((eventName) => {
+  ['worker.connected', 'worker.disconnected', 'worker.heartbeat', 'agent.created', 'agent.updated', 'agent.removed'].forEach((eventName) => {
     eventSource?.addEventListener(eventName, () => scheduleRefresh());
   });
 }

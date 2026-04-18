@@ -8,6 +8,7 @@ import {
   getEffectiveRegistrationStrategy,
   getRegistrationDecisionMessage,
 } from '../registration/decision.js';
+import { syncCentralAgentRecord } from '../centralAgents.js';
 
 export function setPreviewStatus(previewStatusEl, message) {
   if (previewStatusEl) previewStatusEl.textContent = message;
@@ -175,6 +176,10 @@ export async function submitAgentCreateForm({
     if (errorEl) errorEl.textContent = result?.error || 'Failed to register agent.';
     return;
   }
+
+  syncCentralAgentRecord(result.agent).catch((error) => {
+    console.warn('[Central Agents] create sync failed', error);
+  });
 
   const shouldOpenTerminal = !!document.getElementById('workspaceOpenTerminalInput')?.checked;
   closeModal?.();

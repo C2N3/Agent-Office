@@ -7,6 +7,7 @@ import {
   state,
 } from '../shared.js';
 import { officeCharacters } from '../../office/index.js';
+import { syncCentralAgentUpdate } from '../centralAgents.js';
 
 export function setupAvatarPicker(updateAgentUI) {
   const modal = document.getElementById('avatarPickerModal');
@@ -87,6 +88,9 @@ export function setupAvatarPicker(updateAgentUI) {
         if (dashboardAPI?.updateRegisteredAgent) {
           await dashboardAPI.updateRegisteredAgent(currentRegistryId, { avatarIndex: index });
         }
+        syncCentralAgentUpdate(currentRegistryId, { avatarIndex: index }).catch((error) => {
+          console.warn('[Central Agents] avatar sync failed', error);
+        });
 
         if (currentAgentId) {
           const character = officeCharacters.characters.get(currentAgentId);

@@ -21,6 +21,7 @@ import {
   isRegisteredOnlyFilterEnabled,
   shouldDisplayAgent,
 } from './agentFilters.js';
+import { fetchCentralDashboardAgents } from './centralAgents.js';
 
 export { getStateColor };
 export {
@@ -137,7 +138,13 @@ export async function fetchInitialData() {
     await refreshSharedAvatarData();
     const response = await fetch('/api/agents');
     const agents = (await response.json()) as DashboardAgent[];
-    for (const agent of agents) {
+    let centralAgents: DashboardAgent[] = [];
+    try {
+      centralAgents = await fetchCentralDashboardAgents();
+    } catch (error) {
+      console.warn('[Central Agents] initial sync failed', error);
+    }
+    for (const agent of [...agents, ...centralAgents]) {
       state.agents.set(agent.id, agent);
       if (!state.agentHistory.has(agent.id)) {
         state.agentHistory.set(agent.id, [{ state: agent.status, ts: Date.now() }]);

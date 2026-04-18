@@ -13,7 +13,7 @@ This file tracks client-side work that is planned, discovered, blocked, or compl
 ## Open
 
 - [ ] Keep local-only agent character creation/update working through the Electron IPC and `~/.agent-office/agent-registry.json` path when no central server sync is enabled.
-- [ ] Add an optional central-server-backed agent character sync mode that creates, updates, deletes, and subscribes to agent registry changes through the configured central server while preserving the local-only mode.
+- [x] Add an optional central-server-backed agent character sync mode that creates, updates, deletes, and subscribes to agent registry changes through the configured central server while preserving the local-only mode.
 - [ ] Reconcile local and central agent character state on startup, including conflict rules for name, role, workspace, provider, and avatar changes.
 - [ ] Add full Gemini session visualization support by implementing Gemini session ingestion/monitoring, transcript statistics, recovery metadata, and provider registry/catalog capability updates comparable to Claude and Codex.
 - [ ] Ensure newly created dashboard agents are assigned to the current floor before agent card filtering runs.

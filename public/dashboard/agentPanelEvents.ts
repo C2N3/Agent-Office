@@ -5,6 +5,7 @@ import {
 } from './shared.js';
 import { renderArchiveView } from './activityViews.js';
 import { officeRenderer } from '../office/index.js';
+import { syncCentralAgentRemoval } from './centralAgents.js';
 
 export function initAgentPanelEvents() {
   const agentPanel = document.getElementById('agentPanel');
@@ -99,6 +100,9 @@ export function initAgentPanelEvents() {
         const dashboardAPI = getDashboardAPI();
         const archiveResult = dashboardAPI?.archiveRegisteredAgent?.(unregisterBtn.dataset.archiveId);
         archiveResult?.then(() => {
+          syncCentralAgentRemoval(unregisterBtn.dataset.archiveId).catch((error) => {
+            console.warn('[Central Agents] archive sync failed', error);
+          });
           archiveState.items = null;
           if (state.currentView === 'archive') renderArchiveView(true);
         });
@@ -113,6 +117,9 @@ export function initAgentPanelEvents() {
         const dashboardAPI = getDashboardAPI();
         const deleteResult = dashboardAPI?.deleteRegisteredAgent?.(deleteBtn.dataset.deleteId);
         deleteResult?.then(() => {
+          syncCentralAgentRemoval(deleteBtn.dataset.deleteId).catch((error) => {
+            console.warn('[Central Agents] delete sync failed', error);
+          });
           archiveState.items = null;
           if (state.currentView === 'archive') renderArchiveView(true);
         });

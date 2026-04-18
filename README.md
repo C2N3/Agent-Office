@@ -152,6 +152,8 @@ The dashboard Remote tab includes a Central Server card. Edit `Server URL` there
 
 The saved value is stored in `~/.agent-office/central-server-url.txt`. `AO_CENTRAL_SERVER_URL` is still supported as the startup fallback when no saved value exists.
 
+Enable `Sync agent characters through this server` in the same card to mirror newly registered dashboard agents, avatar changes, and archive/delete actions through the configured central server. The sync toggle is stored in `~/.agent-office/central-agent-sync.txt`; when it is off, agent character creation and updates stay local-only in `~/.agent-office/agent-registry.json`.
+
 ## macOS Release
 
 This repository includes a signed macOS release path.

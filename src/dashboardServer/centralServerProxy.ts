@@ -6,8 +6,10 @@ import { URL } from 'url';
 const DEFAULT_CENTRAL_SERVER_URL = 'http://127.0.0.1:47823';
 const CONFIG_DIR = path.join(os.homedir(), '.agent-office');
 const CENTRAL_SERVER_URL_FILE = path.join(CONFIG_DIR, 'central-server-url.txt');
+const CENTRAL_AGENT_SYNC_FILE = path.join(CONFIG_DIR, 'central-agent-sync.txt');
 
 let configuredBaseUrl: string | null = null;
+let configuredAgentSyncEnabled: boolean | null = null;
 
 interface ResponseLike {
   writeHead(statusCode: number, headers?: Record<string, string>): void;
@@ -73,17 +75,46 @@ function getCentralServerBaseUrl(): string {
   return loadConfiguredBaseUrl();
 }
 
-function getCentralServerConfig(): { baseUrl: string; healthPath: string; workersPath: string; eventsPath: string } {
+function loadAgentSyncEnabled(): boolean {
+  if (configuredAgentSyncEnabled !== null) return configuredAgentSyncEnabled;
+  try {
+    if (fs.existsSync(CENTRAL_AGENT_SYNC_FILE)) {
+      configuredAgentSyncEnabled = fs.readFileSync(CENTRAL_AGENT_SYNC_FILE, 'utf-8').trim() === 'true';
+      return configuredAgentSyncEnabled;
+    }
+  } catch {}
+  configuredAgentSyncEnabled = false;
+  return configuredAgentSyncEnabled;
+}
+
+function saveAgentSyncEnabled(enabled: boolean): void {
+  fs.mkdirSync(CONFIG_DIR, { recursive: true });
+  fs.writeFileSync(CENTRAL_AGENT_SYNC_FILE, `${enabled ? 'true' : 'false'}\n`, 'utf-8');
+  configuredAgentSyncEnabled = enabled;
+}
+
+function getCentralServerConfig(): {
+  baseUrl: string;
+  healthPath: string;
+  workersPath: string;
+  eventsPath: string;
+  agentsPath: string;
+  agentSyncEnabled: boolean;
+} {
   return {
     baseUrl: getCentralServerBaseUrl(),
     healthPath: '/api/server/health',
     workersPath: '/api/server/workers',
     eventsPath: '/api/server/events',
+    agentsPath: '/api/server/agents',
+    agentSyncEnabled: loadAgentSyncEnabled(),
   };
 }
 
-function makeCentralURL(pathname: string): string {
-  return new URL(pathname, `${getCentralServerBaseUrl()}/`).toString();
+function makeCentralURL(pathname: string, search = ''): string {
+  const url = new URL(pathname, `${getCentralServerBaseUrl()}/`);
+  url.search = search;
+  return url.toString();
 }
 
 function writeJSON(res: ResponseLike, status: number, payload: unknown): void {
@@ -111,7 +142,7 @@ function readRequestBody(req: RequestLike): Promise<string> {
     let body = '';
     req.on('data', (chunk: Buffer | string) => {
       body += chunk.toString();
-      if (body.length > 4096) reject(new Error('Request body too large'));
+      if (body.length > 1_048_576) reject(new Error('Request body too large'));
     });
     req.on('end', () => resolve(body));
     req.on('error', reject);
@@ -130,6 +161,9 @@ async function updateCentralServerConfig(req: RequestLike, res: ResponseLike): P
 
     fs.mkdirSync(CONFIG_DIR, { recursive: true });
     fs.writeFileSync(CENTRAL_SERVER_URL_FILE, `${normalized.value}\n`, 'utf-8');
+    if (typeof parsed.agentSyncEnabled === 'boolean') {
+      saveAgentSyncEnabled(parsed.agentSyncEnabled);
+    }
     configuredBaseUrl = normalized.value;
     writeJSON(res, 200, getCentralServerConfig());
   } catch (error) {
@@ -138,12 +172,12 @@ async function updateCentralServerConfig(req: RequestLike, res: ResponseLike): P
   }
 }
 
-async function proxyJSON(req: RequestLike, res: ResponseLike, pathname: string): Promise<void> {
+async function proxyJSON(req: RequestLike, res: ResponseLike, pathname: string, search = ''): Promise<void> {
   const controller = new AbortController();
   req.on?.('close', () => controller.abort());
 
   try {
-    const response = await fetch(makeCentralURL(pathname), {
+    const response = await fetch(makeCentralURL(pathname, search), {
       headers: { Accept: 'application/json' },
       signal: controller.signal,
     });
@@ -153,6 +187,33 @@ async function proxyJSON(req: RequestLike, res: ResponseLike, pathname: string):
       'Cache-Control': 'no-cache',
     });
     res.end(body);
+  } catch (error) {
+    if (controller.signal.aborted) return;
+    writeProxyError(res, error);
+  }
+}
+
+async function proxyRequest(req: RequestLike, res: ResponseLike, pathname: string, search = ''): Promise<void> {
+  const controller = new AbortController();
+  req.on?.('close', () => controller.abort());
+
+  try {
+    const body = req.method === 'GET' || req.method === 'DELETE' ? undefined : await readRequestBody(req);
+    const response = await fetch(makeCentralURL(pathname, search), {
+      method: req.method || 'GET',
+      headers: {
+        Accept: 'application/json',
+        ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+      },
+      body,
+      signal: controller.signal,
+    });
+    const responseBody = await response.text();
+    res.writeHead(response.status, {
+      'Content-Type': response.headers.get('content-type') || 'application/json',
+      'Cache-Control': 'no-cache',
+    });
+    res.end(responseBody);
   } catch (error) {
     if (controller.signal.aborted) return;
     writeProxyError(res, error);
@@ -214,6 +275,20 @@ export function handleCentralServerRoute(req: RequestLike, res: ResponseLike, ur
     }
     if (req.method === 'POST') {
       void updateCentralServerConfig(req, res);
+      return true;
+    }
+    writeJSON(res, 405, { error: 'Method not allowed' });
+    return true;
+  }
+
+  if (url.pathname === '/api/server/agents' || url.pathname.startsWith('/api/server/agents/')) {
+    const centralPath = url.pathname.replace('/api/server', '/api');
+    if (req.method === 'GET') {
+      void proxyJSON(req, res, centralPath, url.search);
+      return true;
+    }
+    if (req.method === 'POST' || req.method === 'PATCH' || req.method === 'DELETE') {
+      void proxyRequest(req, res, centralPath, url.search);
       return true;
     }
     writeJSON(res, 405, { error: 'Method not allowed' });

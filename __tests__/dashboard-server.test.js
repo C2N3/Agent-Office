@@ -272,12 +272,14 @@ describe('dashboard-server', () => {
       expect(body.healthPath).toBe('/api/server/health');
       expect(body.workersPath).toBe('/api/server/workers');
       expect(body.eventsPath).toBe('/api/server/events');
+      expect(body.agentsPath).toBe('/api/server/agents');
+      expect(body.agentSyncEnabled).toBe(false);
     });
 
     test('POST /api/server/config updates central server proxy config', async () => {
       const { req, res } = createMockReqRes('POST', '/api/server/config');
       handler(req, res);
-      req.emit('data', JSON.stringify({ baseUrl: '47824' }));
+      req.emit('data', JSON.stringify({ baseUrl: '47824', agentSyncEnabled: true }));
       req.emit('end');
       await new Promise(setImmediate);
 
@@ -285,6 +287,8 @@ describe('dashboard-server', () => {
       const body = JSON.parse(res.end.mock.calls[0][0]);
       expect(body.baseUrl).toBe('http://127.0.0.1:47824');
       expect(body.healthPath).toBe('/api/server/health');
+      expect(body.agentsPath).toBe('/api/server/agents');
+      expect(body.agentSyncEnabled).toBe(true);
     });
 
     test('GET /api/heatmap returns 503 when no heatmap scanner', () => {
@@ -337,7 +341,7 @@ describe('dashboard-server', () => {
       handler(req, res);
 
       expect(res.setHeader).toHaveBeenCalledWith('Access-Control-Allow-Origin', '*');
-      expect(res.setHeader).toHaveBeenCalledWith('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+      expect(res.setHeader).toHaveBeenCalledWith('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
       expect(res.writeHead).toHaveBeenCalledWith(200);
     });
   });

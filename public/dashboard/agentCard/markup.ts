@@ -83,36 +83,37 @@ function getActivityLabel(statusClass: string, currentTool?: string | null): str
 
 function buildAgentActions(agent: DashboardAgent, workspaceBranch: string, isManagedWorktree: boolean): string {
   const canTerminate = !['offline', 'done', 'completed'].includes(agent.status);
+  const isLocalRegistered = !!agent.isRegistered && agent.metadata?.source !== 'central';
   return [
-    agent.isRegistered && agent.registryId
+    isLocalRegistered && agent.registryId
       ? `<button class="agent-history-btn" data-history-id="${agent.registryId}" data-agent-name="${agent.nickname || agent.name || 'Agent'}" ${tooltipAttrs('Session History')}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg></button>`
       : '',
-    agent.isRegistered
+    isLocalRegistered
       ? `<button class="agent-assign-task-btn" data-agent-id="${agent.id}" ${tooltipAttrs('Assign Task')}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></button>`
       : '',
-    agent.isRegistered && agent.registryId
+    isLocalRegistered && agent.registryId
       ? `<button class="agent-form-team-btn" data-agent-id="${agent.id}" data-registry-id="${agent.registryId}" ${tooltipAttrs('Form Team')}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></button>`
       : '',
-    agent.isRegistered && agent.registryId && workspaceBranch && isManagedWorktree
+    isLocalRegistered && agent.registryId && workspaceBranch && isManagedWorktree
       ? `<button class="agent-workspace-btn merge" data-workspace-merge-id="${agent.registryId}" data-branch="${escapeText(workspaceBranch)}" ${tooltipAttrs('Merge branch and clean up workspace')}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="M8 6h8"/><path d="M6 8v4c0 2 2 4 4 4h2"/><path d="M18 8v4c0 2-2 4-4 4h-2"/></svg>
         </button>`
       : '',
-    agent.isRegistered && agent.registryId && workspaceBranch && isManagedWorktree
+    isLocalRegistered && agent.registryId && workspaceBranch && isManagedWorktree
       ? `<button class="agent-workspace-btn remove" data-workspace-remove-id="${agent.registryId}" data-branch="${escapeText(workspaceBranch)}" ${tooltipAttrs('Remove workspace and delete branch without merge')}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
         </button>`
       : '',
-    agent.isRegistered && agent.registryId
+    isLocalRegistered && agent.registryId
       ? `<button class="agent-avatar-btn" data-avatar-id="${agent.registryId}" data-agent-id="${agent.id}" ${tooltipAttrs('Change avatar')}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M5 20c0-4 3.5-7 7-7s7 3 7 7"/></svg></button>`
       : '',
     canTerminate
       ? `<button class="agent-terminate-btn" data-terminate-id="${agent.id}" ${tooltipAttrs('Force terminate session')}>Stop</button>`
       : '',
-    agent.isRegistered && agent.registryId
+    isLocalRegistered && agent.registryId
       ? `<button class="agent-unregister-btn" data-archive-id="${agent.registryId}" ${tooltipAttrs('Unregister agent and move record to Archive')}>Unregister</button>`
       : '',
-    agent.isRegistered && agent.registryId
+    isLocalRegistered && agent.registryId
       ? `<button class="agent-delete-btn agent-delete-inline" data-delete-id="${agent.registryId}" ${tooltipAttrs('Delete agent record permanently')}>Delete</button>`
       : '',
   ].filter(Boolean).join('');
