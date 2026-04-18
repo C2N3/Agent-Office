@@ -10,10 +10,17 @@ const DEFAULT_AVATAR_DATA: AvatarData = {
   allFiles: ['Origin/avatar_0.webp', 'Origin/avatar_1.webp', 'Origin/avatar_2.webp', 'Origin/avatar_3.webp', 'Vocaloid/HatsuneMiku.webp', 'Custom/DT.png'],
 };
 
-export let SHARED_AVATAR_DATA: AvatarData = DEFAULT_AVATAR_DATA;
+function cloneAvatarData(data: AvatarData): AvatarData {
+  return {
+    categories: data.categories.map((category) => ({ name: category.name, files: [...category.files] })),
+    allFiles: [...data.allFiles],
+  };
+}
+
+export const SHARED_AVATAR_DATA: AvatarData = cloneAvatarData(DEFAULT_AVATAR_DATA);
 
 // Flat list for backward compatibility (indexing)
-export let SHARED_AVATAR_FILES = SHARED_AVATAR_DATA.allFiles;
+export const SHARED_AVATAR_FILES = SHARED_AVATAR_DATA.allFiles;
 
 function buildAvatarCategories(files: string[]): AvatarCategory[] {
   const categories = new Map<string, string[]>();
@@ -55,9 +62,13 @@ function normalizeAvatarData(data: unknown): AvatarData | null {
 
 export function setSharedAvatarData(data: unknown): AvatarData {
   const normalized = normalizeAvatarData(data) || DEFAULT_AVATAR_DATA;
-  SHARED_AVATAR_DATA = normalized;
-  SHARED_AVATAR_FILES = normalized.allFiles;
-  return normalized;
+  SHARED_AVATAR_DATA.categories.splice(
+    0,
+    SHARED_AVATAR_DATA.categories.length,
+    ...normalized.categories.map((category) => ({ name: category.name, files: [...category.files] })),
+  );
+  SHARED_AVATAR_FILES.splice(0, SHARED_AVATAR_FILES.length, ...normalized.allFiles);
+  return SHARED_AVATAR_DATA;
 }
 
 function mergeAvatarData(baseData: AvatarData, liveData: AvatarData): AvatarData {
