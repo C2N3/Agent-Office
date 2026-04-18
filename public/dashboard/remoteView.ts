@@ -58,6 +58,10 @@ function formatUptime(startedAt: number | null): string {
   return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
 }
 
+function isRemoteInputFocused(): boolean {
+  return document.activeElement?.id === 'centralServerUrlInput';
+}
+
 
 function renderTunnelCard(status: TunnelStatus): string {
   const dotColor = status.running ? (status.url ? '#4ade80' : '#fbbf24') : '#888';
@@ -166,6 +170,7 @@ export function startRemoteViewPolling(): void {
   startCentralServerConnection();
   if (pollInterval) return;
   pollInterval = setInterval(() => {
+    if (isRemoteInputFocused()) return;
     const remoteView = document.getElementById('remoteView');
     if (remoteView?.classList.contains('active') || remoteView?.closest('.view-section.active')) {
       renderRemoteView();

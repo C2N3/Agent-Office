@@ -146,6 +146,12 @@ Safety rules:
 - dirty worktrees block merge/remove
 - failed merges attempt `git merge --abort` automatically
 
+## Remote Access
+
+The dashboard Remote tab includes a Central Server card. Edit `Server URL` there to point the local proxy at a different central server. Entering only a port such as `47824` expands to `http://127.0.0.1:47824`.
+
+The saved value is stored in `~/.agent-office/central-server-url.txt`. `AO_CENTRAL_SERVER_URL` is still supported as the startup fallback when no saved value exists.
+
 ## macOS Release
 
 This repository includes a signed macOS release path.

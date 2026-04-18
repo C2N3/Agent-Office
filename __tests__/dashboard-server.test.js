@@ -6,6 +6,10 @@
 // Mock dependencies before requiring the module
 jest.mock('fs', () => ({
   readFile: jest.fn(),
+  existsSync: jest.fn(() => false),
+  readFileSync: jest.fn(),
+  mkdirSync: jest.fn(),
+  writeFileSync: jest.fn(),
 }));
 
 jest.mock('http', () => {
@@ -268,6 +272,19 @@ describe('dashboard-server', () => {
       expect(body.healthPath).toBe('/api/server/health');
       expect(body.workersPath).toBe('/api/server/workers');
       expect(body.eventsPath).toBe('/api/server/events');
+    });
+
+    test('POST /api/server/config updates central server proxy config', async () => {
+      const { req, res } = createMockReqRes('POST', '/api/server/config');
+      handler(req, res);
+      req.emit('data', JSON.stringify({ baseUrl: '47824' }));
+      req.emit('end');
+      await new Promise(setImmediate);
+
+      expect(res.writeHead).toHaveBeenCalledWith(200, { 'Content-Type': 'application/json' });
+      const body = JSON.parse(res.end.mock.calls[0][0]);
+      expect(body.baseUrl).toBe('http://127.0.0.1:47824');
+      expect(body.healthPath).toBe('/api/server/health');
     });
 
     test('GET /api/heatmap returns 503 when no heatmap scanner', () => {

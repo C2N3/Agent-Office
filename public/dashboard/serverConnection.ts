@@ -65,6 +65,19 @@ async function fetchJSON<T>(path: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+async function saveCentralServerBaseUrl(baseUrl: string): Promise<CentralServerConfig> {
+  const res = await fetch('/api/server/config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ baseUrl }),
+  });
+  const payload = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(payload.error || `HTTP ${res.status}`);
+  }
+  return payload as CentralServerConfig;
+}
+
 function formatError(error: unknown): string {
   if (error instanceof Error) return error.message;
   return String(error || 'Central server unavailable');
@@ -156,10 +169,14 @@ export function renderCentralServerCard(snapshot: CentralServerSnapshot): string
 
   <div class="remote-info-block">
     <div class="remote-info-label">Server URL</div>
-    <div class="remote-url-row">
-      <span class="remote-url-text">${escapeHtml(targetUrl)}</span>
-    </div>
-    <div class="remote-hint">Set AO_CENTRAL_SERVER_URL to use a different server.</div>
+    <form id="centralServerUrlForm">
+      <div class="modal-path-field">
+        <input type="text" id="centralServerUrlInput" class="modal-input" value="${escapeHtml(targetUrl)}" autocomplete="off" spellcheck="false">
+        <button class="btn-secondary modal-browse-btn" id="centralServerUrlSaveBtn" type="submit">Save</button>
+      </div>
+    </form>
+    <div class="remote-hint">포트만 입력해도 됩니다. 예: <code>47824</code> 또는 <code>http://127.0.0.1:47824</code></div>
+    <div class="remote-error" id="centralServerUrlError" style="display:none;margin-top:8px;margin-bottom:0"></div>
   </div>
 
   ${snapshot.error ? `<div class="remote-error">${escapeHtml(snapshot.error)}</div>` : ''}
@@ -192,7 +209,8 @@ export function renderCentralServerCard(snapshot: CentralServerSnapshot): string
 </div>`;
 }
 
-async function refreshCentralServerCard(): Promise<void> {
+async function refreshCentralServerCard(force = false): Promise<void> {
+  if (!force && document.activeElement?.id === 'centralServerUrlInput') return;
   const card = document.getElementById('centralServerCard');
   if (!card) return;
   const snapshot = await fetchCentralServerSnapshot();
@@ -216,6 +234,28 @@ function scheduleRefresh(): void {
 export function bindCentralServerControls(): void {
   document.getElementById('centralServerRefreshBtn')?.addEventListener('click', () => {
     refreshCentralServerCard().catch(() => {});
+  });
+
+  document.getElementById('centralServerUrlForm')?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const input = document.getElementById('centralServerUrlInput') as HTMLInputElement | null;
+    const button = document.getElementById('centralServerUrlSaveBtn') as HTMLButtonElement | null;
+    const errorEl = document.getElementById('centralServerUrlError');
+    if (!input) return;
+
+    if (errorEl) { errorEl.textContent = ''; errorEl.style.display = 'none'; }
+    if (button) { button.disabled = true; button.textContent = 'Saving...'; }
+
+    try {
+      await saveCentralServerBaseUrl(input.value);
+      stopCentralServerConnection();
+      await refreshCentralServerCard(true);
+      startCentralServerConnection();
+    } catch (error) {
+      if (errorEl) { errorEl.textContent = formatError(error); errorEl.style.display = 'block'; }
+    } finally {
+      if (button) { button.disabled = false; button.textContent = 'Save'; }
+    }
   });
 }
 
