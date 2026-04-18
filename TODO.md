@@ -13,3 +13,5 @@ This file tracks client-side work that is planned, discovered, blocked, or compl
 ## Open
 
 ## Done
+
+- [x] Move server collaboration roadmap ownership to the server repository and remove duplicate client-side roadmap docs.
