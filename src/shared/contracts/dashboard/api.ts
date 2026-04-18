@@ -67,6 +67,7 @@ export type DashboardAPI = {
   toggleRegisteredAgent?: (id: string, enabled: boolean) => Promise<DashboardActionResult | undefined>;
   archiveRegisteredAgent?: (id: string) => Promise<DashboardActionResult | undefined>;
   deleteRegisteredAgent?: (id: string) => Promise<DashboardActionResult | undefined>;
+  terminateAgentSession?: (agentId: string) => Promise<DashboardActionResult | undefined>;
   clearInactiveUnregisteredAgents?: () => Promise<DashboardClearInactiveResult | undefined>;
   getSessionHistory?: (registryId: string) => Promise<DashboardSessionHistoryEntry[] | undefined>;
   getConversation?: (registryId: string, sessionId: string, options?: { limit?: number; offset?: number }) => Promise<DashboardConversationResponse | undefined>;

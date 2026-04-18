@@ -24,7 +24,7 @@ function createApplicationWindowManager({
   });
 }
 
-function startDashboardRuntime({ windowManager, orchestrator, workspaceManager, terminalManager, teamCoordinator, debugLog }) {
+function startDashboardRuntime({ windowManager, orchestrator, workspaceManager, terminalManager, sessionPids, teamCoordinator, debugLog }) {
   windowManager.startDashboardServer();
 
   // Initialize remote access token and print info
@@ -54,6 +54,7 @@ function startDashboardRuntime({ windowManager, orchestrator, workspaceManager, 
     serverModule.setOrchestrator(orchestrator);
     if (workspaceManager) serverModule.setWorkspaceManager(workspaceManager);
     if (terminalManager) serverModule.setTerminalManager(terminalManager);
+    if (sessionPids) serverModule.setSessionPids(sessionPids);
     if (teamCoordinator) serverModule.setTeamCoordinator(teamCoordinator);
   } catch (error) {
     debugLog(`[Main] Failed to wire orchestrator to dashboard: ${error.message}`);

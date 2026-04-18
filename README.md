@@ -17,6 +17,7 @@ Korean README: [README.ko.md](README.ko.md)
 - **Transcript-based token and cost statistics** for Claude and Codex sessions
 - **Terminal focus** to bring the matching terminal window to the front
 - **Managed Workspaces** with `git worktree` creation, copy/symlink setup, and cleanup actions
+- **Force session termination** for stopping a stuck or mis-prompted agent session from the dashboard
 - **PiP mode** so the office can stay visible while you work
 - **Automatic recovery** after app restarts
 - **Provider catalog** for Claude, Codex, and Gemini task/runtime selection
@@ -135,6 +136,7 @@ Advanced options let you override the strategy and configure worktree-specific s
 
 Workspace agents also expose lifecycle actions in the dashboard:
 
+- `Stop` force-terminates the active session/process and returns the agent to offline state
 - `Merge` merges back to the base branch, removes the worktree and branch, then archives the agent
 - `Remove` deletes the worktree and branch without merging, then archives the agent
 

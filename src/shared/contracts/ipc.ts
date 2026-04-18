@@ -48,6 +48,7 @@ export const dashboardIpcChannels = {
   registryToggle: 'registry:toggle',
   registryArchive: 'registry:archive',
   registryDelete: 'registry:delete',
+  agentTerminateSession: 'agent:terminate-session',
   agentsClearInactiveUnregistered: 'agents:clear-inactive-unregistered',
   registrySessionHistory: 'registry:session-history',
   registryConversation: 'registry:conversation',

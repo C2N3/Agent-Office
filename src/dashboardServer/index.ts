@@ -8,6 +8,7 @@ import {
   setOrchestrator as setOrchestratorRef,
   setWorkspaceManager as setWorkspaceManagerRef,
   setTerminalManager as setTerminalManagerRef,
+  setSessionPids as setSessionPidsRef,
   setTeamCoordinator as setTeamCoordinatorRef,
   setDashboardWindow as setDashboardWindowRef,
   setHeatmapScanner as setHeatmapScannerRef,
@@ -48,6 +49,10 @@ export function setWorkspaceManager(wm: any): void {
 
 export function setTerminalManager(tm: any): void {
   setTerminalManagerRef(tm);
+}
+
+export function setSessionPids(sessionPids: Map<string, number>): void {
+  setSessionPidsRef(sessionPids);
 }
 
 export function setTeamCoordinator(tc: any): void {

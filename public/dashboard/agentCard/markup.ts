@@ -82,6 +82,7 @@ function getActivityLabel(statusClass: string, currentTool?: string | null): str
 }
 
 function buildAgentActions(agent: DashboardAgent, workspaceBranch: string, isManagedWorktree: boolean): string {
+  const canTerminate = !['offline', 'done', 'completed'].includes(agent.status);
   return [
     agent.isRegistered && agent.registryId
       ? `<button class="agent-history-btn" data-history-id="${agent.registryId}" data-agent-name="${agent.nickname || agent.name || 'Agent'}" ${tooltipAttrs('Session History')}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg></button>`
@@ -104,6 +105,9 @@ function buildAgentActions(agent: DashboardAgent, workspaceBranch: string, isMan
       : '',
     agent.isRegistered && agent.registryId
       ? `<button class="agent-avatar-btn" data-avatar-id="${agent.registryId}" data-agent-id="${agent.id}" ${tooltipAttrs('Change avatar')}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M5 20c0-4 3.5-7 7-7s7 3 7 7"/></svg></button>`
+      : '',
+    canTerminate
+      ? `<button class="agent-terminate-btn" data-terminate-id="${agent.id}" ${tooltipAttrs('Force terminate session')}>Stop</button>`
       : '',
     agent.isRegistered && agent.registryId
       ? `<button class="agent-unregister-btn" data-archive-id="${agent.registryId}" ${tooltipAttrs('Unregister agent and move record to Archive')}>Unregister</button>`

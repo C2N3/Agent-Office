@@ -6,6 +6,7 @@ export interface DashboardRefs {
   orchestrator: any;
   workspaceManager: any;
   terminalManager: any;
+  sessionPids: Map<string, number> | null;
   teamCoordinator: any;
   missionControlWindow: any;
 }
@@ -23,6 +24,7 @@ export const refs: DashboardRefs = {
   orchestrator: null,
   workspaceManager: null,
   terminalManager: null,
+  sessionPids: null,
   teamCoordinator: null,
   missionControlWindow: null,
 };
@@ -58,6 +60,10 @@ export function setWorkspaceManager(wm: any): void {
 
 export function setTerminalManager(tm: any): void {
   refs.terminalManager = tm;
+}
+
+export function setSessionPids(sessionPids: Map<string, number>): void {
+  refs.sessionPids = sessionPids;
 }
 
 export function setTeamCoordinator(tc: any): void {

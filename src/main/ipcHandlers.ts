@@ -10,6 +10,7 @@ const { registerTerminalHandlers } = require('./ipc/terminal');
 const { registerWorkspaceHandlers } = require('./ipc/workspace');
 const { registerRegistryHandlers } = require('./ipc/registry');
 const { registerOrchestratorHandlers } = require('./ipc/orchestrator');
+const { registerAgentSessionHandlers } = require('./ipc/agentSession');
 
 function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowManager, terminalManager, terminalProfileService, workspaceManager, nicknameStore, orchestrator, debugLog, adaptAgentToDashboard, errorHandler, attachRegisteredAgent }) {
   const senderHelpers = createWindowSenderHelpers({ windowManager });
@@ -56,6 +57,15 @@ function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowM
     terminalManager,
     debugLog,
     attachRegisteredAgent,
+  });
+
+  registerAgentSessionHandlers({
+    agentManager,
+    agentRegistry,
+    sessionPids,
+    terminalManager,
+    orchestrator,
+    debugLog,
   });
 
   registerOrchestratorHandlers({

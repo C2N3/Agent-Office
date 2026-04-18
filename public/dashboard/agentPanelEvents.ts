@@ -74,6 +74,24 @@ export function initAgentPanelEvents() {
       return;
     }
 
+    const terminateBtn = target.closest('.agent-terminate-btn') as HTMLButtonElement | null;
+    if (terminateBtn?.dataset.terminateId) {
+      event.stopPropagation();
+      if (confirm('Force terminate this agent session?')) {
+        const agentId = terminateBtn.dataset.terminateId;
+        const dashboardAPI = getDashboardAPI();
+        const terminateResult = dashboardAPI?.terminateAgentSession
+          ? dashboardAPI.terminateAgentSession(agentId)
+          : fetch(`/api/agents/${encodeURIComponent(agentId)}/terminate`, { method: 'POST' }).then((res) => res.json());
+        terminateResult?.then((result) => {
+          if (!result?.success) {
+            alert(result?.error || 'Session termination failed.');
+          }
+        });
+      }
+      return;
+    }
+
     const unregisterBtn = target.closest('.agent-unregister-btn') as HTMLButtonElement | null;
     if (unregisterBtn?.dataset.archiveId) {
       event.stopPropagation();

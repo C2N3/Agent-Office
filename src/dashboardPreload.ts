@@ -66,6 +66,7 @@ const dashboardAPI: DashboardAPI = {
   toggleRegisteredAgent: (id: string, enabled: boolean) => ipcRenderer.invoke(dashboardIpcChannels.registryToggle, id, enabled),
   archiveRegisteredAgent: (id: string) => ipcRenderer.invoke(dashboardIpcChannels.registryArchive, id),
   deleteRegisteredAgent: (id: string) => ipcRenderer.invoke(dashboardIpcChannels.registryDelete, id),
+  terminateAgentSession: (agentId: string) => ipcRenderer.invoke(dashboardIpcChannels.agentTerminateSession, agentId),
   clearInactiveUnregisteredAgents: () => ipcRenderer.invoke(dashboardIpcChannels.agentsClearInactiveUnregistered),
   getSessionHistory: (registryId: string) => ipcRenderer.invoke(dashboardIpcChannels.registrySessionHistory, registryId),
   getConversation: (registryId: string, sessionId: string, options?: { limit?: number; offset?: number }) =>
