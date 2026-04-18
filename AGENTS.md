@@ -34,6 +34,14 @@ Repository-wide instructions for agents working in this project.
 - When tracked work is completed and verified, check the corresponding `TODO.md` item as done in the same change.
 - Do not remove completed TODO items unless the project explicitly moves them to another archive or changelog.
 
+## README Maintenance
+
+- When adding a new user-facing feature or npm script, update `README.md` in the same change.
+- When `README.ko.md` has the same section, keep it synchronized with `README.md`.
+- Keep `README.md` as current product and workflow documentation, not a historical change log.
+- When a feature or script is removed, delete its README entry instead of preserving it as a past capability.
+- Keep the README feature and script lists limited to behavior that currently exists.
+
 ## Intentional Exception
 
 - `src/install.js` is the intentional source-side JavaScript exception.

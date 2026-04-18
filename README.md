@@ -4,18 +4,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Electron](https://img.shields.io/badge/Electron-32+-47848F?logo=electron&logoColor=white)](https://www.electronjs.org/)
 
-> Standalone Electron app that visualizes Claude Code, Codex, and Gemini CLI sessions as animated pixel avatars in real time.
+> Standalone Electron app that visualizes Claude Code and Codex CLI sessions as animated pixel avatars in real time, with Gemini available for launched tasks.
 
 Korean README: [README.ko.md](README.ko.md)
-
-Agent-Office receives [Claude Code](https://docs.anthropic.com/en/docs/claude-code) hook events, can ingest [Codex](https://developers.openai.com/codex/) `exec --json` streams, and can launch supported CLI providers through a shared provider abstraction. It renders each agent session as an animated pixel character and provides a virtual office view, activity heatmaps, token usage analysis, and a browser-based dashboard.
-
-![Demo](docs/demo.gif)
-
-|                            |                            |                            |
-| -------------------------- | -------------------------- | -------------------------- |
-| ![](docs/screenshot-1.png) | ![](docs/screenshot-2.png) | ![](docs/screenshot-4.png) |
-| ![](docs/screenshot-5.png) |                            |                            |
 
 ## Features
 
@@ -23,12 +14,12 @@ Agent-Office receives [Claude Code](https://docs.anthropic.com/en/docs/claude-co
 - **Virtual office** with animated characters moving across a 2D pixel-art workspace
 - **Agent desk dashboard** at `http://localhost:3000` for live monitoring and controls
 - **Activity heatmap** with GitHub-style daily session history
-- **Token analytics** with per-session totals, model breakdowns, and estimated cost
+- **Transcript-based token and cost statistics** for Claude and Codex sessions
 - **Terminal focus** to bring the matching terminal window to the front
 - **Managed Workspaces** with `git worktree` creation, copy/symlink setup, and cleanup actions
 - **PiP mode** so the office can stay visible while you work
 - **Automatic recovery** after app restarts
-- **Provider catalog** for Claude, Codex, and Gemini runtime selection
+- **Provider catalog** for Claude, Codex, and Gemini task/runtime selection
 - **Codex session support** through both `exec --json` forwarding and `~/.codex/sessions` scanning
 - **Claude sub-agent and team support**
 
@@ -47,7 +38,7 @@ npm install
 npm start
 ```
 
-`npm install` automatically registers the Claude hook in `~/.claude/settings.json`. Codex does not use that hook registration path and instead relies on session files or the `exec --json` forwarder. Gemini is available as a provider for launched tasks and terminals when the CLI is installed.
+`npm install` automatically registers the Claude hook in `~/.claude/settings.json`. Codex does not use that hook registration path and instead relies on session files or the `exec --json` forwarder. Gemini is available as a provider for launched tasks when the CLI is installed.
 
 ## Runtime Model
 
@@ -91,22 +82,40 @@ Notes:
 
 - Codex supports recovery, session scanning, heatmaps, and conversation history paths
 - Claude-only hook metadata such as some sub-agent and team events still comes from the Claude hook path
-- Gemini supports launched task/terminal provider selection, but does not currently provide transcript statistics
+- Gemini supports launched task provider selection, but does not currently provide transcript statistics
 - The Codex forwarder posts to `http://127.0.0.1:47822/codex-event` by default
 - Override the Codex event port with `PIXEL_AGENT_CODEX_PORT`
 
 ## Scripts
 
-| Command                    | Description                                                                          |
-| -------------------------- | ------------------------------------------------------------------------------------ |
-| `npm run build:dist`       | Build the TypeScript runtime into `dist/`                                            |
-| `npm run build:dist:watch` | Watch `src/`, `public/`, and tsconfig files and rebuild `dist/`                      |
-| `npm run typecheck`        | Run `tsgo --noEmit`                                                                  |
-| `npm start`                | Launch the Electron app                                                              |
-| `npm run dev`              | Rebuild on source changes and restart Electron automatically                         |
-| `npm run dashboard`        | Run the dashboard server directly                                                    |
-| `npm test -- --runInBand`  | Run the baseline Jest verification flow against source TypeScript                    |
-| `npm run dist:mac:signed`  | Rebuild, verify, and create a signed/notarized macOS DMG when signing credentials exist |
+Run these from the client project directory.
+
+| Script                      | Underlying command                                                                                        | Description                                                                    |
+| --------------------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `npm run postinstall`       | `node src/install.js`                                                                                     | Register the Claude hook; runs automatically after `npm install`               |
+| `npm run rebuild`           | `electron-rebuild -f -w node-pty`                                                                         | Rebuild the native `node-pty` module for Electron                              |
+| `npm run build:dist`        | `node scripts/build-types.js`                                                                             | Build the TypeScript runtime into `dist/`                                      |
+| `npm run build:dist:watch`  | `node scripts/build-types.js --watch`                                                                     | Watch source, public, HTML/CSS, and tsconfig files and rebuild `dist/`         |
+| `npm run build:types`       | `npm run build:dist`                                                                                      | Alias for the `dist/` TypeScript build                                         |
+| `npm run prestart`          | `npm run build:dist`                                                                                      | Build `dist/`; runs automatically before `npm start`                           |
+| `npm start`                 | `node scripts/run-electron.js`                                                                            | Launch the Electron app after `prestart` builds `dist/`                        |
+| `npm run dev`               | `node scripts/dev-runtime.js`                                                                             | Rebuild on source changes and restart Electron automatically                   |
+| `npm run typecheck`         | `node node_modules/@typescript/native-preview/bin/tsgo.js -p tsconfig.json --noEmit`                      | Run a no-emit TypeScript check with `tsgo`                                     |
+| `npm test`                  | `jest`                                                                                                    | Run Jest tests against source TypeScript                                       |
+| `npm run test:coverage`     | `jest --coverage`                                                                                         | Run Jest with coverage output                                                  |
+| `npm run test:watch`        | `jest --watch`                                                                                            | Run Jest in watch mode                                                         |
+| `npm run predashboard`      | `npm run build:dist`                                                                                      | Build `dist/`; runs automatically before `npm run dashboard`                   |
+| `npm run dashboard`         | `node dist/src/dashboardServer/index.js`                                                                  | Run the dashboard server directly after `predashboard` builds `dist/`          |
+| `npm run lint`              | `eslint src/`                                                                                             | Lint source files                                                              |
+| `npm run lint:fix`          | `eslint src/ --fix`                                                                                       | Lint source files and apply automatic fixes                                    |
+| `npm run format`            | `prettier --write "src/**/*.{js,ts}" "__tests__/**/*.js" "scripts/**/*.js" "*.js"`                        | Format source, tests, scripts, and root JavaScript files                       |
+| `npm run format:check`      | `prettier --check "src/**/*.{js,ts}" "__tests__/**/*.js" "scripts/**/*.js" "*.js"`                        | Check formatting without writing changes                                       |
+| `npm run dist`              | `electron-builder`                                                                                        | Package the app with Electron Builder                                          |
+| `npm run dist:win`          | `npm run build:dist && electron-builder --win --publish never`                                            | Build `dist/` and create a Windows package without publishing                  |
+| `npm run dist:mac`          | `npm run build:dist && electron-builder --mac --publish never`                                            | Build `dist/` and create a macOS package without publishing                    |
+| `npm run dist:mac:unsigned` | `npm run build:dist && electron-builder --mac --publish never -c.mac.identity=null -c.mac.notarize=false` | Build `dist/` and create an unsigned, non-notarized macOS package              |
+| `npm run dist:mac:signed`   | `node scripts/dist-mac-signed.js`                                                                         | Rebuild, verify, sign, notarize, and create a macOS DMG when credentials exist |
+| `npm run dist:linux`        | `npm run build:dist && electron-builder --linux --publish never`                                          | Build `dist/` and create a Linux package without publishing                    |
 
 ## Managed Workspaces
 
@@ -168,13 +177,7 @@ For code signing, provide one of:
 - `CSC_LINK` and `CSC_KEY_PASSWORD`
 - `CSC_NAME` if the Developer ID Application certificate is already installed in the macOS keychain
 
-GitHub Actions release signing/notarization uses these repository secrets:
-
-- `APPLE_DEVELOPER_ID_APPLICATION_CERT_BASE64`
-- `APPLE_DEVELOPER_ID_APPLICATION_CERT_PASSWORD`
-- `APPLE_API_KEY_BASE64`
-- `APPLE_API_KEY_ID`
-- `APPLE_API_ISSUER`
+GitHub Actions tag releases currently build Windows artifacts and an unsigned macOS DMG. Use `npm run dist:mac:signed` locally when signing and notarization are required.
 
 ## Troubleshooting
 

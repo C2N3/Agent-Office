@@ -12,6 +12,8 @@ This file tracks client-side work that is planned, discovered, blocked, or compl
 
 ## Open
 
+- [ ] Add full Gemini session visualization support by implementing Gemini session ingestion/monitoring, transcript statistics, recovery metadata, and provider registry/catalog capability updates comparable to Claude and Codex.
+
 ## Done
 
 - [x] Move server collaboration roadmap ownership to the server repository and remove duplicate client-side roadmap docs.

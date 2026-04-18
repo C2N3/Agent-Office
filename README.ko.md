@@ -4,18 +4,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Electron](https://img.shields.io/badge/Electron-32+-47848F?logo=electron&logoColor=white)](https://www.electronjs.org/)
 
-> Claude Code, Codex, Gemini CLI 세션을 실시간 픽셀 아바타로 시각화하는 앱입니다.
+> Claude Code와 Codex CLI 세션을 실시간 픽셀 아바타로 시각화하고, Gemini는 실행 task provider로 사용할 수 있는 앱입니다.
 
 영문 README: [README.md](README.md)
-
-Agent-Office는 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) hook 이벤트를 수신하고, [Codex](https://developers.openai.com/codex/)의 `exec --json` 스트림도 받아들이며, 공통 provider abstraction을 통해 지원 CLI provider를 실행할 수 있는 독립형 Electron 앱입니다. 각 에이전트 세션을 애니메이션 픽셀 캐릭터로 렌더링하고, 가상 오피스 화면, 활동 히트맵, 토큰 사용량 분석 기능을 제공합니다.
-
-![Demo](docs/demo.gif)
-
-|                            |                            |                            |
-| -------------------------- | -------------------------- | -------------------------- |
-| ![](docs/screenshot-1.png) | ![](docs/screenshot-2.png) | ![](docs/screenshot-4.png) |
-| ![](docs/screenshot-5.png) |                            |                            |
 
 ## 주요 기능
 
@@ -23,12 +14,12 @@ Agent-Office는 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) ho
 - **가상 오피스** — 캐릭터가 책상 사이를 이동하는 2D 픽셀 아트 오피스를 제공합니다
 - **에이전트 데스크 대시보드** — 실시간 통계를 볼 수 있는 웹 기반 모니터링 패널을 제공합니다 (`http://localhost:3000`)
 - **활동 히트맵** — 일별 에이전트 세션 빈도를 GitHub 스타일 그리드로 표시합니다
-- **토큰 분석** — 세션별 및 누적 토큰 사용량, 비용 추정치, 모델별 내역을 제공합니다
+- **Transcript 기반 토큰/비용 통계** — Claude와 Codex 세션의 토큰 사용량과 비용 추정치를 제공합니다
 - **터미널 포커스** — 아바타를 클릭하면 해당 터미널 창을 전면으로 가져옵니다
 - **Managed Workspaces** — 대시보드에서 `git worktree` 기반 작업공간을 생성하고, copy/symlink/bootstrap 설정을 함께 적용할 수 있습니다
 - **PiP 모드** — 작업 중에도 픽셀 오피스를 항상 보이게 유지하는 플로팅 창을 제공합니다
 - **자동 복구** — 앱을 재시작해도 실행 중 세션을 자동으로 복원합니다
-- **Provider catalog** — Claude, Codex, Gemini 런타임 선택을 제공합니다
+- **Provider catalog** — Claude, Codex, Gemini task/runtime 선택을 제공합니다
 - **Codex 세션 지원** — `exec --json` forwarder와 `~/.codex/sessions` 스캔을 모두 지원합니다
 - **서브에이전트 및 팀 지원** — Claude Code의 sub-agent와 team mode를 지원합니다
 
@@ -47,7 +38,7 @@ npm install
 npm start
 ```
 
-> `npm install`을 실행하면 필요한 Claude Code hook이 `~/.claude/settings.json`에 자동 등록됩니다. Codex는 hook 등록이 아니라 session file/`exec --json` 경로를 사용합니다. Gemini는 CLI가 설치되어 있으면 실행 task와 terminal provider로 사용할 수 있습니다.
+> `npm install`을 실행하면 필요한 Claude Code hook이 `~/.claude/settings.json`에 자동 등록됩니다. Codex는 hook 등록이 아니라 session file/`exec --json` 경로를 사용합니다. Gemini는 CLI가 설치되어 있으면 실행 task provider로 사용할 수 있습니다.
 >
 > 현재 프로덕션 런타임 산출물은 `dist/` 기준입니다. `npm start`와 `npm run dashboard`는 실행 전에 자동으로 `npm run build:dist`를 호출합니다. `npm run dev`는 source 변경을 감지해 `dist/`를 다시 빌드한 뒤 Electron을 자동 재시작합니다. `node dist/...` 경로를 직접 실행할 때는 먼저 `npm run build:dist`를 한 번 돌려 두세요.
 
@@ -85,20 +76,39 @@ codex exec --json "summarize this repo" | node dist/src/codex-forward.js
 
 - `Codex`도 자동 복구, 세션 스캔, 히트맵, 대화 히스토리 경로를 지원합니다.
 - `Claude`의 sub-agent/team hook 이벤트처럼 원본 이벤트가 따로 있는 기능은 여전히 Claude 경로에만 있습니다.
-- `Gemini`는 실행 task/terminal provider 선택을 지원하지만 현재 transcript 통계는 제공하지 않습니다.
+- `Gemini`는 실행 task provider 선택을 지원하지만 현재 transcript 통계는 제공하지 않습니다.
 - Codex forwarder는 기본적으로 `http://127.0.0.1:47822/codex-event`로 전송합니다. 필요하면 `PIXEL_AGENT_CODEX_PORT`로 변경할 수 있습니다.
 
 ## 스크립트
 
-| 명령어                     | 설명                                                                                     |
-| -------------------------- | ---------------------------------------------------------------------------------------- |
-| `npm run build:dist`       | TypeScript 런타임을 `dist/`로 빌드합니다                                                 |
-| `npm run build:dist:watch` | `src/`, `public/`, tsconfig 변경을 감시하며 `dist/`를 다시 빌드합니다                    |
-| `npm run typecheck`        | `tsgo --noEmit`으로 타입 검사를 실행합니다                                               |
-| `npm start`                | Electron 앱을 실행합니다                                                                 |
-| `npm run dev`              | source 변경 시 `dist/`를 다시 빌드하고 Electron을 자동 재시작하는 개발 루프를 실행합니다 |
-| `npm run dashboard`        | 대시보드 서버를 실행합니다                                                               |
-| `npm test`                 | source TypeScript 기준으로 Jest 테스트를 실행합니다                                      |
+클라이언트 프로젝트 디렉터리에서 실행합니다.
+
+| 스크립트                   | 실제 명령                                                                                                    | 설명                                                                       |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| `npm run postinstall`      | `node src/install.js`                                                                                        | Claude hook을 등록합니다. `npm install` 후 자동으로 실행됩니다             |
+| `npm run rebuild`          | `electron-rebuild -f -w node-pty`                                                                            | Electron용 native `node-pty` 모듈을 다시 빌드합니다                        |
+| `npm run build:dist`       | `node scripts/build-types.js`                                                                                | TypeScript 런타임을 `dist/`로 빌드합니다                                   |
+| `npm run build:dist:watch` | `node scripts/build-types.js --watch`                                                                        | source, public, HTML/CSS, tsconfig 변경을 감시하며 `dist/`를 다시 빌드합니다 |
+| `npm run build:types`      | `npm run build:dist`                                                                                         | `dist/` TypeScript 빌드의 alias입니다                                      |
+| `npm run prestart`         | `npm run build:dist`                                                                                         | `dist/`를 빌드합니다. `npm start` 전에 자동으로 실행됩니다                 |
+| `npm start`                | `node scripts/run-electron.js`                                                                               | `prestart`가 `dist/`를 빌드한 뒤 Electron 앱을 실행합니다                  |
+| `npm run dev`              | `node scripts/dev-runtime.js`                                                                                | source 변경 시 `dist/`를 다시 빌드하고 Electron을 자동 재시작합니다        |
+| `npm run typecheck`        | `node node_modules/@typescript/native-preview/bin/tsgo.js -p tsconfig.json --noEmit`                         | `tsgo`로 no-emit TypeScript 검사를 실행합니다                              |
+| `npm test`                 | `jest`                                                                                                       | source TypeScript 기준으로 Jest 테스트를 실행합니다                        |
+| `npm run test:coverage`    | `jest --coverage`                                                                                            | coverage 출력과 함께 Jest를 실행합니다                                     |
+| `npm run test:watch`       | `jest --watch`                                                                                               | watch mode로 Jest를 실행합니다                                             |
+| `npm run predashboard`     | `npm run build:dist`                                                                                         | `dist/`를 빌드합니다. `npm run dashboard` 전에 자동으로 실행됩니다         |
+| `npm run dashboard`        | `node dist/src/dashboardServer/index.js`                                                                     | `predashboard`가 `dist/`를 빌드한 뒤 대시보드 서버를 직접 실행합니다       |
+| `npm run lint`             | `eslint src/`                                                                                                | source 파일을 lint합니다                                                   |
+| `npm run lint:fix`         | `eslint src/ --fix`                                                                                          | source 파일을 lint하고 자동 수정합니다                                     |
+| `npm run format`           | `prettier --write "src/**/*.{js,ts}" "__tests__/**/*.js" "scripts/**/*.js" "*.js"`                           | source, test, script, root JavaScript 파일을 format합니다                  |
+| `npm run format:check`     | `prettier --check "src/**/*.{js,ts}" "__tests__/**/*.js" "scripts/**/*.js" "*.js"`                           | 파일을 쓰지 않고 formatting 상태를 확인합니다                              |
+| `npm run dist`             | `electron-builder`                                                                                           | Electron Builder로 앱을 패키징합니다                                       |
+| `npm run dist:win`         | `npm run build:dist && electron-builder --win --publish never`                                                | `dist/`를 빌드하고 publish 없이 Windows 패키지를 만듭니다                 |
+| `npm run dist:mac`         | `npm run build:dist && electron-builder --mac --publish never`                                                | `dist/`를 빌드하고 publish 없이 macOS 패키지를 만듭니다                   |
+| `npm run dist:mac:unsigned` | `npm run build:dist && electron-builder --mac --publish never -c.mac.identity=null -c.mac.notarize=false`    | `dist/`를 빌드하고 unsigned, non-notarized macOS 패키지를 만듭니다        |
+| `npm run dist:mac:signed`  | `node scripts/dist-mac-signed.js`                                                                            | 인증 정보가 있을 때 rebuild, verify, sign, notarize 후 macOS DMG를 만듭니다 |
+| `npm run dist:linux`       | `npm run build:dist && electron-builder --linux --publish never`                                              | `dist/`를 빌드하고 publish 없이 Linux 패키지를 만듭니다                   |
 
 ## macOS 정식 배포
 
@@ -137,13 +147,7 @@ npm run dist:mac:signed
 - `CSC_LINK` + `CSC_KEY_PASSWORD`
 - 또는 macOS keychain에 설치된 인증서를 가리키는 `CSC_NAME`
 
-GitHub Actions의 macOS release job은 다음 repository secret을 사용합니다.
-
-- `APPLE_DEVELOPER_ID_APPLICATION_CERT_BASE64`
-- `APPLE_DEVELOPER_ID_APPLICATION_CERT_PASSWORD`
-- `APPLE_API_KEY_BASE64`
-- `APPLE_API_KEY_ID`
-- `APPLE_API_ISSUER`
+GitHub Actions tag release는 현재 Windows artifact와 unsigned macOS DMG를 빌드합니다. 서명과 노타라이즈가 필요하면 로컬에서 `npm run dist:mac:signed`를 사용하세요.
 
 ## Managed Workspaces
 
