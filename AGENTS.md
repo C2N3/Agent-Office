@@ -27,6 +27,13 @@ Repository-wide instructions for agents working in this project.
   - `npm run typecheck`
   - `npm test -- --runInBand`
 
+## TODO Tracking
+
+- Keep `TODO.md` current for client-side work.
+- When a needed client task is discovered and it is not already tracked, add a concrete unchecked item to `TODO.md`.
+- When tracked work is completed and verified, check the corresponding `TODO.md` item as done in the same change.
+- Do not remove completed TODO items unless the project explicitly moves them to another archive or changelog.
+
 ## Intentional Exception
 
 - `src/install.js` is the intentional source-side JavaScript exception.
