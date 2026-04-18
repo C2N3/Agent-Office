@@ -13,6 +13,8 @@ This file tracks client-side work that is planned, discovered, blocked, or compl
 ## Open
 
 - [ ] Add full Gemini session visualization support by implementing Gemini session ingestion/monitoring, transcript statistics, recovery metadata, and provider registry/catalog capability updates comparable to Claude and Codex.
+- [ ] Ensure newly created dashboard agents are assigned to the current floor before agent card filtering runs.
+- [ ] Load dashboard avatar cards from the live character catalog so newly added character files appear without hardcoded list edits.
 
 ## Done
 

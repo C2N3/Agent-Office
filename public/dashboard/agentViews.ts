@@ -4,19 +4,31 @@ import {
   REGISTERED_FILTER_STORAGE_KEY,
   state,
   getDashboardAPI,
+  refreshSharedAvatarData,
 } from './shared.js';
 import {
   officeOnAgentCreated,
   officeOnAgentRemoved,
   officeOnAgentUpdated,
 } from '../office/index.js';
-import { floorManager } from '../office/floorManager.js';
 import { updateConnectionStatus } from './connectionStatus.js';
 import { getStateColor } from './agentViewHelpers.js';
 import { buildAgentCardHtml } from './agentCard/markup.js';
 import { openTaskLogTab, appendTaskChatMessage } from './terminal/index.js';
+import {
+  getClearableUnregisteredAgents,
+  getVisibleAgents,
+  isRegisteredOnlyFilterEnabled,
+  shouldDisplayAgent,
+} from './agentFilters.js';
 
 export { getStateColor };
+export {
+  getClearableUnregisteredAgents,
+  getVisibleAgents,
+  isRegisteredOnlyFilterEnabled,
+  shouldDisplayAgent,
+};
 
 let sseDelay = 1000;
 let sseSource: EventSource | null = null;
@@ -122,6 +134,7 @@ export function connectSSE() {
 
 export async function fetchInitialData() {
   try {
+    await refreshSharedAvatarData();
     const response = await fetch('/api/agents');
     const agents = (await response.json()) as DashboardAgent[];
     for (const agent of agents) {
@@ -161,27 +174,6 @@ export function removeAgent(id: string) {
   if (getVisibleAgents().length === 0) {
     DOM.standbyMessage.style.display = 'block';
   }
-}
-
-export function isRegisteredOnlyFilterEnabled() {
-  return !!state.filters.registeredOnly;
-}
-
-export function shouldDisplayAgent(agent: DashboardAgent) {
-  if (isRegisteredOnlyFilterEnabled() && !agent.isRegistered) return false;
-  // Floor filter: only show agents on the current floor
-  if (!floorManager.isAgentOnCurrentFloor(agent.id)) return false;
-  return true;
-}
-
-export function getVisibleAgents() {
-  return [...state.agents.values()].filter(shouldDisplayAgent);
-}
-
-export function getClearableUnregisteredAgents() {
-  return [...state.agents.values()].filter((agent: DashboardAgent) => {
-    return !agent.isRegistered && (agent.status === 'offline' || agent.status === 'completed');
-  });
 }
 
 export function updateBulkArchiveButton() {
