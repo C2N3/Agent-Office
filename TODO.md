@@ -12,20 +12,18 @@ This file tracks client-side work that is planned, discovered, blocked, or compl
 
 ## Open
 
+- [ ] Execute the React UI boundary plan in `docs/plans/react-ui-boundary-plan.md`, starting with dashboard DOM-heavy surfaces and keeping the office rendering core imperative.
 - [ ] Add full Gemini session visualization support by implementing Gemini session ingestion/monitoring, transcript statistics, recovery metadata, and provider registry/catalog capability updates comparable to Claude and Codex.
-- [ ] Add a local SQLite persistence layer at `~/.agent-office/app.db` for structured runtime data, including a small migration bootstrap that creates the schema on startup and imports existing JSON/TXT state the first time the database is present.
-- [ ] Migrate `src/main/registry/index.ts` from `~/.agent-office/agent-registry.json` to SQLite by splitting persistent agent records from session history, preserving archived agent visibility, current session pointers, workspace metadata, and existing sanitization/normalization on load.
-- [ ] Move nickname persistence from `src/main/nicknameStore.ts` into the same SQLite layer so nicknames live next to agent/session data instead of `~/.agent-office/nicknames.json`, while preserving rekey behavior when a session ID changes.
-- [ ] Migrate `src/main/orchestrator/taskStore.ts` from `~/.agent-office/task-queue.json` to SQLite with explicit columns or join tables for task status, priority, dependency edges, child tasks, provider fallback attempts, workspace settings, and output metadata used by the orchestrator.
-- [ ] Migrate `src/main/orchestrator/teamStore.ts` from `~/.agent-office/teams.json` to SQLite and model team-to-agent and team-to-task relationships explicitly so active/completed team queries no longer depend on loading the full JSON blob into memory.
-- [ ] Move `src/heatmap/persistence.ts` from JSON persistence to SQLite tables for day stats, per-model aggregates, tracked projects, and scanner file offsets so larger history windows and filtered dashboard queries do not depend on rewriting a single persistence file.
-- [ ] Keep short-lived recovery state in `src/main/sessionPersistence.ts` file-based unless a later change proves restart recovery needs transactional writes or historical inspection; if it is revisited, document why it should join the SQLite store instead of remaining an ephemeral `state.json`.
-- [ ] Keep simple preferences such as `src/main/uiState.ts`, `src/main/terminalProfileService.ts`, and `src/main/centralWorker/config.ts` file-based for now, and document that they are intentionally excluded from the first SQLite migration because they are tiny settings/secret files rather than query-heavy application data.
-- [ ] Leave generated/static asset manifests such as `public/shared/avatars.json` and `public/shared/sprite-frames.json` file-based, and document that they are build/runtime asset inputs rather than application records that benefit from relational storage.
-- [ ] Add migration and regression coverage for the SQLite cutover, including startup import from existing `agent-registry.json`, `nicknames.json`, `task-queue.json`, `teams.json`, and heatmap persistence files, plus restart/recovery checks that confirm the dashboard still renders existing agents, tasks, teams, and heatmap history after upgrading.
+- [ ] Execute the SQLite persistence migration plan in `docs/plans/sqlite-persistence-plan.md`.
+- [ ] Complete Phase 1 of `docs/plans/sqlite-persistence-plan.md`.
+- [ ] Complete Phase 2 of `docs/plans/sqlite-persistence-plan.md`.
+- [ ] Complete Phase 3 of `docs/plans/sqlite-persistence-plan.md`.
+- [ ] Complete Phase 4 of `docs/plans/sqlite-persistence-plan.md`.
+- [ ] Complete Phase 5 of `docs/plans/sqlite-persistence-plan.md`.
 
 ## Done
 
+- [x] Make Host worker connections prefer the stored owner room secret over any legacy worker token so public Host mode connects after `Start Host` without exposing token UI.
 - [x] Make Host start from just the server URL by auto-enabling the public room and storing the owner secret, and add localhost invite deep-links that auto-join Guest mode from the URL fragment.
 - [x] Rework the Remote tab so mode pills are draft-only, each mode is confirmed through a clear primary action (`Use Local Only`, `Start Host`, `Join as Guest`), and the worker token field explains when host authentication is actually required.
 - [x] Add an explicit server mode selector for agent character visibility and sharing: Local Only shows only this client's agent characters, Host shares this client's server for others, and Guest connects to an existing host.
