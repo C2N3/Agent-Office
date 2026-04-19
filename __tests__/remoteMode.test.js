@@ -6,14 +6,14 @@ const {
 } = require('../public/dashboard/remoteMode.ts');
 
 describe('remoteMode helpers', () => {
-  test('buildGuestInviteLink uses the central server origin and guest secret fragment', () => {
-    expect(buildGuestInviteLink('https://central.example.test/', 'guest-secret')).toBe(
-      'https://central.example.test/#aoGuestSecret=guest-secret'
+  test('buildGuestInviteLink uses the local app origin and includes the central server origin in the fragment', () => {
+    expect(buildGuestInviteLink('http://localhost:3000/', 'https://central.example.test/', 'guest-secret')).toBe(
+      'http://localhost:3000/#aoGuestSecret=guest-secret&aoBaseUrl=https%3A%2F%2Fcentral.example.test'
     );
   });
 
-  test('parseGuestInviteLink extracts origin and guest secret', () => {
-    expect(parseGuestInviteLink('https://central.example.test/#aoGuestSecret=guest-secret')).toEqual({
+  test('parseGuestInviteLink extracts baseUrl and guest secret from the fragment', () => {
+    expect(parseGuestInviteLink('http://localhost:3000/#aoGuestSecret=guest-secret&aoBaseUrl=https%3A%2F%2Fcentral.example.test')).toEqual({
       baseUrl: 'https://central.example.test',
       guestSecret: 'guest-secret',
     });

@@ -18,6 +18,8 @@ import {
   type AgentRecord,
   type RegistryLike,
 } from './agentPayload.js';
+import { resolveWorkerConnectionAuth } from './connectionAuth.js';
+import { registerConnectorRegistryListeners, unregisterConnectorRegistryListeners } from './registryListeners.js';
 import { centralHttpUrlToWorkerWebSocketUrl } from './url.js';
 import { handleServerMessage } from './serverMessages.js';
 import type { ConnectorOptions, DebugLog, WebSocketLike, WebSocketConstructor } from './types.js';
@@ -100,38 +102,15 @@ export class CentralWorkerConnector {
   }
 
   private registerRegistryListeners(): void {
-    if (!this.agentRegistry?.on) return;
-    const onUpsert = (agent: AgentRecord) => {
-      const agentId = agent?.id;
-      if (isActiveAgent(agent)) {
-        this.sendAgentUpsert(agent);
-      } else if (agentId) {
-        this.sendAgentRemove(agentId);
-      }
-    };
-    const onRemove = (agentOrId: AgentRecord | string) => {
-      const agentId = typeof agentOrId === 'string' ? agentOrId : agentOrId?.id;
-      if (agentId) this.sendAgentRemove(agentId);
-    };
-    this.registryListeners = [
-      ['agent-created', onUpsert],
-      ['agent-updated', onUpsert],
-      ['agent.updated', onUpsert],
-      ['agent-enabled-changed', onUpsert],
-      ['agent-archived', onRemove],
-      ['agent-deleted', onRemove],
-      ['agent.removed', onRemove],
-    ];
-    for (const [event, listener] of this.registryListeners) {
-      this.agentRegistry.on(event, listener);
-    }
+    this.registryListeners = registerConnectorRegistryListeners(
+      this.agentRegistry,
+      (agent) => this.sendAgentUpsert(agent),
+      (agentId) => this.sendAgentRemove(agentId),
+    );
   }
 
   private unregisterRegistryListeners(): void {
-    if (!this.agentRegistry?.off) return;
-    for (const [event, listener] of this.registryListeners) {
-      this.agentRegistry.off(event, listener);
-    }
+    unregisterConnectorRegistryListeners(this.agentRegistry, this.registryListeners);
     this.registryListeners = [];
   }
 
@@ -162,18 +141,23 @@ export class CentralWorkerConnector {
     }
 
     const remoteMode = this.getRemoteMode();
-    const token = remoteMode === 'guest' ? '' : this.getToken();
-    const roomSecret = remoteMode === 'guest' ? this.getRoomSecret() : '';
-    if (!token && remoteMode !== 'guest' && !this.getBaseUrl()) {
+    const baseUrl = this.getBaseUrl();
+    const auth = resolveWorkerConnectionAuth({
+      remoteMode,
+      token: this.getToken(),
+      roomSecret: this.getRoomSecret(),
+      baseUrl,
+    });
+    if (auth.error === 'baseUrl required') {
       this.setStatus('error');
       return;
     }
-    if (remoteMode === 'guest' && !roomSecret.trim()) {
-      this.debugLog('[CentralWorker] guest mode requires a room secret');
+    if (auth.error) {
+      this.debugLog(`[CentralWorker] ${auth.error}`);
       this.setStatus('error');
       return;
     }
-    const url = centralHttpUrlToWorkerWebSocketUrl(this.getBaseUrl(), token, roomSecret);
+    const url = centralHttpUrlToWorkerWebSocketUrl(baseUrl, auth.token, auth.roomSecret);
     this.intentionalClose = false;
     this.setStatus(reconnecting ? 'reconnecting' : 'connecting');
 
@@ -304,5 +288,4 @@ export class CentralWorkerConnector {
       timestamp: Date.now(),
     });
   }
-
 }

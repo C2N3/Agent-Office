@@ -152,11 +152,11 @@ The dashboard Remote tab includes a Central Server card. Edit `Server URL` there
 
 The saved value is stored in `~/.agent-office/central-server-url.txt`. `AO_CENTRAL_SERVER_URL` is still supported as the startup fallback when no saved value exists.
 
-The same tab now includes an explicit mode selector with `Local Only`, `Host`, and `Guest`.
+The same tab now includes an explicit mode selector with `Local Only`, `Host`, and `Guest`. Picking a pill only changes the draft selection. The mode changes when you press the primary action for that sheet: `Use Local Only`, `Start Host`, or `Join as Guest`.
 
 - `Local Only` keeps the central server URL on disk, but leaves the worker bridge and character sync off.
-- `Host` turns on the worker bridge and character sync for this machine, uses the worker token when needed, and lets the room-access controls generate copyable guest invite links.
-- `Guest` accepts an invite link, stores the guest room secret locally, and then turns on the worker bridge and character sync through that room secret.
+- `Host` uses the server URL, opens the host session, enables the public room, and stores the owner secret automatically.
+- `Guest` accepts an invite link, stores the guest room secret locally, and then turns on the worker bridge and character sync through that room secret. Opening an invite link on a machine that already has Agent-Office running at `http://localhost:3000` can join automatically from the URL fragment.
 
 The selected mode is stored in `~/.agent-office/central-remote-mode.txt`. Room secrets are stored in `~/.agent-office/central-room-secret.txt`.
 

@@ -41,9 +41,13 @@ export function modeUsesWorkerToken(mode: RemoteMode): boolean {
   return mode === 'host';
 }
 
-export function buildGuestInviteLink(baseUrl: string, guestSecret: string): string {
-  const origin = baseUrl.replace(/\/+$/, '');
-  return `${origin}/#aoGuestSecret=${encodeURIComponent(guestSecret)}`;
+export function buildGuestInviteLink(appOrigin: string, baseUrl: string, guestSecret: string): string {
+  const origin = appOrigin.replace(/\/+$/, '');
+  const hash = new URLSearchParams({
+    aoGuestSecret: guestSecret,
+    aoBaseUrl: baseUrl.replace(/\/+$/, ''),
+  });
+  return `${origin}/#${hash.toString()}`;
 }
 
 export function parseGuestInviteLink(value: string): GuestInvite {
@@ -51,11 +55,12 @@ export function parseGuestInviteLink(value: string): GuestInvite {
   const hash = url.hash.startsWith('#') ? url.hash.slice(1) : url.hash;
   const params = new URLSearchParams(hash);
   const guestSecret = params.get('aoGuestSecret')?.trim() || '';
+  const baseUrl = params.get('aoBaseUrl')?.trim() || url.origin;
   if (!guestSecret) {
     throw new Error('Invite link is missing aoGuestSecret');
   }
   return {
-    baseUrl: url.origin,
+    baseUrl,
     guestSecret,
   };
 }

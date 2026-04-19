@@ -1,11 +1,8 @@
 import { type RemoteMode } from '../remoteMode.js';
 
 type RemoteConfig = {
+  baseUrl?: string;
   remoteMode?: RemoteMode;
-  roomSecretConfigured?: boolean;
-  workerEnabled?: boolean;
-  agentSyncEnabled?: boolean;
-  workerId?: string;
   workerConnectionStatus?: string;
 };
 
@@ -40,15 +37,6 @@ function escapeHtml(value: string | number | null | undefined): string {
     .replace(/"/g, '&quot;');
 }
 
-function formatTimestamp(value: string | null | undefined): string {
-  if (!value) return '-';
-  try {
-    return new Date(value).toLocaleString();
-  } catch {
-    return '-';
-  }
-}
-
 function workerStatusClass(status?: string): string {
   if (status === 'connected') return 'online';
   if (status === 'connecting' || status === 'reconnecting') return 'starting';
@@ -56,15 +44,9 @@ function workerStatusClass(status?: string): string {
   return 'offline';
 }
 
-function remoteModeLabel(mode: RemoteMode): string {
-  if (mode === 'host') return 'Host';
-  if (mode === 'guest') return 'Guest';
-  return 'Local Only';
-}
-
 function renderWorkerList(workers: RemoteWorker[]): string {
   if (workers.length === 0) {
-    return '<div class="server-empty">No workers connected.</div>';
+    return '<div class="server-empty">No devices connected.</div>';
   }
 
   return workers.map((worker) => {
@@ -84,20 +66,15 @@ function renderWorkerList(workers: RemoteWorker[]): string {
         </div>
         <div class="server-worker-state">
           <span class="server-status-pill ${worker.status === 'online' ? 'online' : 'offline'}">${escapeHtml(worker.status)}</span>
-          <span>${escapeHtml(worker.runningTasks)} running</span>
+          <span>${escapeHtml(worker.runningTasks)} active tasks</span>
         </div>
       </div>
     `;
   }).join('');
 }
 
-export function renderStatusDetails(snapshot: RemoteSnapshot, roomSecretConfigured = false): string {
-  const remoteMode = snapshot.config?.remoteMode || 'local';
-  const workerEnabled = !!snapshot.config?.workerEnabled;
-  const agentSyncEnabled = !!snapshot.config?.agentSyncEnabled;
+export function renderStatusDetails(snapshot: RemoteSnapshot, expanded = false): string {
   const workerStatus = snapshot.config?.workerConnectionStatus || 'disconnected';
-  const workerId = snapshot.config?.workerId || '-';
-  const roomSecretStatus = roomSecretConfigured ? 'configured' : 'not configured';
   const isOnline = !!snapshot.health && !snapshot.error;
   const dotClass = isOnline ? (snapshot.eventsConnected ? 'online' : 'starting') : 'offline';
   const statusLabel = snapshot.error
@@ -107,32 +84,23 @@ export function renderStatusDetails(snapshot: RemoteSnapshot, roomSecretConfigur
       : 'Reachable';
 
   return `
-  <details class="remote-settings">
-    <summary class="remote-settings-summary">Central Server Status</summary>
+  <details class="remote-settings" ${expanded ? 'open' : ''}>
+    <summary class="remote-settings-summary">Status</summary>
     <div class="remote-settings-body">
       <div class="remote-status-row">
         <div class="remote-dot server-dot ${dotClass}"></div>
         <span class="remote-status-label">${escapeHtml(statusLabel)}</span>
-        <span class="remote-uptime">${escapeHtml(snapshot.workers.length)} workers</span>
+        <span class="remote-uptime">${escapeHtml(snapshot.workers.length)} devices</span>
         <div style="flex:1"></div>
         <button class="btn-secondary remote-action-btn" id="remoteStatusRefreshBtn" type="button">Refresh</button>
       </div>
       ${snapshot.error ? `<div class="remote-error">${escapeHtml(snapshot.error)}</div>` : ''}
       <div class="server-health-grid">
-        ${snapshot.health ? `
-          <div><div class="remote-info-label">Health</div><div class="server-health-value">${escapeHtml(snapshot.health.status)}</div></div>
-          <div><div class="remote-info-label">Server Time</div><div class="server-health-value">${escapeHtml(formatTimestamp(snapshot.health.time))}</div></div>
-          <div><div class="remote-info-label">Event Stream</div><div class="server-health-value">${snapshot.eventsConnected ? 'connected' : 'waiting'}</div></div>
-        ` : ''}
-        <div><div class="remote-info-label">Remote Mode</div><div class="server-health-value">${escapeHtml(remoteModeLabel(remoteMode))}</div></div>
-        <div><div class="remote-info-label">Room Secret</div><div class="server-health-value">${escapeHtml(roomSecretStatus)}</div></div>
-        <div><div class="remote-info-label">Character Sync</div><div class="server-health-value">${agentSyncEnabled ? 'enabled' : 'disabled'}</div></div>
-        <div><div class="remote-info-label">Worker Bridge</div><div class="server-health-value">${workerEnabled ? 'enabled' : 'disabled'}</div></div>
-        <div><div class="remote-info-label">Worker Connector</div><div class="server-health-value"><span class="server-status-pill ${workerStatusClass(workerStatus)}">${escapeHtml(workerStatus)}</span></div></div>
-        <div><div class="remote-info-label">Worker ID</div><div class="server-health-value">${escapeHtml(workerId)}</div></div>
+        <div><div class="remote-info-label">Server</div><div class="server-health-value">${escapeHtml(snapshot.config?.baseUrl || '-')}</div></div>
+        <div><div class="remote-info-label">Connection</div><div class="server-health-value"><span class="server-status-pill ${workerStatusClass(workerStatus)}">${escapeHtml(workerStatus)}</span></div></div>
       </div>
       <div class="remote-info-block" style="margin-bottom:0">
-        <div class="remote-info-label">Workers</div>
+        <div class="remote-info-label">Connected devices</div>
         <div class="server-worker-list">${renderWorkerList(snapshot.workers)}</div>
       </div>
     </div>
