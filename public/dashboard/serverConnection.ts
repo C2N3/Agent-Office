@@ -1,5 +1,6 @@
 interface CentralServerConfig {
   baseUrl: string; healthPath: string; workersPath: string; eventsPath: string; agentsPath: string; agentSyncEnabled: boolean;
+  remoteMode?: 'local' | 'host' | 'guest'; roomSecretConfigured?: boolean;
   workerEnabled?: boolean; workerTokenConfigured?: boolean; workerId?: string; workerConnectionStatus?: string;
 }
 
@@ -42,11 +43,21 @@ async function fetchJSON<T>(path: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-async function saveCentralServerConfig(config: {
-  baseUrl: string;
-  workerEnabled: boolean;
-  agentSyncEnabled: boolean;
+export async function fetchCentralServerConfig(): Promise<CentralServerConfig | null> {
+  try {
+    return await fetchJSON<CentralServerConfig>('/api/server/config');
+  } catch {
+    return null;
+  }
+}
+
+export async function saveCentralServerConfig(config: {
+  baseUrl?: string;
+  workerEnabled?: boolean;
+  agentSyncEnabled?: boolean;
   workerToken?: string;
+  roomSecret?: string;
+  remoteMode?: 'local' | 'host' | 'guest';
 }): Promise<CentralServerConfig> {
   const res = await fetch('/api/server/config', {
     method: 'POST',
@@ -73,15 +84,13 @@ function formatError(error: unknown): string {
 }
 
 export async function fetchCentralServerSnapshot(): Promise<CentralServerSnapshot> {
-  let config: CentralServerConfig | null = null;
-  try {
-    config = await fetchJSON<CentralServerConfig>('/api/server/config');
-  } catch (error) {
+  const config = await fetchCentralServerConfig();
+  if (!config) {
     return {
       config: null,
       health: null,
       workers: [],
-      error: formatError(error),
+      error: 'Central server unavailable',
       eventsConnected,
     };
   }
@@ -135,9 +144,11 @@ function renderWorker(worker: CentralWorker): string {
 
 export function renderCentralServerCard(snapshot: CentralServerSnapshot): string {
   const targetUrl = snapshot.config?.baseUrl || 'not configured';
+  const remoteMode = snapshot.config?.remoteMode || 'local';
   const workerStatus = snapshot.config?.workerConnectionStatus || 'disconnected';
   const workerId = snapshot.config?.workerId || '-';
   const tokenStatus = snapshot.config?.workerTokenConfigured ? 'configured' : 'not configured';
+  const roomSecretStatus = snapshot.config?.roomSecretConfigured ? 'configured' : 'not configured';
   const isOnline = !!snapshot.health && !snapshot.error;
   const dotClass = isOnline ? (snapshot.eventsConnected ? 'online' : 'starting') : 'offline';
   const statusLabel = snapshot.error
@@ -193,6 +204,8 @@ export function renderCentralServerCard(snapshot: CentralServerSnapshot): string
     <div><div class="remote-info-label">Server Time</div><div class="server-health-value">${escapeHtml(formatTimestamp(snapshot.health.time))}</div></div>
     <div><div class="remote-info-label">Event Stream</div><div class="server-health-value">${snapshot.eventsConnected ? 'connected' : 'waiting'}</div></div>
     ` : ''}
+    <div><div class="remote-info-label">Remote Mode</div><div class="server-health-value">${escapeHtml(remoteMode)}</div></div>
+    <div><div class="remote-info-label">Room Secret</div><div class="server-health-value">${escapeHtml(roomSecretStatus)}</div></div>
     <div><div class="remote-info-label">Worker Connector</div><div class="server-health-value"><span class="server-status-pill ${workerStatusClass(workerStatus)}">${escapeHtml(workerStatus)}</span></div></div>
     <div><div class="remote-info-label">Worker ID</div><div class="server-health-value">${escapeHtml(workerId)}</div></div>
   </div>
@@ -269,8 +282,14 @@ export function bindCentralServerControls(): void {
   });
 }
 
-export function startCentralServerConnection(): void {
+export async function startCentralServerConnection(): Promise<void> {
   if (eventSource) return;
+  const config = await fetchCentralServerConfig();
+  if (config?.remoteMode === 'guest') {
+    eventsConnected = false;
+    scheduleRefresh();
+    return;
+  }
 
   eventSource = new EventSource('/api/server/events');
   eventSource.onopen = () => {

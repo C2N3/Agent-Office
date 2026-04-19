@@ -208,6 +208,7 @@ async function proxyEvents(req: RequestLike, res: ResponseLike): Promise<void> {
 }
 
 function centralRequestHeaders(headers: Record<string, string>): Record<string, string> {
+  if (getRemoteMode() === 'local') return headers;
   const roomSecret = getCentralRoomSecret().trim();
   if (!roomSecret) return headers;
   return {
