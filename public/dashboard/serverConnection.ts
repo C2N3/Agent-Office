@@ -1,40 +1,15 @@
 interface CentralServerConfig {
-  baseUrl: string;
-  healthPath: string;
-  workersPath: string;
-  eventsPath: string;
-  agentsPath: string;
-  agentSyncEnabled: boolean;
+  baseUrl: string; healthPath: string; workersPath: string; eventsPath: string; agentsPath: string; agentSyncEnabled: boolean;
+  workerEnabled?: boolean; workerTokenConfigured?: boolean; workerId?: string; workerConnectionStatus?: string;
 }
 
-interface CentralServerHealth {
-  status: string;
-  time: string;
-}
+interface CentralServerHealth { status: string; time: string; }
+interface CentralWorkersResponse { workers: CentralWorker[]; }
+interface CentralServerSnapshot { config: CentralServerConfig | null; health: CentralServerHealth | null; workers: CentralWorker[]; error: string | null; eventsConnected: boolean; }
 
 interface CentralWorker {
-  id: string;
-  userId: string;
-  displayName: string;
-  hostname: string;
-  platform: string;
-  capabilities: string[];
-  status: string;
-  lastSeenAt: string;
-  protocolVersion: number;
-  runningTasks: number;
-}
-
-interface CentralWorkersResponse {
-  workers: CentralWorker[];
-}
-
-interface CentralServerSnapshot {
-  config: CentralServerConfig | null;
-  health: CentralServerHealth | null;
-  workers: CentralWorker[];
-  error: string | null;
-  eventsConnected: boolean;
+  id: string; userId: string; displayName: string; hostname: string; platform: string; capabilities: string[];
+  status: string; lastSeenAt: string; protocolVersion: number; runningTasks: number;
 }
 
 let eventSource: EventSource | null = null;
@@ -67,17 +42,29 @@ async function fetchJSON<T>(path: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-async function saveCentralServerConfig(baseUrl: string, agentSyncEnabled: boolean): Promise<CentralServerConfig> {
+async function saveCentralServerConfig(config: {
+  baseUrl: string;
+  workerEnabled: boolean;
+  agentSyncEnabled: boolean;
+  workerToken?: string;
+}): Promise<CentralServerConfig> {
   const res = await fetch('/api/server/config', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ baseUrl, agentSyncEnabled }),
+    body: JSON.stringify(config),
   });
   const payload = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new Error(payload.error || `HTTP ${res.status}`);
   }
   return payload as CentralServerConfig;
+}
+
+function workerStatusClass(status?: string): string {
+  if (status === 'connected') return 'online';
+  if (status === 'connecting' || status === 'reconnecting') return 'starting';
+  if (status === 'error') return 'error';
+  return 'offline';
 }
 
 function formatError(error: unknown): string {
@@ -148,6 +135,9 @@ function renderWorker(worker: CentralWorker): string {
 
 export function renderCentralServerCard(snapshot: CentralServerSnapshot): string {
   const targetUrl = snapshot.config?.baseUrl || 'not configured';
+  const workerStatus = snapshot.config?.workerConnectionStatus || 'disconnected';
+  const workerId = snapshot.config?.workerId || '-';
+  const tokenStatus = snapshot.config?.workerTokenConfigured ? 'configured' : 'not configured';
   const isOnline = !!snapshot.health && !snapshot.error;
   const dotClass = isOnline ? (snapshot.eventsConnected ? 'online' : 'starting') : 'offline';
   const statusLabel = snapshot.error
@@ -176,34 +166,36 @@ export function renderCentralServerCard(snapshot: CentralServerSnapshot): string
         <input type="text" id="centralServerUrlInput" class="modal-input" value="${escapeHtml(targetUrl)}" autocomplete="off" spellcheck="false">
         <button class="btn-secondary modal-browse-btn" id="centralServerUrlSaveBtn" type="submit">Save</button>
       </div>
+      <div class="remote-hint">포트만 입력해도 됩니다. 예: <code>47824</code> 또는 <code>http://127.0.0.1:47824</code></div>
+      <label class="modal-checkbox" style="margin-top:10px">
+        <input type="checkbox" id="centralWorkerEnabledInput" ${snapshot.config?.workerEnabled ? 'checked' : ''}>
+        <span>Connect this PC as a central worker</span>
+      </label>
+      <label class="modal-checkbox" style="margin-top:8px">
+        <input type="checkbox" id="centralAgentSyncInput" ${snapshot.config?.agentSyncEnabled ? 'checked' : ''}>
+        <span>Sync agent characters through this server</span>
+      </label>
+      <div class="remote-hint">Agent sync mirrors registered character updates. When worker connection is enabled, the app connector owns local-to-central updates.</div>
+      <div style="margin-top:12px">
+        <div class="remote-info-label">Worker Token</div>
+        <input type="password" id="centralWorkerTokenInput" class="modal-input" value="" placeholder="${snapshot.config?.workerTokenConfigured ? 'Configured; enter a new token to replace' : 'Enter worker token'}" autocomplete="new-password" spellcheck="false">
+        <div class="remote-hint">Token is ${escapeHtml(tokenStatus)}. Saved tokens are never shown here.</div>
+      </div>
+      <div class="remote-error" id="centralServerUrlError" style="display:none;margin-top:8px;margin-bottom:0"></div>
     </form>
-    <div class="remote-hint">포트만 입력해도 됩니다. 예: <code>47824</code> 또는 <code>http://127.0.0.1:47824</code></div>
-    <label class="modal-checkbox" style="margin-top:10px">
-      <input type="checkbox" id="centralAgentSyncInput" ${snapshot.config?.agentSyncEnabled ? 'checked' : ''}>
-      <span>Sync agent characters through this server</span>
-    </label>
-    <div class="remote-hint">When enabled, newly registered agents and avatar/archive changes are mirrored to the central server.</div>
-    <div class="remote-error" id="centralServerUrlError" style="display:none;margin-top:8px;margin-bottom:0"></div>
   </div>
 
   ${snapshot.error ? `<div class="remote-error">${escapeHtml(snapshot.error)}</div>` : ''}
 
-  ${snapshot.health ? `
   <div class="server-health-grid">
-    <div>
-      <div class="remote-info-label">Health</div>
-      <div class="server-health-value">${escapeHtml(snapshot.health.status)}</div>
-    </div>
-    <div>
-      <div class="remote-info-label">Server Time</div>
-      <div class="server-health-value">${escapeHtml(formatTimestamp(snapshot.health.time))}</div>
-    </div>
-    <div>
-      <div class="remote-info-label">Event Stream</div>
-      <div class="server-health-value">${snapshot.eventsConnected ? 'connected' : 'waiting'}</div>
-    </div>
+    ${snapshot.health ? `
+    <div><div class="remote-info-label">Health</div><div class="server-health-value">${escapeHtml(snapshot.health.status)}</div></div>
+    <div><div class="remote-info-label">Server Time</div><div class="server-health-value">${escapeHtml(formatTimestamp(snapshot.health.time))}</div></div>
+    <div><div class="remote-info-label">Event Stream</div><div class="server-health-value">${snapshot.eventsConnected ? 'connected' : 'waiting'}</div></div>
+    ` : ''}
+    <div><div class="remote-info-label">Worker Connector</div><div class="server-health-value"><span class="server-status-pill ${workerStatusClass(workerStatus)}">${escapeHtml(workerStatus)}</span></div></div>
+    <div><div class="remote-info-label">Worker ID</div><div class="server-health-value">${escapeHtml(workerId)}</div></div>
   </div>
-  ` : ''}
 
   <div class="remote-info-block">
     <div class="remote-info-label">Workers</div>
@@ -218,6 +210,7 @@ export function renderCentralServerCard(snapshot: CentralServerSnapshot): string
 
 async function refreshCentralServerCard(force = false): Promise<void> {
   if (!force && document.activeElement?.id === 'centralServerUrlInput') return;
+  if (!force && document.activeElement?.id === 'centralWorkerTokenInput') return;
   const card = document.getElementById('centralServerCard');
   if (!card) return;
   const snapshot = await fetchCentralServerSnapshot();
@@ -246,7 +239,9 @@ export function bindCentralServerControls(): void {
   document.getElementById('centralServerUrlForm')?.addEventListener('submit', async (event) => {
     event.preventDefault();
     const input = document.getElementById('centralServerUrlInput') as HTMLInputElement | null;
+    const workerInput = document.getElementById('centralWorkerEnabledInput') as HTMLInputElement | null;
     const syncInput = document.getElementById('centralAgentSyncInput') as HTMLInputElement | null;
+    const tokenInput = document.getElementById('centralWorkerTokenInput') as HTMLInputElement | null;
     const button = document.getElementById('centralServerUrlSaveBtn') as HTMLButtonElement | null;
     const errorEl = document.getElementById('centralServerUrlError');
     if (!input) return;
@@ -255,7 +250,13 @@ export function bindCentralServerControls(): void {
     if (button) { button.disabled = true; button.textContent = 'Saving...'; }
 
     try {
-      await saveCentralServerConfig(input.value, !!syncInput?.checked);
+      const workerToken = tokenInput?.value.trim() || '';
+      await saveCentralServerConfig({
+        baseUrl: input.value,
+        workerEnabled: !!workerInput?.checked,
+        agentSyncEnabled: !!syncInput?.checked,
+        ...(workerToken ? { workerToken } : {}),
+      });
       stopCentralServerConnection();
       await refreshCentralServerCard(true);
       window.dispatchEvent(new CustomEvent('central-agent-sync-config-changed'));

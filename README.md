@@ -152,7 +152,9 @@ The dashboard Remote tab includes a Central Server card. Edit `Server URL` there
 
 The saved value is stored in `~/.agent-office/central-server-url.txt`. `AO_CENTRAL_SERVER_URL` is still supported as the startup fallback when no saved value exists.
 
-Enable `Sync agent characters through this server` in the same card to mirror newly registered dashboard agents, avatar changes, and archive/delete actions through the configured central server. The sync toggle is stored in `~/.agent-office/central-agent-sync.txt`; when it is off, agent character creation and updates stay local-only in `~/.agent-office/agent-registry.json`.
+Enable `Connect this PC as a central worker` to keep this client visible in the central server worker list. The card shows the stable worker ID, current connection status, and whether a worker token is configured. Saved worker tokens are not displayed again; enter a non-empty token only when setting or replacing it.
+
+Enable `Sync agent characters through this server` in the same card to mirror registered dashboard agents and avatar/archive changes through the configured central server. When worker connection is enabled, the main-process worker connector owns local-to-central agent updates; the browser dashboard keeps fetching and displaying central agents. When sync is off, agent character creation and updates stay local-only in `~/.agent-office/agent-registry.json`.
 
 ## macOS Release
 

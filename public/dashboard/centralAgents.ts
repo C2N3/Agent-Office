@@ -6,57 +6,19 @@ import {
   state,
 } from './shared.js';
 
-type CentralAgentWorkspace = {
-  workerId?: string;
-  repoRemote?: string;
-  branch?: string;
-  localRef?: string;
-  label?: string;
-};
-
+type CentralAgentWorkspace = { workerId?: string; repoRemote?: string; branch?: string; localRef?: string; label?: string; };
 type CentralAgent = {
-  id: string;
-  projectId?: string;
-  roomId?: string;
-  name?: string;
-  role?: string;
-  provider?: string;
-  model?: string;
-  avatar?: {
-    assetId?: string;
-    url?: string;
-    initials?: string;
-    color?: string;
-  };
-  workspace?: CentralAgentWorkspace;
-  archivedAt?: string | null;
+  id: string; projectId?: string; roomId?: string; name?: string; role?: string; provider?: string; model?: string;
+  avatar?: { assetId?: string; url?: string; initials?: string; color?: string; };
+  workspace?: CentralAgentWorkspace; archivedAt?: string | null;
 };
+type CentralAgentsResponse = { agents?: CentralAgent[]; };
+type CentralAgentResponse = { agent?: CentralAgent; error?: { message?: string } | string; };
+type CentralAgentBulkResponse = { agents?: CentralAgent[]; error?: { message?: string } | string; };
+type CentralServerConfig = { agentSyncEnabled?: boolean; workerEnabled?: boolean; };
+type SyncCallbacks = { upsertAgent: (agent: DashboardAgent) => void; removeAgent: (id: string) => void; };
 
-type CentralAgentsResponse = {
-  agents?: CentralAgent[];
-};
-
-type CentralAgentResponse = {
-  agent?: CentralAgent;
-  error?: { message?: string } | string;
-};
-
-type CentralAgentBulkResponse = {
-  agents?: CentralAgent[];
-  error?: { message?: string } | string;
-};
-
-type CentralServerConfig = {
-  agentSyncEnabled?: boolean;
-};
-
-type SyncCallbacks = {
-  upsertAgent: (agent: DashboardAgent) => void;
-  removeAgent: (id: string) => void;
-};
-
-let eventSource: EventSource | null = null;
-let callbacks: SyncCallbacks | null = null;
+let eventSource: EventSource | null = null, callbacks: SyncCallbacks | null = null;
 
 type SyncableAgentRecord = DashboardAgentRecord | DashboardAgent;
 
@@ -209,13 +171,15 @@ async function fetchJSON<T>(path: string, options?: RequestInit): Promise<T> {
   return payload as T;
 }
 
-export async function isCentralAgentSyncEnabled(): Promise<boolean> {
-  try {
-    const config = await fetchJSON<CentralServerConfig>('/api/server/config');
-    return !!config.agentSyncEnabled;
-  } catch {
-    return false;
-  }
+export async function isCentralAgentSyncEnabled(): Promise<boolean> { return !!(await fetchCentralAgentConfig())?.agentSyncEnabled; }
+
+async function fetchCentralAgentConfig(): Promise<CentralServerConfig | null> {
+  try { return await fetchJSON<CentralServerConfig>('/api/server/config'); } catch { return null; }
+}
+
+async function isBrowserLocalAgentSyncEnabled(): Promise<boolean> {
+  const config = await fetchCentralAgentConfig();
+  return !!config?.agentSyncEnabled && !config.workerEnabled;
 }
 
 export async function fetchCentralDashboardAgents(): Promise<DashboardAgent[]> {
@@ -238,6 +202,7 @@ async function upsertCentralAgents(agents: SyncableAgentRecord[]): Promise<void>
 }
 
 async function syncLocalAgentsToCentral(): Promise<void> {
+  if (!await isBrowserLocalAgentSyncEnabled()) return;
   const agents = await fetchJSON<DashboardAgent[]>('/api/agents');
   await upsertCentralAgents(agents.filter(shouldSyncLocalAgent));
 }
@@ -249,12 +214,12 @@ async function applyCentralSnapshot(): Promise<void> {
 }
 
 export async function syncCentralAgentRecord(agent?: DashboardAgentRecord | null): Promise<void> {
-  if (!agent?.id || !await isCentralAgentSyncEnabled()) return;
+  if (!agent?.id || !await isBrowserLocalAgentSyncEnabled()) return;
   await upsertCentralAgents([agent]);
 }
 
 export async function syncCentralAgentUpdate(id?: string | null, fields: Partial<DashboardAgentRecord> = {}): Promise<void> {
-  if (!id || !await isCentralAgentSyncEnabled()) return;
+  if (!id || !await isBrowserLocalAgentSyncEnabled()) return;
   const payload: Partial<CentralAgent> = {};
   if (fields.name !== undefined) payload.name = fields.name || 'Agent';
   if (fields.role !== undefined) payload.role = fields.role || '';
@@ -272,7 +237,7 @@ export async function syncCentralAgentUpdate(id?: string | null, fields: Partial
 }
 
 export async function syncCentralAgentRemoval(id?: string | null): Promise<void> {
-  if (!id || !await isCentralAgentSyncEnabled()) return;
+  if (!id || !await isBrowserLocalAgentSyncEnabled()) return;
   await fetchJSON<CentralAgentResponse>(`/api/server/agents/${encodeURIComponent(id)}`, {
     method: 'DELETE',
   });
