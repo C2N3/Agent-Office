@@ -44,6 +44,16 @@
     "url": "https://github.com/C2N3/Agent-Office.git"
   },
   "license": "MIT",
+  "engines": {
+    "node": ">=24"
+  },
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": ">=24",
+      "onFail": "error"
+    }
+  },
   "build": {
     "appId": "com.c2n3.agent-office",
     "productName": "Agent-Office",
@@ -117,12 +127,12 @@
     "@types/electron": "^1.6.12",
     "@types/jest": "^30.0.0",
     "@types/node": "^25.6.0",
-    "@typescript/native-preview": "^7.0.0-dev.20260410.1",
-    "electron": "^41.2.0",
+    "@typescript/native-preview": "^7.0.0-dev.20260419.1",
+    "electron": "^41.2.1",
     "electron-builder": "^26.8.1",
-    "eslint": "^10.2.0",
+    "eslint": "^10.2.1",
     "jest": "^30.3.0",
-    "prettier": "^3.8.2"
+    "prettier": "^3.8.3"
   },
   "dependencies": {
     "@xterm/addon-fit": "^0.11.0",
@@ -130,7 +140,7 @@
     "@xterm/xterm": "^6.0.0",
     "ajv": "^8.18.0",
     "cloudflared": "^0.7.1",
-    "marked": "^18.0.0",
+    "marked": "^18.0.2",
     "node-addon-api": "^8.7.0",
     "node-pty": "^1.1.0",
     "tree-kill": "^1.2.2"

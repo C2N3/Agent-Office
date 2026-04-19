@@ -26,7 +26,7 @@ Korean README: [README.ko.md](README.ko.md)
 
 ## Requirements
 
-- **Node.js** 20+
+- **Node.js** 24+
 - **Claude Code CLI** with hooks enabled, **Codex CLI** with session files / `exec --json`, or **Gemini CLI** for task execution
 - **OS:** Windows, macOS, or Linux
 

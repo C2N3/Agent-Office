@@ -26,7 +26,7 @@
 
 ## 요구 사항
 
-- **Node.js** 20 이상
+- **Node.js** 24 이상
 - Hook 기반 모니터링이 설정된 **Claude Code CLI**, session file/`exec --json`를 사용할 **Codex CLI**, 또는 task 실행용 **Gemini CLI**
 - **운영체제:** Windows, macOS, Linux
 
