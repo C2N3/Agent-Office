@@ -59,9 +59,9 @@ function formatUptime(startedAt: number | null): string {
 }
 
 function isRemoteInputFocused(): boolean {
-  return document.activeElement?.id === 'centralServerUrlInput';
+  const active = document.activeElement as HTMLInputElement | null;
+  return ['centralServerUrlInput', 'centralWorkerTokenInput'].includes(active?.id || '') || active?.name === 'centralConnectionMode';
 }
-
 
 function renderTunnelCard(status: TunnelStatus): string {
   const dotColor = status.running ? (status.url ? '#4ade80' : '#fbbf24') : '#888';

@@ -76,6 +76,10 @@
   margin-bottom: 16px;
 }
 
+.remote-mode-block {
+  margin-top: 12px;
+}
+
 .remote-info-label {
   font-size: 11px;
   font-weight: 600;
@@ -123,6 +127,98 @@
 .remote-copy-btn:hover {
   border-color: var(--color-accent, #4ade80);
   color: var(--color-accent, #4ade80);
+}
+
+.remote-mode-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.remote-mode-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border, rgba(255,255,255,0.12));
+  border-radius: 6px;
+  background: var(--color-bg-input, rgba(255,255,255,0.05));
+  color: var(--color-text-muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.remote-mode-pill.active {
+  border-color: var(--color-accent, #4ade80);
+  color: var(--color-text);
+  background: rgba(74, 222, 128, 0.12);
+}
+
+.remote-mode-input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.remote-mode-sheet {
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid var(--color-border, rgba(255,255,255,0.1));
+  border-radius: 6px;
+  background: var(--color-bg-input, rgba(255,255,255,0.05));
+}
+
+.remote-mode-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.remote-mode-description {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+.remote-mode-field {
+  margin-top: 12px;
+}
+
+.remote-settings {
+  margin-top: 14px;
+  border: 1px solid var(--color-border, rgba(255,255,255,0.1));
+  border-radius: 6px;
+  background: var(--color-bg-input, rgba(255,255,255,0.04));
+}
+
+.remote-settings-summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.remote-settings-summary::-webkit-details-marker {
+  display: none;
+}
+
+.remote-settings-summary::after {
+  content: '열기';
+  float: right;
+  color: var(--color-text-muted);
+  font-weight: 400;
+}
+
+.remote-settings[open] .remote-settings-summary::after {
+  content: '닫기';
+}
+
+.remote-settings-body {
+  padding: 0 12px 12px;
 }
 
 .remote-hint {
