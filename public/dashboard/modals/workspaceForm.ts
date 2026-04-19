@@ -8,7 +8,7 @@ import {
   getEffectiveRegistrationStrategy,
   getRegistrationDecisionMessage,
 } from '../registration/decision.js';
-import { syncCentralAgentRecord } from '../centralAgents.js';
+import { syncCentralAgentRecord } from '../centralAgents/index.js';
 
 export function setPreviewStatus(previewStatusEl, message) {
   if (previewStatusEl) previewStatusEl.textContent = message;

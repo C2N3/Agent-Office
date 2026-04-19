@@ -7,7 +7,7 @@ import {
   state,
 } from '../shared.js';
 import { officeCharacters } from '../../office/index.js';
-import { syncCentralAgentUpdate } from '../centralAgents.js';
+import { syncCentralAgentUpdate } from '../centralAgents/index.js';
 
 export function setupAvatarPicker(updateAgentUI) {
   const modal = document.getElementById('avatarPickerModal');

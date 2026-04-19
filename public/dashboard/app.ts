@@ -53,7 +53,7 @@ import {
   setupTeamReportModal,
 } from './modals/index.js';
 import { installHoverTooltips } from '../uiTooltip.js';
-import { startCentralAgentSync } from './centralAgents.js';
+import { startCentralAgentSync } from './centralAgents/index.js';
 
 type DashboardUiError = Error | { message?: string } | DisplayValue;
 

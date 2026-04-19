@@ -21,7 +21,7 @@ import {
   isRegisteredOnlyFilterEnabled,
   shouldDisplayAgent,
 } from './agentFilters.js';
-import { fetchCentralDashboardAgents } from './centralAgents.js';
+import { fetchCentralDashboardAgents } from './centralAgents/index.js';
 
 export { getStateColor };
 export {

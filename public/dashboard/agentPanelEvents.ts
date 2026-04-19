@@ -5,7 +5,7 @@ import {
 } from './shared.js';
 import { renderArchiveView } from './activityViews.js';
 import { officeRenderer } from '../office/index.js';
-import { syncCentralAgentRemoval } from './centralAgents.js';
+import { syncCentralAgentRemoval } from './centralAgents/index.js';
 
 export function initAgentPanelEvents() {
   const agentPanel = document.getElementById('agentPanel');

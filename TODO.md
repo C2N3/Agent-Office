@@ -13,10 +13,10 @@ This file tracks client-side work that is planned, discovered, blocked, or compl
 ## Open
 
 - [x] Add an explicit server mode selector for agent character visibility and sharing: Local Only shows only this client's agent characters, Host shares this client's server for others, and Guest connects to an existing host.
-- [ ] In Host mode, generate and store an owner-only secret plus a guest invite secret, expose a copyable invite link that includes the guest secret, support guest secret rotation, and treat tunnel URL refresh as a connectivity update rather than authentication.
-- [ ] Keep local-only agent character creation/update working through the Electron IPC and `~/.agent-office/agent-registry.json` path when no central server sync is enabled.
+- [x] In Host mode, generate and store an owner-only secret plus a guest invite secret, expose a copyable invite link that includes the guest secret, support guest secret rotation, and treat tunnel URL refresh as a connectivity update rather than authentication.
+- [x] Keep local-only agent character creation/update working through the Electron IPC and `~/.agent-office/agent-registry.json` path when no central server sync is enabled.
 - [x] Add an optional central-server-backed agent character sync mode that creates, updates, deletes, and subscribes to agent registry changes through the configured central server while preserving the local-only mode.
-- [ ] Reconcile local and central agent character state on startup, including conflict rules for name, role, workspace, provider, and avatar changes.
+- [x] Reconcile local and central agent character state on startup, including conflict rules for name, role, workspace, provider, and avatar changes.
 - [ ] Add full Gemini session visualization support by implementing Gemini session ingestion/monitoring, transcript statistics, recovery metadata, and provider registry/catalog capability updates comparable to Claude and Codex.
 - [x] Ensure newly created dashboard agents are assigned to the current floor before agent card filtering runs.
 - [x] Load dashboard avatar cards from the live character catalog so newly added character files appear without hardcoded list edits.
