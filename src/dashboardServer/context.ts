@@ -9,6 +9,9 @@ export interface DashboardRefs {
   sessionPids: Map<string, number> | null;
   teamCoordinator: any;
   missionControlWindow: any;
+  appMeta: {
+    isDev: boolean;
+  };
 }
 
 export interface DashboardClients {
@@ -27,6 +30,9 @@ export const refs: DashboardRefs = {
   sessionPids: null,
   teamCoordinator: null,
   missionControlWindow: null,
+  appMeta: {
+    isDev: false,
+  },
 };
 
 export const clients: DashboardClients = {
@@ -72,6 +78,12 @@ export function setTeamCoordinator(tc: any): void {
 
 export function setDashboardWindow(window: any): void {
   refs.missionControlWindow = window;
+}
+
+export function setAppMeta(appMeta: { isDev?: boolean } | null | undefined): void {
+  refs.appMeta = {
+    isDev: !!appMeta?.isDev,
+  };
 }
 
 export function getRefs(): DashboardRefs {

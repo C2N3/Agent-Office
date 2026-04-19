@@ -1,4 +1,3 @@
-
 const { createWindowManager } = require('../windowing');
 const { savePersistedState } = require('../sessionPersistence');
 
@@ -24,7 +23,16 @@ function createApplicationWindowManager({
   });
 }
 
-function startDashboardRuntime({ windowManager, orchestrator, workspaceManager, terminalManager, sessionPids, teamCoordinator, debugLog }) {
+function startDashboardRuntime({
+  windowManager,
+  orchestrator,
+  workspaceManager,
+  terminalManager,
+  sessionPids,
+  teamCoordinator,
+  debugLog,
+  isDev,
+}) {
   windowManager.startDashboardServer();
 
   // Initialize remote access token and print info
@@ -51,6 +59,7 @@ function startDashboardRuntime({ windowManager, orchestrator, workspaceManager, 
 
   try {
     const serverModule = require('../../dashboardServer/index.js');
+    serverModule.setAppMeta({ isDev: !!isDev });
     serverModule.setOrchestrator(orchestrator);
     if (workspaceManager) serverModule.setWorkspaceManager(workspaceManager);
     if (terminalManager) serverModule.setTerminalManager(terminalManager);

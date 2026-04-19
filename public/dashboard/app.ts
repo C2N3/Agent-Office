@@ -21,6 +21,7 @@ import {
   renderHeatmapView,
   renderUsageView,
 } from './activityViews.js';
+import { initDevModeViews } from './devMode.js';
 import { initAgentPanelEvents } from './agentPanelEvents.js';
 import { setupOfficeClickHandler } from './office.js';
 import { renderDashboardModals } from './modalMarkup.js';
@@ -341,6 +342,8 @@ function initInitialView() {
   else if (target === 'archive') renderArchiveView();
   else if (target === 'remote') {
     import('./remoteView.js').then((m) => { m.renderRemoteView(); m.startRemoteViewPolling(); });
+  } else if (target === 'cloudflare') {
+    import('./cloudflareView.js').then((m) => { m.renderCloudflareView(); m.startCloudflareViewPolling(); });
   }
 }
 
@@ -385,25 +388,13 @@ function initArchiveEvents() {
   });
 }
 
-function initTunnelStatusDot() {
-  const dot = document.getElementById('tunnelStatusDot');
-  if (!dot) return;
-
-  async function update() {
-    try {
-      const res = await fetch('/api/tunnel');
-      if (!res.ok) return;
-      const status = await res.json() as { running: boolean; url: string | null };
-      dot.style.background = status.running && status.url ? '#4ade80' : status.running ? '#fbbf24' : '#555';
-      dot.style.boxShadow = status.running && status.url ? '0 0 5px #4ade80' : 'none';
-    } catch {}
+async function initApp() {
+  const { isDev } = await initDevModeViews();
+  if (!isDev && state.currentView === 'cloudflare') {
+    state.currentView = 'office';
+    localStorage.setItem('mc-view', 'office');
   }
 
-  update();
-  setInterval(update, 5000);
-}
-
-function initApp() {
   globalThis.openTerminalForAgent = openTerminalForAgent;
 
   renderDashboardModals();
@@ -412,7 +403,6 @@ function initApp() {
   initPipControls();
   initOverlayControls();
   initInitialView();
-  initTunnelStatusDot();
 
   connectSSE();
   startCentralAgentSync({

@@ -152,9 +152,17 @@ The dashboard Remote tab includes a Central Server card. Edit `Server URL` there
 
 The saved value is stored in `~/.agent-office/central-server-url.txt`. `AO_CENTRAL_SERVER_URL` is still supported as the startup fallback when no saved value exists.
 
-Enable `Connect this PC as a central worker` to keep this client visible in the central server worker list. The card shows the stable worker ID, current connection status, and whether a worker token is configured. Saved worker tokens are not displayed again; enter a non-empty token only when setting or replacing it.
+The same tab now includes an explicit mode selector with `Local Only`, `Host`, and `Guest`.
 
-Enable `Sync agent characters through this server` in the same card to mirror registered dashboard agents and avatar/archive changes through the configured central server. When worker connection is enabled, the main-process worker connector owns local-to-central agent updates; the browser dashboard keeps fetching and displaying central agents. When sync is off, agent character creation and updates stay local-only in `~/.agent-office/agent-registry.json`.
+- `Local Only` keeps the central server URL on disk, but leaves the worker bridge and character sync off.
+- `Host` turns on the worker bridge and character sync for this machine, uses the worker token when needed, and lets the room-access controls generate copyable guest invite links.
+- `Guest` accepts an invite link, stores the guest room secret locally, and then turns on the worker bridge and character sync through that room secret.
+
+The selected mode is stored in `~/.agent-office/central-remote-mode.txt`. Room secrets are stored in `~/.agent-office/central-room-secret.txt`.
+
+When Guest mode is active without a stored room secret, the worker bridge and character sync stay off until an invite is joined. When Guest mode is active with a stored secret, the worker bridge uses that room secret instead of the worker token. The Remote tab and central agent mirror keep using polling fallback in Guest mode because the central event stream is not relied on there.
+
+In dev runs started with `--dev`, the sidebar also exposes a separate `Cloudflare` tab. That tab keeps the old quick-tunnel controls available for local development without mixing them into the Host/Guest product UI.
 
 ## macOS Release
 

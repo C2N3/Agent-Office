@@ -61,7 +61,12 @@
             <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
           </svg>
           Remote
-          <span id="tunnelStatusDot" style="margin-left:auto;width:6px;height:6px;border-radius:50%;background:#555;flex-shrink:0"></span>
+        </button>
+        <button class="nav-item" data-view="cloudflare" id="cloudflareNavBtn" style="display:none">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M7 18a4 4 0 1 1 .9-7.9A5 5 0 0 1 17.5 9a3.5 3.5 0 1 1 .5 7H7z"></path>
+          </svg>
+          Cloudflare
         </button>
       </nav>
       <div class="sidebar-footer">
@@ -245,6 +250,12 @@
         <!-- Usage View removed -->
 
         <div id="remoteView" class="view-section">
+          <div class="panel remote-panel">
+            <div class="standby-state">Loading…</div>
+          </div>
+        </div>
+
+        <div id="cloudflareView" class="view-section" style="display:none">
           <div class="panel remote-panel">
             <div class="standby-state">Loading…</div>
           </div>

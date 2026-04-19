@@ -7,7 +7,12 @@ import {
   startCentralServerConnection,
   stopCentralServerConnection,
 } from './serverConnection.js';
-import { buildGuestInviteLink, parseGuestInviteLink, type RemoteMode } from './remoteMode.js';
+import {
+  buildGuestInviteLink,
+  flagsFromRemoteMode,
+  parseGuestInviteLink,
+  type RemoteMode,
+} from './remoteMode.js';
 
 let pollInterval: ReturnType<typeof setInterval> | null = null;
 let lastIssuedGuestSecret = '';
@@ -71,26 +76,29 @@ async function roomAccessAction(path: string): Promise<RoomAccessStatus> {
   return payload as RoomAccessStatus;
 }
 
-function renderModeSelector(mode: RemoteMode): string {
+function renderModeSelector(mode: RemoteMode, roomSecretConfigured = false): string {
   const options: Array<{ value: RemoteMode; label: string; hint: string }> = [
     { value: 'local', label: 'Local Only', hint: 'room secret을 보내지 않고 로컬 설정만 유지합니다.' },
     { value: 'host', label: 'Host', hint: '중앙 서버에서 owner secret으로 public room을 관리합니다.' },
     { value: 'guest', label: 'Guest', hint: 'invite link의 중앙 서버 origin과 guest secret으로 접속합니다.' },
   ];
+  const selected = options.find((option) => option.value === mode) || options[0];
+  const flags = flagsFromRemoteMode(mode, { roomSecretConfigured });
 
   return `
 <div class="panel remote-panel">
   <div class="remote-section-title">Mode</div>
-  <div class="remote-mode-list">
-    ${options.map((option) => `
-      <label class="remote-mode-option">
-        <input type="radio" name="remoteMode" value="${option.value}" ${mode === option.value ? 'checked' : ''}>
-        <div>
-          <div class="remote-mode-label">${escapeHtml(option.label)}</div>
-          <div class="remote-hint">${escapeHtml(option.hint)}</div>
-        </div>
-      </label>
-    `).join('')}
+  <div class="remote-info-block">
+    <div class="remote-info-label">Connection Mode</div>
+    <div class="modal-path-field">
+      <select id="remoteModeSelect" class="modal-input">
+        ${options.map((option) => `
+          <option value="${option.value}" ${mode === option.value ? 'selected' : ''}>${escapeHtml(option.label)}</option>
+        `).join('')}
+      </select>
+    </div>
+    <div class="remote-hint">${escapeHtml(selected.hint)}</div>
+    <div class="remote-hint">Worker bridge: ${flags.workerEnabled ? 'on' : 'off'} · Character sync: ${flags.agentSyncEnabled ? 'on' : 'off'}</div>
   </div>
 </div>`;
 }
@@ -175,7 +183,7 @@ export async function renderRemoteView(): Promise<void> {
   const mode = (config?.remoteMode || 'local') as RemoteMode;
 
   container.innerHTML = [
-    renderModeSelector(mode),
+    renderModeSelector(mode, !!config?.roomSecretConfigured),
     remoteActionError ? `<div class="panel remote-panel"><div class="remote-error">${escapeHtml(remoteActionError)}</div></div>` : '',
     renderHostCard(config?.baseUrl || snapshot.config?.baseUrl || '', mode, roomAccess),
     renderGuestCard(config || {}),
@@ -184,16 +192,16 @@ export async function renderRemoteView(): Promise<void> {
 
   bindCentralServerControls();
 
-  container.querySelectorAll<HTMLInputElement>('input[name="remoteMode"]').forEach((input) => {
-    input.addEventListener('change', async () => {
-      const nextMode = input.value as RemoteMode;
-      remoteActionError = '';
-      await saveCentralServerConfig({ remoteMode: nextMode });
-      stopCentralServerConnection();
-      window.dispatchEvent(new CustomEvent('central-agent-sync-config-changed'));
-      await renderRemoteView();
-      void startCentralServerConnection();
-    });
+  document.getElementById('remoteModeSelect')?.addEventListener('change', async (event) => {
+    const select = event.currentTarget as HTMLSelectElement | null;
+    if (!select) return;
+    const nextMode = select.value as RemoteMode;
+    remoteActionError = '';
+    await saveCentralServerConfig({ remoteMode: nextMode });
+    stopCentralServerConnection();
+    window.dispatchEvent(new CustomEvent('central-agent-sync-config-changed'));
+    await renderRemoteView();
+    void startCentralServerConnection();
   });
 
   document.getElementById('hostEnableBtn')?.addEventListener('click', async () => {

@@ -5,6 +5,42 @@ export type GuestInvite = {
   guestSecret: string;
 };
 
+export type RemoteModeFlags = {
+  workerEnabled: boolean;
+  agentSyncEnabled: boolean;
+};
+
+export function flagsFromRemoteMode(
+  mode: RemoteMode,
+  options: { roomSecretConfigured?: boolean } = {},
+): RemoteModeFlags {
+  switch (mode) {
+    case 'host':
+      return { workerEnabled: true, agentSyncEnabled: true };
+    case 'guest':
+      return options.roomSecretConfigured
+        ? { workerEnabled: true, agentSyncEnabled: true }
+        : { workerEnabled: false, agentSyncEnabled: false };
+    default:
+      return { workerEnabled: false, agentSyncEnabled: false };
+  }
+}
+
+export function remoteModeLabel(mode: RemoteMode): string {
+  switch (mode) {
+    case 'host':
+      return 'Host';
+    case 'guest':
+      return 'Guest';
+    default:
+      return 'Local Only';
+  }
+}
+
+export function modeUsesWorkerToken(mode: RemoteMode): boolean {
+  return mode === 'host';
+}
+
 export function buildGuestInviteLink(baseUrl: string, guestSecret: string): string {
   const origin = baseUrl.replace(/\/+$/, '');
   return `${origin}/#aoGuestSecret=${encodeURIComponent(guestSecret)}`;

@@ -17,12 +17,7 @@ export const CENTRAL_REMOTE_MODE_FILE = path.join(CONFIG_DIR, 'central-remote-mo
 
 export type RemoteMode = 'local' | 'host' | 'guest';
 
-export type WorkerConnectionStatus =
-  | 'disconnected'
-  | 'connecting'
-  | 'connected'
-  | 'reconnecting'
-  | 'error';
+export type WorkerConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'reconnecting' | 'error';
 
 type CentralServerConfigUpdate = {
   baseUrl?: string;
@@ -40,6 +35,29 @@ let configuredRemoteMode: RemoteMode | null = null;
 let workerConnectionStatus: WorkerConnectionStatus = 'disconnected';
 
 const configEvents = new EventEmitter();
+
+function hasStoredRemoteMode(): boolean {
+  try {
+    return fs.existsSync(CENTRAL_REMOTE_MODE_FILE);
+  } catch {}
+  return false;
+}
+
+function deriveFlagsFromRemoteMode(
+  mode: RemoteMode,
+  options: { roomSecretConfigured?: boolean } = {}
+): { workerEnabled: boolean; agentSyncEnabled: boolean } {
+  switch (mode) {
+    case 'host':
+      return { workerEnabled: true, agentSyncEnabled: true };
+    case 'guest':
+      return options.roomSecretConfigured
+        ? { workerEnabled: true, agentSyncEnabled: true }
+        : { workerEnabled: false, agentSyncEnabled: false };
+    default:
+      return { workerEnabled: false, agentSyncEnabled: false };
+  }
+}
 
 export function normalizeCentralServerBaseUrl(raw: string): { ok: boolean; value?: string; message?: string } {
   const trimmed = raw.trim();
@@ -106,12 +124,24 @@ function writeBooleanFile(filePath: string, enabled: boolean): void {
 
 export function getAgentSyncEnabled(): boolean {
   if (configuredAgentSyncEnabled !== null) return configuredAgentSyncEnabled;
+  if (hasStoredRemoteMode()) {
+    configuredAgentSyncEnabled = deriveFlagsFromRemoteMode(getRemoteMode(), {
+      roomSecretConfigured: isCentralRoomSecretConfigured(),
+    }).agentSyncEnabled;
+    return configuredAgentSyncEnabled;
+  }
   configuredAgentSyncEnabled = readBooleanFile(CENTRAL_AGENT_SYNC_FILE) ?? false;
   return configuredAgentSyncEnabled;
 }
 
 export function getWorkerEnabled(): boolean {
   if (configuredWorkerEnabled !== null) return configuredWorkerEnabled;
+  if (hasStoredRemoteMode()) {
+    configuredWorkerEnabled = deriveFlagsFromRemoteMode(getRemoteMode(), {
+      roomSecretConfigured: isCentralRoomSecretConfigured(),
+    }).workerEnabled;
+    return configuredWorkerEnabled;
+  }
   configuredWorkerEnabled = readBooleanFile(CENTRAL_WORKER_ENABLED_FILE) ?? false;
   return configuredWorkerEnabled;
 }
@@ -182,6 +212,15 @@ export function setWorkerConnectionStatus(status: WorkerConnectionStatus): void 
 }
 
 export function saveCentralServerConfig(update: CentralServerConfigUpdate): void {
+  const effectiveRoomSecret =
+    update.roomSecret !== undefined ? update.roomSecret.trim() : getCentralRoomSecret().trim();
+  const derivedFlags =
+    update.remoteMode !== undefined
+      ? deriveFlagsFromRemoteMode(update.remoteMode, {
+          roomSecretConfigured: effectiveRoomSecret.length > 0,
+        })
+      : null;
+
   if (update.baseUrl !== undefined) {
     const normalized = normalizeCentralServerBaseUrl(update.baseUrl);
     if (!normalized.ok || !normalized.value) {
@@ -191,13 +230,15 @@ export function saveCentralServerConfig(update: CentralServerConfigUpdate): void
     fs.writeFileSync(CENTRAL_SERVER_URL_FILE, `${normalized.value}\n`, 'utf-8');
     configuredBaseUrl = normalized.value;
   }
-  if (typeof update.agentSyncEnabled === 'boolean') {
-    writeBooleanFile(CENTRAL_AGENT_SYNC_FILE, update.agentSyncEnabled);
-    configuredAgentSyncEnabled = update.agentSyncEnabled;
+  const nextAgentSyncEnabled = derivedFlags?.agentSyncEnabled ?? update.agentSyncEnabled;
+  if (typeof nextAgentSyncEnabled === 'boolean') {
+    writeBooleanFile(CENTRAL_AGENT_SYNC_FILE, nextAgentSyncEnabled);
+    configuredAgentSyncEnabled = nextAgentSyncEnabled;
   }
-  if (typeof update.workerEnabled === 'boolean') {
-    writeBooleanFile(CENTRAL_WORKER_ENABLED_FILE, update.workerEnabled);
-    configuredWorkerEnabled = update.workerEnabled;
+  const nextWorkerEnabled = derivedFlags?.workerEnabled ?? update.workerEnabled;
+  if (typeof nextWorkerEnabled === 'boolean') {
+    writeBooleanFile(CENTRAL_WORKER_ENABLED_FILE, nextWorkerEnabled);
+    configuredWorkerEnabled = nextWorkerEnabled;
   }
   if (typeof update.workerToken === 'string' && update.workerToken.trim()) {
     fs.mkdirSync(CONFIG_DIR, { recursive: true });

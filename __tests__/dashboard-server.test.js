@@ -16,8 +16,12 @@ jest.mock('fs', () => ({
 jest.mock('http', () => {
   const EventEmitter = require('events');
   const mockServer = new EventEmitter();
-  mockServer.listen = jest.fn((port, cb) => { if (cb) cb(); });
-  mockServer.close = jest.fn((cb) => { if (cb) cb(); });
+  mockServer.listen = jest.fn((port, cb) => {
+    if (cb) cb();
+  });
+  mockServer.close = jest.fn((cb) => {
+    if (cb) cb();
+  });
   return {
     createServer: jest.fn(() => mockServer),
     __mockServer: mockServer,
@@ -66,7 +70,7 @@ function createMockAgentManager() {
   const agents = [];
   return Object.assign(emitter, {
     getAllAgents: jest.fn(() => agents),
-    getAgent: jest.fn((id) => agents.find(a => a.id === id) || null),
+    getAgent: jest.fn((id) => agents.find((a) => a.id === id) || null),
     getAgentCount: jest.fn(() => agents.length),
     _agents: agents,
   });
@@ -91,7 +95,7 @@ describe('dashboard-server', () => {
         { id: '3', state: 'Done', projectPath: '/p/lib', tokenUsage: null },
         { id: '4', state: 'Waiting', projectPath: '/p/lib', tokenUsage: null },
         { id: '5', state: 'Help', projectPath: '/p/app', tokenUsage: null },
-        { id: '6', state: 'Error', projectPath: '/p/app', tokenUsage: null },
+        { id: '6', state: 'Error', projectPath: '/p/app', tokenUsage: null }
       );
 
       dashboardServer.setAgentManager(mgr);
@@ -113,7 +117,7 @@ describe('dashboard-server', () => {
       mgr._agents.push(
         { id: '1', state: 'Working', projectPath: '/projects/alpha', tokenUsage: null },
         { id: '2', state: 'Done', projectPath: '/projects/alpha', tokenUsage: null },
-        { id: '3', state: 'Thinking', projectPath: '/projects/beta', tokenUsage: null },
+        { id: '3', state: 'Thinking', projectPath: '/projects/beta', tokenUsage: null }
       );
 
       dashboardServer.setAgentManager(mgr);
@@ -125,9 +129,7 @@ describe('dashboard-server', () => {
 
     test('uses "Default" for agents without projectPath', () => {
       const mgr = createMockAgentManager();
-      mgr._agents.push(
-        { id: '1', state: 'Working', projectPath: null, tokenUsage: null },
-      );
+      mgr._agents.push({ id: '1', state: 'Working', projectPath: null, tokenUsage: null });
 
       dashboardServer.setAgentManager(mgr);
       const stats = dashboardServer.calculateStats();
@@ -140,7 +142,7 @@ describe('dashboard-server', () => {
       mgr._agents.push(
         { id: '1', state: 'Working', isSubagent: false, isTeammate: false, tokenUsage: null },
         { id: '2', state: 'Working', isSubagent: true, isTeammate: false, tokenUsage: null },
-        { id: '3', state: 'Working', isSubagent: false, isTeammate: true, tokenUsage: null },
+        { id: '3', state: 'Working', isSubagent: false, isTeammate: true, tokenUsage: null }
       );
 
       dashboardServer.setAgentManager(mgr);
@@ -154,7 +156,7 @@ describe('dashboard-server', () => {
       mgr._agents.push(
         { id: '1', state: 'Working', tokenUsage: { inputTokens: 1000, outputTokens: 200, estimatedCost: 0.005 } },
         { id: '2', state: 'Done', tokenUsage: { inputTokens: 3000, outputTokens: 500, estimatedCost: 0.015 } },
-        { id: '3', state: 'Waiting', tokenUsage: null },
+        { id: '3', state: 'Waiting', tokenUsage: null }
       );
 
       dashboardServer.setAgentManager(mgr);
@@ -187,9 +189,14 @@ describe('dashboard-server', () => {
 
     beforeEach(() => {
       mgr = createMockAgentManager();
-      mgr._agents.push(
-        { id: 'agent-1', sessionId: 'agent-1', state: 'Working', displayName: 'Test', projectPath: '/p/app', tokenUsage: null },
-      );
+      mgr._agents.push({
+        id: 'agent-1',
+        sessionId: 'agent-1',
+        state: 'Working',
+        displayName: 'Test',
+        projectPath: '/p/app',
+        tokenUsage: null,
+      });
       dashboardServer.setAgentManager(mgr);
       dashboardServer.setSessionScanner(null);
       dashboardServer.setHeatmapScanner(null);
@@ -263,6 +270,15 @@ describe('dashboard-server', () => {
       expect(body.agents).toBe(1);
     });
 
+    test('GET /api/app-meta returns runtime flags', () => {
+      const { req, res } = createMockReqRes('GET', '/api/app-meta');
+      handler(req, res);
+
+      expect(res.writeHead).toHaveBeenCalledWith(200, { 'Content-Type': 'application/json' });
+      const body = JSON.parse(res.end.mock.calls[0][0]);
+      expect(body.isDev).toBe(false);
+    });
+
     test('GET /api/server/config returns central server proxy config', () => {
       const { req, res } = createMockReqRes('GET', '/api/server/config');
       handler(req, res);
@@ -282,12 +298,14 @@ describe('dashboard-server', () => {
     test('POST /api/server/config updates central server proxy config', async () => {
       const { req, res } = createMockReqRes('POST', '/api/server/config');
       handler(req, res);
-      req.emit('data', JSON.stringify({
-        baseUrl: '47824',
-        agentSyncEnabled: true,
-        remoteMode: 'guest',
-        roomSecret: 'guest-secret',
-      }));
+      req.emit(
+        'data',
+        JSON.stringify({
+          baseUrl: '47824',
+          remoteMode: 'guest',
+          roomSecret: 'guest-secret',
+        })
+      );
       req.emit('end');
       await new Promise(setImmediate);
 
@@ -299,6 +317,7 @@ describe('dashboard-server', () => {
       expect(body.remoteMode).toBe('guest');
       expect(body.roomSecretConfigured).toBe(true);
       expect(body.agentSyncEnabled).toBe(true);
+      expect(body.workerEnabled).toBe(true);
     });
 
     test('proxied central requests attach X-AO-Room-Secret when configured', async () => {
@@ -326,7 +345,7 @@ describe('dashboard-server', () => {
             Accept: 'application/json',
             'X-AO-Room-Secret': 'guest-secret',
           }),
-        }),
+        })
       );
     });
 
@@ -415,9 +434,12 @@ describe('dashboard-server', () => {
       const { req, res } = createMockReqRes('GET', '/public/characters/agent.png');
       handler(req, res);
 
-      expect(res.writeHead).toHaveBeenCalledWith(200, expect.objectContaining({
-        'Content-Type': 'image/png',
-      }));
+      expect(res.writeHead).toHaveBeenCalledWith(
+        200,
+        expect.objectContaining({
+          'Content-Type': 'image/png',
+        })
+      );
     });
 
     test('/lib/* serves bundled xterm source maps', () => {
@@ -427,9 +449,12 @@ describe('dashboard-server', () => {
       const { req, res } = createMockReqRes('GET', '/lib/xterm.js.map');
       handler(req, res);
 
-      expect(res.writeHead).toHaveBeenCalledWith(200, expect.objectContaining({
-        'Content-Type': 'application/octet-stream',
-      }));
+      expect(res.writeHead).toHaveBeenCalledWith(
+        200,
+        expect.objectContaining({
+          'Content-Type': 'application/octet-stream',
+        })
+      );
     });
 
     test('path traversal via ../ is prevented by URL normalization', () => {
@@ -480,7 +505,7 @@ describe('dashboard-server', () => {
       expect(res.writeHead).toHaveBeenCalledWith(200, {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
+        Connection: 'keep-alive',
       });
 
       // Should have written connected event
@@ -515,7 +540,7 @@ describe('dashboard-server', () => {
       // Broadcast
       dashboardServer.broadcastSSE('agent.updated', { id: 'test' });
 
-      const sseCalls = res.write.mock.calls.filter(c => c[0].includes('agent.updated'));
+      const sseCalls = res.write.mock.calls.filter((c) => c[0].includes('agent.updated'));
       expect(sseCalls).toHaveLength(1);
       expect(sseCalls[0][0]).toContain('event: agent.updated');
       expect(sseCalls[0][0]).toContain('"id":"test"');
@@ -616,7 +641,7 @@ describe('dashboard-server', () => {
 
       mgr.emit('agent-added', { id: 'new-1', sessionId: 'new-1', state: 'Waiting', displayName: 'Test' });
 
-      const addedCalls = res.write.mock.calls.filter(c => c[0].includes('agent.created'));
+      const addedCalls = res.write.mock.calls.filter((c) => c[0].includes('agent.created'));
       expect(addedCalls).toHaveLength(1);
 
       req.emit('close');
@@ -633,7 +658,7 @@ describe('dashboard-server', () => {
 
       mgr.emit('agent-updated', { id: 'u-1', state: 'Working' });
 
-      const updatedCalls = res.write.mock.calls.filter(c => c[0].includes('agent.updated'));
+      const updatedCalls = res.write.mock.calls.filter((c) => c[0].includes('agent.updated'));
       expect(updatedCalls).toHaveLength(1);
 
       req.emit('close');
@@ -650,7 +675,7 @@ describe('dashboard-server', () => {
 
       mgr.emit('agent-removed', { id: 'r-1', reason: 'session_end' });
 
-      const removedCalls = res.write.mock.calls.filter(c => c[0].includes('agent.removed'));
+      const removedCalls = res.write.mock.calls.filter((c) => c[0].includes('agent.removed'));
       expect(removedCalls).toHaveLength(1);
 
       req.emit('close');
