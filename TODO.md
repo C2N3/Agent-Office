@@ -23,6 +23,7 @@ This file tracks client-side work that is planned, discovered, blocked, or compl
 
 ## Done
 
+- [x] Make the sidebar `Cloudflare` tab available in production builds instead of hiding it behind the dashboard dev-mode gate.
 - [x] Make Host worker connections prefer the stored owner room secret over any legacy worker token so public Host mode connects after `Start Host` without exposing token UI.
 - [x] Make Host start from just the server URL by auto-enabling the public room and storing the owner secret, and add localhost invite deep-links that auto-join Guest mode from the URL fragment.
 - [x] Rework the Remote tab so mode pills are draft-only, each mode is confirmed through a clear primary action (`Use Local Only`, `Start Host`, `Join as Guest`), and the worker token field explains when host authentication is actually required.

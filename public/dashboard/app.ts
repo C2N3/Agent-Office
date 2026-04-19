@@ -21,7 +21,6 @@ import {
   renderHeatmapView,
   renderUsageView,
 } from './activityViews.js';
-import { initDevModeViews } from './devMode.js';
 import { initAgentPanelEvents } from './agentPanelEvents.js';
 import { setupOfficeClickHandler } from './office.js';
 import { renderDashboardModals } from './modalMarkup.js';
@@ -389,12 +388,6 @@ function initArchiveEvents() {
 }
 
 async function initApp() {
-  const { isDev } = await initDevModeViews();
-  if (!isDev && state.currentView === 'cloudflare') {
-    state.currentView = 'office';
-    localStorage.setItem('mc-view', 'office');
-  }
-
   globalThis.openTerminalForAgent = openTerminalForAgent;
 
   renderDashboardModals();

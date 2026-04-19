@@ -162,7 +162,7 @@ The selected mode is stored in `~/.agent-office/central-remote-mode.txt`. Room s
 
 When Guest mode is active without a stored room secret, the worker bridge and character sync stay off until an invite is joined. When Guest mode is active with a stored secret, the worker bridge uses that room secret instead of the worker token. The Remote tab and central agent mirror keep using polling fallback in Guest mode because the central event stream is not relied on there.
 
-In dev runs started with `--dev`, the sidebar also exposes a separate `Cloudflare` tab. That tab keeps the old quick-tunnel controls available for local development without mixing them into the Host/Guest product UI.
+The sidebar also exposes a separate `Cloudflare` tab. That tab keeps the quick-tunnel controls available without mixing them into the Host/Guest product UI.
 
 ## macOS Release
 
