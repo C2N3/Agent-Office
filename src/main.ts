@@ -16,7 +16,12 @@ const { getWindowSizeForAgents } = require('./utils');
 
 const { getEnabledProviders } = require('./main/providerConfig');
 const { providerSupportsLiveness } = require('./main/providers/registry');
-const { sessionPids, startLivenessChecker, detectClaudePidByTranscript, detectProviderPidBySessionFile } = require('./main/livenessChecker');
+const {
+  sessionPids,
+  startLivenessChecker,
+  detectClaudePidByTranscript,
+  detectProviderPidBySessionFile,
+} = require('./main/livenessChecker');
 const { registerIpcHandlers } = require('./main/ipcHandlers');
 const { NicknameStore } = require('./main/nicknameStore');
 const { TerminalManager } = require('./main/terminalManager');
@@ -28,11 +33,7 @@ const { TaskStore } = require('./main/orchestrator/taskStore');
 const { Orchestrator } = require('./main/orchestrator/index');
 const { TeamStore } = require('./main/orchestrator/teamStore');
 const { TeamCoordinator } = require('./main/orchestrator/teamCoordinator');
-const {
-  configureApplicationMenu,
-  configureRuntime,
-  installStartupLogging,
-} = require('./main/bootstrap/runtime');
+const { configureApplicationMenu, configureRuntime, installStartupLogging } = require('./main/bootstrap/runtime');
 const {
   autoRegisterProviders,
   createProviderProcessors,
@@ -43,10 +44,7 @@ const {
   createApplicationWindowManager,
   startDashboardRuntime,
 } = require('./main/bootstrap/windows');
-const {
-  recoverProviderSessions,
-  restoreRegisteredAgents,
-} = require('./main/bootstrap/recovery');
+const { recoverProviderSessions, restoreRegisteredAgents } = require('./main/bootstrap/recovery');
 const { registerAppLifecycle } = require('./main/bootstrap/shutdown');
 const { loadUiState } = require('./main/uiState');
 
@@ -91,27 +89,30 @@ function syncAvatarFiles() {
     let existingAllFiles: string[] = [];
     try {
       const existing = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
-      existingAllFiles = Array.isArray(existing) ? existing : (existing.allFiles || []);
-    } catch (_) { /* file missing or invalid — start fresh */ }
+      existingAllFiles = Array.isArray(existing) ? existing : existing.allFiles || [];
+    } catch (_) {
+      /* file missing or invalid — start fresh */
+    }
 
     // Collect all files currently on disk (sorted within each folder)
     const entries = fs.readdirSync(charDir, { withFileTypes: true });
     const diskFiles: string[] = [];
     for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
       if (!entry.isDirectory()) continue;
-      const folderFiles = fs.readdirSync(path.join(charDir, entry.name))
-        .filter(f => imgRegex.test(f))
+      const folderFiles = fs
+        .readdirSync(path.join(charDir, entry.name))
+        .filter((f) => imgRegex.test(f))
         .sort();
-      diskFiles.push(...folderFiles.map(f => `${entry.name}/${f}`));
+      diskFiles.push(...folderFiles.map((f) => `${entry.name}/${f}`));
     }
 
     if (diskFiles.length === 0) return;
 
     // Build final list: keep existing order, append genuinely new files at the end
     const diskSet = new Set(diskFiles);
-    const kept = existingAllFiles.filter(f => diskSet.has(f));
+    const kept = existingAllFiles.filter((f) => diskSet.has(f));
     const keptSet = new Set(kept);
-    const added = diskFiles.filter(f => !keptSet.has(f));
+    const added = diskFiles.filter((f) => !keptSet.has(f));
     const allFiles = [...kept, ...added];
 
     // Rebuild categories from allFiles order
@@ -124,7 +125,9 @@ function syncAvatarFiles() {
     const categories = Array.from(categoryMap.entries()).map(([name, files]) => ({ name, files }));
 
     fs.writeFileSync(jsonPath, JSON.stringify({ categories, allFiles }, null, 2) + '\n');
-    debugLog(`[Main] avatars.json synced: ${allFiles.length} files (${added.length} new) in ${categories.length} categories`);
+    debugLog(
+      `[Main] avatars.json synced: ${allFiles.length} files (${added.length} new) in ${categories.length} categories`
+    );
   } catch (e) {
     console.error('[Main] Failed to sync avatars.json:', e.message);
   }
@@ -164,11 +167,7 @@ app.whenReady().then(() => {
   heatmapScanner.start(300_000);
 
   // 3. Create provider processors
-  ({
-    hookProcessor,
-    codexProcessor,
-    codexSessionMonitor,
-  } = createProviderProcessors({
+  ({ hookProcessor, codexProcessor, codexSessionMonitor } = createProviderProcessors({
     enabledProviders,
     agentManager,
     agentRegistry,
@@ -266,7 +265,16 @@ app.whenReady().then(() => {
     debugLog,
     errorHandler,
   }));
-  startDashboardRuntime({ windowManager, orchestrator, workspaceManager, terminalManager, sessionPids, teamCoordinator, debugLog });
+  startDashboardRuntime({
+    windowManager,
+    orchestrator,
+    workspaceManager,
+    terminalManager,
+    sessionPids,
+    teamCoordinator,
+    debugLog,
+    isDev,
+  });
 
   // 6.5. Start orchestrator
   if (orchestrator) {
@@ -302,12 +310,40 @@ app.whenReady().then(() => {
   const ENABLE_TEST_AGENTS = false;
   if (ENABLE_TEST_AGENTS) {
     const testSubagents = [
-      { sessionId: 'test-main-1', projectPath: 'E:/projects/core-engine', displayName: 'Main Service', state: 'Working', isSubagent: false, isTeammate: false },
-      { sessionId: 'test-sub-1', projectPath: 'E:/projects/core-engine', displayName: 'Refactor Helper', state: 'Working', isSubagent: true, isTeammate: false },
-      { sessionId: 'test-team-1', projectPath: 'E:/projects/web-ui', displayName: 'UI Architect', state: 'Waiting', isSubagent: false, isTeammate: true },
-      { sessionId: 'test-team-2', projectPath: 'E:/projects/web-ui', displayName: 'CSS Specialist', state: 'Working', isSubagent: false, isTeammate: true }
+      {
+        sessionId: 'test-main-1',
+        projectPath: 'E:/projects/core-engine',
+        displayName: 'Main Service',
+        state: 'Working',
+        isSubagent: false,
+        isTeammate: false,
+      },
+      {
+        sessionId: 'test-sub-1',
+        projectPath: 'E:/projects/core-engine',
+        displayName: 'Refactor Helper',
+        state: 'Working',
+        isSubagent: true,
+        isTeammate: false,
+      },
+      {
+        sessionId: 'test-team-1',
+        projectPath: 'E:/projects/web-ui',
+        displayName: 'UI Architect',
+        state: 'Waiting',
+        isSubagent: false,
+        isTeammate: true,
+      },
+      {
+        sessionId: 'test-team-2',
+        projectPath: 'E:/projects/web-ui',
+        displayName: 'CSS Specialist',
+        state: 'Working',
+        isSubagent: false,
+        isTeammate: true,
+      },
     ];
-    testSubagents.forEach(agent => agentManager.updateAgent(agent, 'test'));
+    testSubagents.forEach((agent) => agentManager.updateAgent(agent, 'test'));
   }
 
   // 9. Create UI — only dashboard, no overlay window

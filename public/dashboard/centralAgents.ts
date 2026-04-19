@@ -15,10 +15,11 @@ type CentralAgent = {
 type CentralAgentsResponse = { agents?: CentralAgent[]; };
 type CentralAgentResponse = { agent?: CentralAgent; error?: { message?: string } | string; };
 type CentralAgentBulkResponse = { agents?: CentralAgent[]; error?: { message?: string } | string; };
-type CentralServerConfig = { agentSyncEnabled?: boolean; workerEnabled?: boolean; };
+type CentralServerConfig = { agentSyncEnabled?: boolean; workerEnabled?: boolean; remoteMode?: 'local' | 'host' | 'guest'; };
 type SyncCallbacks = { upsertAgent: (agent: DashboardAgent) => void; removeAgent: (id: string) => void; };
 
 let eventSource: EventSource | null = null, callbacks: SyncCallbacks | null = null;
+let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 type SyncableAgentRecord = DashboardAgentRecord | DashboardAgent;
 
@@ -264,8 +265,22 @@ function stopCentralAgentEvents(): void {
   eventSource = null;
 }
 
+function stopCentralAgentPolling(): void {
+  if (!pollTimer) return;
+  clearInterval(pollTimer);
+  pollTimer = null;
+}
+
+function startCentralAgentPolling(): void {
+  stopCentralAgentPolling();
+  pollTimer = setInterval(() => {
+    applyCentralSnapshot().catch((error) => console.warn('[Central Agents] polling failed', error));
+  }, 3000);
+}
+
 async function restartCentralAgentEvents(): Promise<void> {
   stopCentralAgentEvents();
+  stopCentralAgentPolling();
   if (!callbacks || !await isCentralAgentSyncEnabled()) return;
   try {
     await syncLocalAgentsToCentral();
@@ -277,15 +292,18 @@ async function restartCentralAgentEvents(): Promise<void> {
   } catch (error) {
     console.warn('[Central Agents] snapshot fetch failed', error);
   }
+  const config = await fetchCentralAgentConfig();
+  if (config?.remoteMode === 'guest') {
+    startCentralAgentPolling();
+    return;
+  }
   eventSource = new EventSource('/api/server/events');
   eventSource.addEventListener('agent.created', (event) => handleCentralEvent('created', event as MessageEvent));
   eventSource.addEventListener('agent.updated', (event) => handleCentralEvent('updated', event as MessageEvent));
   eventSource.addEventListener('agent.removed', (event) => handleCentralEvent('removed', event as MessageEvent));
   eventSource.onerror = () => {
     stopCentralAgentEvents();
-    setTimeout(() => {
-      restartCentralAgentEvents().catch((error) => console.warn('[Central Agents] reconnect failed', error));
-    }, 3000);
+    startCentralAgentPolling();
   };
 }
 

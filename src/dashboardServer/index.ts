@@ -1,6 +1,12 @@
 import http from 'http';
 import { PORT } from './constants.js';
-import { attachAgentManagerBroadcasts, attachOrchestratorBroadcasts, attachTeamCoordinatorBroadcasts, broadcastSSE, broadcastUpdate } from './broadcast.js';
+import {
+  attachAgentManagerBroadcasts,
+  attachOrchestratorBroadcasts,
+  attachTeamCoordinatorBroadcasts,
+  broadcastSSE,
+  broadcastUpdate,
+} from './broadcast.js';
 import {
   getRefs,
   setAgentManager as setAgentManagerRef,
@@ -13,6 +19,7 @@ import {
   setDashboardWindow as setDashboardWindowRef,
   setHeatmapScanner as setHeatmapScannerRef,
   setSessionScanner as setSessionScannerRef,
+  setAppMeta as setAppMetaRef,
 } from './context.js';
 import { handleRequest } from './routes.js';
 import { attachWebSocketUpgrade } from './websocket.js';
@@ -64,6 +71,10 @@ export function setDashboardWindow(window: any): void {
   setDashboardWindowRef(window);
 }
 
+export function setAppMeta(appMeta: { isDev?: boolean } | null | undefined): void {
+  setAppMetaRef(appMeta);
+}
+
 export function startServer(): any {
   server.listen(PORT, () => {
     // Startup logging is handled elsewhere.
@@ -97,12 +108,7 @@ process.on('SIGINT', () => {
   });
 });
 
-export {
-  PORT,
-  broadcastSSE,
-  broadcastUpdate,
-  getRefs,
-};
+export { PORT, broadcastSSE, broadcastUpdate, getRefs };
 
 export function calculateStats() {
   return calculateStatsImpl(getRefs().agentManager);

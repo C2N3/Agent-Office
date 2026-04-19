@@ -235,10 +235,15 @@ export function initViewControls() {
       else if (target === 'archive') renderArchiveView();
       else if (target === 'remote') {
         import('./remoteView.js').then((m) => { m.renderRemoteView(); m.startRemoteViewPolling(); });
+      } else if (target === 'cloudflare') {
+        import('./cloudflareView.js').then((m) => { m.renderCloudflareView(); m.startCloudflareViewPolling(); });
       }
 
       if (target !== 'remote') {
         import('./remoteView.js').then((m) => m.stopRemoteViewPolling());
+      }
+      if (target !== 'cloudflare') {
+        import('./cloudflareView.js').then((m) => m.stopCloudflareViewPolling());
       }
     };
   });
