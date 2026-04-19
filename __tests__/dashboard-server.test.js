@@ -10,6 +10,7 @@ jest.mock('fs', () => ({
   readFileSync: jest.fn(),
   mkdirSync: jest.fn(),
   writeFileSync: jest.fn(),
+  unlinkSync: jest.fn(),
 }));
 
 jest.mock('http', () => {
@@ -273,13 +274,20 @@ describe('dashboard-server', () => {
       expect(body.workersPath).toBe('/api/server/workers');
       expect(body.eventsPath).toBe('/api/server/events');
       expect(body.agentsPath).toBe('/api/server/agents');
+      expect(body.remoteMode).toBe('local');
+      expect(body.roomSecretConfigured).toBe(false);
       expect(body.agentSyncEnabled).toBe(false);
     });
 
     test('POST /api/server/config updates central server proxy config', async () => {
       const { req, res } = createMockReqRes('POST', '/api/server/config');
       handler(req, res);
-      req.emit('data', JSON.stringify({ baseUrl: '47824', agentSyncEnabled: true }));
+      req.emit('data', JSON.stringify({
+        baseUrl: '47824',
+        agentSyncEnabled: true,
+        remoteMode: 'guest',
+        roomSecret: 'guest-secret',
+      }));
       req.emit('end');
       await new Promise(setImmediate);
 
@@ -288,7 +296,38 @@ describe('dashboard-server', () => {
       expect(body.baseUrl).toBe('http://127.0.0.1:47824');
       expect(body.healthPath).toBe('/api/server/health');
       expect(body.agentsPath).toBe('/api/server/agents');
+      expect(body.remoteMode).toBe('guest');
+      expect(body.roomSecretConfigured).toBe(true);
       expect(body.agentSyncEnabled).toBe(true);
+    });
+
+    test('proxied central requests attach X-AO-Room-Secret when configured', async () => {
+      global.fetch = jest.fn(async () => ({
+        ok: true,
+        status: 200,
+        headers: { get: () => 'application/json' },
+        text: async () => JSON.stringify({ ok: true }),
+      }));
+
+      const { req: configReq, res: configRes } = createMockReqRes('POST', '/api/server/config');
+      handler(configReq, configRes);
+      configReq.emit('data', JSON.stringify({ roomSecret: 'guest-secret', remoteMode: 'guest' }));
+      configReq.emit('end');
+      await new Promise(setImmediate);
+
+      const { req, res } = createMockReqRes('GET', '/api/server/room-access');
+      handler(req, res);
+      await new Promise(setImmediate);
+
+      expect(global.fetch).toHaveBeenLastCalledWith(
+        expect.stringContaining('/api/room-access'),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Accept: 'application/json',
+            'X-AO-Room-Secret': 'guest-secret',
+          }),
+        }),
+      );
     });
 
     test('GET /api/heatmap returns 503 when no heatmap scanner', () => {

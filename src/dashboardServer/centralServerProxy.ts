@@ -2,9 +2,12 @@ import { URL } from 'url';
 import {
   getAgentSyncEnabled,
   getCentralServerBaseUrl,
+  getCentralRoomSecret,
   getOrCreateCentralWorkerId,
+  getRemoteMode,
   getWorkerConnectionStatus,
   getWorkerEnabled,
+  isCentralRoomSecretConfigured,
   isCentralWorkerTokenConfigured,
   saveCentralServerConfig,
 } from '../main/centralWorker/config.js';
@@ -27,6 +30,8 @@ function getCentralServerConfig(): {
   eventsPath: string;
   agentsPath: string;
   agentSyncEnabled: boolean;
+  remoteMode: string;
+  roomSecretConfigured: boolean;
   workerEnabled: boolean;
   workerTokenConfigured: boolean;
   workerId: string;
@@ -38,6 +43,8 @@ function getCentralServerConfig(): {
     workersPath: '/api/server/workers',
     eventsPath: '/api/server/events',
     agentsPath: '/api/server/agents',
+    remoteMode: getRemoteMode(),
+    roomSecretConfigured: isCentralRoomSecretConfigured(),
     agentSyncEnabled: getAgentSyncEnabled(),
     workerEnabled: getWorkerEnabled(),
     workerTokenConfigured: isCentralWorkerTokenConfigured(),
@@ -93,6 +100,10 @@ async function updateCentralServerConfig(req: RequestLike, res: ResponseLike): P
       agentSyncEnabled: typeof parsed.agentSyncEnabled === 'boolean' ? parsed.agentSyncEnabled : undefined,
       workerEnabled: typeof parsed.workerEnabled === 'boolean' ? parsed.workerEnabled : undefined,
       workerToken: typeof parsed.workerToken === 'string' ? parsed.workerToken : undefined,
+      roomSecret: typeof parsed.roomSecret === 'string' ? parsed.roomSecret : undefined,
+      remoteMode: parsed.remoteMode === 'host' || parsed.remoteMode === 'guest' || parsed.remoteMode === 'local'
+        ? parsed.remoteMode
+        : undefined,
     });
     writeJSON(res, 200, getCentralServerConfig());
   } catch (error) {
@@ -107,7 +118,7 @@ async function proxyJSON(req: RequestLike, res: ResponseLike, pathname: string, 
 
   try {
     const response = await fetch(makeCentralURL(pathname, search), {
-      headers: { Accept: 'application/json' },
+      headers: centralRequestHeaders({ Accept: 'application/json' }),
       signal: controller.signal,
     });
     const body = await response.text();
@@ -130,10 +141,10 @@ async function proxyRequest(req: RequestLike, res: ResponseLike, pathname: strin
     const body = req.method === 'GET' || req.method === 'DELETE' ? undefined : await readRequestBody(req);
     const response = await fetch(makeCentralURL(pathname, search), {
       method: req.method || 'GET',
-      headers: {
+      headers: centralRequestHeaders({
         Accept: 'application/json',
         ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
-      },
+      }),
       body,
       signal: controller.signal,
     });
@@ -156,7 +167,7 @@ async function proxyEvents(req: RequestLike, res: ResponseLike): Promise<void> {
 
   try {
     const response = await fetch(makeCentralURL('/api/events'), {
-      headers: { Accept: 'text/event-stream' },
+      headers: centralRequestHeaders({ Accept: 'text/event-stream' }),
       signal: controller.signal,
     });
     if (!response.ok || !response.body) {
@@ -196,6 +207,15 @@ async function proxyEvents(req: RequestLike, res: ResponseLike): Promise<void> {
   }
 }
 
+function centralRequestHeaders(headers: Record<string, string>): Record<string, string> {
+  const roomSecret = getCentralRoomSecret().trim();
+  if (!roomSecret) return headers;
+  return {
+    ...headers,
+    'X-AO-Room-Secret': roomSecret,
+  };
+}
+
 export function handleCentralServerRoute(req: RequestLike, res: ResponseLike, url: URL): boolean {
   if (url.pathname === '/api/server/config') {
     if (req.method === 'GET') {
@@ -217,6 +237,24 @@ export function handleCentralServerRoute(req: RequestLike, res: ResponseLike, ur
       return true;
     }
     if (req.method === 'POST' || req.method === 'PATCH' || req.method === 'DELETE') {
+      void proxyRequest(req, res, centralPath, url.search);
+      return true;
+    }
+    writeJSON(res, 405, { error: 'Method not allowed' });
+    return true;
+  }
+
+  if (url.pathname === '/api/server/room-access'
+    || url.pathname === '/api/server/room-access/bootstrap'
+    || url.pathname === '/api/server/room-access/enable'
+    || url.pathname === '/api/server/room-access/guest-secret/rotate'
+    || url.pathname === '/api/server/room-access/disable') {
+    const centralPath = url.pathname.replace('/api/server', '/api');
+    if (req.method === 'GET') {
+      void proxyJSON(req, res, centralPath, url.search);
+      return true;
+    }
+    if (req.method === 'POST') {
       void proxyRequest(req, res, centralPath, url.search);
       return true;
     }

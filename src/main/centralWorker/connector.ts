@@ -2,11 +2,14 @@ import os from 'os';
 import {
   getAgentSyncEnabled,
   getCentralServerBaseUrl,
+  getCentralRoomSecret,
   getCentralWorkerToken,
   getOrCreateCentralWorkerId,
+  getRemoteMode,
   getWorkerEnabled,
   onCentralServerConfigChanged,
   setWorkerConnectionStatus,
+  type RemoteMode,
   type WorkerConnectionStatus,
 } from './config.js';
 import {
@@ -35,6 +38,8 @@ export class CentralWorkerConnector {
   private readonly workerId: string;
   private readonly getBaseUrl: () => string;
   private readonly getToken: () => string;
+  private readonly getRoomSecret: () => string;
+  private readonly getRemoteMode: () => RemoteMode;
   private readonly shouldConnect: () => boolean;
   private readonly shouldSyncAgents: () => boolean;
   private readonly onConfigChanged: (listener: () => void) => () => void;
@@ -57,6 +62,8 @@ export class CentralWorkerConnector {
     this.workerId = options.workerId || getOrCreateCentralWorkerId();
     this.getBaseUrl = options.getBaseUrl || getCentralServerBaseUrl;
     this.getToken = options.getToken || getCentralWorkerToken;
+    this.getRoomSecret = options.getRoomSecret || getCentralRoomSecret;
+    this.getRemoteMode = options.getRemoteMode || getRemoteMode;
     this.shouldConnect = options.getWorkerEnabled || getWorkerEnabled;
     this.shouldSyncAgents = options.getAgentSyncEnabled || getAgentSyncEnabled;
     this.onConfigChanged = options.onConfigChanged || onCentralServerConfigChanged;
@@ -154,7 +161,19 @@ export class CentralWorkerConnector {
       return;
     }
 
-    const url = centralHttpUrlToWorkerWebSocketUrl(this.getBaseUrl(), this.getToken());
+    const remoteMode = this.getRemoteMode();
+    const token = remoteMode === 'guest' ? '' : this.getToken();
+    const roomSecret = remoteMode === 'guest' ? this.getRoomSecret() : '';
+    if (!token && remoteMode !== 'guest' && !this.getBaseUrl()) {
+      this.setStatus('error');
+      return;
+    }
+    if (remoteMode === 'guest' && !roomSecret.trim()) {
+      this.debugLog('[CentralWorker] guest mode requires a room secret');
+      this.setStatus('error');
+      return;
+    }
+    const url = centralHttpUrlToWorkerWebSocketUrl(this.getBaseUrl(), token, roomSecret);
     this.intentionalClose = false;
     this.setStatus(reconnecting ? 'reconnecting' : 'connecting');
 

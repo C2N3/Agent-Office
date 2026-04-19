@@ -129,6 +129,8 @@ function makeConnector(options = {}) {
     WebSocketImpl: FakeWebSocket,
     getBaseUrl: () => options.centralServerUrl || 'http://central.example.test',
     getToken: () => options.workerToken || 'worker-token',
+    getRoomSecret: () => options.roomSecret || '',
+    getRemoteMode: () => options.remoteMode || 'local',
     getWorkerEnabled: () => true,
     getAgentSyncEnabled: () => options.agentSyncEnabled ?? true,
     onConfigChanged: () => () => {},
@@ -147,6 +149,11 @@ describe('central worker WebSocket URL helper', () => {
   test('converts https central server URLs to worker wss endpoint URLs', () => {
     expect(buildWorkerWebSocketUrl('https://central.example.test'))
       .toBe('wss://central.example.test/api/workers/connect');
+  });
+
+  test('uses roomSecret in guest mode worker URLs', () => {
+    expect(buildWorkerWebSocketUrl('https://central.example.test', '', 'guest-secret'))
+      .toBe('wss://central.example.test/api/workers/connect?roomSecret=guest-secret');
   });
 });
 
@@ -291,6 +298,18 @@ describe('CentralWorkerConnector', () => {
         timestamp: Date.parse('2026-04-19T00:00:00.000Z'),
       }),
     ]);
+    connector.stop();
+  });
+
+  test('uses roomSecret instead of worker token in guest mode', () => {
+    const { connector } = makeConnector({
+      remoteMode: 'guest',
+      roomSecret: 'guest-secret',
+      workerToken: 'worker-token',
+    });
+    connector.start();
+    const socket = FakeWebSocket.instances[0];
+    expect(socket.url).toBe('ws://central.example.test/api/workers/connect?roomSecret=guest-secret');
     connector.stop();
   });
 });

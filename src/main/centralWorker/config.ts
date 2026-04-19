@@ -12,6 +12,10 @@ export const CENTRAL_AGENT_SYNC_FILE = path.join(CONFIG_DIR, 'central-agent-sync
 export const CENTRAL_WORKER_ENABLED_FILE = path.join(CONFIG_DIR, 'central-worker-enabled.txt');
 export const CENTRAL_WORKER_TOKEN_FILE = path.join(CONFIG_DIR, 'central-worker-token.txt');
 export const CENTRAL_WORKER_ID_FILE = path.join(CONFIG_DIR, 'central-worker-id.txt');
+export const CENTRAL_ROOM_SECRET_FILE = path.join(CONFIG_DIR, 'central-room-secret.txt');
+export const CENTRAL_REMOTE_MODE_FILE = path.join(CONFIG_DIR, 'central-remote-mode.txt');
+
+export type RemoteMode = 'local' | 'host' | 'guest';
 
 export type WorkerConnectionStatus =
   | 'disconnected'
@@ -25,11 +29,14 @@ type CentralServerConfigUpdate = {
   agentSyncEnabled?: boolean;
   workerEnabled?: boolean;
   workerToken?: string;
+  roomSecret?: string;
+  remoteMode?: RemoteMode;
 };
 
 let configuredBaseUrl: string | null = null;
 let configuredAgentSyncEnabled: boolean | null = null;
 let configuredWorkerEnabled: boolean | null = null;
+let configuredRemoteMode: RemoteMode | null = null;
 let workerConnectionStatus: WorkerConnectionStatus = 'disconnected';
 
 const configEvents = new EventEmitter();
@@ -120,8 +127,36 @@ export function getCentralWorkerToken(): string {
   return '';
 }
 
+export function getCentralRoomSecret(): string {
+  try {
+    if (fs.existsSync(CENTRAL_ROOM_SECRET_FILE)) {
+      return fs.readFileSync(CENTRAL_ROOM_SECRET_FILE, 'utf-8').trim();
+    }
+  } catch {}
+  return '';
+}
+
 export function isCentralWorkerTokenConfigured(): boolean {
   return getCentralWorkerToken().length > 0;
+}
+
+export function isCentralRoomSecretConfigured(): boolean {
+  return getCentralRoomSecret().length > 0;
+}
+
+export function getRemoteMode(): RemoteMode {
+  if (configuredRemoteMode) return configuredRemoteMode;
+  try {
+    if (fs.existsSync(CENTRAL_REMOTE_MODE_FILE)) {
+      const saved = fs.readFileSync(CENTRAL_REMOTE_MODE_FILE, 'utf-8').trim();
+      if (saved === 'host' || saved === 'guest' || saved === 'local') {
+        configuredRemoteMode = saved;
+        return configuredRemoteMode;
+      }
+    }
+  } catch {}
+  configuredRemoteMode = 'local';
+  return configuredRemoteMode;
 }
 
 export function getOrCreateCentralWorkerId(randomId: () => string = randomUUID): string {
@@ -167,6 +202,19 @@ export function saveCentralServerConfig(update: CentralServerConfigUpdate): void
   if (typeof update.workerToken === 'string' && update.workerToken.trim()) {
     fs.mkdirSync(CONFIG_DIR, { recursive: true });
     fs.writeFileSync(CENTRAL_WORKER_TOKEN_FILE, `${update.workerToken.trim()}\n`, 'utf-8');
+  }
+  if (typeof update.roomSecret === 'string') {
+    fs.mkdirSync(CONFIG_DIR, { recursive: true });
+    if (update.roomSecret.trim()) {
+      fs.writeFileSync(CENTRAL_ROOM_SECRET_FILE, `${update.roomSecret.trim()}\n`, 'utf-8');
+    } else if (fs.existsSync(CENTRAL_ROOM_SECRET_FILE)) {
+      fs.unlinkSync(CENTRAL_ROOM_SECRET_FILE);
+    }
+  }
+  if (update.remoteMode !== undefined) {
+    fs.mkdirSync(CONFIG_DIR, { recursive: true });
+    fs.writeFileSync(CENTRAL_REMOTE_MODE_FILE, `${update.remoteMode}\n`, 'utf-8');
+    configuredRemoteMode = update.remoteMode;
   }
   configEvents.emit('changed');
 }

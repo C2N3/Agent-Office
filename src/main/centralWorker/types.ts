@@ -1,4 +1,4 @@
-import type { WorkerConnectionStatus } from './config.js';
+import type { RemoteMode, WorkerConnectionStatus } from './config.js';
 import type { RegistryLike } from './agentPayload.js';
 
 export type DebugLog = (message: string) => void;
@@ -24,6 +24,8 @@ export type ConnectorOptions = {
   workerId?: string;
   getBaseUrl?: () => string;
   getToken?: () => string;
+  getRoomSecret?: () => string;
+  getRemoteMode?: () => RemoteMode;
   getWorkerEnabled?: () => boolean;
   getAgentSyncEnabled?: () => boolean;
   onConfigChanged?: (listener: () => void) => () => void;
