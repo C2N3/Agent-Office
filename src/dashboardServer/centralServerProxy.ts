@@ -1,15 +1,13 @@
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
 import { URL } from 'url';
-
-const DEFAULT_CENTRAL_SERVER_URL = 'http://127.0.0.1:47823';
-const CONFIG_DIR = path.join(os.homedir(), '.agent-office');
-const CENTRAL_SERVER_URL_FILE = path.join(CONFIG_DIR, 'central-server-url.txt');
-const CENTRAL_AGENT_SYNC_FILE = path.join(CONFIG_DIR, 'central-agent-sync.txt');
-
-let configuredBaseUrl: string | null = null;
-let configuredAgentSyncEnabled: boolean | null = null;
+import {
+  getAgentSyncEnabled,
+  getCentralServerBaseUrl,
+  getOrCreateCentralWorkerId,
+  getWorkerConnectionStatus,
+  getWorkerEnabled,
+  isCentralWorkerTokenConfigured,
+  saveCentralServerConfig,
+} from '../main/centralWorker/config.js';
 
 interface ResponseLike {
   writeHead(statusCode: number, headers?: Record<string, string>): void;
@@ -22,77 +20,6 @@ interface RequestLike {
   on?(event: string, listener: (...args: any[]) => void): void;
 }
 
-function normalizeCentralServerBaseUrl(raw: string): { ok: boolean; value?: string; message?: string } {
-  const trimmed = raw.trim();
-  if (!trimmed) return { ok: false, message: 'Server URL is required' };
-
-  const candidate = /^\d{1,5}$/.test(trimmed)
-    ? `http://127.0.0.1:${trimmed}`
-    : /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed)
-      ? trimmed
-      : `http://${trimmed}`;
-
-  try {
-    const url = new URL(candidate);
-    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-      return { ok: false, message: 'Server URL must use http or https' };
-    }
-    if (!url.hostname) return { ok: false, message: 'Server URL must include a host' };
-    return { ok: true, value: url.origin.replace(/\/+$/, '') };
-  } catch {
-    return { ok: false, message: 'Server URL is invalid' };
-  }
-}
-
-function loadConfiguredBaseUrl(): string {
-  if (configuredBaseUrl) return configuredBaseUrl;
-
-  try {
-    if (fs.existsSync(CENTRAL_SERVER_URL_FILE)) {
-      const saved = fs.readFileSync(CENTRAL_SERVER_URL_FILE, 'utf-8');
-      const normalized = normalizeCentralServerBaseUrl(saved);
-      if (normalized.ok && normalized.value) {
-        configuredBaseUrl = normalized.value;
-        return configuredBaseUrl;
-      }
-    }
-  } catch {}
-
-  const envUrl = process.env.AO_CENTRAL_SERVER_URL;
-  if (envUrl) {
-    const normalized = normalizeCentralServerBaseUrl(envUrl);
-    if (normalized.ok && normalized.value) {
-      configuredBaseUrl = normalized.value;
-      return configuredBaseUrl;
-    }
-  }
-
-  configuredBaseUrl = DEFAULT_CENTRAL_SERVER_URL;
-  return configuredBaseUrl;
-}
-
-function getCentralServerBaseUrl(): string {
-  return loadConfiguredBaseUrl();
-}
-
-function loadAgentSyncEnabled(): boolean {
-  if (configuredAgentSyncEnabled !== null) return configuredAgentSyncEnabled;
-  try {
-    if (fs.existsSync(CENTRAL_AGENT_SYNC_FILE)) {
-      configuredAgentSyncEnabled = fs.readFileSync(CENTRAL_AGENT_SYNC_FILE, 'utf-8').trim() === 'true';
-      return configuredAgentSyncEnabled;
-    }
-  } catch {}
-  configuredAgentSyncEnabled = false;
-  return configuredAgentSyncEnabled;
-}
-
-function saveAgentSyncEnabled(enabled: boolean): void {
-  fs.mkdirSync(CONFIG_DIR, { recursive: true });
-  fs.writeFileSync(CENTRAL_AGENT_SYNC_FILE, `${enabled ? 'true' : 'false'}\n`, 'utf-8');
-  configuredAgentSyncEnabled = enabled;
-}
-
 function getCentralServerConfig(): {
   baseUrl: string;
   healthPath: string;
@@ -100,6 +27,10 @@ function getCentralServerConfig(): {
   eventsPath: string;
   agentsPath: string;
   agentSyncEnabled: boolean;
+  workerEnabled: boolean;
+  workerTokenConfigured: boolean;
+  workerId: string;
+  workerConnectionStatus: string;
 } {
   return {
     baseUrl: getCentralServerBaseUrl(),
@@ -107,7 +38,11 @@ function getCentralServerConfig(): {
     workersPath: '/api/server/workers',
     eventsPath: '/api/server/events',
     agentsPath: '/api/server/agents',
-    agentSyncEnabled: loadAgentSyncEnabled(),
+    agentSyncEnabled: getAgentSyncEnabled(),
+    workerEnabled: getWorkerEnabled(),
+    workerTokenConfigured: isCentralWorkerTokenConfigured(),
+    workerId: getOrCreateCentralWorkerId(),
+    workerConnectionStatus: getWorkerConnectionStatus(),
   };
 }
 
@@ -153,18 +88,12 @@ async function updateCentralServerConfig(req: RequestLike, res: ResponseLike): P
   try {
     const body = await readRequestBody(req);
     const parsed = body ? JSON.parse(body) : {};
-    const normalized = normalizeCentralServerBaseUrl(String(parsed.baseUrl || ''));
-    if (!normalized.ok || !normalized.value) {
-      writeJSON(res, 400, { error: normalized.message || 'Server URL is invalid' });
-      return;
-    }
-
-    fs.mkdirSync(CONFIG_DIR, { recursive: true });
-    fs.writeFileSync(CENTRAL_SERVER_URL_FILE, `${normalized.value}\n`, 'utf-8');
-    if (typeof parsed.agentSyncEnabled === 'boolean') {
-      saveAgentSyncEnabled(parsed.agentSyncEnabled);
-    }
-    configuredBaseUrl = normalized.value;
+    saveCentralServerConfig({
+      baseUrl: String(parsed.baseUrl || ''),
+      agentSyncEnabled: typeof parsed.agentSyncEnabled === 'boolean' ? parsed.agentSyncEnabled : undefined,
+      workerEnabled: typeof parsed.workerEnabled === 'boolean' ? parsed.workerEnabled : undefined,
+      workerToken: typeof parsed.workerToken === 'string' ? parsed.workerToken : undefined,
+    });
     writeJSON(res, 200, getCentralServerConfig());
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to update server URL';

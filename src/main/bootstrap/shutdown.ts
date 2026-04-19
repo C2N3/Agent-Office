@@ -15,6 +15,7 @@ function registerAppLifecycle({
   getTerminalManager,
   getHookProcessor,
   getCodexProcessor,
+  getCentralWorkerConnector,
   sessionPids,
   debugLog,
 }) {
@@ -104,6 +105,12 @@ function registerAppLifecycle({
 
     const codexProcessor = getCodexProcessor();
     if (codexProcessor) codexProcessor.cleanup();
+
+    const centralWorkerConnector = getCentralWorkerConnector?.();
+    if (centralWorkerConnector) {
+      centralWorkerConnector.stop();
+      debugLog('[Main] CentralWorkerConnector stopped');
+    }
 
     sessionPids.clear();
     debugLog('[Main] All resources cleaned up');

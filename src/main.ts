@@ -22,6 +22,7 @@ const { NicknameStore } = require('./main/nicknameStore');
 const { TerminalManager } = require('./main/terminalManager');
 const { TerminalProfileService } = require('./main/terminalProfileService');
 const { AgentRegistry } = require('./main/registry');
+const { CentralWorkerConnector } = require('./main/centralWorker/connector');
 const { WorkspaceManager } = require('./main/workspace');
 const { TaskStore } = require('./main/orchestrator/taskStore');
 const { Orchestrator } = require('./main/orchestrator/index');
@@ -76,6 +77,7 @@ let agentListeners = null;
 let hookServer = null;
 let codexEventServer = null;
 let enabledProviders = [];
+let centralWorkerConnector = null;
 
 // Scan public/characters/ subfolders and update avatars.json.
 // Preserves the existing file order — new files are appended to the end
@@ -290,6 +292,12 @@ app.whenReady().then(() => {
   // 7.5. Populate offline registered agents
   restoreRegisteredAgents({ agentRegistry, agentManager, debugLog });
 
+  centralWorkerConnector = new CentralWorkerConnector({
+    agentRegistry,
+    debugLog,
+  });
+  centralWorkerConnector.start();
+
   // 8. Test agents (mix of Main, Sub, and Team)
   const ENABLE_TEST_AGENTS = false;
   if (ENABLE_TEST_AGENTS) {
@@ -340,6 +348,7 @@ registerAppLifecycle({
   getTerminalManager: () => terminalManager,
   getHookProcessor: () => hookProcessor,
   getCodexProcessor: () => codexProcessor,
+  getCentralWorkerConnector: () => centralWorkerConnector,
   sessionPids,
   debugLog,
 });
