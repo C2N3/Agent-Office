@@ -1,8 +1,6 @@
 jest.mock('../public/dashboard/serverConnection.ts', () => ({
-  bindCentralServerControls: jest.fn(),
   fetchCentralServerConfig: jest.fn(),
   fetchCentralServerSnapshot: jest.fn(),
-  renderCentralServerCard: jest.fn(() => '<div id="centralServerCard">Central Server</div>'),
   saveCentralServerConfig: jest.fn(),
   startCentralServerConnection: jest.fn(),
   stopCentralServerConnection: jest.fn(),
@@ -71,6 +69,7 @@ describe('remote view mode rendering', () => {
     expect(container.innerHTML).toContain('type="radio"');
     expect(container.innerHTML).toContain('name="remoteMode"');
     expect(container.innerHTML).toContain('Central sync disabled');
+    expect(container.innerHTML).toContain('Server URL');
     expect(container.innerHTML).not.toContain('Host Mode');
     expect(container.innerHTML).not.toContain('Guest Mode');
   });
@@ -99,8 +98,9 @@ describe('remote view mode rendering', () => {
     const { renderRemoteView } = require('../public/dashboard/remoteView.ts');
     await renderRemoteView();
 
-    expect(container.innerHTML).toContain('Host Mode');
-    expect(container.innerHTML).not.toContain('Guest Mode');
+    expect(container.innerHTML).toContain('Host room owner');
+    expect(container.innerHTML).toContain('Rotate Guest');
+    expect(container.innerHTML).not.toContain('Join by invite link');
     expect(container.innerHTML).not.toContain('Central sync disabled');
   });
 
@@ -128,8 +128,59 @@ describe('remote view mode rendering', () => {
     const { renderRemoteView } = require('../public/dashboard/remoteView.ts');
     await renderRemoteView();
 
-    expect(container.innerHTML).toContain('Guest Mode');
-    expect(container.innerHTML).not.toContain('Host Mode');
+    expect(container.innerHTML).toContain('Join by invite link');
+    expect(container.innerHTML).toContain('Current Guest Session');
+    expect(container.innerHTML).not.toContain('Host room owner');
     expect(container.innerHTML).not.toContain('Central sync disabled');
+  });
+
+  test('clicking a mode pill saves the selected remote mode', async () => {
+    const pillListeners = {};
+    const hostPill = {
+      dataset: { remoteMode: 'host' },
+      addEventListener: jest.fn((event, handler) => {
+        pillListeners[event] = handler;
+      }),
+    };
+    const localInput = {
+      addEventListener: jest.fn(),
+    };
+    const container = {
+      innerHTML: '',
+      classList: { contains: jest.fn(() => true) },
+      closest: jest.fn(() => null),
+      querySelectorAll: jest.fn((selector) => {
+        if (selector === 'input[name="remoteMode"]') return [localInput];
+        if (selector === '.remote-mode-pill[data-remote-mode]') return [hostPill];
+        return [];
+      }),
+    };
+
+    global.document = {
+      activeElement: null,
+      getElementById: jest.fn((id) => (id === 'remoteView' ? container : null)),
+    };
+    global.window = { dispatchEvent: jest.fn() };
+
+    serverConnection.fetchCentralServerConfig.mockResolvedValue({
+      remoteMode: 'local',
+      roomSecretConfigured: false,
+      baseUrl: 'https://central.example.test',
+    });
+    serverConnection.fetchCentralServerSnapshot.mockResolvedValue({
+      config: { baseUrl: 'https://central.example.test' },
+      health: null,
+      workers: [],
+      error: null,
+      eventsConnected: false,
+    });
+    serverConnection.saveCentralServerConfig.mockResolvedValue({});
+
+    const { renderRemoteView } = require('../public/dashboard/remoteView.ts');
+    await renderRemoteView();
+
+    await pillListeners.click({ preventDefault: jest.fn() });
+
+    expect(serverConnection.saveCentralServerConfig).toHaveBeenCalledWith({ remoteMode: 'host' });
   });
 });

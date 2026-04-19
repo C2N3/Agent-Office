@@ -96,7 +96,7 @@ async function updateCentralServerConfig(req: RequestLike, res: ResponseLike): P
     const body = await readRequestBody(req);
     const parsed = body ? JSON.parse(body) : {};
     saveCentralServerConfig({
-      baseUrl: String(parsed.baseUrl || ''),
+      baseUrl: typeof parsed.baseUrl === 'string' ? parsed.baseUrl : undefined,
       agentSyncEnabled: typeof parsed.agentSyncEnabled === 'boolean' ? parsed.agentSyncEnabled : undefined,
       workerEnabled: typeof parsed.workerEnabled === 'boolean' ? parsed.workerEnabled : undefined,
       workerToken: typeof parsed.workerToken === 'string' ? parsed.workerToken : undefined,

@@ -320,6 +320,25 @@ describe('dashboard-server', () => {
       expect(body.workerEnabled).toBe(true);
     });
 
+    test('POST /api/server/config preserves baseUrl when only remoteMode changes', async () => {
+      const { req: firstReq, res: firstRes } = createMockReqRes('POST', '/api/server/config');
+      handler(firstReq, firstRes);
+      firstReq.emit('data', JSON.stringify({ baseUrl: '47824' }));
+      firstReq.emit('end');
+      await new Promise(setImmediate);
+
+      const { req, res } = createMockReqRes('POST', '/api/server/config');
+      handler(req, res);
+      req.emit('data', JSON.stringify({ remoteMode: 'host' }));
+      req.emit('end');
+      await new Promise(setImmediate);
+
+      expect(res.writeHead).toHaveBeenCalledWith(200, { 'Content-Type': 'application/json' });
+      const body = JSON.parse(res.end.mock.calls[0][0]);
+      expect(body.baseUrl).toBe('http://127.0.0.1:47824');
+      expect(body.remoteMode).toBe('host');
+    });
+
     test('proxied central requests attach X-AO-Room-Secret when configured', async () => {
       global.fetch = jest.fn(async () => ({
         ok: true,
