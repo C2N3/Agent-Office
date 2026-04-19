@@ -32,6 +32,7 @@ let configuredBaseUrl: string | null = null;
 let configuredAgentSyncEnabled: boolean | null = null;
 let configuredWorkerEnabled: boolean | null = null;
 let configuredRemoteMode: RemoteMode | null = null;
+let configuredRoomSecret: string | null = null;
 let workerConnectionStatus: WorkerConnectionStatus = 'disconnected';
 
 const configEvents = new EventEmitter();
@@ -158,11 +159,14 @@ export function getCentralWorkerToken(): string {
 }
 
 export function getCentralRoomSecret(): string {
+  if (configuredRoomSecret !== null) return configuredRoomSecret;
   try {
     if (fs.existsSync(CENTRAL_ROOM_SECRET_FILE)) {
-      return fs.readFileSync(CENTRAL_ROOM_SECRET_FILE, 'utf-8').trim();
+      configuredRoomSecret = fs.readFileSync(CENTRAL_ROOM_SECRET_FILE, 'utf-8').trim();
+      return configuredRoomSecret;
     }
   } catch {}
+  configuredRoomSecret = '';
   return '';
 }
 
@@ -246,8 +250,9 @@ export function saveCentralServerConfig(update: CentralServerConfigUpdate): void
   }
   if (typeof update.roomSecret === 'string') {
     fs.mkdirSync(CONFIG_DIR, { recursive: true });
-    if (update.roomSecret.trim()) {
-      fs.writeFileSync(CENTRAL_ROOM_SECRET_FILE, `${update.roomSecret.trim()}\n`, 'utf-8');
+    configuredRoomSecret = update.roomSecret.trim();
+    if (configuredRoomSecret) {
+      fs.writeFileSync(CENTRAL_ROOM_SECRET_FILE, `${configuredRoomSecret}\n`, 'utf-8');
     } else if (fs.existsSync(CENTRAL_ROOM_SECRET_FILE)) {
       fs.unlinkSync(CENTRAL_ROOM_SECRET_FILE);
     }
