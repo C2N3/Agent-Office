@@ -69,7 +69,8 @@ describe('remote view mode rendering', () => {
     expect(container.innerHTML).toContain('type="radio"');
     expect(container.innerHTML).toContain('name="remoteMode"');
     expect(container.innerHTML).toContain('Central sync disabled');
-    expect(container.innerHTML).toContain('Server URL');
+    expect(container.innerHTML).not.toContain('Server URL');
+    expect(container.innerHTML).not.toContain('Central Server Status');
     expect(container.innerHTML).not.toContain('Host Mode');
     expect(container.innerHTML).not.toContain('Guest Mode');
   });

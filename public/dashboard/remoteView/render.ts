@@ -126,7 +126,7 @@ function renderServerUrlForm(
   </form>`;
 }
 
-function renderLocalContent(baseUrl: string): string {
+function renderLocalContent(): string {
   return `
   <div class="remote-status-row remote-mode-block">
     <div class="remote-dot server-dot offline"></div>
@@ -135,8 +135,7 @@ function renderLocalContent(baseUrl: string): string {
   <div class="remote-info-block">
     <div class="remote-info-label">Persistence</div>
     <div class="remote-hint">대시보드에서 만든 agent와 avatar, metadata 변경은 <code>~/.agent-office/agent-registry.json</code> 에만 저장됩니다.</div>
-  </div>
-  ${renderServerUrlForm(baseUrl, 'local', false)}`;
+  </div>`;
 }
 
 function renderHostContent(
@@ -197,6 +196,7 @@ function renderGuestContent(config: RemoteConfig | null): string {
 
 export function renderRemotePanel(args: RenderRemotePanelArgs): string {
   const roomSecretConfigured = !!args.config?.roomSecretConfigured;
+  const showCentralServerControls = args.mode !== 'local';
   const modeContent = args.mode === 'host'
     ? renderHostContent(
         args.currentBaseUrl,
@@ -206,7 +206,7 @@ export function renderRemotePanel(args: RenderRemotePanelArgs): string {
       )
     : args.mode === 'guest'
       ? renderGuestContent(args.config)
-      : renderLocalContent(args.currentBaseUrl);
+      : renderLocalContent();
 
   return `
 <div class="panel remote-panel">
@@ -214,6 +214,6 @@ export function renderRemotePanel(args: RenderRemotePanelArgs): string {
   ${renderModeSelector(args.mode, roomSecretConfigured)}
   ${args.remoteActionError ? `<div class="remote-error" style="margin-top:12px">${escapeHtml(args.remoteActionError)}</div>` : ''}
   ${modeContent}
-  ${renderStatusDetails(args.snapshot, roomSecretConfigured)}
+  ${showCentralServerControls ? renderStatusDetails(args.snapshot, roomSecretConfigured) : ''}
 </div>`;
 }
