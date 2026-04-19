@@ -41,6 +41,11 @@ type CentralAgentResponse = {
   error?: { message?: string } | string;
 };
 
+type CentralAgentBulkResponse = {
+  agents?: CentralAgent[];
+  error?: { message?: string } | string;
+};
+
 type CentralServerConfig = {
   agentSyncEnabled?: boolean;
 };
@@ -53,6 +58,8 @@ type SyncCallbacks = {
 let eventSource: EventSource | null = null;
 let callbacks: SyncCallbacks | null = null;
 
+type SyncableAgentRecord = DashboardAgentRecord | DashboardAgent;
+
 function basename(value?: string | null): string {
   const normalized = String(value || '').replace(/\\/g, '/').replace(/\/+$/, '');
   return normalized.split('/').filter(Boolean).pop() || '';
@@ -62,9 +69,34 @@ function slug(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'default';
 }
 
-function projectIdFromRecord(agent: DashboardAgentRecord): string {
-  const workspace = agent.workspace || null;
-  const name = workspace?.repositoryName || basename(workspace?.repositoryPath) || basename(agent.projectPath) || 'default';
+function recordId(agent: SyncableAgentRecord): string {
+  return ('registryId' in agent && agent.registryId) ? agent.registryId : agent.id;
+}
+
+function recordWorkspace(agent: SyncableAgentRecord): DashboardWorkspace | null {
+  return ('workspace' in agent && agent.workspace)
+    ? agent.workspace
+    : (('metadata' in agent && agent.metadata?.workspace) || null);
+}
+
+function recordProjectPath(agent: SyncableAgentRecord): string {
+  return ('projectPath' in agent && agent.projectPath)
+    ? agent.projectPath
+    : (('metadata' in agent && agent.metadata?.projectPath) || '');
+}
+
+function recordProjectLabel(agent: SyncableAgentRecord): string {
+  return ('project' in agent && agent.project) ? agent.project : '';
+}
+
+function projectIdFromRecord(agent: SyncableAgentRecord): string {
+  const workspace = recordWorkspace(agent);
+  const projectPath = recordProjectPath(agent);
+  const name = workspace?.repositoryName
+    || basename(workspace?.repositoryPath)
+    || basename(projectPath)
+    || recordProjectLabel(agent)
+    || 'default';
   return `project_${slug(name)}`;
 }
 
@@ -95,18 +127,19 @@ function localRefFromWorkspace(workspace?: DashboardWorkspace | null, projectPat
   return workspace?.worktreePath || workspace?.repositoryPath || projectPath || '';
 }
 
-function centralWorkspaceFromRecord(agent: DashboardAgentRecord): CentralAgentWorkspace {
-  const workspace = agent.workspace || null;
+function centralWorkspaceFromRecord(agent: SyncableAgentRecord): CentralAgentWorkspace {
+  const workspace = recordWorkspace(agent);
+  const projectPath = recordProjectPath(agent);
   return {
     branch: workspace?.branch || '',
-    localRef: localRefFromWorkspace(workspace, agent.projectPath),
-    label: workspace?.repositoryName || basename(agent.projectPath) || '',
+    localRef: localRefFromWorkspace(workspace, projectPath),
+    label: workspace?.repositoryName || basename(projectPath) || recordProjectLabel(agent) || '',
   };
 }
 
-function centralPayloadFromRecord(agent: DashboardAgentRecord): CentralAgent {
+function centralPayloadFromRecord(agent: SyncableAgentRecord): CentralAgent {
   return {
-    id: agent.id,
+    id: recordId(agent),
     projectId: projectIdFromRecord(agent),
     roomId: 'default',
     name: agent.name || 'Agent',
@@ -115,6 +148,10 @@ function centralPayloadFromRecord(agent: DashboardAgentRecord): CentralAgent {
     avatar: { assetId: `index:${agent.avatarIndex ?? 0}` },
     workspace: centralWorkspaceFromRecord(agent),
   };
+}
+
+function shouldSyncLocalAgent(agent: DashboardAgent): boolean {
+  return !!agent.id && !!agent.isRegistered && agent.metadata?.source !== 'central';
 }
 
 function dashboardAgentFromCentral(agent: CentralAgent): DashboardAgent {
@@ -189,12 +226,31 @@ export async function fetchCentralDashboardAgents(): Promise<DashboardAgent[]> {
     .map(mergeCentralAgent);
 }
 
+async function upsertCentralAgents(agents: SyncableAgentRecord[]): Promise<void> {
+  const payloads = agents
+    .map(centralPayloadFromRecord)
+    .filter((agent) => !!agent.id);
+  if (payloads.length === 0) return;
+  await fetchJSON<CentralAgentBulkResponse>('/api/server/agents/bulk-upsert', {
+    method: 'POST',
+    body: JSON.stringify({ agents: payloads }),
+  });
+}
+
+async function syncLocalAgentsToCentral(): Promise<void> {
+  const agents = await fetchJSON<DashboardAgent[]>('/api/agents');
+  await upsertCentralAgents(agents.filter(shouldSyncLocalAgent));
+}
+
+async function applyCentralSnapshot(): Promise<void> {
+  if (!callbacks) return;
+  const agents = await fetchCentralDashboardAgents();
+  for (const agent of agents) callbacks.upsertAgent(agent);
+}
+
 export async function syncCentralAgentRecord(agent?: DashboardAgentRecord | null): Promise<void> {
   if (!agent?.id || !await isCentralAgentSyncEnabled()) return;
-  await fetchJSON<CentralAgentResponse>('/api/server/agents', {
-    method: 'POST',
-    body: JSON.stringify(centralPayloadFromRecord(agent)),
-  });
+  await upsertCentralAgents([agent]);
 }
 
 export async function syncCentralAgentUpdate(id?: string | null, fields: Partial<DashboardAgentRecord> = {}): Promise<void> {
@@ -246,6 +302,16 @@ function stopCentralAgentEvents(): void {
 async function restartCentralAgentEvents(): Promise<void> {
   stopCentralAgentEvents();
   if (!callbacks || !await isCentralAgentSyncEnabled()) return;
+  try {
+    await syncLocalAgentsToCentral();
+  } catch (error) {
+    console.warn('[Central Agents] local reconcile failed', error);
+  }
+  try {
+    await applyCentralSnapshot();
+  } catch (error) {
+    console.warn('[Central Agents] snapshot fetch failed', error);
+  }
   eventSource = new EventSource('/api/server/events');
   eventSource.addEventListener('agent.created', (event) => handleCentralEvent('created', event as MessageEvent));
   eventSource.addEventListener('agent.updated', (event) => handleCentralEvent('updated', event as MessageEvent));

@@ -33,7 +33,13 @@ import {
   refreshTerminalProfiles,
   resumeRegisteredSession,
 } from './terminal/index.js';
-import { initOffice, switchOfficeFloor } from '../office/index.js';
+import {
+  initOffice,
+  officeOnAgentCreated,
+  officeOnAgentRemoved,
+  officeOnAgentUpdated,
+  switchOfficeFloor,
+} from '../office/index.js';
 import { floorManager } from '../office/floorManager.js';
 import {
   setupAgentModal,
@@ -410,8 +416,19 @@ function initApp() {
 
   connectSSE();
   startCentralAgentSync({
-    upsertAgent: updateAgent,
-    removeAgent,
+    upsertAgent: (agent) => {
+      const existing = state.agents.has(agent.id);
+      updateAgent(agent);
+      if (existing) {
+        officeOnAgentUpdated(agent);
+      } else {
+        officeOnAgentCreated(agent);
+      }
+    },
+    removeAgent: (id) => {
+      removeAgent(id);
+      officeOnAgentRemoved({ id });
+    },
   });
   initTerminals();
   initTerminalProfileMenu();
@@ -423,7 +440,9 @@ function initApp() {
   initFloorTabs();
 
   setTimeout(() => {
-    initOffice().catch((error: DashboardUiError) => console.error('[Office Init]', error));
+    initOffice()
+      .then(() => renderAgentList())
+      .catch((error: DashboardUiError) => console.error('[Office Init]', error));
     setupOfficeClickHandler(openTerminalForAgent);
   }, 100);
 
