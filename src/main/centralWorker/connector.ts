@@ -109,9 +109,11 @@ export class CentralWorkerConnector {
     this.registryListeners = [
       ['agent-created', onUpsert],
       ['agent-updated', onUpsert],
+      ['agent.updated', onUpsert],
       ['agent-enabled-changed', onUpsert],
       ['agent-archived', onRemove],
       ['agent-deleted', onRemove],
+      ['agent.removed', onRemove],
     ];
     for (const [event, listener] of this.registryListeners) {
       this.agentRegistry.on(event, listener);

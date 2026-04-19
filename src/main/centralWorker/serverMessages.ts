@@ -27,7 +27,7 @@ export function handleServerMessage({ raw, workerId, debugLog, send }: ServerMes
           workerId,
           protocolVersion: PROTOCOL_VERSION,
           taskId: message.taskId,
-          error: 'Agent-Office Electron client does not support central task execution yet',
+          error: 'Unsupported central task bridge: Agent-Office Electron client does not execute central tasks yet',
           timestamp: Date.now(),
         });
       }

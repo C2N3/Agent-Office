@@ -122,21 +122,17 @@ function sent(socket, type) {
 function makeConnector(options = {}) {
   const registry = options.agentRegistry || new FakeAgentRegistry(options.activeAgents || []);
   const connector = new CentralWorkerConnector({
-    centralServerUrl: options.centralServerUrl || 'http://central.example.test',
     workerId: options.workerId || 'worker-pc-a',
-    workerToken: options.workerToken || 'worker-token',
-    agentSyncEnabled: options.agentSyncEnabled ?? true,
     agentRegistry: registry,
     heartbeatIntervalMs: 5000,
-    displayName: 'Agent Office Test Worker',
-    hostname: 'pc-a',
-    platform: 'darwin/arm64',
-    userId: 'local-user',
-    now: () => Date.now(),
     debugLog: jest.fn(),
-    WebSocket: FakeWebSocket,
-    webSocketCtor: FakeWebSocket,
-    createWebSocket: (url, webSocketOptions) => new FakeWebSocket(url, webSocketOptions),
+    WebSocketImpl: FakeWebSocket,
+    getBaseUrl: () => options.centralServerUrl || 'http://central.example.test',
+    getToken: () => options.workerToken || 'worker-token',
+    getWorkerEnabled: () => true,
+    getAgentSyncEnabled: () => options.agentSyncEnabled ?? true,
+    onConfigChanged: () => () => {},
+    setStatus: jest.fn(),
   });
   return { connector, registry };
 }
@@ -168,7 +164,7 @@ describe('CentralWorkerConnector', () => {
 
   test('sends worker.hello first and worker.heartbeat on the configured interval', () => {
     const { connector } = makeConnector();
-    connector.connect();
+    connector.start();
     const socket = FakeWebSocket.instances[0];
     socket.open();
 
@@ -176,10 +172,10 @@ describe('CentralWorkerConnector', () => {
     expect(hello).toEqual(expect.objectContaining({
       type: 'worker.hello',
       workerId: 'worker-pc-a',
-      userId: 'local-user',
-      displayName: 'Agent Office Test Worker',
-      hostname: 'pc-a',
-      platform: 'darwin/arm64',
+      userId: 'local',
+      displayName: expect.any(String),
+      hostname: expect.any(String),
+      platform: `${process.platform}/${process.arch}`,
       protocolVersion: 1,
     }));
     expect(hello.capabilities).toEqual(expect.arrayContaining([
@@ -205,12 +201,12 @@ describe('CentralWorkerConnector', () => {
       runningTasks: 0,
       timestamp: Date.parse('2026-04-19T00:00:05.000Z'),
     }));
-    connector.disconnect();
+    connector.stop();
   });
 
   test('sends active registered agent snapshot as agent.upsert after connecting', () => {
     const { connector, registry } = makeConnector({ activeAgents: [registeredAgent()] });
-    connector.connect();
+    connector.start();
     const socket = FakeWebSocket.instances[0];
     socket.open();
 
@@ -237,12 +233,12 @@ describe('CentralWorkerConnector', () => {
       localRef: '/Users/minijay/workspace/Agent-Office',
       label: 'Agent-Office',
     }));
-    connector.disconnect();
+    connector.stop();
   });
 
   test('sends agent.upsert and agent.remove for registry update and remove events', () => {
     const { connector, registry } = makeConnector();
-    connector.connect();
+    connector.start();
     const socket = FakeWebSocket.instances[0];
     socket.open();
 
@@ -275,12 +271,12 @@ describe('CentralWorkerConnector', () => {
         agentId: 'agent-2',
       }),
     ]);
-    connector.disconnect();
+    connector.stop();
   });
 
   test('fails server.task.start with an unsupported bridge error', () => {
     const { connector } = makeConnector();
-    connector.connect();
+    connector.start();
     const socket = FakeWebSocket.instances[0];
     socket.open();
     socket.receive({ type: 'server.task.start', protocolVersion: 1, taskId: 'task-unsupported-1' });
@@ -295,6 +291,6 @@ describe('CentralWorkerConnector', () => {
         timestamp: Date.parse('2026-04-19T00:00:00.000Z'),
       }),
     ]);
-    connector.disconnect();
+    connector.stop();
   });
 });
