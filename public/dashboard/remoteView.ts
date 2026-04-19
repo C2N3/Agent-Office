@@ -17,6 +17,7 @@ import {
 let pollInterval: ReturnType<typeof setInterval> | null = null;
 let lastIssuedGuestSecret = '';
 let remoteActionError = '';
+let pendingRemoteMode: RemoteMode | null = null;
 
 type RoomAccessStatus = {
   publicMode: boolean;
@@ -46,9 +47,11 @@ function escapeHtml(value: string | number | null | undefined): string {
 
 function isRemoteInputFocused(): boolean {
   const focusedId = document.activeElement?.id;
+  const focusedName = (document.activeElement as HTMLInputElement | null)?.name;
   return focusedId === 'centralServerUrlInput'
     || focusedId === 'centralWorkerTokenInput'
-    || focusedId === 'guestInviteInput';
+    || focusedId === 'guestInviteInput'
+    || focusedName === 'remoteMode';
 }
 
 async function fetchRoomAccess(): Promise<RoomAccessStatus | null> {
@@ -77,10 +80,25 @@ async function roomAccessAction(path: string): Promise<RoomAccessStatus> {
 }
 
 function renderModeSelector(mode: RemoteMode, roomSecretConfigured = false): string {
-  const options: Array<{ value: RemoteMode; label: string; hint: string }> = [
-    { value: 'local', label: 'Local Only', hint: 'room secret을 보내지 않고 로컬 설정만 유지합니다.' },
-    { value: 'host', label: 'Host', hint: '중앙 서버에서 owner secret으로 public room을 관리합니다.' },
-    { value: 'guest', label: 'Guest', hint: 'invite link의 중앙 서버 origin과 guest secret으로 접속합니다.' },
+  const options: Array<{ value: RemoteMode; label: string; title: string; hint: string }> = [
+    {
+      value: 'local',
+      label: 'Local Only',
+      title: 'Local registry only',
+      hint: 'room secret을 보내지 않고 로컬 registry를 source of truth로 유지합니다.',
+    },
+    {
+      value: 'host',
+      label: 'Host',
+      title: 'Host room owner',
+      hint: '중앙 서버에서 owner secret으로 public room을 열고 guest invite를 관리합니다.',
+    },
+    {
+      value: 'guest',
+      label: 'Guest',
+      title: 'Join by invite link',
+      hint: 'invite link의 중앙 서버 origin과 guest secret으로 접속합니다.',
+    },
   ];
   const selected = options.find((option) => option.value === mode) || options[0];
   const flags = flagsFromRemoteMode(mode, { roomSecretConfigured });
@@ -88,17 +106,47 @@ function renderModeSelector(mode: RemoteMode, roomSecretConfigured = false): str
   return `
 <div class="panel remote-panel">
   <div class="remote-section-title">Mode</div>
-  <div class="remote-info-block">
-    <div class="remote-info-label">Connection Mode</div>
-    <div class="modal-path-field">
-      <select id="remoteModeSelect" class="modal-input">
-        ${options.map((option) => `
-          <option value="${option.value}" ${mode === option.value ? 'selected' : ''}>${escapeHtml(option.label)}</option>
-        `).join('')}
-      </select>
-    </div>
-    <div class="remote-hint">${escapeHtml(selected.hint)}</div>
+  <div class="remote-mode-tabs" role="tablist" aria-label="Remote mode">
+    ${options.map((option) => `
+      <label class="remote-mode-pill ${mode === option.value ? 'active' : ''}">
+        <input
+          type="radio"
+          class="remote-mode-input"
+          name="remoteMode"
+          value="${option.value}"
+          ${mode === option.value ? 'checked' : ''}
+        >
+        <span>${escapeHtml(option.label)}</span>
+      </label>
+    `).join('')}
+  </div>
+  <div class="remote-mode-sheet">
+    <div class="remote-mode-title">${escapeHtml(selected.title)}</div>
+    <div class="remote-mode-description">${escapeHtml(selected.hint)}</div>
     <div class="remote-hint">Worker bridge: ${flags.workerEnabled ? 'on' : 'off'} · Character sync: ${flags.agentSyncEnabled ? 'on' : 'off'}</div>
+  </div>
+</div>`;
+}
+
+function renderLocalCard(): string {
+  return `
+<div class="panel remote-panel">
+  <div class="remote-section-title">Local Only</div>
+
+  <div class="remote-status-row">
+    <div class="remote-dot server-dot offline"></div>
+    <span class="remote-status-label">Central sync disabled</span>
+  </div>
+
+  <div class="remote-hint">원격 invite나 worker bridge 없이 로컬 registry만 사용합니다.</div>
+
+  <div class="remote-info-block">
+    <div class="remote-info-label">Persistence</div>
+    <div class="remote-hint">대시보드에서 만든 agent와 avatar, metadata 변경은 <code>~/.agent-office/agent-registry.json</code> 에만 저장됩니다.</div>
+  </div>
+  <div class="remote-info-block">
+    <div class="remote-info-label">Server URL</div>
+    <div class="remote-hint">Central Server 패널의 URL은 유지할 수 있지만, Local Only에서는 worker bridge와 character sync를 켜지 않습니다.</div>
   </div>
 </div>`;
 }
@@ -171,6 +219,40 @@ function renderGuestCard(config: { baseUrl?: string; roomSecretConfigured?: bool
 </div>`;
 }
 
+function renderSelectedModeCard(
+  mode: RemoteMode,
+  config: { baseUrl?: string; roomSecretConfigured?: boolean; remoteMode?: RemoteMode } | null,
+  snapshotBaseUrl: string,
+  roomAccess: RoomAccessStatus | null,
+): string {
+  if (mode === 'host') {
+    return renderHostCard(config?.baseUrl || snapshotBaseUrl || '', mode, roomAccess);
+  }
+  if (mode === 'guest') {
+    return renderGuestCard(config || {});
+  }
+  return renderLocalCard();
+}
+
+function getDisplayedSnapshot(
+  snapshot: Awaited<ReturnType<typeof fetchCentralServerSnapshot>>,
+  mode: RemoteMode,
+  roomSecretConfigured: boolean,
+) {
+  if (!snapshot.config) return snapshot;
+  const flags = flagsFromRemoteMode(mode, { roomSecretConfigured });
+  return {
+    ...snapshot,
+    config: {
+      ...snapshot.config,
+      remoteMode: mode,
+      workerEnabled: flags.workerEnabled,
+      agentSyncEnabled: flags.agentSyncEnabled,
+      roomSecretConfigured,
+    },
+  };
+}
+
 export async function renderRemoteView(): Promise<void> {
   const container = document.getElementById('remoteView');
   if (!container) return;
@@ -180,28 +262,42 @@ export async function renderRemoteView(): Promise<void> {
     fetchCentralServerSnapshot(),
     fetchRoomAccess(),
   ]);
-  const mode = (config?.remoteMode || 'local') as RemoteMode;
+  const persistedMode = (config?.remoteMode || 'local') as RemoteMode;
+  const mode = pendingRemoteMode || persistedMode;
+  const displayedSnapshot = getDisplayedSnapshot(snapshot, mode, !!config?.roomSecretConfigured);
 
   container.innerHTML = [
     renderModeSelector(mode, !!config?.roomSecretConfigured),
     remoteActionError ? `<div class="panel remote-panel"><div class="remote-error">${escapeHtml(remoteActionError)}</div></div>` : '',
-    renderHostCard(config?.baseUrl || snapshot.config?.baseUrl || '', mode, roomAccess),
-    renderGuestCard(config || {}),
-    renderCentralServerCard(snapshot),
+    renderSelectedModeCard(mode, config, snapshot.config?.baseUrl || '', roomAccess),
+    renderCentralServerCard(displayedSnapshot),
   ].join('');
 
   bindCentralServerControls();
 
-  document.getElementById('remoteModeSelect')?.addEventListener('change', async (event) => {
-    const select = event.currentTarget as HTMLSelectElement | null;
-    if (!select) return;
-    const nextMode = select.value as RemoteMode;
-    remoteActionError = '';
-    await saveCentralServerConfig({ remoteMode: nextMode });
-    stopCentralServerConnection();
-    window.dispatchEvent(new CustomEvent('central-agent-sync-config-changed'));
-    await renderRemoteView();
-    void startCentralServerConnection();
+  container.querySelectorAll<HTMLInputElement>('input[name="remoteMode"]').forEach((input) => {
+    input.addEventListener('change', async (event) => {
+      const target = event.currentTarget as HTMLInputElement | null;
+      if (!target?.checked) return;
+      const nextMode = target.value as RemoteMode;
+      if (nextMode === persistedMode && !pendingRemoteMode) return;
+      pendingRemoteMode = nextMode;
+      remoteActionError = '';
+      await renderRemoteView();
+      try {
+        await saveCentralServerConfig({ remoteMode: nextMode });
+        stopCentralServerConnection();
+        window.dispatchEvent(new CustomEvent('central-agent-sync-config-changed'));
+      } catch (error) {
+        remoteActionError = error instanceof Error ? error.message : String(error || 'Failed to change remote mode');
+      } finally {
+        pendingRemoteMode = null;
+      }
+      await renderRemoteView();
+      if (!remoteActionError) {
+        void startCentralServerConnection();
+      }
+    });
   });
 
   document.getElementById('hostEnableBtn')?.addEventListener('click', async () => {
