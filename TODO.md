@@ -12,6 +12,7 @@ This file tracks client-side work that is planned, discovered, blocked, or compl
 
 ## Open
 
+- [ ] Add an explicit server mode selector for agent character visibility and sharing: Local Only shows only this client's agent characters, Host opens this client's server through Cloudflare Tunnel for others, and Guest connects to an existing host tunnel.
 - [ ] Keep local-only agent character creation/update working through the Electron IPC and `~/.agent-office/agent-registry.json` path when no central server sync is enabled.
 - [x] Add an optional central-server-backed agent character sync mode that creates, updates, deletes, and subscribes to agent registry changes through the configured central server while preserving the local-only mode.
 - [ ] Reconcile local and central agent character state on startup, including conflict rules for name, role, workspace, provider, and avatar changes.
