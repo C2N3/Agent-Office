@@ -16,6 +16,17 @@ Use React for the dashboard and other DOM-composed UI surfaces.
 
 Do not migrate the office renderer core to React. If React is introduced around the office, limit it to shell controls and surrounding panels, not the sprite/pathfinding/render loop itself.
 
+## Recent Progress
+
+The current branch has already landed a few of the high-value dashboard slices:
+
+- the dashboard now mounts from a single React root
+- the remote view is React-owned while its polling/data layer stays imperative
+- the heatmap and archive surfaces now render from React components instead of `innerHTML`
+- dashboard runtime bootstrapping is split from the React root mount so the imperative setup is easier to follow
+
+That leaves the remaining work focused on shrinking the imperative DOM surface area around modals, terminal hosts, and office-side adapters rather than proving the boundary from scratch.
+
 ## Current Boundary
 
 ### Good React candidates
@@ -74,6 +85,7 @@ Why:
 
 These files should stay as adapters between React UI and the imperative runtime.
 
+- `src/client/dashboard/runtime/bootstrap.ts`
 - `src/client/office/officeInit.ts`
 - `src/client/office/index.ts`
 - `src/client/dashboard/shared.ts`
@@ -203,14 +215,14 @@ Do not rewrite `src/client/office/officeRenderer.ts` or related runtime modules 
 - prefer feature-by-feature migration over a big shared abstraction pass
 - validate each migrated slice with the existing `build:dist`, `typecheck`, and Jest workflow
 
-## Suggested First Task
+## Suggested Next Task
 
-Start with the dashboard remote/settings surface, because it is DOM-heavy, stateful, and largely independent from the office render loop.
+Continue with the dashboard modal and terminal surfaces, because they still mix React-owned markup with imperative element lookup and listener setup.
 
-The first migration slice should include:
+The next migration slice should include:
 
-- `src/client/dashboard/remote/polling.ts`
-- its render helpers under `src/client/dashboard/remote/*`
-- any minimal host container needed from `src/client/dashboard/app.ts`
+- modal state/actions under `src/client/dashboard/modals/*`
+- terminal host/bootstrap code under `src/client/dashboard/terminal/*`
+- any remaining runtime-global bridges that only exist to reach DOM-owned handlers
 
-This gives the project a real React foothold without forcing the office runtime to move.
+That keeps the office renderer imperative while reducing the leftover React/DOM ownership split in the dashboard shell.

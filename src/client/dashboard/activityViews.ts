@@ -4,7 +4,6 @@ import {
   archiveState,
   getDashboardAPI,
   historyState,
-  state,
 } from './shared.js';
 
 function getTooltip(): HTMLDivElement | null {
@@ -16,12 +15,6 @@ const archiveListeners = new Set<() => void>();
 
 let heatmapRefreshToken = 0;
 let archiveRefreshToken = 0;
-
-function toMillis(value: number | string | Date | null | undefined): number {
-  if (value == null) return 0;
-  const ts = new Date(value).getTime();
-  return Number.isFinite(ts) ? ts : 0;
-}
 
 export function subscribeHeatmapView(listener: () => void): () => void {
   heatmapListeners.add(listener);
@@ -130,46 +123,4 @@ export async function fetchArchivedAgents(force = false): Promise<DashboardArchi
 export async function renderArchiveView(force = false): Promise<void> {
   await loadArchivedAgents(force);
   notifyArchiveView();
-}
-
-export function initViewControls() {
-  document.querySelectorAll<HTMLButtonElement>('.usage-btn').forEach((button) => {
-    button.onclick = () => {
-      document.querySelectorAll<HTMLButtonElement>('.usage-btn').forEach((item) => item.classList.remove('active'));
-      button.classList.add('active');
-      historyState.mode = button.dataset.umode === 'months' ? 'months' : 'weeks';
-      renderUsageView();
-    };
-  });
-
-  document.querySelectorAll<HTMLButtonElement>('.nav-item').forEach((button) => {
-    button.onclick = () => {
-      const target: string = button.dataset.view ?? 'office';
-      document.querySelectorAll<HTMLButtonElement>('.nav-item').forEach((item) => item.classList.remove('active'));
-      button.classList.add('active');
-
-      document.querySelectorAll('.view-section').forEach((view) => view.classList.remove('active'));
-      const targetView = document.getElementById(`${target}View`);
-      if (targetView) targetView.classList.add('active');
-
-      state.currentView = target;
-      localStorage.setItem('mc-view', target);
-
-      if (target === 'heatmap') renderHeatmapView();
-      else if (target === 'usage') renderUsageView();
-      else if (target === 'archive') renderArchiveView();
-      else if (target === 'remote') {
-        import('./remote/polling.js').then((m) => { m.renderRemoteView(); m.startRemoteViewPolling(); });
-      } else if (target === 'cloudflare') {
-        import('./cloudflareView.js').then((m) => { m.renderCloudflareView(); m.startCloudflareViewPolling(); });
-      }
-
-      if (target !== 'remote') {
-        import('./remote/polling.js').then((m) => m.stopRemoteViewPolling());
-      }
-      if (target !== 'cloudflare') {
-        import('./cloudflareView.js').then((m) => m.stopCloudflareViewPolling());
-      }
-    };
-  });
 }
