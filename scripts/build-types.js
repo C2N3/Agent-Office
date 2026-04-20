@@ -3,33 +3,33 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
-const { fileURLToPath } = require('url');
 const esbuild = require('esbuild');
-const sass = require('sass');
 const { createRecursiveWatcher } = require('./watch-utils');
 
 const projectRoot = path.join(__dirname, '..');
 const distRoot = path.join(projectRoot, 'dist');
-const roots = ['src', 'public'].map((segment) => path.join(projectRoot, segment));
+const srcRoot = path.join(projectRoot, 'src');
+const assetsRoot = path.join(projectRoot, 'assets');
 const watchMode = process.argv.includes('--watch');
 const watchTargets = [
-  ...roots,
+  srcRoot,
+  assetsRoot,
+  path.join(projectRoot, 'dashboard.html'),
+  path.join(projectRoot, 'index.html'),
+  path.join(projectRoot, 'overlay.html'),
+  path.join(projectRoot, 'pip.html'),
+  path.join(projectRoot, 'remote.html'),
+  path.join(projectRoot, 'styles.css'),
   path.join(projectRoot, 'tsconfig.json'),
   path.join(projectRoot, 'tsconfig.emit.json'),
+  path.join(projectRoot, 'tsconfig.client.json'),
+  path.join(projectRoot, 'vite.config.ts'),
 ];
-const browserGlobalTargets = [
-  'dist/public/dashboardResume.js',
-];
-const browserEntryPoints = [
-  path.join(projectRoot, 'public', 'dashboard.ts'),
-  path.join(projectRoot, 'public', 'overlay.ts'),
+const rendererEntryPoints = [
   path.join(projectRoot, 'src', 'renderer', 'init.ts'),
 ];
 const runtimeFiles = [
   'index.html',
-  'dashboard.html',
-  'pip.html',
-  'overlay.html',
   'remote.html',
   'styles.css',
 ];
@@ -38,21 +38,44 @@ let buildRunning = false;
 let queuedBuild = false;
 let watcher = null;
 
-function hasTypeScriptSource(dir) {
-  if (!fs.existsSync(dir)) return false;
+function copyFile(sourcePath, destinationPath) {
+  if (!fs.existsSync(sourcePath)) return;
+  fs.mkdirSync(path.dirname(destinationPath), { recursive: true });
+  fs.writeFileSync(destinationPath, fs.readFileSync(sourcePath));
+}
 
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    const fullPath = path.join(dir, entry.name);
+function copyDirectory(sourceDir, destinationDir) {
+  if (!fs.existsSync(sourceDir)) return;
+
+  for (const entry of fs.readdirSync(sourceDir, { withFileTypes: true })) {
+    const sourcePath = path.join(sourceDir, entry.name);
+    const destinationPath = path.join(destinationDir, entry.name);
+
     if (entry.isDirectory()) {
-      if (hasTypeScriptSource(fullPath)) return true;
+      copyDirectory(sourcePath, destinationPath);
       continue;
     }
-    if (entry.isFile() && fullPath.endsWith('.ts')) {
-      return true;
-    }
-  }
 
-  return false;
+    if (!entry.isFile()) continue;
+    copyFile(sourcePath, destinationPath);
+  }
+}
+
+function cleanBrowserOutputs() {
+  const cleanupTargets = [
+    path.join(distRoot, 'public'),
+    path.join(distRoot, 'src', 'client'),
+    path.join(distRoot, 'src', 'office'),
+    path.join(distRoot, 'src', 'renderer'),
+    path.join(distRoot, 'assets'),
+    path.join(distRoot, 'dashboard.html'),
+    path.join(distRoot, 'overlay.html'),
+    path.join(distRoot, 'pip.html'),
+  ];
+
+  for (const targetPath of cleanupTargets) {
+    fs.rmSync(targetPath, { force: true, recursive: true });
+  }
 }
 
 function copyTargetsToDist() {
@@ -66,102 +89,51 @@ function copyTargetsToDist() {
   ];
 
   for (const relativePath of copyTargets) {
-    const sourcePath = path.join(projectRoot, relativePath);
-    const destinationPath = path.join(distRoot, relativePath);
-    if (!fs.existsSync(sourcePath)) continue;
-    fs.mkdirSync(path.dirname(destinationPath), { recursive: true });
-    fs.writeFileSync(destinationPath, fs.readFileSync(sourcePath));
+    copyFile(
+      path.join(projectRoot, relativePath),
+      path.join(distRoot, relativePath),
+    );
   }
 }
 
 function copyRuntimeFilesToDist() {
   for (const relativePath of runtimeFiles) {
-    const sourcePath = path.join(projectRoot, relativePath);
-    if (!fs.existsSync(sourcePath)) continue;
-
-    const destinationPath = path.join(distRoot, relativePath);
-    fs.mkdirSync(path.dirname(destinationPath), { recursive: true });
-    fs.writeFileSync(destinationPath, fs.readFileSync(sourcePath));
+    copyFile(
+      path.join(projectRoot, relativePath),
+      path.join(distRoot, relativePath),
+    );
   }
 }
 
-function copyPublicAssetsToDist(sourceDir = path.join(projectRoot, 'public')) {
-  if (!fs.existsSync(sourceDir)) return;
+function copyAssetsToDist() {
+  copyDirectory(assetsRoot, path.join(distRoot, 'assets'));
+}
 
-  for (const entry of fs.readdirSync(sourceDir, { withFileTypes: true })) {
-    const sourcePath = path.join(sourceDir, entry.name);
-    const relativePath = path.relative(projectRoot, sourcePath);
-    const destinationPath = path.join(distRoot, relativePath);
+function copyRendererStylesToDist() {
+  copyDirectory(
+    path.join(srcRoot, 'renderer', 'styles'),
+    path.join(distRoot, 'src', 'renderer', 'styles'),
+  );
+}
 
-    if (entry.isDirectory()) {
-      copyPublicAssetsToDist(sourcePath);
-      continue;
-    }
-
-    if (!entry.isFile()) continue;
-    if (
-      sourcePath.endsWith('.ts')
-      || sourcePath.endsWith('.tsx')
-      || sourcePath.endsWith('.d.ts')
-      || sourcePath.endsWith('.scss')
-    ) continue;
-
-    fs.mkdirSync(path.dirname(destinationPath), { recursive: true });
-    fs.writeFileSync(destinationPath, fs.readFileSync(sourcePath));
+async function buildClientEntries() {
+  try {
+    const { build } = await import('vite');
+    await build({
+      configFile: path.join(projectRoot, 'vite.config.ts'),
+      mode: 'production',
+    });
+    return 0;
+  } catch (error) {
+    console.error('[build-types] Vite build failed:', error);
+    return 1;
   }
 }
 
-function sanitizeBrowserGlobalOutputs() {
-  for (const relativePath of browserGlobalTargets) {
-    const outputPath = path.join(projectRoot, relativePath);
-    if (!fs.existsSync(outputPath)) continue;
-
-    const original = fs.readFileSync(outputPath, 'utf8');
-    const sanitized = original
-      .replace(/^Object\.defineProperty\(exports,\s*"__esModule",\s*\{\s*value:\s*true\s*\}\);\r?\n/m, '')
-      .replace(/\r?\nexport \{\};\s*$/, '\n');
-
-    if (sanitized !== original) {
-      fs.writeFileSync(outputPath, sanitized, 'utf8');
-    }
-  }
-}
-
-function toWatchFilePath(loadedUrl) {
-  if (!loadedUrl || loadedUrl.protocol !== 'file:') return null;
-  return fileURLToPath(loadedUrl);
-}
-
-function createSassPlugin() {
-  return {
-    name: 'sass-loader',
-    setup(build) {
-      build.onLoad({ filter: /\.scss$/ }, (args) => {
-        const result = sass.compile(args.path, {
-          loadPaths: [projectRoot, path.dirname(args.path)],
-          style: 'expanded',
-        });
-
-        return {
-          contents: result.css,
-          loader: args.path.endsWith('.module.scss') ? 'local-css' : 'css',
-          resolveDir: path.dirname(args.path),
-          watchFiles: [
-            args.path,
-            ...(result.loadedUrls || [])
-              .map(toWatchFilePath)
-              .filter(Boolean),
-          ],
-        };
-      });
-    },
-  };
-}
-
-async function buildBrowserEntries() {
+async function buildRendererEntry() {
   const result = await esbuild.build({
     bundle: true,
-    entryPoints: browserEntryPoints,
+    entryPoints: rendererEntryPoints,
     entryNames: '[dir]/[name]',
     format: 'esm',
     jsx: 'automatic',
@@ -173,7 +145,6 @@ async function buildBrowserEntries() {
     outbase: projectRoot,
     outdir: distRoot,
     platform: 'browser',
-    plugins: [createSassPlugin()],
     target: ['es2022'],
     write: true,
   });
@@ -182,10 +153,6 @@ async function buildBrowserEntries() {
 }
 
 async function buildOnce() {
-  if (!roots.some(hasTypeScriptSource)) {
-    return 0;
-  }
-
   const tsgoPath = path.join(
     projectRoot,
     'node_modules',
@@ -205,18 +172,27 @@ async function buildOnce() {
     return 1;
   }
 
-  if ((result.status ?? 1) === 0) {
-    copyTargetsToDist();
-    copyRuntimeFilesToDist();
-    copyPublicAssetsToDist();
-    sanitizeBrowserGlobalOutputs();
-    const browserBuildStatus = await buildBrowserEntries();
-    if (browserBuildStatus !== 0) {
-      return browserBuildStatus;
-    }
+  if ((result.status ?? 1) !== 0) {
+    return result.status ?? 1;
   }
 
-  return result.status ?? 0;
+  cleanBrowserOutputs();
+  copyTargetsToDist();
+  copyRuntimeFilesToDist();
+  copyAssetsToDist();
+  copyRendererStylesToDist();
+
+  const clientBuildStatus = await buildClientEntries();
+  if (clientBuildStatus !== 0) {
+    return clientBuildStatus;
+  }
+
+  const rendererBuildStatus = await buildRendererEntry();
+  if (rendererBuildStatus !== 0) {
+    return rendererBuildStatus;
+  }
+
+  return 0;
 }
 
 async function runWatchedBuild(triggerPath = 'initial build') {
@@ -265,7 +241,7 @@ if (!watchMode) {
     },
   });
 
-  console.log('[build-types] Watching src/, public/, and tsconfig files');
+  console.log('[build-types] Watching src/, assets/, HTML, CSS, and tsconfig files');
 
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
