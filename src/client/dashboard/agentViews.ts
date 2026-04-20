@@ -13,7 +13,7 @@ import {
 } from '../office/index.js';
 import { updateConnectionStatus } from './connectionStatus.js';
 import { getStateColor } from './agentViewHelpers.js';
-import { openTaskLogTab, appendTaskChatMessage } from './terminal/index.js';
+import { appendTaskChatMessage, openTaskLogTab, openTerminalForAgent } from './terminal/index.js';
 import {
   getClearableUnregisteredAgents,
   getVisibleAgents,
@@ -22,6 +22,7 @@ import {
 } from './agentFilters.js';
 import { fetchCentralDashboardAgents } from './centralAgents/index.js';
 import { notifyDashboardStore } from './state/store.js';
+import { officeCharacters } from '../office/index.js';
 
 export { getStateColor };
 export {
@@ -85,9 +86,9 @@ export function connectSSE() {
     try {
       const data = JSON.parse(event.data) as { data: { id?: string; agentRegistryId?: string; terminalId?: string; title?: string } };
       const task = data.data;
-      if (task.terminalId && typeof (globalThis as any).openTerminalForAgent === 'function') {
+      if (task.terminalId) {
         // Legacy PTY terminal path (manual terminals)
-        (globalThis as any).openTerminalForAgent(task.terminalId, {
+        openTerminalForAgent(task.terminalId, {
           forceTerminalTab: true,
           skipProviderBoot: true,
           skipAutoResume: true,
@@ -119,9 +120,8 @@ export function connectSSE() {
       const data = JSON.parse(event.data) as { data: { id?: string; agentRegistryId?: string } };
       const task = data.data;
       if (task.agentRegistryId && task.id) {
-        const officeChars = (globalThis as any).officeCharacters;
-        if (officeChars?.setReportBubble) {
-          officeChars.setReportBubble(task.agentRegistryId, task.id);
+        if (officeCharacters?.setReportBubble) {
+          officeCharacters.setReportBubble(task.agentRegistryId, task.id);
         }
       }
     } catch {}
