@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
 import { defineConfig, type Plugin } from 'vite';
+import { hasViteAssetQuery } from './scripts/vite-asset-query.js';
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 const assetRoot = path.join(projectRoot, 'assets');
@@ -52,6 +53,11 @@ function browserContractPlugin(): Plugin {
         }
 
         if (!pathname.startsWith('/assets/')) {
+          next();
+          return;
+        }
+
+        if (hasViteAssetQuery(requestUrl.searchParams)) {
           next();
           return;
         }
