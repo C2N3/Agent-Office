@@ -11,7 +11,6 @@ import {
   removeAgent,
   renderAgentList,
   updateAgent,
-  updateAgentUI,
   updateBulkArchiveButton,
 } from '../agentViews.js';
 import {
@@ -36,7 +35,6 @@ import {
 import {
   setupAgentModal,
   setupAssignTaskModal,
-  setupAvatarPicker,
   setupConversationViewer,
   setupNicknameEdit,
   setupTaskReportModal,
@@ -130,7 +128,6 @@ function initModalRuntime() {
   setupNicknameEdit();
   setupAgentModal(openTerminalForAgent);
   setupAssignTaskModal();
-  setupAvatarPicker(updateAgentUI);
   setupConversationViewer(resumeRegisteredSession);
   setupTaskReportModal();
   setupTeamFormationModal();

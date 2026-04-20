@@ -4,6 +4,7 @@ import {
   getProviderDefinitions,
 } from '../providerCatalog.js';
 import styles from '../styles/modals.module.scss';
+import { AvatarPickerModal } from './avatarPickerModal.js';
 
 function ProviderButtons(): ReactElement {
   return (
@@ -143,14 +144,7 @@ export function DashboardModals(): ReactElement {
         </div>
       </div>
 
-      <div className="modal-overlay" id="avatarPickerModal" style={{ display: 'none' }} tabIndex={-1}>
-        <div className="modal-content avatar-picker-modal">
-          <div className="modal-header">Change Avatar</div>
-          <div className="avatar-picker-tabs" id="avatarPickerTabs" />
-          <div className="avatar-picker-grid" id="avatarPickerGrid" />
-          <div className="modal-actions"><button type="button" className="btn-secondary" id="cancelAvatarBtn">Cancel</button></div>
-        </div>
-      </div>
+      <AvatarPickerModal />
       <div className="modal-overlay" id="taskReportModal" style={{ display: 'none' }}>
         <div className="modal-content task-report-modal">
           <div className="modal-header"><span id="taskReportTitle">Task Report</span><button className="conv-modal-close" id="closeTaskReportBtn">&times;</button></div>

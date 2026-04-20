@@ -196,6 +196,8 @@
   border: 2px solid var(--color-border);
   border-radius: 6px;
   background-color: var(--color-bg-dim);
+  background-repeat: no-repeat;
+  padding: 0;
   transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
   flex-shrink: 0;
 }

@@ -13,9 +13,9 @@ describe('dashboard module imports', () => {
     delete global.document;
   });
 
-  test('avatar picker resolves the shared office module', () => {
-    const { setupAvatarPicker } = require('../src/client/dashboard/modals/avatarPicker.ts');
+  test('avatar picker modal resolves the shared office module', () => {
+    const { AvatarPickerModal } = require('../src/client/dashboard/react/avatarPickerModal.tsx');
 
-    expect(typeof setupAvatarPicker).toBe('function');
+    expect(typeof AvatarPickerModal).toBe('function');
   });
 });

@@ -29,6 +29,7 @@ This file tracks client-side work that is planned, discovered, blocked, or compl
 
 ## Done
 
+- [x] Move the avatar picker modal from `src/client/dashboard/modals/avatarPicker.ts` DOM binding into React-owned state and handlers in `src/client/dashboard/react/avatarPickerModal.tsx`.
 - [x] Move dashboard PiP and Overlay button ownership from DOM event binding in `src/client/dashboard/app/windowControls.ts` to React-rendered handlers in `src/client/dashboard/root/officeView.tsx`.
 - [x] Fix the overlay renderer so shared avatar/sprite JSON stays bundled as browser code, preload avatar loading uses `assets/shared/avatars.json`, and the overlay page no longer pulls Pretendard from jsdelivr.
 - [x] Replace ad hoc dashboard modal globals with a typed modal registry and move the terminal PowerShell-policy banner/profile launcher surfaces into React-owned state.
