@@ -7,6 +7,7 @@ import {
   state,
 } from './shared.js';
 import { OFFICE, officeCharacters, officeRenderer } from '../office/index.js';
+import { dashboardModalRegistry } from './modals/registry.js';
 
 function getPopoverEl(): HTMLDivElement | null {
   return document.getElementById('officePopover') as HTMLDivElement | null;
@@ -249,11 +250,11 @@ export function setupOfficeClickHandler(openTerminalForAgent: (agentId: string, 
       // If the character has a report bubble, open the report modal instead of popover
       if (character.bubble && character.bubble.isReport) {
         if (character.bubble.taskId) {
-          const openReport = (globalThis as any).openTaskReportModal;
+          const openReport = dashboardModalRegistry.openTaskReportModal;
           if (openReport) { openReport(character.bubble.taskId); return; }
         }
         if (character.bubble.teamId) {
-          const openTeamReport = (globalThis as any).openTeamReportModal;
+          const openTeamReport = dashboardModalRegistry.openTeamReportModal;
           if (openTeamReport) { openTeamReport(character.bubble.teamId); return; }
         }
       }

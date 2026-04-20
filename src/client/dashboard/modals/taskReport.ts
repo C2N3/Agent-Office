@@ -1,5 +1,6 @@
 
 import { DEFAULT_PROVIDER_ID, normalizeProvider } from '../providerCatalog.js';
+import { dashboardModalRegistry } from './registry.js';
 
 function escapeHtml(str) {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -228,5 +229,5 @@ export function setupTaskReportModal() {
     }
   });
 
-  (globalThis as any).openTaskReportModal = openTaskReport;
+  dashboardModalRegistry.openTaskReportModal = openTaskReport;
 }

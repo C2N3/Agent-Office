@@ -1,6 +1,7 @@
 
 import { getDashboardAPI } from '../shared.js';
 import { getProviderModels, normalizeProvider } from '../providerCatalog.js';
+import { dashboardModalRegistry } from './registry.js';
 
 export function setupAssignTaskModal() {
   const modal = document.getElementById('assignTaskModal');
@@ -126,7 +127,7 @@ export function setupAssignTaskModal() {
     }
   });
 
-  (globalThis as any).openAssignTaskModal = function (agent: any) {
+  dashboardModalRegistry.openAssignTaskModal = function (agent) {
     currentAgent = agent;
     const provider = resolveAgentProvider(agent);
     (form as HTMLFormElement).reset();

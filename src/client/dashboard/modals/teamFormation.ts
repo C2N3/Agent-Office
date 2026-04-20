@@ -1,5 +1,6 @@
 
 import { state, getDashboardAPI } from '../shared.js';
+import { dashboardModalRegistry } from './registry.js';
 
 export function setupTeamFormationModal() {
   const modal = document.getElementById('teamFormationModal');
@@ -118,5 +119,5 @@ export function setupTeamFormationModal() {
     }
   });
 
-  (globalThis as any).openTeamFormationModal = openTeamFormation;
+  dashboardModalRegistry.openTeamFormationModal = openTeamFormation;
 }

@@ -8,6 +8,7 @@ import {
 } from '../shared.js';
 import { officeCharacters } from '../../office/index.js';
 import { syncCentralAgentUpdate } from '../centralAgents/index.js';
+import { dashboardModalRegistry } from './registry.js';
 
 export function setupAvatarPicker(updateAgentUI) {
   const modal = document.getElementById('avatarPickerModal');
@@ -146,5 +147,5 @@ export function setupAvatarPicker(updateAgentUI) {
     requestAnimationFrame(() => modal.focus());
   }
 
-  (globalThis as any).openAvatarPickerModal = openAvatarPickerModal;
+  dashboardModalRegistry.openAvatarPickerModal = openAvatarPickerModal;
 }

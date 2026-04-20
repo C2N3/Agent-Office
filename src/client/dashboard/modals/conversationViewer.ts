@@ -1,5 +1,6 @@
 
 import { getDashboardAPI } from '../shared.js';
+import { dashboardModalRegistry } from './registry.js';
 
 export function setupConversationViewer(resumeRegisteredSession) {
   const overlay = document.createElement('div');
@@ -210,5 +211,6 @@ export function setupConversationViewer(resumeRegisteredSession) {
     }
   }
 
+  dashboardModalRegistry.openSessionHistory = openSessionHistory;
   globalThis.openSessionHistory = openSessionHistory;
 }

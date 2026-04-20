@@ -1,4 +1,6 @@
 
+import { dashboardModalRegistry } from './registry.js';
+
 function escapeHtml(str) {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
@@ -120,5 +122,5 @@ export function setupTeamReportModal() {
     finally { rejectBtn.disabled = false; rejectBtn.textContent = 'Reject'; }
   });
 
-  (globalThis as any).openTeamReportModal = openTeamReport;
+  dashboardModalRegistry.openTeamReportModal = openTeamReport;
 }

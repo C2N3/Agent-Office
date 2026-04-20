@@ -3,20 +3,21 @@ import { renderArchiveView } from './activityViews.js';
 import { officeRenderer } from '../office/index.js';
 import { syncCentralAgentRemoval } from './centralAgents/index.js';
 import { notifyDashboardStore } from './state/store.js';
+import { dashboardModalRegistry } from './modals/registry.js';
 
 export function openAgentHistory(historyId: string, agentName: string): void {
-  globalThis.openSessionHistory?.(historyId, agentName || 'Agent');
+  dashboardModalRegistry.openSessionHistory?.(historyId, agentName || 'Agent');
 }
 
 export function assignTaskToAgent(agentId: string): void {
   const agent = state.agents.get(agentId);
   if (agent) {
-    (globalThis as any).openAssignTaskModal?.(agent);
+    dashboardModalRegistry.openAssignTaskModal?.(agent);
   }
 }
 
 export function formTeamForAgent(agentId: string, registryId: string): void {
-  (globalThis as any).openTeamFormationModal?.(agentId, registryId);
+  dashboardModalRegistry.openTeamFormationModal?.(agentId, registryId);
 }
 
 export async function mergeWorkspaceAgent(registryId: string, branch: string): Promise<void> {
@@ -94,5 +95,5 @@ export function focusAgentCard(agentId: string | null): void {
 }
 
 export function changeAgentAvatar(agentId: string, registryId: string): void {
-  (globalThis as any).openAvatarPickerModal?.(agentId, registryId);
+  dashboardModalRegistry.openAvatarPickerModal?.(agentId, registryId);
 }
