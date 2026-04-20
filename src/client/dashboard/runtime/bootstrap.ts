@@ -38,7 +38,6 @@ import {
   setupConversationViewer,
   setupNicknameEdit,
   setupTaskReportModal,
-  setupTeamFormationModal,
   setupTeamReportModal,
 } from '../modals/index.js';
 import { installHoverTooltips } from '../../../shared/uiTooltip.js';
@@ -130,7 +129,6 @@ function initModalRuntime() {
   setupAssignTaskModal();
   setupConversationViewer(resumeRegisteredSession);
   setupTaskReportModal();
-  setupTeamFormationModal();
   setupTeamReportModal();
 }
 

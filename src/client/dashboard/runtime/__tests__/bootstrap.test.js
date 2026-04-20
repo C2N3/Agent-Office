@@ -39,7 +39,6 @@ jest.mock('../../modals/index.ts', () => ({
   setupConversationViewer: jest.fn(),
   setupNicknameEdit: jest.fn(),
   setupTaskReportModal: jest.fn(),
-  setupTeamFormationModal: jest.fn(),
   setupTeamReportModal: jest.fn(),
 }));
 

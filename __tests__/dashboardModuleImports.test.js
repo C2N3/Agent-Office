@@ -18,4 +18,10 @@ describe('dashboard module imports', () => {
 
     expect(typeof AvatarPickerModal).toBe('function');
   });
+
+  test('team formation modal resolves the shared dashboard module', () => {
+    const { TeamFormationModal } = require('../src/client/dashboard/react/teamFormationModal.tsx');
+
+    expect(typeof TeamFormationModal).toBe('function');
+  });
 });

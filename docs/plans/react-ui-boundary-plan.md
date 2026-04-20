@@ -26,6 +26,7 @@ The current branch has already landed a few of the high-value dashboard slices:
 - dashboard runtime bootstrapping is split from the React root mount so the imperative setup is easier to follow
 - modal launch wiring now goes through a typed registry instead of ad hoc `globalThis.open*Modal` handlers
 - the terminal PowerShell-policy banner and profile launcher menu now render from React-owned state while the xterm host stays imperative
+- the team formation modal now owns open/close, member selection, and submit state in React while the `/api/teams` request stays in a small imperative call
 
 That leaves the remaining work focused on shrinking the imperative DOM surface area around modals, auxiliary dashboard panels, overlay cards, and office-side adapters rather than proving the boundary from scratch.
 
@@ -40,6 +41,7 @@ Completed or mostly completed:
 - React-owned remote mode view with imperative polling/data adapter
 - React-owned heatmap and archive views with imperative fetch/refresh adapters
 - React-owned modal shells and typed modal registry
+- React-owned team formation and avatar picker modal behavior with imperative API calls kept behind small submit/update functions
 - React-owned terminal tab/profile/banner chrome while xterm hosts stay imperative
 - React-owned PiP and Overlay dashboard control events with window-state subscription kept in an adapter
 - React-owned overlay toolbar and context menu shell

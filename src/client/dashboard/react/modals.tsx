@@ -5,6 +5,7 @@ import {
 } from '../providerCatalog.js';
 import styles from '../styles/modals.module.scss';
 import { AvatarPickerModal } from './avatarPickerModal.js';
+import { TeamFormationModal } from './teamFormationModal.js';
 
 function ProviderButtons(): ReactElement {
   return (
@@ -162,18 +163,7 @@ export function DashboardModals(): ReactElement {
         </div>
       </div>
 
-      <div className="modal-overlay" id="teamFormationModal" style={{ display: 'none' }}>
-        <div className="modal-content create-agent-modal">
-          <div className="modal-header">Team Formation — Leader: <span id="teamLeaderName" /><button className="conv-modal-close" id="closeTeamFormationBtn">&times;</button></div>
-          <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <label className="modal-label">Team Goal<textarea id="teamGoalInput" className="modal-input modal-textarea" rows={3} placeholder="What should the team accomplish?" /></label>
-            <label className="modal-label">Select Members</label>
-            <div className="team-member-list" id="teamMemberList" />
-          </div>
-          <div className="modal-error" id="teamFormationError" />
-          <div className="modal-actions"><button type="button" className="btn-secondary" id="cancelTeamFormationBtn">Cancel</button><button type="button" className="btn-primary" id="startTeamBtn">Start Team</button></div>
-        </div>
-      </div>
+      <TeamFormationModal />
 
       <div className="modal-overlay" id="teamReportModal" style={{ display: 'none' }}>
         <div className="modal-content task-report-modal">
