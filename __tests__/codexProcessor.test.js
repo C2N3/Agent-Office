@@ -347,6 +347,42 @@ describe('codexProcessor', () => {
     });
 
     expect(agentManager.getAgent('thread-1234')).toBeNull();
+    expect(agentRegistry.findByProjectPath).toHaveBeenCalledTimes(1);
+    expect(debugLog.mock.calls.filter(([message]) => message.includes('Auto-create from'))).toHaveLength(0);
+    expect(debugLog.mock.calls.filter(([message]) => message.includes('SessionStart -> skipped unregistered session'))).toHaveLength(1);
+  });
+
+  test('session JSONL replay suppresses repeated events after an ignored session start', () => {
+    processor.processSessionEntry({
+      type: 'session_meta',
+      payload: {
+        id: 'thread-1234',
+        workspacePath: '/workspace/app',
+      },
+    });
+
+    processor.processSessionEntry({
+      type: 'response_item',
+      payload: {
+        type: 'function_call',
+        call_id: 'call-1',
+        name: 'exec_command',
+        arguments: '{"cmd":"npm test"}',
+      },
+    }, { sessionId: 'thread-1234' });
+
+    processor.processSessionEntry({
+      type: 'response_item',
+      payload: {
+        type: 'function_call_output',
+        call_id: 'call-1',
+      },
+    }, { sessionId: 'thread-1234' });
+
+    expect(agentManager.getAgent('thread-1234')).toBeNull();
+    expect(agentRegistry.findByProjectPath).toHaveBeenCalledTimes(1);
+    expect(debugLog.mock.calls.filter(([message]) => message.includes('Auto-create from'))).toHaveLength(0);
+    expect(debugLog.mock.calls.filter(([message]) => message.includes('SessionStart -> skipped unregistered session'))).toHaveLength(1);
   });
 
   test('session JSONL entries reconstruct state for codex desktop or cli sessions', () => {
