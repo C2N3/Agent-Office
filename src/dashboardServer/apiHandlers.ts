@@ -8,7 +8,7 @@ const { loadOfficeLayoutManifest, resolveOfficeLayoutAssetPath } = require('../o
   loadOfficeLayoutManifest: () => any;
   resolveOfficeLayoutAssetPath: (assetPath: string) => string | null;
 };
-import { MIME_TYPES, PROJECT_ROOT } from './constants.js';
+import { ASSET_ROOT, MIME_TYPES } from './constants.js';
 import { getClients, getRefs } from './context.js';
 import { calculateStats } from './stats.js';
 import { handleAgentApiRoute } from './agentHandlers.js';
@@ -134,7 +134,7 @@ function handleGetAppMeta(_req: RequestLike, res: ResponseLike): void {
 }
 
 function handleGetAvatars(_req: RequestLike, res: ResponseLike): void {
-  const charDir = path.join(PROJECT_ROOT, 'public', 'characters');
+  const charDir = path.join(ASSET_ROOT, 'characters');
   const imgRegex = /\.(webp|png|jpg|jpeg|gif)$/i;
   try {
     const entries = fs.readdirSync(charDir, { withFileTypes: true });

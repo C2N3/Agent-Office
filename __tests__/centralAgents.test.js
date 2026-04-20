@@ -73,7 +73,7 @@ describe('centralAgents', () => {
       throw new Error(`Unexpected fetch: ${url}`);
     });
 
-    const api = require('../public/dashboard/centralAgents/api.ts');
+    const api = require('../src/client/dashboard/centralAgents/api.ts');
 
     await expect(api.fetchCentralDashboardAgents()).resolves.toEqual([]);
     await expect(api.syncCentralAgentRecord({ id: 'agent-1', name: 'Local' })).resolves.toBeUndefined();
@@ -103,7 +103,7 @@ describe('centralAgents', () => {
       throw new Error(`Unexpected fetch: ${url}`);
     });
 
-    const api = require('../public/dashboard/centralAgents/api.ts');
+    const api = require('../src/client/dashboard/centralAgents/api.ts');
     await api.syncLocalAgentsToCentral();
 
     const bulkUpsertCall = global.fetch.mock.calls.find(([url]) => String(url) === '/api/server/agents/bulk-upsert');
@@ -117,7 +117,7 @@ describe('centralAgents', () => {
   });
 
   test('mergeCentralAgent keeps live runtime fields while central display fields win', () => {
-    const { state } = require('../public/dashboard/shared.ts');
+    const { state } = require('../src/client/dashboard/shared.ts');
     state.agents.set('agent-1', {
       id: 'agent-1',
       name: 'Local Name',
@@ -132,7 +132,7 @@ describe('centralAgents', () => {
       sessionId: 'session-1',
     });
 
-    const { mergeCentralAgent } = require('../public/dashboard/centralAgents/model.ts');
+    const { mergeCentralAgent } = require('../src/client/dashboard/centralAgents/model.ts');
     const merged = mergeCentralAgent({
       id: 'agent-1',
       name: 'Central Name',
@@ -163,7 +163,7 @@ describe('centralAgents', () => {
       throw new Error(`Unexpected fetch: ${url}`);
     });
 
-    const { state } = require('../public/dashboard/shared.ts');
+    const { state } = require('../src/client/dashboard/shared.ts');
     state.agents.set('central-1', {
       id: 'central-1',
       status: 'offline',
@@ -175,7 +175,7 @@ describe('centralAgents', () => {
       metadata: { source: 'local' },
     });
 
-    const sync = require('../public/dashboard/centralAgents/index.ts');
+    const sync = require('../src/client/dashboard/centralAgents/index.ts');
     const upsertAgent = jest.fn();
     const removeAgent = jest.fn();
 
@@ -220,7 +220,7 @@ describe('centralAgents', () => {
       throw new Error(`Unexpected fetch: ${url}`);
     });
 
-    const { state } = require('../public/dashboard/shared.ts');
+    const { state } = require('../src/client/dashboard/shared.ts');
     state.agents.set('agent-1', {
       id: 'agent-1',
       name: 'Local Name',
@@ -232,7 +232,7 @@ describe('centralAgents', () => {
       provider: 'claude',
     });
 
-    const sync = require('../public/dashboard/centralAgents/index.ts');
+    const sync = require('../src/client/dashboard/centralAgents/index.ts');
     const upsertAgent = jest.fn();
     const removeAgent = jest.fn();
 
@@ -271,14 +271,14 @@ describe('centralAgents', () => {
       throw new Error(`Unexpected fetch: ${url}`);
     });
 
-    const { state } = require('../public/dashboard/shared.ts');
+    const { state } = require('../src/client/dashboard/shared.ts');
     state.agents.set('central-stale', {
       id: 'central-stale',
       status: 'offline',
       metadata: { source: 'central' },
     });
 
-    const sync = require('../public/dashboard/centralAgents/index.ts');
+    const sync = require('../src/client/dashboard/centralAgents/index.ts');
     const upsertAgent = jest.fn();
     const removeAgent = jest.fn();
 
@@ -317,7 +317,7 @@ describe('centralAgents', () => {
       throw new Error(`Unexpected fetch: ${url}`);
     });
 
-    const sync = require('../public/dashboard/centralAgents/index.ts');
+    const sync = require('../src/client/dashboard/centralAgents/index.ts');
     const upsertAgent = jest.fn();
     const removeAgent = jest.fn();
 

@@ -77,12 +77,12 @@ let codexEventServer = null;
 let enabledProviders = [];
 let centralWorkerConnector = null;
 
-// Scan public/characters/ subfolders and update avatars.json.
+// Scan assets/characters/ subfolders and update avatars.json.
 // Preserves the existing file order — new files are appended to the end
 // so that previously assigned avatarIndex values remain valid.
 function syncAvatarFiles() {
-  const charDir = path.join(__dirname, '..', 'public', 'characters');
-  const jsonPath = path.join(__dirname, '..', 'public', 'shared', 'avatars.json');
+  const charDir = path.join(__dirname, '..', 'assets', 'characters');
+  const jsonPath = path.join(__dirname, '..', 'assets', 'shared', 'avatars.json');
   const imgRegex = /\.(webp|png|jpg|jpeg|gif)$/i;
   try {
     // Load existing JSON to preserve current order

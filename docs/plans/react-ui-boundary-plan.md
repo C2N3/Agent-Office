@@ -22,19 +22,19 @@ Do not migrate the office renderer core to React. If React is introduced around 
 
 These areas are stateful UI composition work and currently pay the normal imperative-DOM cost of manual rendering, listener wiring, and cross-module state updates.
 
-- `public/dashboard/app.ts`
-- `public/dashboard/agentViews.ts`
-- `public/dashboard/activityViews.ts`
-- `public/dashboard/remoteView.ts`
-- `public/dashboard/modalMarkup.ts`
-- `public/dashboard/modals/*`
-- `public/dashboard/terminal/ui.ts`
-- `public/dashboard/terminal/profiles.ts`
-- `public/dashboard/agentCard/markup.ts`
-- `public/dashboard/connectionStatus.ts`
-- `public/dashboard/agentPanelEvents.ts`
-- `public/dashboard/office.ts`
-- `public/uiTooltip.ts`
+- `src/client/dashboard/app.ts`
+- `src/client/dashboard/agentViews.ts`
+- `src/client/dashboard/activityViews.ts`
+- `src/client/dashboard/remote/polling.ts`
+- `src/client/dashboard/modalMarkup.ts`
+- `src/client/dashboard/modals/*`
+- `src/client/dashboard/terminal/ui.ts`
+- `src/client/dashboard/terminal/profiles.ts`
+- `src/client/dashboard/agentCard/markup.ts`
+- `src/client/dashboard/connectionStatus.ts`
+- `src/client/dashboard/agentPanelEvents.ts`
+- `src/client/dashboard/office.ts`
+- `src/shared/uiTooltip.ts`
 - `src/renderer/init.ts`
 - `src/renderer/agentGrid.ts`
 - `src/renderer/agentCard.ts`
@@ -51,16 +51,16 @@ Why:
 
 These areas are rendering/runtime infrastructure, not typical form/list/modal UI.
 
-- `public/office/officeRenderer.ts`
-- `public/office/officeRendererEffects.ts`
-- `public/office/officeSprite.ts`
-- `public/office/officePathfinder.ts`
-- `public/office/officeLayers.ts`
-- `public/office/officeCoords.ts`
-- `public/office/officeConfig.ts`
-- `public/office/character/*`
-- `public/office/renderer/camera.ts`
-- `public/office/floorManager.ts`
+- `src/client/office/officeRenderer.ts`
+- `src/client/office/officeRendererEffects.ts`
+- `src/client/office/officeSprite.ts`
+- `src/client/office/officePathfinder.ts`
+- `src/client/office/officeLayers.ts`
+- `src/client/office/officeCoords.ts`
+- `src/client/office/officeConfig.ts`
+- `src/client/office/character/*`
+- `src/client/office/renderer/camera.ts`
+- `src/client/office/floorManager.ts`
 - `src/renderer/animationManager.ts`
 - `src/renderer/agentGridResize.ts`
 
@@ -74,11 +74,11 @@ Why:
 
 These files should stay as adapters between React UI and the imperative runtime.
 
-- `public/office/officeInit.ts`
-- `public/office/index.ts`
-- `public/dashboard/shared.ts`
-- `public/dashboard/serverConnection.ts`
-- `public/dashboard/centralAgents/*`
+- `src/client/office/officeInit.ts`
+- `src/client/office/index.ts`
+- `src/client/dashboard/shared.ts`
+- `src/client/dashboard/serverConnection.ts`
+- `src/client/dashboard/centralAgents/*`
 - `src/preload.ts`
 - `src/dashboardPreload.ts`
 
@@ -132,9 +132,9 @@ React components should not reach deep into sprite, pathfinding, or renderer int
 
 Move the highest-churn DOM UI into React first:
 
-- floor tabs and floor manager UI from `public/dashboard/app.ts`
-- remote mode panel from `public/dashboard/remoteView.ts`
-- modal rendering from `public/dashboard/modalMarkup.ts` and `public/dashboard/modals/*`
+- floor tabs and floor manager UI from `src/client/dashboard/app.ts`
+- remote mode panel from `src/client/dashboard/remote/polling.ts`
+- modal rendering from `src/client/dashboard/modalMarkup.ts` and `src/client/dashboard/modals/*`
 - connection badges and simple status widgets
 
 Expected benefit:
@@ -149,9 +149,9 @@ Move list/card composition into React while keeping data subscription outside or
 
 Primary candidates:
 
-- `public/dashboard/agentViews.ts`
-- `public/dashboard/agentCard/markup.ts`
-- pieces of `public/dashboard/app.ts` that orchestrate visible panel state
+- `src/client/dashboard/agentViews.ts`
+- `src/client/dashboard/agentCard/markup.ts`
+- pieces of `src/client/dashboard/app.ts` that orchestrate visible panel state
 
 Expected benefit:
 
@@ -186,7 +186,7 @@ Only if needed, add React around the office view for surrounding controls:
 - office-side filters
 - side panels or inspector surfaces
 
-Do not rewrite `public/office/officeRenderer.ts` or related runtime modules into React components.
+Do not rewrite `src/client/office/officeRenderer.ts` or related runtime modules into React components.
 
 ## Non-Goals
 
@@ -209,8 +209,8 @@ Start with the dashboard remote/settings surface, because it is DOM-heavy, state
 
 The first migration slice should include:
 
-- `public/dashboard/remoteView.ts`
-- its render helpers under `public/dashboard/remoteView/*`
-- any minimal host container needed from `public/dashboard/app.ts`
+- `src/client/dashboard/remote/polling.ts`
+- its render helpers under `src/client/dashboard/remote/*`
+- any minimal host container needed from `src/client/dashboard/app.ts`
 
 This gives the project a real React foothold without forcing the office runtime to move.

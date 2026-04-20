@@ -1,7 +1,7 @@
 describe('dashboard agent filters', () => {
   function loadFiltersWithFloorManager(floorManager) {
     jest.resetModules();
-    jest.doMock('../public/office/floorManager.ts', () => ({ floorManager }));
+    jest.doMock('../src/client/office/floorManager.ts', () => ({ floorManager }));
 
     global.localStorage = {
       getItem: jest.fn(() => null),
@@ -11,11 +11,11 @@ describe('dashboard agent filters', () => {
       getElementById: jest.fn(() => null),
     };
 
-    return require('../public/dashboard/agentFilters.ts');
+    return require('../src/client/dashboard/agentFilters.ts');
   }
 
   afterEach(() => {
-    jest.dontMock('../public/office/floorManager.ts');
+    jest.dontMock('../src/client/office/floorManager.ts');
     delete global.localStorage;
     delete global.document;
   });

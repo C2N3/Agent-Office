@@ -3,8 +3,8 @@
  */
 
 // Single source of truth
-import AVATAR_FILES_DATA from '../../public/shared/avatars.json' with { type: 'json' };
-import SPRITE_DATA from '../../public/shared/sprite-frames.json' with { type: 'json' };
+import AVATAR_FILES_DATA from '../../assets/shared/avatars.json' with { type: 'json' };
+import SPRITE_DATA from '../../assets/shared/sprite-frames.json' with { type: 'json' };
 
 // --- Sprite sheet settings ---
 // srcWidth/srcHeight = actual pixel size in the image file (from JSON)
@@ -45,7 +45,7 @@ export const lastAgents = [];
 export const agentStates = new Map();
 
 // --- Avatar management ---
-// Loaded from public/shared/avatars.json (single source of truth)
+// Loaded from assets/shared/avatars.json (single source of truth)
 export const AVATAR_FILES = (AVATAR_FILES_DATA.allFiles || AVATAR_FILES_DATA) as string[];
 export const agentAvatars = new Map();
 

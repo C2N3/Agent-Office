@@ -24,6 +24,7 @@ This file tracks client-side work that is planned, discovered, blocked, or compl
 
 ## Done
 
+- [x] Split dashboard, pip, and overlay browser code into `src/client`, move static assets to `assets/`, and put the HTTP-served browser surfaces on Vite while keeping `src/renderer` on the `dist` + `tsgo` runtime path.
 - [x] Make the sidebar `Cloudflare` tab available in production builds instead of hiding it behind the dashboard dev-mode gate.
 - [x] Make Host worker connections prefer the stored owner room secret over any legacy worker token so public Host mode connects after `Start Host` without exposing token UI.
 - [x] Make Host start from just the server URL by auto-enabling the public room and storing the owner secret, and add localhost invite deep-links that auto-join Guest mode from the URL fragment.

@@ -10,7 +10,7 @@ import { addAgent, updateAgent, removeAgent, cleanupAgents, updateGridLayout, sh
 import { setupKeyboardShortcuts, setupContextMenu } from './uiComponents.js';
 import { createErrorUI } from './errorUI.js';
 import { OverlayShell } from './overlayShell.js';
-import { installHoverTooltips } from '../../public/uiTooltip.js';
+import { installHoverTooltips } from '../shared/uiTooltip.js';
 
 let availableAvatars = [];
 let idleAvatar = 'avatar_0.webp';

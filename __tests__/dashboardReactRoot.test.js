@@ -25,7 +25,7 @@ describe('dashboard react-owned surfaces', () => {
   });
 
   test('setDashboardView normalizes and persists the current view', () => {
-    const { getDashboardSnapshot, setDashboardView } = require('../public/dashboard/state/store.ts');
+    const { getDashboardSnapshot, setDashboardView } = require('../src/client/dashboard/state/store.ts');
 
     setDashboardView('REMOTE');
 
@@ -34,7 +34,7 @@ describe('dashboard react-owned surfaces', () => {
   });
 
   test('AgentCard renders callback-owned actions and timeline data', () => {
-    const { AgentCard } = require('../public/dashboard/agentCard/view.tsx');
+    const { AgentCard } = require('../src/client/dashboard/agentCard/view.tsx');
 
     const markup = renderToStaticMarkup(
       React.createElement(AgentCard, {
@@ -80,7 +80,7 @@ describe('dashboard react-owned surfaces', () => {
   });
 
   test('TerminalTabs renders the active tab chrome in React', () => {
-    const { TerminalTabs } = require('../public/dashboard/terminal/chrome.tsx');
+    const { TerminalTabs } = require('../src/client/dashboard/terminal/chrome.tsx');
 
     const markup = renderToStaticMarkup(
       React.createElement(TerminalTabs, {
@@ -101,7 +101,7 @@ describe('dashboard react-owned surfaces', () => {
   });
 
   test('DashboardModals renders provider options from typed provider data', () => {
-    const { DashboardModals } = require('../public/dashboard/react/modals.tsx');
+    const { DashboardModals } = require('../src/client/dashboard/react/modals.tsx');
 
     const markup = renderToStaticMarkup(React.createElement(DashboardModals));
 

@@ -1,4 +1,4 @@
-jest.mock('../public/dashboard/serverConnection.ts', () => ({
+jest.mock('../src/client/dashboard/serverConnection.ts', () => ({
   fetchCentralServerConfig: jest.fn(),
   fetchCentralServerSnapshot: jest.fn(),
   saveCentralServerConfig: jest.fn(),
@@ -32,9 +32,9 @@ function createRoomAccess(overrides = {}) {
 }
 
 function renderRemotePanelMarkup() {
-  const { deriveRemoteViewModel } = require('../public/dashboard/remote/model.ts');
-  const { getRemoteViewState } = require('../public/dashboard/remote/store.ts');
-  const { RemotePanel } = require('../public/dashboard/react/remotePanel.tsx');
+  const { deriveRemoteViewModel } = require('../src/client/dashboard/remote/model.ts');
+  const { getRemoteViewState } = require('../src/client/dashboard/remote/store.ts');
+  const { RemotePanel } = require('../src/client/dashboard/react/remotePanel.tsx');
 
   return renderToStaticMarkup(
     React.createElement(RemotePanel, {
@@ -56,18 +56,18 @@ function renderRemotePanelMarkup() {
 }
 
 function loadRemoteModules() {
-  const store = require('../public/dashboard/remote/store.ts');
-  const controller = require('../public/dashboard/remote/controller.ts');
-  const actions = require('../public/dashboard/remote/actions.ts');
-  const remoteView = require('../public/dashboard/remoteView.ts');
-  return { ...store, ...controller, ...actions, ...remoteView };
+  const store = require('../src/client/dashboard/remote/store.ts');
+  const controller = require('../src/client/dashboard/remote/controller.ts');
+  const actions = require('../src/client/dashboard/remote/actions.ts');
+  const polling = require('../src/client/dashboard/remote/polling.ts');
+  return { ...store, ...controller, ...actions, ...polling };
 }
 
 describe('remote view react boundary', () => {
   beforeEach(() => {
     jest.resetModules();
     jest.clearAllMocks();
-    serverConnection = require('../public/dashboard/serverConnection.ts');
+    serverConnection = require('../src/client/dashboard/serverConnection.ts');
 
     global.localStorage = {
       getItem: jest.fn(() => null),

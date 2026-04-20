@@ -5,6 +5,7 @@
 import { stateConfig, agentStates, agentAvatars, AVATAR_FILES, avatarFromAgentId } from './config.js';
 import { playAnimation } from './animationManager.js';
 import { createSatelliteTray } from './agentCard/satellites.js';
+import { toRelativeAssetPath } from '../shared/assetPaths.js';
 
 export { createMiniAvatar } from './agentCard/satellites.js';
 
@@ -55,7 +56,7 @@ export function updateAgentState(agentId, container, agentOrState) {
       const currentCached = agentAvatars.get(agentId);
       if (currentCached !== newAvatarFile) {
         agentAvatars.set(agentId, newAvatarFile);
-        character.style.backgroundImage = `url('./public/characters/${newAvatarFile}')`;
+        character.style.backgroundImage = `url('${toRelativeAssetPath(`characters/${newAvatarFile}`)}')`;
       }
     }
   }
@@ -167,7 +168,7 @@ export function createAgentCard(agent) {
   }
 
   if (assignedAvatar) {
-    character.style.backgroundImage = `url('./public/characters/${assignedAvatar}')`;
+    character.style.backgroundImage = `url('${toRelativeAssetPath(`characters/${assignedAvatar}`)}')`;
   }
 
   // Card type class (for CSS color distinction only)

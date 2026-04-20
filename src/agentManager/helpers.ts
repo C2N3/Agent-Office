@@ -1,6 +1,6 @@
 const path = require('path');
 const { formatSlugToDisplayName, sanitizeProjectPath } = require('../utils');
-const AVATAR_FILES_DATA = require('../../public/shared/avatars.json');
+const AVATAR_FILES_DATA = require('../../assets/shared/avatars.json');
 const AVATAR_FILES = AVATAR_FILES_DATA.allFiles || AVATAR_FILES_DATA;
 const AVATAR_COUNT = AVATAR_FILES.length;
 

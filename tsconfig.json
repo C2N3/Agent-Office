@@ -24,9 +24,6 @@
     "src/**/*.tsx",
     "src/**/*.d.ts",
     "src/**/*.js",
-    "public/**/*.ts",
-    "public/**/*.tsx",
-    "public/**/*.js",
     "__tests__/**/*.ts",
     "__tests__/**/*.tsx",
     "__tests__/**/*.js",
@@ -40,6 +37,8 @@
   "exclude": [
     "node_modules",
     "release",
-    "dist"
+    "dist",
+    "src/client",
+    "vite.config.ts"
   ]
 }

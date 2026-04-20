@@ -1,5 +1,5 @@
-@import url("./public/styles/base.css");
-@import url("./public/styles/agent-cards.css");
-@import url("./public/styles/groups.css");
-@import url("./public/styles/errors.css");
-@import url("./public/styles/responsive.css");
+@import url("./src/renderer/styles/base.css");
+@import url("./src/renderer/styles/agent-cards.css");
+@import url("./src/renderer/styles/groups.css");
+@import url("./src/renderer/styles/errors.css");
+@import url("./src/renderer/styles/responsive.css");

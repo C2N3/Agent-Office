@@ -6,6 +6,7 @@ import { ANIM_SEQUENCES, lastAgents } from './config.js';
 import { updateAgentState, createAgentCard } from './agentCard.js';
 import { drawFrameOn, requestDynamicResize } from './agentGridResize.js';
 import { updateGridLayoutElements } from './agentGrid/layout.js';
+import { toRelativeAssetPath } from '../shared/assetPaths.js';
 import {
   addSatelliteAvatar,
   cleanupAgentState,
@@ -197,7 +198,7 @@ export function showIdleAvatar(avatarFile) {
   if (!idleContainer) return;
   idleContainer.style.display = 'flex';
   if (idleCharacter && avatarFile) {
-    idleCharacter.style.backgroundImage = `url('./public/characters/${avatarFile}')`;
+    idleCharacter.style.backgroundImage = `url('${toRelativeAssetPath(`characters/${avatarFile}`)}')`;
   }
   startIdleAnimation();
 }
