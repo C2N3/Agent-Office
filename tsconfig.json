@@ -39,6 +39,7 @@
     "release",
     "dist",
     "src/client",
+    "src/renderer",
     "vite.config.ts"
   ]
 }

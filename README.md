@@ -45,10 +45,10 @@ npm start
 
 - Production runtime output lives in `dist/`
 - `npm start` and `npm run dashboard` automatically run `npm run build:dist` first
-- `npm run dev` starts Vite for `dashboard`/`pip`/`overlay`, watches `src/`, `assets/`, HTML/CSS, and tsconfig files, rebuilds `dist/` for non-client changes, and restarts Electron when needed
+- `npm run dev` starts Vite for `index`/`dashboard`/`pip`/`overlay`, watches `src/`, `assets/`, HTML/CSS, and tsconfig files, rebuilds `dist/` for non-browser changes, and restarts Electron when needed
 - If you run a `node dist/...` entrypoint directly, build once first with `npm run build:dist`
 - TypeScript uses the TypeScript 7 preview toolchain through `tsgo`, not plain `tsc`
-- `src/client/` is the authored browser root for dashboard, pip, overlay, and office UI modules; `src/renderer/` stays on the file-loaded `dist/` path
+- `src/client/` and `src/renderer/` are the authored browser roots; Electron main-process code, the dashboard server, and preload code stay on the `dist/` + `tsgo` runtime path
 
 ## Providers
 
@@ -101,7 +101,7 @@ Run these from the client project directory.
 | `npm run build:types`       | `npm run build:dist`                                                                                      | Alias for the `dist/` TypeScript build                                         |
 | `npm run prestart`          | `npm run build:dist`                                                                                      | Build `dist/`; runs automatically before `npm start`                           |
 | `npm start`                 | `node scripts/run-electron.js`                                                                            | Launch the Electron app after `prestart` builds `dist/`                        |
-| `npm run dev`               | `node scripts/dev-runtime.js`                                                                             | Run Vite for dashboard, pip, and overlay; rebuild `dist/` for non-client changes; restart Electron when needed |
+| `npm run dev`               | `node scripts/dev-runtime.js`                                                                             | Run Vite for index, dashboard, pip, and overlay; rebuild `dist/` for non-browser changes; restart Electron when needed |
 | `npm run typecheck`         | `node node_modules/@typescript/native-preview/bin/tsgo.js -p tsconfig.json --noEmit && node node_modules/@typescript/native-preview/bin/tsgo.js -p tsconfig.client.json --noEmit` | Run no-emit TypeScript checks for the runtime and Vite client configs          |
 | `npm test`                  | `jest`                                                                                                    | Run Jest tests against source TypeScript                                       |
 | `npm run test:coverage`     | `jest --coverage`                                                                                         | Run Jest with coverage output                                                  |

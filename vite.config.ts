@@ -78,8 +78,9 @@ function browserContractPlugin(): Plugin {
   };
 }
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   appType: 'mpa',
+  base: command === 'build' ? './' : '/',
   publicDir: false,
   plugins: [
     react(),
@@ -98,6 +99,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         dashboard: path.join(projectRoot, 'dashboard.html'),
+        index: path.join(projectRoot, 'index.html'),
         overlay: path.join(projectRoot, 'overlay.html'),
         pip: path.join(projectRoot, 'pip.html'),
       },
@@ -116,4 +118,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));

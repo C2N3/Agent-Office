@@ -120,4 +120,23 @@ describe('windowing core', () => {
       delete process.env.DASHBOARD_DEV_SERVER_URL;
     }
   });
+
+  test('loads the main renderer from the Vite dev server in dev mode', () => {
+    BrowserWindow.mockImplementation(createBrowserWindowMock);
+    const originalArgv = process.argv;
+    process.argv = [...process.argv, '--dev'];
+    process.env.DASHBOARD_DEV_SERVER_URL = 'http://127.0.0.1:3001';
+
+    try {
+      const windowManager = createWindowManager();
+      windowManager.createWindow();
+
+      const mainWindow = BrowserWindow.mock.results[0].value;
+      expect(mainWindow.loadURL).toHaveBeenCalledWith('http://127.0.0.1:3001/index.html');
+      expect(mainWindow.loadFile).not.toHaveBeenCalled();
+    } finally {
+      process.argv = originalArgv;
+      delete process.env.DASHBOARD_DEV_SERVER_URL;
+    }
+  });
 });

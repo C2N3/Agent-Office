@@ -3,7 +3,6 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
-const esbuild = require('esbuild');
 const { createRecursiveWatcher } = require('./watch-utils');
 
 const projectRoot = path.join(__dirname, '..');
@@ -25,13 +24,8 @@ const watchTargets = [
   path.join(projectRoot, 'tsconfig.client.json'),
   path.join(projectRoot, 'vite.config.ts'),
 ];
-const rendererEntryPoints = [
-  path.join(projectRoot, 'src', 'renderer', 'init.ts'),
-];
 const runtimeFiles = [
-  'index.html',
   'remote.html',
-  'styles.css',
 ];
 
 let buildRunning = false;
@@ -68,9 +62,11 @@ function cleanBrowserOutputs() {
     path.join(distRoot, 'src', 'office'),
     path.join(distRoot, 'src', 'renderer'),
     path.join(distRoot, 'assets'),
+    path.join(distRoot, 'index.html'),
     path.join(distRoot, 'dashboard.html'),
     path.join(distRoot, 'overlay.html'),
     path.join(distRoot, 'pip.html'),
+    path.join(distRoot, 'styles.css'),
   ];
 
   for (const targetPath of cleanupTargets) {
@@ -109,13 +105,6 @@ function copyAssetsToDist() {
   copyDirectory(assetsRoot, path.join(distRoot, 'assets'));
 }
 
-function copyRendererStylesToDist() {
-  copyDirectory(
-    path.join(srcRoot, 'renderer', 'styles'),
-    path.join(distRoot, 'src', 'renderer', 'styles'),
-  );
-}
-
 async function buildClientEntries() {
   try {
     const { build } = await import('vite');
@@ -128,28 +117,6 @@ async function buildClientEntries() {
     console.error('[build-types] Vite build failed:', error);
     return 1;
   }
-}
-
-async function buildRendererEntry() {
-  const result = await esbuild.build({
-    bundle: true,
-    entryPoints: rendererEntryPoints,
-    entryNames: '[dir]/[name]',
-    format: 'esm',
-    jsx: 'automatic',
-    legalComments: 'none',
-    loader: {
-      '.json': 'json',
-    },
-    logLevel: 'silent',
-    outbase: projectRoot,
-    outdir: distRoot,
-    platform: 'browser',
-    target: ['es2022'],
-    write: true,
-  });
-
-  return result.errors?.length ? 1 : 0;
 }
 
 async function buildOnce() {
@@ -180,16 +147,10 @@ async function buildOnce() {
   copyTargetsToDist();
   copyRuntimeFilesToDist();
   copyAssetsToDist();
-  copyRendererStylesToDist();
 
   const clientBuildStatus = await buildClientEntries();
   if (clientBuildStatus !== 0) {
     return clientBuildStatus;
-  }
-
-  const rendererBuildStatus = await buildRendererEntry();
-  if (rendererBuildStatus !== 0) {
-    return rendererBuildStatus;
   }
 
   return 0;

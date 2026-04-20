@@ -41,9 +41,9 @@ npm start
 
 > `npm install`을 실행하면 필요한 Claude Code hook이 `~/.claude/settings.json`에 자동 등록됩니다. Codex는 hook 등록이 아니라 session file/`exec --json` 경로를 사용합니다. Gemini는 CLI가 설치되어 있으면 실행 task provider로 사용할 수 있습니다.
 >
-> 현재 프로덕션 런타임 산출물은 `dist/` 기준입니다. `npm start`와 `npm run dashboard`는 실행 전에 자동으로 `npm run build:dist`를 호출합니다. `npm run dev`는 `dashboard`/`pip`/`overlay`에는 Vite를 붙이고, `src/`, `assets/`, HTML/CSS, tsconfig 변경 중 non-client 변경에 대해서만 `dist/`를 다시 빌드한 뒤 Electron을 자동 재시작합니다. `node dist/...` 경로를 직접 실행할 때는 먼저 `npm run build:dist`를 한 번 돌려 두세요.
+> 현재 프로덕션 런타임 산출물은 `dist/` 기준입니다. `npm start`와 `npm run dashboard`는 실행 전에 자동으로 `npm run build:dist`를 호출합니다. `npm run dev`는 `index`/`dashboard`/`pip`/`overlay`에는 Vite를 붙이고, `src/`, `assets/`, HTML/CSS, tsconfig 변경 중 브라우저 바깥 변경에 대해서만 `dist/`를 다시 빌드한 뒤 Electron을 자동 재시작합니다. `node dist/...` 경로를 직접 실행할 때는 먼저 `npm run build:dist`를 한 번 돌려 두세요.
 >
-> 브라우저 작성 코드는 `src/client/`에 두고, 메인 오버레이 렌더러 `src/renderer/`는 기존처럼 file-loaded `dist/` 경로를 유지합니다.
+> 브라우저 작성 코드는 `src/client/`와 `src/renderer/`에 두고, Electron main process, dashboard server, preload 코드는 기존처럼 `dist/` + `tsgo` 경로를 유지합니다.
 
 ## Providers
 
@@ -95,7 +95,7 @@ codex exec --json "summarize this repo" | node dist/src/codex-forward.js
 | `npm run build:types`       | `npm run build:dist`                                                                                      | `dist/` TypeScript 빌드의 alias입니다                                        |
 | `npm run prestart`          | `npm run build:dist`                                                                                      | `dist/`를 빌드합니다. `npm start` 전에 자동으로 실행됩니다                   |
 | `npm start`                 | `node scripts/run-electron.js`                                                                            | `prestart`가 `dist/`를 빌드한 뒤 Electron 앱을 실행합니다                    |
-| `npm run dev`               | `node scripts/dev-runtime.js`                                                                             | dashboard, pip, overlay에는 Vite를 띄우고 non-client 변경 시 `dist/`를 다시 빌드한 뒤 Electron을 자동 재시작합니다 |
+| `npm run dev`               | `node scripts/dev-runtime.js`                                                                             | index, dashboard, pip, overlay에는 Vite를 띄우고 브라우저 바깥 변경 시 `dist/`를 다시 빌드한 뒤 Electron을 자동 재시작합니다 |
 | `npm run typecheck`         | `node node_modules/@typescript/native-preview/bin/tsgo.js -p tsconfig.json --noEmit && node node_modules/@typescript/native-preview/bin/tsgo.js -p tsconfig.client.json --noEmit` | 런타임과 Vite client 설정 둘 다 `tsgo`로 no-emit TypeScript 검사를 실행합니다 |
 | `npm test`                  | `jest`                                                                                                    | source TypeScript 기준으로 Jest 테스트를 실행합니다                          |
 | `npm run test:coverage`     | `jest --coverage`                                                                                         | coverage 출력과 함께 Jest를 실행합니다                                       |

@@ -2,13 +2,13 @@ const path = require('path');
 
 const VITE_HANDLED_FILES = new Set([
   'dashboard.html',
+  'index.html',
   'overlay.html',
   'pip.html',
+  'styles.css',
 ]);
 const BUILD_REQUIRED_STATIC_FILES = new Set([
-  'index.html',
   'remote.html',
-  'styles.css',
 ]);
 const VITE_RESTART_FILES = new Set([
   'tsconfig.client.json',
@@ -29,7 +29,9 @@ function createFileChangeClassifier(projectRoot) {
   }
 
   function isClientSource(relativePath) {
-    return relativePath.startsWith('src/client/');
+    return relativePath.startsWith('src/client/')
+      || relativePath.startsWith('src/renderer/')
+      || relativePath.startsWith('assets/');
   }
 
   function isViteHandledRelativePath(relativePath) {
@@ -66,10 +68,7 @@ function createFileChangeClassifier(projectRoot) {
 
     const extension = path.extname(relativePath);
     if (!BUILD_EXTENSIONS.has(extension)) {
-      return relativePath.startsWith('assets/');
-    }
-    if (relativePath.startsWith('assets/')) {
-      return true;
+      return relativePath.startsWith('src/') && !isClientSource(relativePath);
     }
 
     return relativePath.startsWith('src/') && !isClientSource(relativePath);
