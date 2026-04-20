@@ -1,5 +1,5 @@
 import { isAuthFailureMessage } from './messages.js';
-import type { RoomAccessStatus } from './render.js';
+import type { RoomAccessStatus } from '../remote/types.js';
 
 export async function fetchRoomAccess(): Promise<RoomAccessStatus | null> {
   try {

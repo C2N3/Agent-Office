@@ -1,6 +1,13 @@
 import { useSyncExternalStore } from 'react';
 import { floorManager } from '../../office/floorManager.js';
-import { state, termState } from '../shared.js';
+import { getVisibleAgents } from '../agentFilters.js';
+import {
+  type DashboardAgent,
+  type DashboardAgentHistoryEntry,
+  type DashboardTerminalEntry,
+  state,
+  termState,
+} from '../shared.js';
 
 export const DASHBOARD_VIEWS = [
   'office',
@@ -15,9 +22,12 @@ export type DashboardView = typeof DASHBOARD_VIEWS[number];
 
 export type DashboardStoreSnapshot = {
   activeTerminalId: string | null;
+  agentHistory: Map<string, DashboardAgentHistoryEntry[]>;
   connected: boolean;
   currentFloorId: string | null;
+  currentFloorName: string;
   currentView: DashboardView;
+  focusedAgentId: string | null;
   floors: Array<{ id: string; name: string }>;
   registeredOnly: boolean;
   stats: {
@@ -26,7 +36,8 @@ export type DashboardStoreSnapshot = {
     errorCount: number;
     total: number;
   };
-  terminalIds: string[];
+  terminals: Array<[string, DashboardTerminalEntry]>;
+  visibleAgents: DashboardAgent[];
 };
 
 const listeners = new Set<() => void>();
@@ -48,15 +59,20 @@ export function notifyDashboardStore(): void {
 }
 
 export function getDashboardSnapshot(): DashboardStoreSnapshot {
+  const currentFloor = floorManager.getCurrentFloor();
   return {
     activeTerminalId: termState.activeId,
+    agentHistory: new Map(state.agentHistory),
     connected: !!state.connected,
     currentFloorId: floorManager.getCurrentFloorId(),
+    currentFloorName: currentFloor?.name || 'Office',
     currentView: normalizeDashboardView(state.currentView),
+    focusedAgentId: state.focusedAgentId,
     floors: floorManager.getFloors().map((floor) => ({ id: floor.id, name: floor.name })),
     registeredOnly: !!state.filters.registeredOnly,
     stats: { ...state.stats },
-    terminalIds: Array.from(termState.terminals.keys()),
+    terminals: Array.from(termState.terminals.entries()),
+    visibleAgents: getVisibleAgents(),
   };
 }
 

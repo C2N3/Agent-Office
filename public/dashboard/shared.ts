@@ -96,6 +96,7 @@ export type DisplayValue = string | number | boolean | null | undefined;
 export type DashboardState = {
   agents: Map<string, DashboardAgent>;
   agentHistory: Map<string, DashboardAgentHistoryEntry[]>;
+  focusedAgentId: string | null;
   stats: {
     total: number;
     active: number;
@@ -132,6 +133,7 @@ export type TermState = {
 export const state: DashboardState = {
   agents: new Map(),
   agentHistory: new Map(),
+  focusedAgentId: null,
   stats: { total: 0, active: 0, completed: 0, errorCount: 0 },
   connected: false,
   currentView: localStorage.getItem('mc-view') || 'office',

@@ -1,6 +1,8 @@
 import React, { type ReactElement, useEffect } from 'react';
 import { renderArchiveView, renderHeatmapView } from '../activityViews.js';
 import { setDashboardView, useDashboardSnapshot } from '../state/store.js';
+import { DashboardModals } from '../react/modals.js';
+import { setRegisteredOnlyFilter } from '../agentViews.js';
 import { OfficeView } from './officeView.js';
 import { OtherViews } from './otherViews.js';
 import { Sidebar } from './sidebar.js';
@@ -41,9 +43,13 @@ export function DashboardApp(): ReactElement {
   return (
     <>
       <div className="app-layout">
-        <Sidebar currentView={snapshot.currentView} onSelectView={setDashboardView} />
+        <Sidebar
+          connected={snapshot.connected}
+          currentView={snapshot.currentView}
+          onSelectView={setDashboardView}
+        />
         <main className="main-area">
-          <div className="disconnect-banner" id="disconnectBanner">
+          <div className="disconnect-banner" hidden={snapshot.connected} id="disconnectBanner">
             Network disconnected. Attempting to restore websocket connection...
           </div>
 
@@ -54,14 +60,25 @@ export function DashboardApp(): ReactElement {
           </div>
 
           <div className="scroll-container">
-            <OfficeView currentView={snapshot.currentView} registeredOnly={snapshot.registeredOnly} />
+            <OfficeView
+              activeTerminalId={snapshot.activeTerminalId}
+              agentHistory={snapshot.agentHistory}
+              currentFloorName={snapshot.currentFloorName}
+              currentView={snapshot.currentView}
+              focusedAgentId={snapshot.focusedAgentId}
+              registeredOnly={snapshot.registeredOnly}
+              stats={snapshot.stats}
+              terminals={snapshot.terminals}
+              visibleAgents={snapshot.visibleAgents}
+              onSetRegisteredOnly={setRegisteredOnlyFilter}
+            />
             <OtherViews currentView={snapshot.currentView} />
           </div>
         </main>
       </div>
 
       <div className="mc-tooltip" id="mcTooltip" />
-      <div id="dashboardModalRoot" />
+      <DashboardModals />
     </>
   );
 }

@@ -1,4 +1,5 @@
 import React, { type ReactElement } from 'react';
+import { RemoteViewRoot } from '../remote/root.js';
 import { type DashboardView } from '../state/store.js';
 
 function viewClass(currentView: DashboardView, view: DashboardView): string {
@@ -47,9 +48,7 @@ export function OtherViews({ currentView }: { currentView: DashboardView }): Rea
       </div>
 
       <div id="remoteView" className={viewClass(currentView, 'remote')}>
-        <div className="panel remote-panel">
-          <div className="standby-state">Loading…</div>
-        </div>
+        <RemoteViewRoot />
       </div>
 
       <div id="cloudflareView" className={viewClass(currentView, 'cloudflare')}>
