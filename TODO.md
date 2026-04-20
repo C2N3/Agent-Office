@@ -14,6 +14,7 @@ This file tracks client-side work that is planned, discovered, blocked, or compl
 
 - [x] Execute the React UI boundary plan in `docs/plans/react-ui-boundary-plan.md`, starting with dashboard DOM-heavy surfaces and keeping the office rendering core imperative.
 - [x] Rebuild the dashboard as a single React app root, move React-owned UI toward hooks/components, and add SCSS module support for React surfaces.
+- [ ] Execute the client UI runtime boundary direction in `docs/plans/client-ui-runtime-boundary.md` by keeping Vite limited to browser entries, moving React-rendered control events into React ownership, and keeping office canvas/runtime code imperative TypeScript.
 - [ ] Add full Gemini session visualization support by implementing Gemini session ingestion/monitoring, transcript statistics, recovery metadata, and provider registry/catalog capability updates comparable to Claude and Codex.
 - [ ] Execute the SQLite persistence migration plan in `docs/plans/sqlite-persistence-plan.md`.
 - [ ] Complete Phase 1 of `docs/plans/sqlite-persistence-plan.md`.
