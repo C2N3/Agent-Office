@@ -27,7 +27,31 @@ The current branch has already landed a few of the high-value dashboard slices:
 - modal launch wiring now goes through a typed registry instead of ad hoc `globalThis.open*Modal` handlers
 - the terminal PowerShell-policy banner and profile launcher menu now render from React-owned state while the xterm host stays imperative
 
-That leaves the remaining work focused on shrinking the imperative DOM surface area around modals, terminal hosts, and office-side adapters rather than proving the boundary from scratch.
+That leaves the remaining work focused on shrinking the imperative DOM surface area around modals, auxiliary dashboard panels, overlay cards, and office-side adapters rather than proving the boundary from scratch.
+
+## Current Status
+
+This plan is partially implemented.
+
+Completed or mostly completed:
+
+- single dashboard React root
+- React-owned dashboard shell, sidebar, office shell, floor tabs, and agent list/card surface
+- React-owned remote mode view with imperative polling/data adapter
+- React-owned heatmap and archive views with imperative fetch/refresh adapters
+- React-owned modal shells and typed modal registry
+- React-owned terminal tab/profile/banner chrome while xterm hosts stay imperative
+- React-owned PiP and Overlay dashboard control events with window-state subscription kept in an adapter
+- React-owned overlay toolbar and context menu shell
+- office canvas renderer, sprite animation, pathfinding, and movement left imperative
+
+Still remaining:
+
+- move any remaining React-rendered dashboard control events away from follow-up `getElementById(...).addEventListener(...)` wiring
+- migrate modal behavior modules under `src/client/dashboard/modals/*` from DOM lookup/binding toward React component handlers
+- replace `innerHTML` rendering in Cloudflare and central-server connection panels with React-owned views
+- continue the overlay card/grid shell migration while keeping animation and resize runtime code imperative
+- refine the office-side adapter so React supplies host elements and the runtime owns setup/update/teardown explicitly
 
 ## Current Boundary
 
@@ -217,14 +241,15 @@ Do not rewrite `src/client/office/officeRenderer.ts` or related runtime modules 
 - prefer feature-by-feature migration over a big shared abstraction pass
 - validate each migrated slice with the existing `build:dist`, `typecheck`, and Jest workflow
 
-## Suggested Next Task
+## Suggested Next Tasks
 
-Continue with the remaining office-side and overlay-side adapters, because those areas still keep React and imperative DOM/canvas coordination close together.
+Continue with small ownership cleanup slices rather than a broad rewrite.
 
-The next migration slice should include:
+Recommended order:
 
-- the remaining office-side adapter bridges under `src/client/dashboard/office.ts` and `src/client/office/*`
-- overlay toolbar/context surfaces under `src/renderer/*` that still hand-build DOM around runtime state
-- any leftover runtime globals that only exist to bridge React-owned UI to imperative handlers
+1. Convert the remaining modal behavior modules one modal at a time.
+2. Replace Cloudflare and central-server connection `innerHTML` panels with React-owned views.
+3. Continue overlay card/grid shell migration while leaving animation scheduling and resize calculations imperative.
+4. Refine office-side adapters under `src/client/dashboard/office.ts` and `src/client/office/*` so runtime listeners and render-loop lifecycle have clear setup/update/teardown boundaries.
 
-That keeps the rendering engines imperative while continuing to narrow the leftover ownership split at the shell/adaptor layer.
+That keeps the rendering engines imperative while continuing to narrow the leftover ownership split at the shell/adapter layer.

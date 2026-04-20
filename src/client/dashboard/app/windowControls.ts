@@ -1,36 +1,72 @@
+import { useSyncExternalStore } from 'react';
 import { getDashboardAPI } from '../shared.js';
 
+type WindowControlsSnapshot = {
+  overlayOpen: boolean;
+  pipOpen: boolean;
+};
+
+let snapshot: WindowControlsSnapshot = {
+  overlayOpen: false,
+  pipOpen: false,
+};
+let pipControlsInitialized = false;
+let overlayControlsInitialized = false;
+
+const listeners = new Set<() => void>();
+
+function notifyWindowControls() {
+  listeners.forEach((listener) => listener());
+}
+
+function setWindowControlsSnapshot(next: Partial<WindowControlsSnapshot>) {
+  const merged = { ...snapshot, ...next };
+  if (merged.overlayOpen === snapshot.overlayOpen && merged.pipOpen === snapshot.pipOpen) return;
+  snapshot = merged;
+  notifyWindowControls();
+}
+
+export function subscribeWindowControls(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+export function getWindowControlsSnapshot(): WindowControlsSnapshot {
+  return snapshot;
+}
+
+export function useWindowControlsSnapshot(): WindowControlsSnapshot {
+  return useSyncExternalStore(
+    subscribeWindowControls,
+    getWindowControlsSnapshot,
+    getWindowControlsSnapshot,
+  );
+}
+
+export function togglePipWindow(): void {
+  void getDashboardAPI()?.togglePip?.();
+}
+
+export function toggleOverlayWindow(): void {
+  void getDashboardAPI()?.toggleOverlay?.();
+}
+
 export function initPipControls() {
-  const pipBtn = document.getElementById('pipToggleBtn');
-  const pipPlaceholder = document.getElementById('pipPlaceholder');
-  const pipStopBtn = document.getElementById('pipStopBtn');
-  const officeCanvas = document.getElementById('office-canvas');
-
-  function setPipState(isOpen: boolean) {
-    if (pipBtn) pipBtn.classList.toggle('active', isOpen);
-    if (pipPlaceholder) pipPlaceholder.style.display = isOpen ? 'flex' : 'none';
-    if (officeCanvas) officeCanvas.style.display = isOpen ? 'none' : 'block';
-  }
-
+  if (pipControlsInitialized) return;
+  pipControlsInitialized = true;
   const dashboardAPI = getDashboardAPI();
-  pipBtn?.addEventListener('click', () => {
-    dashboardAPI?.togglePip?.();
-  });
-  pipStopBtn?.addEventListener('click', () => {
-    dashboardAPI?.togglePip?.();
-  });
   dashboardAPI?.onPipStateChanged?.((isOpen: boolean) => {
-    setPipState(isOpen);
+    setWindowControlsSnapshot({ pipOpen: isOpen });
   });
 }
 
 export function initOverlayControls() {
-  const overlayBtn = document.getElementById('overlayToggleBtn');
+  if (overlayControlsInitialized) return;
+  overlayControlsInitialized = true;
   const dashboardAPI = getDashboardAPI();
-  overlayBtn?.addEventListener('click', () => {
-    dashboardAPI?.toggleOverlay?.();
-  });
   dashboardAPI?.onOverlayStateChanged?.((isOpen: boolean) => {
-    if (overlayBtn) overlayBtn.classList.toggle('active', isOpen);
+    setWindowControlsSnapshot({ overlayOpen: isOpen });
   });
 }

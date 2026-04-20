@@ -28,6 +28,11 @@ import {
 import { openTerminalForAgent } from '../terminal/index.js';
 import { FloorTabsContainer } from './floorTabsContainer.js';
 import { type DashboardView } from '../state/store.js';
+import {
+  toggleOverlayWindow,
+  togglePipWindow,
+  useWindowControlsSnapshot,
+} from '../app/windowControls.js';
 import styles from './officeView.module.scss';
 
 export function OfficeView({
@@ -67,6 +72,7 @@ export function OfficeView({
   const registeredOnlyLabel = registeredOnly ? 'Registered Only' : 'All Agents';
   const hasErrors = stats.errorCount > 0;
   const defaultTerminalProfile = terminalProfiles.find((profile) => profile.id === terminalDefaultProfileId) || terminalProfiles[0] || null;
+  const windowControls = useWindowControlsSnapshot();
 
   const handleTerminalNewClick = async () => {
     if (terminalProfileMenuOpen) {
@@ -132,14 +138,26 @@ export function OfficeView({
                   />
                   <span>Registered Only</span>
                 </label>
-                <button className="pip-toggle-btn" id="overlayToggleBtn" title="Overlay (Always on top)" type="button">
+                <button
+                  className={`pip-toggle-btn${windowControls.overlayOpen ? ' active' : ''}`}
+                  id="overlayToggleBtn"
+                  title="Overlay (Always on top)"
+                  type="button"
+                  onClick={toggleOverlayWindow}
+                >
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
                     <rect x="2" y="1" width="12" height="9" rx="1.5" strokeDasharray="2 1.5" />
                     <circle cx="8" cy="10" r="1.5" fill="currentColor" stroke="none" />
                     <path d="M5 13h6" />
                   </svg>
                 </button>
-                <button className="pip-toggle-btn" id="pipToggleBtn" title="Picture-in-Picture" type="button">
+                <button
+                  className={`pip-toggle-btn${windowControls.pipOpen ? ' active' : ''}`}
+                  id="pipToggleBtn"
+                  title="Picture-in-Picture"
+                  type="button"
+                  onClick={togglePipWindow}
+                >
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
                     <rect x="1" y="2" width="14" height="11" rx="1.5" />
                     <rect x="8" y="7" width="6" height="5" rx="1" fill="currentColor" stroke="none" />
@@ -153,14 +171,14 @@ export function OfficeView({
             </div>
 
             <div className="panel-body">
-              <canvas id="office-canvas" />
-              <div className="pip-placeholder" id="pipPlaceholder">
+              <canvas id="office-canvas" style={{ display: windowControls.pipOpen ? 'none' : 'block' }} />
+              <div className="pip-placeholder" id="pipPlaceholder" style={{ display: windowControls.pipOpen ? 'flex' : 'none' }}>
                 <svg width="48" height="48" viewBox="0 0 48 48" fill="none" stroke="#8b949e" strokeWidth="2">
                   <rect x="4" y="8" width="40" height="32" rx="4" />
                   <rect x="24" y="22" width="18" height="14" rx="2" fill="#2d333b" stroke="#8b949e" />
                 </svg>
                 <div className="pip-placeholder-text">Playing in PiP mode</div>
-                <button className="pip-placeholder-btn" id="pipStopBtn" type="button">Close PiP and view here</button>
+                <button className="pip-placeholder-btn" id="pipStopBtn" type="button" onClick={togglePipWindow}>Close PiP and view here</button>
               </div>
             </div>
           </div>

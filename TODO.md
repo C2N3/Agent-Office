@@ -12,9 +12,13 @@ This file tracks client-side work that is planned, discovered, blocked, or compl
 
 ## Open
 
-- [x] Execute the React UI boundary plan in `docs/plans/react-ui-boundary-plan.md`, starting with dashboard DOM-heavy surfaces and keeping the office rendering core imperative.
+- [x] Land the initial React UI boundary milestones in `docs/plans/react-ui-boundary-plan.md`: single dashboard React root, React-owned remote/heatmap/archive/agent-card surfaces, and imperative office renderer preservation.
 - [x] Rebuild the dashboard as a single React app root, move React-owned UI toward hooks/components, and add SCSS module support for React surfaces.
 - [ ] Execute the client UI runtime boundary direction in `docs/plans/client-ui-runtime-boundary.md` by keeping Vite limited to browser entries, moving React-rendered control events into React ownership, and keeping office canvas/runtime code imperative TypeScript.
+- [ ] Migrate remaining dashboard modal behavior in `src/client/dashboard/modals/*` from ID-based DOM binding toward React-owned component state and handlers.
+- [ ] Move the Cloudflare and central-server connection panels out of `innerHTML` rendering into React-owned dashboard views.
+- [ ] Continue overlay shell migration by moving `src/renderer/agentCard.ts` and `src/renderer/agentGrid.ts` DOM composition toward React-owned shell components while keeping animation and resize runtime code imperative.
+- [ ] Refine the office canvas adapter around `src/client/dashboard/office.ts` and `src/client/office/officeInit.ts` so React supplies host elements and the runtime exposes setup/update/teardown entrypoints.
 - [ ] Add full Gemini session visualization support by implementing Gemini session ingestion/monitoring, transcript statistics, recovery metadata, and provider registry/catalog capability updates comparable to Claude and Codex.
 - [ ] Execute the SQLite persistence migration plan in `docs/plans/sqlite-persistence-plan.md`.
 - [ ] Complete Phase 1 of `docs/plans/sqlite-persistence-plan.md`.
@@ -25,6 +29,7 @@ This file tracks client-side work that is planned, discovered, blocked, or compl
 
 ## Done
 
+- [x] Move dashboard PiP and Overlay button ownership from DOM event binding in `src/client/dashboard/app/windowControls.ts` to React-rendered handlers in `src/client/dashboard/root/officeView.tsx`.
 - [x] Fix the overlay renderer so shared avatar/sprite JSON stays bundled as browser code, preload avatar loading uses `assets/shared/avatars.json`, and the overlay page no longer pulls Pretendard from jsdelivr.
 - [x] Replace ad hoc dashboard modal globals with a typed modal registry and move the terminal PowerShell-policy banner/profile launcher surfaces into React-owned state.
 - [x] Move the dashboard heatmap/archive surfaces into React-owned views and split the dashboard runtime bootstrap out of the React root mount.
