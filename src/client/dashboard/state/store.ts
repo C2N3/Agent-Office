@@ -46,6 +46,7 @@ export type DashboardStoreSnapshot = {
 };
 
 const listeners = new Set<() => void>();
+let cachedSnapshot: DashboardStoreSnapshot | null = null;
 
 export function normalizeDashboardView(value?: string | null): DashboardView {
   const candidate = String(value || '').trim().toLowerCase();
@@ -60,12 +61,15 @@ export function subscribeDashboardStore(listener: () => void): () => void {
 }
 
 export function notifyDashboardStore(): void {
+  cachedSnapshot = null;
   listeners.forEach((listener) => listener());
 }
 
 export function getDashboardSnapshot(): DashboardStoreSnapshot {
+  if (cachedSnapshot) return cachedSnapshot;
+
   const currentFloor = floorManager.getCurrentFloor();
-  return {
+  cachedSnapshot = {
     activeTerminalId: termState.activeId,
     agentHistory: new Map(state.agentHistory),
     connected: !!state.connected,
@@ -83,6 +87,7 @@ export function getDashboardSnapshot(): DashboardStoreSnapshot {
     terminals: Array.from(termState.terminals.entries()),
     visibleAgents: getVisibleAgents(),
   };
+  return cachedSnapshot;
 }
 
 export function useDashboardSnapshot(): DashboardStoreSnapshot {

@@ -44,6 +44,21 @@ describe('dashboard react-owned surfaces', () => {
     expect(getDashboardSnapshot().terminalProfileMenuOpen).toBe(true);
   });
 
+  test('dashboard snapshots keep a stable reference until the store changes', () => {
+    const {
+      getDashboardSnapshot,
+      setDashboardView,
+    } = require('../src/client/dashboard/state/store.ts');
+
+    const firstSnapshot = getDashboardSnapshot();
+    expect(getDashboardSnapshot()).toBe(firstSnapshot);
+
+    setDashboardView('remote');
+    const changedSnapshot = getDashboardSnapshot();
+    expect(changedSnapshot).not.toBe(firstSnapshot);
+    expect(getDashboardSnapshot()).toBe(changedSnapshot);
+  });
+
   test('AgentCard renders callback-owned actions and timeline data', () => {
     const { AgentCard } = require('../src/client/dashboard/agentCard/view.tsx');
 

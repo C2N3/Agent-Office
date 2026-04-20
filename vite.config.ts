@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
 import { defineConfig, type Plugin } from 'vite';
 import { hasViteAssetQuery } from './scripts/vite-asset-query.js';
+import { resolveBrowserEntryPath } from './scripts/vite-browser-routes.js';
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 const assetRoot = path.join(projectRoot, 'assets');
@@ -39,15 +40,10 @@ function browserContractPlugin(): Plugin {
       server.middlewares.use((req, res, next) => {
         const requestUrl = new URL(req.url || '/', 'http://localhost');
         const pathname = requestUrl.pathname;
+        const entryPath = resolveBrowserEntryPath(pathname);
 
-        if (pathname === '/pip') {
-          req.url = '/pip.html';
-          next();
-          return;
-        }
-
-        if (pathname === '/overlay') {
-          req.url = '/overlay.html';
+        if (entryPath) {
+          req.url = `${entryPath}${requestUrl.search}`;
           next();
           return;
         }
