@@ -3,7 +3,9 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const { fileURLToPath } = require('url');
 const esbuild = require('esbuild');
+const sass = require('sass');
 const { createRecursiveWatcher } = require('./watch-utils');
 
 const projectRoot = path.join(__dirname, '..');
@@ -101,6 +103,7 @@ function copyPublicAssetsToDist(sourceDir = path.join(projectRoot, 'public')) {
       sourcePath.endsWith('.ts')
       || sourcePath.endsWith('.tsx')
       || sourcePath.endsWith('.d.ts')
+      || sourcePath.endsWith('.scss')
     ) continue;
 
     fs.mkdirSync(path.dirname(destinationPath), { recursive: true });
@@ -124,8 +127,39 @@ function sanitizeBrowserGlobalOutputs() {
   }
 }
 
-function buildBrowserEntries() {
-  const result = esbuild.buildSync({
+function toWatchFilePath(loadedUrl) {
+  if (!loadedUrl || loadedUrl.protocol !== 'file:') return null;
+  return fileURLToPath(loadedUrl);
+}
+
+function createSassPlugin() {
+  return {
+    name: 'sass-loader',
+    setup(build) {
+      build.onLoad({ filter: /\.scss$/ }, (args) => {
+        const result = sass.compile(args.path, {
+          loadPaths: [projectRoot, path.dirname(args.path)],
+          style: 'expanded',
+        });
+
+        return {
+          contents: result.css,
+          loader: args.path.endsWith('.module.scss') ? 'local-css' : 'css',
+          resolveDir: path.dirname(args.path),
+          watchFiles: [
+            args.path,
+            ...(result.loadedUrls || [])
+              .map(toWatchFilePath)
+              .filter(Boolean),
+          ],
+        };
+      });
+    },
+  };
+}
+
+async function buildBrowserEntries() {
+  const result = await esbuild.build({
     bundle: true,
     entryPoints: browserEntryPoints,
     entryNames: '[dir]/[name]',
@@ -139,6 +173,7 @@ function buildBrowserEntries() {
     outbase: projectRoot,
     outdir: distRoot,
     platform: 'browser',
+    plugins: [createSassPlugin()],
     target: ['es2022'],
     write: true,
   });
@@ -146,7 +181,7 @@ function buildBrowserEntries() {
   return result.errors?.length ? 1 : 0;
 }
 
-function buildOnce() {
+async function buildOnce() {
   if (!roots.some(hasTypeScriptSource)) {
     return 0;
   }
@@ -175,7 +210,7 @@ function buildOnce() {
     copyRuntimeFilesToDist();
     copyPublicAssetsToDist();
     sanitizeBrowserGlobalOutputs();
-    const browserBuildStatus = buildBrowserEntries();
+    const browserBuildStatus = await buildBrowserEntries();
     if (browserBuildStatus !== 0) {
       return browserBuildStatus;
     }
@@ -184,14 +219,14 @@ function buildOnce() {
   return result.status ?? 0;
 }
 
-function runWatchedBuild(triggerPath = 'initial build') {
+async function runWatchedBuild(triggerPath = 'initial build') {
   if (buildRunning) {
     queuedBuild = true;
     return;
   }
 
   buildRunning = true;
-  const status = buildOnce();
+  const status = await buildOnce();
   if (status === 0) {
     console.log(`[build-types] Build complete: ${triggerPath}`);
   }
@@ -199,7 +234,7 @@ function runWatchedBuild(triggerPath = 'initial build') {
 
   if (queuedBuild) {
     queuedBuild = false;
-    runWatchedBuild('queued changes');
+    void runWatchedBuild('queued changes');
   }
 }
 
@@ -211,20 +246,27 @@ function shutdown() {
 }
 
 if (!watchMode) {
-  process.exit(buildOnce());
+  buildOnce()
+    .then((status) => {
+      process.exit(status);
+    })
+    .catch((error) => {
+      console.error('[build-types] Build failed:', error);
+      process.exit(1);
+    });
+} else {
+  void runWatchedBuild();
+
+  watcher = createRecursiveWatcher({
+    paths: watchTargets,
+    onChange: (changedPath) => {
+      const relativePath = path.relative(projectRoot, changedPath).replace(/\\/g, '/');
+      void runWatchedBuild(relativePath || '.');
+    },
+  });
+
+  console.log('[build-types] Watching src/, public/, and tsconfig files');
+
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
 }
-
-runWatchedBuild();
-
-watcher = createRecursiveWatcher({
-  paths: watchTargets,
-  onChange: (changedPath) => {
-    const relativePath = path.relative(projectRoot, changedPath).replace(/\\/g, '/');
-    runWatchedBuild(relativePath || '.');
-  },
-});
-
-console.log('[build-types] Watching src/, public/, and tsconfig files');
-
-process.on('SIGINT', shutdown);
-process.on('SIGTERM', shutdown);

@@ -138,7 +138,8 @@
     "jest": "^30.3.0",
     "prettier": "^3.8.3",
     "react": "^19.2.5",
-    "react-dom": "^19.2.5"
+    "react-dom": "^19.2.5",
+    "sass": "^1.99.0"
   },
   "dependencies": {
     "@xterm/addon-fit": "^0.11.0",

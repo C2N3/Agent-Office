@@ -17,10 +17,7 @@ import {
   updateBulkArchiveButton,
 } from './agentViews.js';
 import {
-  initViewControls,
   renderArchiveView,
-  renderHeatmapView,
-  renderUsageView,
 } from './activityViews.js';
 import { initAgentPanelEvents } from './agentPanelEvents.js';
 import { setupOfficeClickHandler } from './office.js';
@@ -57,6 +54,7 @@ import { startCentralAgentSync } from './centralAgents/index.js';
 import { FloorTabs } from './react/floors.js';
 import { renderInto } from './react/root.js';
 import { initOverlayControls, initPipControls } from './app/windowControls.js';
+import { notifyDashboardStore } from './state/store.js';
 
 type DashboardUiError = Error | { message?: string } | DisplayValue;
 type FloorDialog = 'none' | 'create' | 'manage';
@@ -160,28 +158,6 @@ function initFloorTabs() {
   floorManager.on('floors-updated', renderFloorTabs);
 }
 
-function initInitialView() {
-  document.querySelectorAll('.nav-item').forEach((item) => item.classList.remove('active'));
-  let button = document.querySelector(`[data-view="${state.currentView}"]`) as HTMLButtonElement | null;
-  if (!button) button = document.querySelector('[data-view="office"]') as HTMLButtonElement | null;
-  if (!button) return;
-  button.classList.add('active');
-
-  const target = button.dataset.view;
-  document.querySelectorAll('.view-section').forEach((view) => view.classList.remove('active'));
-  const targetView = document.getElementById(`${target}View`);
-  if (targetView) targetView.classList.add('active');
-
-  if (target === 'heatmap') renderHeatmapView();
-  else if (target === 'usage') renderUsageView();
-  else if (target === 'archive') renderArchiveView();
-  else if (target === 'remote') {
-    import('./remoteView.js').then((m) => { m.renderRemoteView(); m.startRemoteViewPolling(); });
-  } else if (target === 'cloudflare') {
-    import('./cloudflareView.js').then((m) => { m.renderCloudflareView(); m.startCloudflareViewPolling(); });
-  }
-}
-
 function initArchiveEvents() {
   if (DOM.archiveRefreshBtn) {
     DOM.archiveRefreshBtn.addEventListener('click', () => {
@@ -223,15 +199,13 @@ function initArchiveEvents() {
   });
 }
 
-async function initApp() {
+export async function initDashboardApp() {
   globalThis.openTerminalForAgent = openTerminalForAgent;
 
   renderDashboardModals();
   initFilterControls();
-  initViewControls();
   initPipControls();
   initOverlayControls();
-  initInitialView();
 
   connectSSE();
   startCentralAgentSync({
@@ -257,6 +231,7 @@ async function initApp() {
   // Initialize floor manager early so tabs render before office loads
   floorManager.init();
   initFloorTabs();
+  notifyDashboardStore();
 
   setTimeout(() => {
     initOffice()
@@ -282,10 +257,4 @@ async function initApp() {
   window.addEventListener('resize', () => {
     fitActiveTerminal();
   });
-}
-
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initApp);
-} else {
-  initApp();
 }

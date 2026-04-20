@@ -12,7 +12,9 @@ import {
   state,
 } from './shared.js';
 
-const tooltip = document.getElementById('mcTooltip') as HTMLDivElement | null;
+function getTooltip(): HTMLDivElement | null {
+  return document.getElementById('mcTooltip') as HTMLDivElement | null;
+}
 
 function toMillis(value: number | string | Date | null | undefined): number {
   if (value == null) return 0;
@@ -31,6 +33,7 @@ async function fetchHistory(): Promise<void> {
 }
 
 function showTooltip(element: HTMLElement, dateString: string, data?: DashboardDayStats) {
+  const tooltip = getTooltip();
   if (!tooltip) return;
   const bounds = element.getBoundingClientRect();
   tooltip.innerHTML = `<div class="tt-head">${dateString}</div>`;
@@ -46,6 +49,7 @@ function showTooltip(element: HTMLElement, dateString: string, data?: DashboardD
 }
 
 function hideTooltip() {
+  const tooltip = getTooltip();
   if (!tooltip) return;
   tooltip.style.display = 'none';
 }

@@ -24,7 +24,8 @@ module.exports = {
   },
   forceExit: true,
   moduleNameMapper: {
-    '^electron$': '<rootDir>/__mocks__/electron.js'
+    '^electron$': '<rootDir>/__mocks__/electron.js',
+    '\\.(css|scss)$': '<rootDir>/__mocks__/styleMock.js'
   },
   moduleFileExtensions: [
     'js',

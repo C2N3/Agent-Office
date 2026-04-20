@@ -8,7 +8,9 @@ import {
 } from './shared.js';
 import { OFFICE, officeCharacters, officeRenderer } from '../office/index.js';
 
-const popoverEl = document.getElementById('officePopover') as HTMLDivElement | null;
+function getPopoverEl(): HTMLDivElement | null {
+  return document.getElementById('officePopover') as HTMLDivElement | null;
+}
 
 function hitTestOfficeCharacter(canvas: HTMLCanvasElement, event: MouseEvent): OfficeCharacter | null {
   if (!officeCharacters) return null;
@@ -63,6 +65,7 @@ function showOfficePopover(
   character: OfficeCharacter,
   openTerminalForAgent: (agentId: string, openOptions?: DashboardOpenOptions) => Promise<void> | void
 ) {
+  const popoverEl = getPopoverEl();
   if (!popoverEl) return;
   const agent = state.agents.get(character.id);
   const name = character.role || (agent && agent.name) || 'Agent';
@@ -129,6 +132,7 @@ function showOfficePopover(
 }
 
 function hideOfficePopover() {
+  const popoverEl = getPopoverEl();
   if (!popoverEl) return;
   popoverEl.style.display = 'none';
 }
@@ -260,6 +264,7 @@ export function setupOfficeClickHandler(openTerminalForAgent: (agentId: string, 
   });
 
   document.addEventListener('click', (event) => {
+    const popoverEl = getPopoverEl();
     if (!popoverEl) return;
     const target = event.target as Node | null;
     const targetElement = event.target as HTMLElement | null;
