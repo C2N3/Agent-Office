@@ -3,7 +3,11 @@ module.exports = {
   coverageDirectory: 'coverage',
   collectCoverageFrom: [
     'src/**/*.ts',
+    'src/**/*.tsx',
     'src/**/*.js',
+    'public/**/*.ts',
+    'public/**/*.tsx',
+    '!public/**/*.d.ts',
     '!src/**/*.d.ts',
     '!node_modules/**',
     '!coverage/**',
@@ -25,6 +29,7 @@ module.exports = {
   moduleFileExtensions: [
     'js',
     'ts',
+    'tsx',
     'json',
     'node'
   ],
@@ -33,7 +38,7 @@ module.exports = {
   ],
   transform: {
     '^.+\\.js$': 'babel-jest',
-    '^.+\\.ts$': '<rootDir>/scripts/jest-ts-transform.js'
+    '^.+\\.tsx?$': '<rootDir>/scripts/jest-ts-transform.js'
   },
   verbose: true
 };

@@ -11,8 +11,10 @@
   },
   "include": [
     "src/**/*.ts",
+    "src/**/*.tsx",
     "src/**/*.d.ts",
     "public/**/*.ts",
+    "public/**/*.tsx",
     "public/**/*.d.ts"
   ],
   "exclude": [

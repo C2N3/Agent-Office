@@ -3,6 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const esbuild = require('esbuild');
 const { createRecursiveWatcher } = require('./watch-utils');
 
 const projectRoot = path.join(__dirname, '..');
@@ -16,6 +17,11 @@ const watchTargets = [
 ];
 const browserGlobalTargets = [
   'dist/public/dashboardResume.js',
+];
+const browserEntryPoints = [
+  path.join(projectRoot, 'public', 'dashboard.ts'),
+  path.join(projectRoot, 'public', 'overlay.ts'),
+  path.join(projectRoot, 'src', 'renderer', 'init.ts'),
 ];
 const runtimeFiles = [
   'index.html',
@@ -91,7 +97,11 @@ function copyPublicAssetsToDist(sourceDir = path.join(projectRoot, 'public')) {
     }
 
     if (!entry.isFile()) continue;
-    if (sourcePath.endsWith('.ts') || sourcePath.endsWith('.d.ts')) continue;
+    if (
+      sourcePath.endsWith('.ts')
+      || sourcePath.endsWith('.tsx')
+      || sourcePath.endsWith('.d.ts')
+    ) continue;
 
     fs.mkdirSync(path.dirname(destinationPath), { recursive: true });
     fs.writeFileSync(destinationPath, fs.readFileSync(sourcePath));
@@ -112,6 +122,28 @@ function sanitizeBrowserGlobalOutputs() {
       fs.writeFileSync(outputPath, sanitized, 'utf8');
     }
   }
+}
+
+function buildBrowserEntries() {
+  const result = esbuild.buildSync({
+    bundle: true,
+    entryPoints: browserEntryPoints,
+    entryNames: '[dir]/[name]',
+    format: 'esm',
+    jsx: 'automatic',
+    legalComments: 'none',
+    loader: {
+      '.json': 'json',
+    },
+    logLevel: 'silent',
+    outbase: projectRoot,
+    outdir: distRoot,
+    platform: 'browser',
+    target: ['es2022'],
+    write: true,
+  });
+
+  return result.errors?.length ? 1 : 0;
 }
 
 function buildOnce() {
@@ -143,6 +175,10 @@ function buildOnce() {
     copyRuntimeFilesToDist();
     copyPublicAssetsToDist();
     sanitizeBrowserGlobalOutputs();
+    const browserBuildStatus = buildBrowserEntries();
+    if (browserBuildStatus !== 0) {
+      return browserBuildStatus;
+    }
   }
 
   return result.status ?? 0;
