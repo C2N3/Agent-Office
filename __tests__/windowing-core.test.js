@@ -96,4 +96,28 @@ describe('windowing core', () => {
       expect(fs.existsSync(preloadPath) || fs.existsSync(sourcePath)).toBe(true);
     });
   });
+
+  test('keeps dashboard dev URLs on slash routes for dashboard, pip, and overlay windows', () => {
+    BrowserWindow.mockImplementation(createBrowserWindowMock);
+    const originalArgv = process.argv;
+    process.argv = [...process.argv, '--dev'];
+    process.env.DASHBOARD_DEV_SERVER_URL = 'http://127.0.0.1:3001';
+
+    try {
+      const windowManager = createWindowManager();
+      windowManager.createDashboardWindow();
+      windowManager.createPipWindow();
+      windowManager.createOverlayWindow();
+
+      const loadUrls = BrowserWindow.mock.results.map((result) => result.value.loadURL.mock.calls[0][0]);
+      expect(loadUrls).toEqual([
+        'http://127.0.0.1:3001/',
+        'http://127.0.0.1:3001/pip',
+        'http://127.0.0.1:3001/overlay',
+      ]);
+    } finally {
+      process.argv = originalArgv;
+      delete process.env.DASHBOARD_DEV_SERVER_URL;
+    }
+  });
 });

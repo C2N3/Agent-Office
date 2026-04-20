@@ -3,7 +3,7 @@
 const path = require('path');
 const { spawn, spawnSync } = require('child_process');
 const { createRecursiveWatcher } = require('./watch-utils');
-const { startRendererDevServer } = require('./renderer-dev-server');
+const { startViteDevServer } = require('./vite-dev-server');
 const { createFileChangeClassifier } = require('./dev-runtime/file-change');
 
 const projectRoot = path.join(__dirname, '..');
@@ -12,13 +12,17 @@ const electronScript = path.join(__dirname, 'run-electron.js');
 
 const watchTargets = [
   path.join(projectRoot, 'src'),
-  path.join(projectRoot, 'public'),
+  path.join(projectRoot, 'assets'),
   path.join(projectRoot, 'dashboard.html'),
   path.join(projectRoot, 'index.html'),
+  path.join(projectRoot, 'overlay.html'),
   path.join(projectRoot, 'pip.html'),
+  path.join(projectRoot, 'remote.html'),
   path.join(projectRoot, 'styles.css'),
   path.join(projectRoot, 'tsconfig.json'),
   path.join(projectRoot, 'tsconfig.emit.json'),
+  path.join(projectRoot, 'tsconfig.client.json'),
+  path.join(projectRoot, 'vite.config.ts'),
 ];
 
 let electronChild = null;
@@ -28,16 +32,15 @@ let restartRequested = false;
 let pendingPath = null;
 let pendingReason = null;
 let pendingBuild = false;
-let pendingAction = null;
-let pendingReloadType = null;
+let pendingElectronRestart = false;
+let pendingViteRestart = false;
 let watcher = null;
-let rendererDevServer = null;
+let viteDevServer = null;
 const {
   displayPath,
-  getReloadPath,
-  getReloadType,
-  isRendererOnlyChange,
+  isViteHandledChange,
   requiresBuild,
+  requiresViteRestart,
 } = createFileChangeClassifier(projectRoot);
 
 function runBuild() {
@@ -67,7 +70,7 @@ function startElectron() {
     cwd: projectRoot,
     env: {
       ...process.env,
-      DASHBOARD_DEV_SERVER_URL: rendererDevServer?.url || process.env.DASHBOARD_DEV_SERVER_URL || 'http://localhost:3001',
+      DASHBOARD_DEV_SERVER_URL: viteDevServer?.url || process.env.DASHBOARD_DEV_SERVER_URL || 'http://127.0.0.1:3001',
     },
     stdio: 'inherit',
     windowsHide: false,
@@ -116,22 +119,31 @@ function requestRestart() {
   }, 4000).unref();
 }
 
-function flushPendingChange() {
-  if (cycleActive || !pendingReason || !pendingAction) {
+async function restartViteServer() {
+  if (viteDevServer) {
+    await viteDevServer.close();
+  }
+
+  viteDevServer = await startViteDevServer({ projectRoot });
+  await viteDevServer.ready;
+  console.log(`[dev-runtime] Vite dev server ready at ${viteDevServer.url}`);
+}
+
+async function flushPendingChange() {
+  if (cycleActive || !pendingReason) {
     return;
   }
 
   const reason = pendingReason;
-  const changedPath = pendingPath;
   const needsBuild = pendingBuild;
-  const action = pendingAction;
-  const reloadType = pendingReloadType;
+  const needsElectronRestart = pendingElectronRestart;
+  const needsViteRestart = pendingViteRestart;
 
   pendingPath = null;
   pendingReason = null;
   pendingBuild = false;
-  pendingAction = null;
-  pendingReloadType = null;
+  pendingElectronRestart = false;
+  pendingViteRestart = false;
   cycleActive = true;
 
   if (needsBuild) {
@@ -142,51 +154,62 @@ function flushPendingChange() {
       finishCycle();
       return;
     }
-  } else if (action === 'restart') {
-    console.log(`[dev-runtime] Restarting Electron after ${reason}`);
-  } else {
-    console.log(`[dev-runtime] Refreshing renderer after ${reason}`);
   }
 
-  if (action === 'reload') {
-    rendererDevServer?.broadcastUpdate({
-      path: getReloadPath(changedPath),
-      type: reloadType || 'full-reload',
-    });
-    finishCycle();
+  if (needsViteRestart) {
+    console.log(`[dev-runtime] Restarting Vite after ${reason}`);
+    try {
+      await restartViteServer();
+    } catch (error) {
+      console.error('[dev-runtime] Failed to restart Vite:', error);
+      finishCycle();
+      return;
+    }
+  }
+
+  if (needsElectronRestart) {
+    requestRestart();
     return;
   }
 
-  requestRestart();
+  finishCycle();
 }
 
 function queueChange(changedPath) {
-  pendingPath = changedPath;
-  pendingReason = displayPath(changedPath);
-  pendingBuild = pendingBuild || requiresBuild(changedPath);
-  if (isRendererOnlyChange(changedPath) && pendingAction !== 'restart') {
-    pendingAction = 'reload';
-    const nextReloadType = getReloadType(changedPath);
-    pendingReloadType = pendingReloadType === 'full-reload' || nextReloadType === 'full-reload'
-      ? 'full-reload'
-      : nextReloadType;
-  } else {
-    pendingAction = 'restart';
-    pendingReloadType = null;
+  const relativePath = displayPath(changedPath);
+
+  if (requiresBuild(changedPath)) {
+    pendingPath = changedPath;
+    pendingReason = relativePath;
+    pendingBuild = true;
+    pendingElectronRestart = true;
+    void flushPendingChange();
+    return;
   }
-  flushPendingChange();
+
+  if (requiresViteRestart(changedPath)) {
+    pendingPath = changedPath;
+    pendingReason = relativePath;
+    pendingViteRestart = true;
+    void flushPendingChange();
+    return;
+  }
+
+  if (isViteHandledChange(changedPath)) {
+    console.log(`[dev-runtime] Vite handling ${relativePath}`);
+  }
 }
 
-function shutdown(signal) {
+async function shutdown(signal) {
   shuttingDown = true;
 
   if (watcher) {
     watcher.close();
   }
 
-  if (rendererDevServer) {
-    rendererDevServer.close();
-    rendererDevServer = null;
+  if (viteDevServer) {
+    await viteDevServer.close();
+    viteDevServer = null;
   }
 
   if (!electronChild) {
@@ -205,15 +228,12 @@ async function main() {
     process.exit(initialExitCode);
   }
 
-  rendererDevServer = startRendererDevServer({ projectRoot });
   try {
-    await rendererDevServer.ready;
+    await restartViteServer();
   } catch (error) {
-    console.error('[dev-runtime] Failed to start renderer dev server:', error);
+    console.error('[dev-runtime] Failed to start Vite dev server:', error);
     process.exit(1);
   }
-
-  console.log(`[dev-runtime] Renderer dev server ready at ${rendererDevServer.url}`);
 
   startElectron();
 
@@ -222,10 +242,10 @@ async function main() {
     onChange: queueChange,
   });
 
-  console.log('[dev-runtime] Watching src/, public/, HTML, CSS, and tsconfig files');
+  console.log('[dev-runtime] Watching src/, assets/, HTML, CSS, and tsconfig files');
 
-  process.on('SIGINT', () => shutdown('SIGINT'));
-  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => { void shutdown('SIGINT'); });
+  process.on('SIGTERM', () => { void shutdown('SIGTERM'); });
 }
 
-main();
+void main();
