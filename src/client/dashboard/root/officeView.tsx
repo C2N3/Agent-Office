@@ -17,8 +17,15 @@ import type {
   DashboardAgentHistoryEntry,
   DashboardTerminalEntry,
 } from '../shared.js';
-import { TerminalTabs } from '../terminal/chrome.js';
+import { TerminalProfileMenu, TerminalTabs } from '../terminal/chrome.js';
 import { activateTerminalTab, closeTerminal } from '../terminal/ui.js';
+import {
+  closeTerminalProfileMenu,
+  openTerminalProfileMenu,
+  refreshTerminalProfiles,
+  setDefaultTerminalProfile,
+} from '../terminal/profiles.js';
+import { openTerminalForAgent } from '../terminal/index.js';
 import { FloorTabsContainer } from './floorTabsContainer.js';
 import { type DashboardView } from '../state/store.js';
 import styles from './officeView.module.scss';
@@ -31,6 +38,9 @@ export function OfficeView({
   focusedAgentId,
   registeredOnly,
   stats,
+  terminalDefaultProfileId,
+  terminalProfileMenuOpen,
+  terminalProfiles,
   terminals,
   visibleAgents,
   onSetRegisteredOnly,
@@ -47,12 +57,38 @@ export function OfficeView({
     errorCount: number;
     total: number;
   };
+  terminalDefaultProfileId: string | null;
+  terminalProfileMenuOpen: boolean;
+  terminalProfiles: Array<{ id: string; title: string }>;
   terminals: Array<[string, DashboardTerminalEntry]>;
   visibleAgents: DashboardAgent[];
   onSetRegisteredOnly: (enabled: boolean) => void;
 }): ReactElement {
   const registeredOnlyLabel = registeredOnly ? 'Registered Only' : 'All Agents';
   const hasErrors = stats.errorCount > 0;
+  const defaultTerminalProfile = terminalProfiles.find((profile) => profile.id === terminalDefaultProfileId) || terminalProfiles[0] || null;
+
+  const handleTerminalNewClick = async () => {
+    if (terminalProfileMenuOpen) {
+      closeTerminalProfileMenu();
+      return;
+    }
+
+    try {
+      await refreshTerminalProfiles();
+      openTerminalProfileMenu();
+    } catch (error) {
+      console.error('[Terminal Profiles]', error);
+    }
+  };
+
+  const handleOpenProfile = async (profileId: string) => {
+    const profile = terminalProfiles.find((entry) => entry.id === profileId) || defaultTerminalProfile;
+    await openTerminalForAgent(`local-${Date.now()}`, {
+      profileId,
+      label: profile?.title || 'Terminal',
+    });
+  };
 
   return (
     <div id="officeView" className={`view-section${currentView === 'office' ? ' active' : ''}`}>
@@ -196,7 +232,17 @@ export function OfficeView({
               <button className="terminal-collapse-btn" id="terminalCollapseBtn" type="button" aria-controls="terminalPanel" aria-expanded="true" title="Collapse Terminal">
                 &gt;
               </button>
-              <button className="terminal-new-btn" id="terminalNewBtn" title="New Terminal" type="button">+</button>
+              <button
+                className="terminal-new-btn"
+                id="terminalNewBtn"
+                title={defaultTerminalProfile ? `New Terminal (${defaultTerminalProfile.title})` : 'New Terminal'}
+                type="button"
+                onClick={() => {
+                  void handleTerminalNewClick();
+                }}
+              >
+                +
+              </button>
             </div>
           </div>
           <div className="terminal-container" id="terminalContainer">
@@ -208,7 +254,14 @@ export function OfficeView({
               <div className={styles.terminalEmptyTitle}>No terminal open</div>
               <div className={styles.terminalEmptyHint}>Click an agent to open a terminal.</div>
             </div>
-            <div className="terminal-launch-popover" id="terminalProfileMenu" />
+            <TerminalProfileMenu
+              defaultProfileId={terminalDefaultProfileId}
+              open={terminalProfileMenuOpen}
+              onClose={closeTerminalProfileMenu}
+              onOpenProfile={handleOpenProfile}
+              onSetDefaultProfile={setDefaultTerminalProfile}
+              profiles={terminalProfiles}
+            />
           </div>
         </div>
       </div>

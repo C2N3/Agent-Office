@@ -127,6 +127,8 @@ export type TermState = {
   exitCleanup: CleanupFn | null;
   profiles: DashboardTerminalProfile[];
   defaultProfileId: string | null;
+  profileMenuOpen: boolean;
+  psPolicyBlocked: boolean;
   _pendingData?: Map<string, string>;
 };
 
@@ -156,6 +158,8 @@ export const termState: TermState = {
   exitCleanup: null,
   profiles: [],
   defaultProfileId: null,
+  profileMenuOpen: false,
+  psPolicyBlocked: false,
 };
 
 export function getElementById(id: string): HTMLElement | null {

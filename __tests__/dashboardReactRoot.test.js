@@ -1,5 +1,5 @@
-const React = require('react');
-const { renderToStaticMarkup } = require('react-dom/server');
+let React;
+let renderToStaticMarkup;
 
 function createLocalStorage() {
   return {
@@ -11,6 +11,8 @@ function createLocalStorage() {
 describe('dashboard react-owned surfaces', () => {
   beforeEach(() => {
     jest.resetModules();
+    React = require('react');
+    renderToStaticMarkup = require('react-dom/server').renderToStaticMarkup;
     global.localStorage = createLocalStorage();
     global.document = {
       getElementById: jest.fn(() => null),
@@ -25,12 +27,21 @@ describe('dashboard react-owned surfaces', () => {
   });
 
   test('setDashboardView normalizes and persists the current view', () => {
-    const { getDashboardSnapshot, setDashboardView } = require('../src/client/dashboard/state/store.ts');
+    const {
+      getDashboardSnapshot,
+      setDashboardView,
+      setPsPolicyBlocked,
+      setTerminalProfileMenuOpen,
+    } = require('../src/client/dashboard/state/store.ts');
 
     setDashboardView('REMOTE');
+    setPsPolicyBlocked(true);
+    setTerminalProfileMenuOpen(true);
 
     expect(global.localStorage.setItem).toHaveBeenCalledWith('mc-view', 'remote');
     expect(getDashboardSnapshot().currentView).toBe('remote');
+    expect(getDashboardSnapshot().psPolicyBlocked).toBe(true);
+    expect(getDashboardSnapshot().terminalProfileMenuOpen).toBe(true);
   });
 
   test('AgentCard renders callback-owned actions and timeline data', () => {
@@ -98,6 +109,46 @@ describe('dashboard react-owned surfaces', () => {
     expect(markup).toContain('Main Agent');
     expect(markup).toContain('Support Agent');
     expect(markup).toContain('terminal-tab-dot exited');
+  });
+
+  test('PowerShellPolicyBanner renders the terminal policy actions in React', () => {
+    const { PowerShellPolicyBanner } = require('../src/client/dashboard/terminal/chrome.tsx');
+
+    const markup = renderToStaticMarkup(
+      React.createElement(PowerShellPolicyBanner, {
+        visible: true,
+        onDismiss: jest.fn(),
+        onFix: jest.fn(),
+      }),
+    );
+
+    expect(markup).toContain('ps-policy-banner');
+    expect(markup).toContain('설정 열기');
+    expect(markup).toContain('닫기');
+  });
+
+  test('TerminalProfileMenu renders profile selection from typed state', () => {
+    const { TerminalProfileMenu } = require('../src/client/dashboard/terminal/chrome.tsx');
+
+    const markup = renderToStaticMarkup(
+      React.createElement(TerminalProfileMenu, {
+        defaultProfileId: 'pwsh',
+        onClose: jest.fn(),
+        onOpenProfile: jest.fn(),
+        onSetDefaultProfile: jest.fn(),
+        open: true,
+        profiles: [
+          { id: 'pwsh', title: 'PowerShell' },
+          { id: 'bash', title: 'bash' },
+        ],
+      }),
+    );
+
+    expect(markup).toContain('terminal-launch-popover');
+    expect(markup).toContain('Open default terminal');
+    expect(markup).toContain('PowerShell');
+    expect(markup).toContain('terminal-profile-badge');
+    expect(markup).toContain('Use when pressing the New Terminal button');
   });
 
   test('DashboardModals renders provider options from typed provider data', () => {

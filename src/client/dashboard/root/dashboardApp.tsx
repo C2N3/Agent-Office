@@ -3,6 +3,8 @@ import { renderArchiveView, renderHeatmapView } from '../activityViews.js';
 import { setDashboardView, useDashboardSnapshot } from '../state/store.js';
 import { DashboardModals } from '../react/modals.js';
 import { setRegisteredOnlyFilter } from '../agentViews.js';
+import { PowerShellPolicyBanner } from '../terminal/chrome.js';
+import { dismissPsPolicyBanner, openPsPolicyTerminal } from '../terminal/index.js';
 import { OfficeView } from './officeView.js';
 import { OtherViews } from './otherViews.js';
 import { Sidebar } from './sidebar.js';
@@ -53,11 +55,11 @@ export function DashboardApp(): ReactElement {
             Network disconnected. Attempting to restore websocket connection...
           </div>
 
-          <div id="psPolicyBanner" className="ps-policy-banner">
-            <span>PowerShell 외부 스크립트 실행이 차단되어 있습니다. Claude CLI를 사용하려면 스크립트 실행 허용이 필요합니다.</span>
-            <button id="psPolicyFixBtn" type="button">설정 열기</button>
-            <button id="psPolicyDismissBtn" type="button">닫기</button>
-          </div>
+          <PowerShellPolicyBanner
+            visible={snapshot.psPolicyBlocked}
+            onDismiss={dismissPsPolicyBanner}
+            onFix={openPsPolicyTerminal}
+          />
 
           <div className="scroll-container">
             <OfficeView
@@ -68,6 +70,9 @@ export function DashboardApp(): ReactElement {
               focusedAgentId={snapshot.focusedAgentId}
               registeredOnly={snapshot.registeredOnly}
               stats={snapshot.stats}
+              terminalDefaultProfileId={snapshot.terminalDefaultProfileId}
+              terminalProfileMenuOpen={snapshot.terminalProfileMenuOpen}
+              terminalProfiles={snapshot.terminalProfiles}
               terminals={snapshot.terminals}
               visibleAgents={snapshot.visibleAgents}
               onSetRegisteredOnly={setRegisteredOnlyFilter}

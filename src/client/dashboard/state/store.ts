@@ -5,6 +5,7 @@ import {
   type DashboardAgent,
   type DashboardAgentHistoryEntry,
   type DashboardTerminalEntry,
+  type DashboardTerminalProfile,
   state,
   termState,
 } from '../shared.js';
@@ -36,6 +37,10 @@ export type DashboardStoreSnapshot = {
     errorCount: number;
     total: number;
   };
+  terminalDefaultProfileId: string | null;
+  terminalProfileMenuOpen: boolean;
+  terminalProfiles: DashboardTerminalProfile[];
+  psPolicyBlocked: boolean;
   terminals: Array<[string, DashboardTerminalEntry]>;
   visibleAgents: DashboardAgent[];
 };
@@ -71,6 +76,10 @@ export function getDashboardSnapshot(): DashboardStoreSnapshot {
     floors: floorManager.getFloors().map((floor) => ({ id: floor.id, name: floor.name })),
     registeredOnly: !!state.filters.registeredOnly,
     stats: { ...state.stats },
+    terminalDefaultProfileId: termState.defaultProfileId,
+    terminalProfileMenuOpen: !!termState.profileMenuOpen,
+    terminalProfiles: termState.profiles.slice(),
+    psPolicyBlocked: !!termState.psPolicyBlocked,
     terminals: Array.from(termState.terminals.entries()),
     visibleAgents: getVisibleAgents(),
   };
@@ -85,5 +94,17 @@ export function setDashboardView(nextView: DashboardView): void {
   if (state.currentView === normalized) return;
   state.currentView = normalized;
   localStorage.setItem('mc-view', normalized);
+  notifyDashboardStore();
+}
+
+export function setTerminalProfileMenuOpen(open: boolean): void {
+  if (termState.profileMenuOpen === open) return;
+  termState.profileMenuOpen = open;
+  notifyDashboardStore();
+}
+
+export function setPsPolicyBlocked(blocked: boolean): void {
+  if (termState.psPolicyBlocked === blocked) return;
+  termState.psPolicyBlocked = blocked;
   notifyDashboardStore();
 }

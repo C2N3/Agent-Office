@@ -13,8 +13,10 @@ import {
 } from './ui.js';
 import {
   initTerminalProfileMenu as initTerminalProfileMenuHelper,
+  closeTerminalProfileMenu,
   refreshTerminalProfiles,
 } from './profiles.js';
+import { setPsPolicyBlocked } from '../state/store.js';
 import type { DashboardOpenOptions } from '../shared.js';
 
 export function initTerminals() {
@@ -47,17 +49,7 @@ export function initTerminals() {
 
   if (dashboardAPI.onPsPolicyBlocked) {
     dashboardAPI.onPsPolicyBlocked(() => {
-      const banner = document.getElementById('psPolicyBanner');
-      if (banner) banner.style.display = 'flex';
-    });
-    document.getElementById('psPolicyFixBtn')?.addEventListener('click', () => {
-      dashboardAPI.openPsPolicyTerminal();
-      const banner = document.getElementById('psPolicyBanner');
-      if (banner) banner.style.display = 'none';
-    });
-    document.getElementById('psPolicyDismissBtn')?.addEventListener('click', () => {
-      const banner = document.getElementById('psPolicyBanner');
-      if (banner) banner.style.display = 'none';
+      setPsPolicyBlocked(true);
     });
   }
 }
@@ -148,11 +140,22 @@ export async function resumeRegisteredSession(registryId, sessionId, label) {
 }
 
 export function initTerminalProfileMenu() {
-  return initTerminalProfileMenuHelper(openTerminalForAgent);
+  closeTerminalProfileMenu();
+  return initTerminalProfileMenuHelper();
 }
 
 export function initResizableHandles() {
   return initResizableHandlesHelper();
+}
+
+export function dismissPsPolicyBanner() {
+  setPsPolicyBlocked(false);
+}
+
+export function openPsPolicyTerminal() {
+  const dashboardAPI = getDashboardAPI();
+  dashboardAPI?.openPsPolicyTerminal?.();
+  setPsPolicyBlocked(false);
 }
 
 // ─── Task Chat UI (messenger-style log for headless tasks) ───
