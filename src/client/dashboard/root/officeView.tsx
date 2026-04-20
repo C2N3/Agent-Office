@@ -259,7 +259,9 @@ export function OfficeView({
               open={terminalProfileMenuOpen}
               onClose={closeTerminalProfileMenu}
               onOpenProfile={handleOpenProfile}
-              onSetDefaultProfile={setDefaultTerminalProfile}
+              onSetDefaultProfile={(profileId) => {
+                void setDefaultTerminalProfile(profileId);
+              }}
               profiles={terminalProfiles}
             />
           </div>

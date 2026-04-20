@@ -60,6 +60,10 @@ export function setupAssignTaskModal() {
     return workspaceRepo || metadataProjectPath || projectPath || worktreePath || '';
   }
 
+  function resolveAgentLabel(agent: any) {
+    return agent?.name || agent?.project || agent?.id || 'Agent';
+  }
+
   providerInputs.forEach((input) => {
     input.addEventListener('change', () => {
       populateModels(getSelectedProvider());
@@ -103,7 +107,7 @@ export function setupAssignTaskModal() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: `${currentAgent.displayName || currentAgent.name}: ${prompt.slice(0, 50)}`,
+          title: `${resolveAgentLabel(currentAgent)}: ${prompt.slice(0, 50)}`,
           prompt,
           provider,
           executionEnvironment,
@@ -131,7 +135,7 @@ export function setupAssignTaskModal() {
     currentAgent = agent;
     const provider = resolveAgentProvider(agent);
     (form as HTMLFormElement).reset();
-    if (agentNameEl) agentNameEl.textContent = agent.displayName || agent.name || 'Agent';
+    if (agentNameEl) agentNameEl.textContent = resolveAgentLabel(agent);
     setSelectedProvider(provider);
     setSelectedExecutionEnvironment('native');
     if (errorEl) errorEl.textContent = '';
