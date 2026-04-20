@@ -1,9 +1,12 @@
 import { fetchCentralServerConfig, fetchCentralServerSnapshot, saveCentralServerConfig, startCentralServerConnection, stopCentralServerConnection } from './serverConnection.js';
 import { buildGuestInviteLink, parseGuestInviteLink, type RemoteMode } from './remoteMode.js';
-import { formatHostRotateError, hostAddressMismatchMessage } from './remoteView/messages.js';
 import { checkHostAccess, fetchRoomAccess } from './remoteView/roomAccess.js';
 import { renderRemotePanel, type RoomAccessStatus } from './remoteView/render.js';
 import { type RemoteSnapshot } from './remoteView/status.js';
+import type { RemoteViewRenderState } from './remoteView/renderState.js';
+import { attachLegacyRemoteEvents } from './remoteView/legacy.js';
+import { renderReactRemotePanel } from './remoteView/reactRenderer.js';
+import { createRemoteReactActions } from './remoteView/reactActions.js';
 
 let pollInterval: ReturnType<typeof setInterval> | null = null;
 let lastIssuedGuestSecret = '';
@@ -11,13 +14,18 @@ let remoteActionError = '';
 let selectedRemoteMode: RemoteMode | null = null;
 let lastConsumedGuestInviteHref = '';
 let statusDetailsExpanded = false;
-function copyToClipboard(text: string, btn: HTMLElement): void {
-  navigator.clipboard.writeText(text).then(() => {
-    const original = btn.textContent;
-    btn.textContent = '복사됨!';
-    setTimeout(() => { btn.textContent = original; }, 1500);
-  }).catch(() => {});
-}
+let serverUrlDraft = '';
+let guestInviteDraft = '';
+let copiedInvite = false;
+let copyFeedbackTimer: ReturnType<typeof setTimeout> | null = null;
+let lastRenderState: RemoteViewRenderState | null = null;
+type LegacyRemoteContainer = {
+  innerHTML: string;
+  classList?: { contains?: (value: string) => boolean };
+  closest?: (selector: string) => Element | null;
+  querySelector?: (selector: string) => any;
+  querySelectorAll?: (selector: string) => any[];
+};
 
 function isRemoteInputFocused(): boolean {
   const focusedId = document.activeElement?.id;
@@ -72,9 +80,160 @@ async function applyRemoteSettings(update: {
   void startCentralServerConnection();
 }
 
-function readServerSettingsInputs(): { baseUrl?: string } { const input = document.getElementById('centralServerUrlInput') as HTMLInputElement | null; return input ? { baseUrl: input.value } : {}; }
+function readServerSettingsInputs(): { baseUrl?: string } {
+  const input = document.getElementById('centralServerUrlInput') as HTMLInputElement | null;
+  return { baseUrl: input?.value ?? serverUrlDraft };
+}
 
-async function handleModeSelection(nextMode: RemoteMode): Promise<void> { selectedRemoteMode = nextMode; remoteActionError = ''; await renderRemoteView(); }
+function resetCopiedInvite(): void {
+  copiedInvite = false;
+  if (copyFeedbackTimer) {
+    clearTimeout(copyFeedbackTimer);
+    copyFeedbackTimer = null;
+  }
+}
+
+function copyToClipboard(text: string): void {
+  navigator.clipboard.writeText(text).then(() => {
+    copiedInvite = true;
+    renderCurrentRemotePanel();
+    if (copyFeedbackTimer) clearTimeout(copyFeedbackTimer);
+    copyFeedbackTimer = setTimeout(() => {
+      copiedInvite = false;
+      renderCurrentRemotePanel();
+    }, 1500);
+  }).catch(() => {});
+}
+
+function renderCurrentRemotePanel(): void {
+  const container = document.getElementById('remoteView') as HTMLElement | LegacyRemoteContainer | null;
+  if (!container || !lastRenderState) return;
+
+  const { config, roomAccess, snapshot } = lastRenderState;
+  const persistedMode = (config?.remoteMode || 'local') as RemoteMode;
+  const mode = getSelectedRemoteMode(persistedMode);
+  const displayedSnapshot = getDisplayedSnapshot(snapshot, mode, !!config?.roomSecretConfigured);
+  const currentBaseUrl = config?.baseUrl || snapshot.config?.baseUrl || '';
+  const inviteSecret = lastIssuedGuestSecret || roomAccess?.guestSecret || '';
+  const inviteLink = currentBaseUrl && inviteSecret
+    ? buildGuestInviteLink(globalThis.window?.location?.origin || currentBaseUrl, currentBaseUrl, inviteSecret)
+    : '';
+
+  if (document.activeElement?.id !== 'centralServerUrlInput') {
+    serverUrlDraft = currentBaseUrl;
+  }
+
+  const renderArgs = {
+    config,
+    currentBaseUrl,
+    inviteLink,
+    mode,
+    persistedMode,
+    statusDetailsExpanded,
+    remoteActionError,
+    roomAccess,
+    snapshot: displayedSnapshot,
+  };
+
+  if (!isRenderableElement(container)) {
+    container.innerHTML = renderRemotePanel(renderArgs);
+    attachLegacyRemoteEvents({
+      applyRemoteSettings,
+      checkHostAccess,
+      container,
+      persistedMode,
+      readServerSettingsInputs,
+      renderRemoteView,
+      roomAccessAction,
+      setLastIssuedGuestSecret: (value: string) => {
+        lastIssuedGuestSecret = value;
+      },
+      setRemoteActionError: (value: string) => {
+        remoteActionError = value;
+      },
+      setSelectedRemoteMode: (value: RemoteMode | null) => {
+        selectedRemoteMode = value;
+      },
+      setStatusDetailsExpanded: (value: boolean) => {
+        statusDetailsExpanded = value;
+      },
+      selectMode: handleModeSelection,
+    });
+    return;
+  }
+
+  const actions = createRemoteReactActions({
+    applyRemoteSettings,
+    checkHostAccess,
+    getGuestInviteDraft: () => guestInviteDraft,
+    getServerUrlDraft: () => serverUrlDraft,
+    renderCurrentRemotePanel,
+    renderRemoteView,
+    resetCopiedInvite,
+    roomAccessAction,
+    setGuestInviteDraft: (value: string) => {
+      guestInviteDraft = value;
+    },
+    setLastIssuedGuestSecret: (value: string) => {
+      lastIssuedGuestSecret = value;
+    },
+    setRemoteActionError: (value: string) => {
+      remoteActionError = value;
+    },
+    setSelectedRemoteMode: (value: RemoteMode | null) => {
+      selectedRemoteMode = value;
+    },
+    setServerUrlDraft: (value: string) => {
+      serverUrlDraft = value;
+    },
+    setSelectedModeDraft: (value: RemoteMode) => {
+      selectedRemoteMode = value;
+    },
+    setStatusDetailsExpanded: (value: boolean) => {
+      statusDetailsExpanded = value;
+    },
+  });
+
+  renderReactRemotePanel({
+    container,
+    copiedInvite,
+    currentBaseUrl,
+    guestInviteValue: guestInviteDraft,
+    inviteLink,
+    mode,
+    persistedMode,
+    remoteActionError,
+    roomAccess,
+    serverUrlValue: serverUrlDraft,
+    snapshot: displayedSnapshot,
+    statusDetailsExpanded,
+    onCopyInvite: () => copyToClipboard(inviteLink),
+    onGuestInviteChange: actions.onGuestInviteChange,
+    onGuestJoin: actions.onGuestJoin,
+    onHostDisable: actions.onHostDisable,
+    onHostEnable: actions.onHostEnable,
+    onHostRotate: actions.onHostRotate,
+    onHostStart: () => actions.onHostStart(persistedMode),
+    onLocalApply: actions.onLocalApply,
+    onModeSelect: actions.onModeSelect,
+    onRefreshStatus: actions.onRefreshStatus,
+    onServerUrlChange: actions.onServerUrlChange,
+    onStatusDetailsToggle: actions.onStatusDetailsToggle,
+  });
+}
+
+function isRenderableElement(value: unknown): value is HTMLElement {
+  return !!value
+    && typeof value === 'object'
+    && 'nodeType' in (value as Record<string, unknown>)
+    && (value as { nodeType?: number }).nodeType === 1;
+}
+
+async function handleModeSelection(nextMode: RemoteMode): Promise<void> {
+  selectedRemoteMode = nextMode;
+  remoteActionError = '';
+  renderCurrentRemotePanel();
+}
 
 async function maybeAutoJoinGuestInvite(): Promise<void> {
   const href = globalThis.window?.location?.href || '';
@@ -88,6 +247,8 @@ async function maybeAutoJoinGuestInvite(): Promise<void> {
       roomSecret: invite.guestSecret,
       remoteMode: 'guest',
     });
+    serverUrlDraft = invite.baseUrl;
+    guestInviteDraft = '';
     selectedRemoteMode = null;
     remoteActionError = '';
     globalThis.window?.history?.replaceState?.({}, '', `${window.location.pathname}${window.location.search}`);
@@ -99,7 +260,6 @@ async function maybeAutoJoinGuestInvite(): Promise<void> {
 export async function renderRemoteView(): Promise<void> {
   const container = document.getElementById('remoteView');
   if (!container) return;
-  statusDetailsExpanded = !!container.querySelector('.remote-settings[open]');
   await maybeAutoJoinGuestInvite();
 
   const [config, snapshot, roomAccess] = await Promise.all([
@@ -107,166 +267,8 @@ export async function renderRemoteView(): Promise<void> {
     fetchCentralServerSnapshot(),
     fetchRoomAccess(),
   ]);
-  const persistedMode = (config?.remoteMode || 'local') as RemoteMode;
-  const mode = getSelectedRemoteMode(persistedMode);
-  const displayedSnapshot = getDisplayedSnapshot(snapshot, mode, !!config?.roomSecretConfigured);
-  const currentBaseUrl = config?.baseUrl || snapshot.config?.baseUrl || '';
-  const inviteSecret = lastIssuedGuestSecret || roomAccess?.guestSecret || '';
-  const inviteLink = currentBaseUrl && inviteSecret
-    ? buildGuestInviteLink(globalThis.window?.location?.origin || currentBaseUrl, currentBaseUrl, inviteSecret)
-    : '';
-
-  container.innerHTML = renderRemotePanel({
-    config,
-    currentBaseUrl,
-    inviteLink,
-    mode,
-    persistedMode,
-    statusDetailsExpanded,
-    remoteActionError,
-    roomAccess,
-    snapshot: displayedSnapshot,
-  });
-
-  container.querySelectorAll<HTMLInputElement>('input[name="remoteMode"]').forEach((input) => {
-    input.addEventListener('change', async (event) => {
-      const target = event.currentTarget as HTMLInputElement | null;
-      if (!target?.checked) return;
-      await handleModeSelection(target.value as RemoteMode);
-    });
-  });
-  container.querySelectorAll<HTMLElement>('.remote-mode-pill[data-remote-mode]').forEach((pill) => {
-    pill.addEventListener('click', async (event) => {
-      event.preventDefault();
-      await handleModeSelection(pill.dataset.remoteMode as RemoteMode);
-    });
-    pill.addEventListener('keydown', async (event) => {
-      if (event.key !== 'Enter' && event.key !== ' ') return;
-      event.preventDefault();
-      await handleModeSelection(pill.dataset.remoteMode as RemoteMode);
-    });
-  });
-  document.getElementById('localApplyBtn')?.addEventListener('click', async () => {
-    const errorEl = document.getElementById('centralServerUrlError');
-    if (errorEl) { errorEl.textContent = ''; errorEl.style.display = 'none'; }
-    try {
-      await applyRemoteSettings({
-        ...readServerSettingsInputs(),
-        remoteMode: 'local',
-      });
-      selectedRemoteMode = null;
-      remoteActionError = '';
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error || 'Failed to save server settings');
-      if (errorEl) {
-        errorEl.textContent = message;
-        errorEl.style.display = 'block';
-      } else {
-        remoteActionError = message;
-        await renderRemoteView();
-      }
-    }
-    await renderRemoteView();
-  });
-  document.getElementById('hostStartBtn')?.addEventListener('click', async () => {
-    const errorEl = document.getElementById('centralServerUrlError');
-    if (errorEl) { errorEl.textContent = ''; errorEl.style.display = 'none'; }
-    try {
-      await applyRemoteSettings({
-        ...readServerSettingsInputs(),
-        remoteMode: 'host',
-      });
-      if (persistedMode === 'host') {
-        lastIssuedGuestSecret = '';
-        remoteActionError = await checkHostAccess() === 'auth' ? hostAddressMismatchMessage() : '';
-        selectedRemoteMode = null;
-        await renderRemoteView();
-        return;
-      }
-      const response = await roomAccessAction('/api/server/room-access/enable');
-      lastIssuedGuestSecret = response.guestSecret || lastIssuedGuestSecret;
-      if (response.ownerSecret) {
-        await applyRemoteSettings({ remoteMode: 'host', roomSecret: response.ownerSecret });
-      }
-      selectedRemoteMode = null;
-      remoteActionError = '';
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error || 'Failed to start host mode');
-      if (errorEl) {
-        errorEl.textContent = message;
-        errorEl.style.display = 'block';
-      } else {
-        remoteActionError = message;
-      }
-    }
-    await renderRemoteView();
-  });
-  document.getElementById('hostEnableBtn')?.addEventListener('click', async () => {
-    try {
-      remoteActionError = '';
-      const response = await roomAccessAction('/api/server/room-access/enable');
-      lastIssuedGuestSecret = response.guestSecret || lastIssuedGuestSecret;
-      if (response.ownerSecret) {
-        await applyRemoteSettings({ remoteMode: 'host', roomSecret: response.ownerSecret });
-      } else {
-        await applyRemoteSettings({ remoteMode: 'host' });
-      }
-      selectedRemoteMode = null;
-    } catch (error) {
-      remoteActionError = error instanceof Error ? error.message : String(error || 'Failed to enable host mode');
-    }
-    await renderRemoteView();
-  });
-  document.getElementById('hostRotateBtn')?.addEventListener('click', async () => {
-    try {
-      remoteActionError = '';
-      const response = await roomAccessAction('/api/server/room-access/guest-secret/rotate');
-      lastIssuedGuestSecret = response.guestSecret || '';
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error || 'Failed to rotate guest secret');
-      remoteActionError = formatHostRotateError(message);
-    }
-    await renderRemoteView();
-  });
-  document.getElementById('hostDisableBtn')?.addEventListener('click', async () => {
-    try {
-      remoteActionError = '';
-      await roomAccessAction('/api/server/room-access/disable');
-      lastIssuedGuestSecret = '';
-    } catch (error) {
-      remoteActionError = error instanceof Error ? error.message : String(error || 'Failed to disable host mode');
-    }
-    await renderRemoteView();
-  });
-  document.getElementById('guestJoinBtn')?.addEventListener('click', async () => {
-    const input = document.getElementById('guestInviteInput') as HTMLInputElement | null;
-    if (!input) return;
-    try {
-      remoteActionError = '';
-      const invite = parseGuestInviteLink(input.value);
-      await applyRemoteSettings({
-        baseUrl: invite.baseUrl,
-        roomSecret: invite.guestSecret,
-        remoteMode: 'guest',
-      });
-      selectedRemoteMode = null;
-    } catch (error) {
-      remoteActionError = error instanceof Error ? error.message : String(error || 'Invalid invite link');
-    }
-    await renderRemoteView();
-  });
-  document.getElementById('remoteStatusRefreshBtn')?.addEventListener('click', () => {
-    void renderRemoteView();
-  });
-  container.querySelector<HTMLDetailsElement>('.remote-settings')?.addEventListener('toggle', (event) => {
-    statusDetailsExpanded = !!(event.currentTarget as HTMLDetailsElement | null)?.open;
-  });
-  container.querySelectorAll<HTMLButtonElement>('.remote-copy-btn').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const text = btn.dataset.copy ?? '';
-      copyToClipboard(text, btn);
-    });
-  });
+  lastRenderState = { config, roomAccess, snapshot };
+  renderCurrentRemotePanel();
 }
 
 export function startRemoteViewPolling(): void {

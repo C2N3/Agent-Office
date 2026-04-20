@@ -117,7 +117,9 @@ export type DashboardTerminalEntry = {
   xterm: TerminalLike;
   fitAddon: TerminalAddonLike | null;
   element: HTMLDivElement;
-  tab: HTMLDivElement;
+  label: string;
+  tab?: HTMLDivElement | null;
+  exited?: boolean;
 };
 
 export type DashboardOpenOptions = {

@@ -6,6 +6,7 @@ import {
 import { renderArchiveView } from './activityViews.js';
 import { officeRenderer } from '../office/index.js';
 import { syncCentralAgentRemoval } from './centralAgents/index.js';
+import { setFocusedAgentCard } from './agentViews.js';
 
 export function initAgentPanelEvents() {
   const agentPanel = document.getElementById('agentPanel');
@@ -131,10 +132,7 @@ export function initAgentPanelEvents() {
 
     const card = target.closest('.mc-agent-card') as HTMLDivElement | null;
     if (card?.dataset.id) {
-      agentPanel.querySelectorAll('.mc-agent-card.is-focused').forEach((el) => {
-        if (el !== card) el.classList.remove('is-focused');
-      });
-      card.classList.add('is-focused');
+      setFocusedAgentCard(card.dataset.id);
       officeRenderer.focusOnCharacter?.(card.dataset.id);
     }
   });

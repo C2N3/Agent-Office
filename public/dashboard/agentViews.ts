@@ -1,3 +1,4 @@
+import { createElement } from 'react';
 import {
   type DashboardAgent,
   DOM,
@@ -13,7 +14,6 @@ import {
 } from '../office/index.js';
 import { updateConnectionStatus } from './connectionStatus.js';
 import { getStateColor } from './agentViewHelpers.js';
-import { buildAgentCardHtml } from './agentCard/markup.js';
 import { openTaskLogTab, appendTaskChatMessage } from './terminal/index.js';
 import {
   getClearableUnregisteredAgents,
@@ -22,6 +22,8 @@ import {
   shouldDisplayAgent,
 } from './agentFilters.js';
 import { fetchCentralDashboardAgents } from './centralAgents/index.js';
+import { AgentPanel } from './react/agentPanel.js';
+import { renderInto } from './react/root.js';
 
 export { getStateColor };
 export {
@@ -33,16 +35,19 @@ export {
 
 let sseDelay = 1000;
 let sseSource: EventSource | null = null;
+let focusedAgentId: string | null = null;
 
 function recalcStats() {
   const arr = Array.from(state.agents.values()) as DashboardAgent[];
   state.stats.total = arr.length;
   state.stats.active = arr.filter((agent) => ['working', 'thinking'].includes(agent.status)).length;
-  DOM.kpiActiveAgents.innerHTML =
-    `${state.stats.active} <span style="font-size:0.8rem;color:var(--color-text-dark)">/ ${state.stats.total}</span>`;
-  DOM.kpiErrors.textContent = state.stats.errorCount.toString();
-  if (state.stats.errorCount > 0) {
-    DOM.kpiErrors.className = 'kpi-value error';
+  if (DOM.kpiActiveAgents) {
+    DOM.kpiActiveAgents.innerHTML =
+      `${state.stats.active} <span style="font-size:0.8rem;color:var(--color-text-dark)">/ ${state.stats.total}</span>`;
+  }
+  if (DOM.kpiErrors) {
+    DOM.kpiErrors.textContent = state.stats.errorCount.toString();
+    DOM.kpiErrors.className = state.stats.errorCount > 0 ? 'kpi-value error' : 'kpi-value green';
   }
 }
 
@@ -175,12 +180,9 @@ export function updateAgent(agent: DashboardAgent) {
 export function removeAgent(id: string) {
   state.agents.delete(id);
   state.agentHistory.delete(id);
+  if (focusedAgentId === id) focusedAgentId = null;
   recalcStats();
-  const existing = DOM.agentPanel.querySelector(`[data-id="${id}"]`);
-  if (existing) existing.remove();
-  if (getVisibleAgents().length === 0) {
-    DOM.standbyMessage.style.display = 'block';
-  }
+  renderAgentList();
 }
 
 export function updateBulkArchiveButton() {
@@ -238,10 +240,10 @@ export function initFilterControls() {
 
 export function renderAgentList() {
   const visibleAgents = getVisibleAgents();
-  DOM.standbyMessage.style.display = visibleAgents.length === 0 ? 'block' : 'none';
-  for (const agent of state.agents.values()) {
-    updateAgentUI(agent);
-  }
+  renderInto(
+    DOM.agentPanel,
+    createElement(AgentPanel, { agents: visibleAgents, focusedAgentId }),
+  );
   updateBulkArchiveButton();
   renderOfficeRoster();
 }
@@ -278,26 +280,16 @@ export async function clearUnregisteredAgents(): Promise<void> {
 }
 
 export function updateAgentUI(agent: DashboardAgent) {
-  if (!shouldDisplayAgent(agent)) {
-    const existingHidden = DOM.agentPanel.querySelector(`[data-id="${agent.id}"]`) as HTMLElement | null;
-    if (existingHidden) existingHidden.remove();
-    return;
-  }
+  const nextFocusedAgentId = state.agents.has(agent.id) && shouldDisplayAgent(agent)
+    ? focusedAgentId
+    : focusedAgentId === agent.id
+      ? null
+      : focusedAgentId;
+  focusedAgentId = nextFocusedAgentId;
+  renderAgentList();
+}
 
-  DOM.standbyMessage.style.display = 'none';
-  const existing = DOM.agentPanel.querySelector(`[data-id="${agent.id}"]`) as HTMLElement | null;
-  const html = buildAgentCardHtml(agent);
-
-  if (existing) {
-    existing.innerHTML = html;
-    existing.dataset.status = agent.status;
-    return;
-  }
-
-  const div = document.createElement('div');
-  div.className = 'mc-agent-card';
-  div.dataset.id = agent.id;
-  div.dataset.status = agent.status;
-  div.innerHTML = html;
-  DOM.agentPanel.appendChild(div);
+export function setFocusedAgentCard(agentId: string | null) {
+  focusedAgentId = agentId;
+  renderAgentList();
 }

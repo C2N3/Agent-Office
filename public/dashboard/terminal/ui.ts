@@ -1,4 +1,4 @@
-
+import { createElement } from 'react';
 import {
   dashboardResumeUtils,
   getDashboardAPI,
@@ -8,6 +8,8 @@ import {
 } from '../shared.js';
 import { initTerminalPanelCollapse, revealTerminalPanel } from './collapse.js';
 import { setupTerminalResizableHandles } from './resizable.js';
+import { renderInto } from '../react/root.js';
+import { TerminalTabs } from './chrome.js';
 
 export async function resumeLatestRegisteredSession(registryId, label, resumeRegisteredSession) {
   const dashboardAPI = getDashboardAPI();
@@ -44,46 +46,32 @@ export async function resumeLatestRegisteredSession(registryId, label, resumeReg
   }
 }
 
-export function addTerminalTabHelper(agentId, label, activateTerminalTabFn, closeTerminalFn) {
-  return addTerminalTab(agentId, label, activateTerminalTabFn, closeTerminalFn);
-}
-
-function addTerminalTab(agentId, label, activateTerminalTab, closeTerminal) {
-  revealTerminalPanel();
-  const list = document.getElementById('terminalTabsList');
-  const tab = document.createElement('div');
-  tab.className = 'terminal-tab';
-  tab.dataset.agentId = agentId;
-  tab.innerHTML = `
-    <span class="terminal-tab-dot"></span>
-    <span class="terminal-tab-label">${label}</span>
-    <button class="terminal-tab-close" title="Close">&times;</button>
-  `;
-
-  tab.addEventListener('click', (event) => {
-    if (event.target.classList.contains('terminal-tab-close')) {
-      closeTerminal(agentId);
-    } else {
-      activateTerminalTab(agentId);
-    }
-  });
-
-  list.appendChild(tab);
-  return tab;
+export function renderTerminalTabs() {
+  if (termState.terminals.size > 0) {
+    revealTerminalPanel();
+  }
+  renderInto(
+    document.getElementById('terminalTabsList'),
+    createElement(TerminalTabs, {
+      activeId: termState.activeId,
+      terminals: Array.from(termState.terminals.entries()),
+      onActivate: activateTerminalTab,
+      onClose: closeTerminal,
+    }),
+  );
 }
 
 export function activateTerminalTab(agentId) {
   revealTerminalPanel(fitActiveTerminal);
   for (const terminal of termState.terminals.values()) {
     terminal.element.classList.remove('active');
-    terminal.tab.classList.remove('active');
   }
 
   const terminal = termState.terminals.get(agentId);
   if (!terminal) return;
   terminal.element.classList.add('active');
-  terminal.tab.classList.add('active');
   termState.activeId = agentId;
+  renderTerminalTabs();
   requestAnimationFrame(() => {
     terminal.fitAddon?.fit();
     terminal.xterm.scrollToBottom();
@@ -97,7 +85,6 @@ export function closeTerminal(agentId) {
 
   terminal.xterm.dispose();
   terminal.element.remove();
-  terminal.tab.remove();
   termState.terminals.delete(agentId);
 
   const dashboardAPI = getDashboardAPI();
@@ -112,6 +99,7 @@ export function closeTerminal(agentId) {
   }
 
   termState.activeId = null;
+  renderTerminalTabs();
   const emptyState = document.getElementById('terminalEmptyState');
   if (emptyState) emptyState.style.display = '';
 }
@@ -172,12 +160,9 @@ export function createXtermInstance(agentId, label) {
     pendingBuf.delete(agentId);
   }
 
-  const tab = addTerminalTab(agentId, label, activateTerminalTab, closeTerminal);
-  termState.terminals.set(agentId, { xterm, fitAddon, element, tab });
+  termState.terminals.set(agentId, { element, exited: false, fitAddon, label, xterm });
   termState.activeId = agentId;
-
-  document.querySelectorAll('.terminal-tab').forEach((entry) => entry.classList.remove('active'));
-  tab.classList.add('active');
+  renderTerminalTabs();
 
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {

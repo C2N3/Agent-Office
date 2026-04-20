@@ -3,11 +3,11 @@ import { dashboardResumeUtils, getDashboardAPI, SHARED_AVATAR_FILES, state, term
 import { getTerminalBootCommand } from '../providerCatalog.js';
 import {
   activateTerminalTab,
-  addTerminalTabHelper,
   createXtermInstance,
   fitActiveTerminal,
   getTerminalOpenContext,
   initResizableHandles as initResizableHandlesHelper,
+  renderTerminalTabs,
   resumeLatestRegisteredSession,
   closeTerminal,
 } from './ui.js';
@@ -39,8 +39,8 @@ export function initTerminals() {
       const terminal = termState.terminals.get(agentId);
       if (terminal) {
         terminal.xterm.writeln(`\r\n\x1b[90m[Process exited with code ${exitCode}]\x1b[0m`);
-        const dot = terminal.tab?.querySelector('.terminal-tab-dot');
-        if (dot) dot.classList.add('exited');
+        terminal.exited = true;
+        renderTerminalTabs();
       }
     }) || null;
   }
@@ -159,7 +159,6 @@ export function initResizableHandles() {
 
 type TaskChatEntry = {
   chatEl: HTMLDivElement;
-  tab: HTMLDivElement;
   element: HTMLDivElement;
   avatarFile: string;
   agentName: string;
@@ -215,17 +214,21 @@ export function openTaskLogTab(taskId: string, agentRegistryId: string, label: s
   element.appendChild(chatEl);
 
   // Create tab via ui.ts helper
-  const tab = addTerminalTabHelper(tabId, label || 'Task', activateTerminalTab, closeTerminal);
-
   // Store in termState with a dummy xterm-like object so closeTerminal works
   const dummyXterm = { dispose() {}, write() {}, writeln() {} };
-  termState.terminals.set(tabId, { xterm: dummyXterm as any, fitAddon: null, element, tab });
+  termState.terminals.set(tabId, {
+    element,
+    exited: false,
+    fitAddon: null,
+    label: label || 'Task',
+    xterm: dummyXterm as any,
+  });
   termState.activeId = tabId;
+  renderTerminalTabs();
 
   // Store chat-specific state
   taskChatMap.set(taskId, {
     chatEl,
-    tab,
     element,
     avatarFile,
     agentName,

@@ -161,20 +161,48 @@ export function getElementById(id: string): HTMLElement | null {
 }
 
 export const DOM = {
-  statusIndicator: getElementById('statusIndicator') as HTMLElement,
-  connectionStatus: getElementById('connectionStatus') as HTMLElement,
-  agentPanel: getElementById('agentPanel') as HTMLElement,
-  standbyMessage: getElementById('standbyMessage') as HTMLElement,
-  kpiActiveAgents: getElementById('kpiActiveAgents') as HTMLElement,
-  kpiTotalAgents: getElementById('kpiTotalAgents') as HTMLElement,
-  kpiErrors: getElementById('kpiErrors') as HTMLElement,
-  officeFilterBadge: getElementById('officeFilterBadge') as HTMLElement,
-  agentListFilterBadge: getElementById('agentListFilterBadge') as HTMLElement,
-  officeFilterToggle: getElementById('officeRegisteredFilterToggle') as HTMLInputElement,
-  agentListFilterToggle: getElementById('agentListRegisteredFilterToggle') as HTMLInputElement,
-  bulkArchiveBtn: getElementById('bulkArchiveBtn') as HTMLButtonElement,
-  archiveGrid: getElementById('archiveGrid') as HTMLElement,
-  archiveRefreshBtn: getElementById('archiveRefreshBtn') as HTMLButtonElement,
+  get statusIndicator(): HTMLElement | null {
+    return getElementById('statusIndicator') as HTMLElement | null;
+  },
+  get connectionStatus(): HTMLElement | null {
+    return getElementById('connectionStatus') as HTMLElement | null;
+  },
+  get agentPanel(): HTMLElement | null {
+    return getElementById('agentPanel') as HTMLElement | null;
+  },
+  get standbyMessage(): HTMLElement | null {
+    return getElementById('standbyMessage') as HTMLElement | null;
+  },
+  get kpiActiveAgents(): HTMLElement | null {
+    return getElementById('kpiActiveAgents') as HTMLElement | null;
+  },
+  get kpiTotalAgents(): HTMLElement | null {
+    return getElementById('kpiTotalAgents') as HTMLElement | null;
+  },
+  get kpiErrors(): HTMLElement | null {
+    return getElementById('kpiErrors') as HTMLElement | null;
+  },
+  get officeFilterBadge(): HTMLElement | null {
+    return getElementById('officeFilterBadge') as HTMLElement | null;
+  },
+  get agentListFilterBadge(): HTMLElement | null {
+    return getElementById('agentListFilterBadge') as HTMLElement | null;
+  },
+  get officeFilterToggle(): HTMLInputElement | null {
+    return getElementById('officeRegisteredFilterToggle') as HTMLInputElement | null;
+  },
+  get agentListFilterToggle(): HTMLInputElement | null {
+    return getElementById('agentListRegisteredFilterToggle') as HTMLInputElement | null;
+  },
+  get bulkArchiveBtn(): HTMLButtonElement | null {
+    return getElementById('bulkArchiveBtn') as HTMLButtonElement | null;
+  },
+  get archiveGrid(): HTMLElement | null {
+    return getElementById('archiveGrid') as HTMLElement | null;
+  },
+  get archiveRefreshBtn(): HTMLButtonElement | null {
+    return getElementById('archiveRefreshBtn') as HTMLButtonElement | null;
+  },
 };
 
 export const dashboardResumeUtils: DashboardResumeUtils = dashboardResumeUtilsModule;
