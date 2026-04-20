@@ -1,4 +1,3 @@
-import { createElement } from 'react';
 import {
   type DashboardAgent,
   DOM,
@@ -22,8 +21,7 @@ import {
   shouldDisplayAgent,
 } from './agentFilters.js';
 import { fetchCentralDashboardAgents } from './centralAgents/index.js';
-import { AgentPanel } from './react/agentPanel.js';
-import { renderInto } from './react/root.js';
+import { notifyDashboardStore } from './state/store.js';
 
 export { getStateColor };
 export {
@@ -35,20 +33,12 @@ export {
 
 let sseDelay = 1000;
 let sseSource: EventSource | null = null;
-let focusedAgentId: string | null = null;
 
 function recalcStats() {
   const arr = Array.from(state.agents.values()) as DashboardAgent[];
   state.stats.total = arr.length;
   state.stats.active = arr.filter((agent) => ['working', 'thinking'].includes(agent.status)).length;
-  if (DOM.kpiActiveAgents) {
-    DOM.kpiActiveAgents.innerHTML =
-      `${state.stats.active} <span style="font-size:0.8rem;color:var(--color-text-dark)">/ ${state.stats.total}</span>`;
-  }
-  if (DOM.kpiErrors) {
-    DOM.kpiErrors.textContent = state.stats.errorCount.toString();
-    DOM.kpiErrors.className = state.stats.errorCount > 0 ? 'kpi-value error' : 'kpi-value green';
-  }
+  notifyDashboardStore();
 }
 
 export function connectSSE() {
@@ -180,7 +170,7 @@ export function updateAgent(agent: DashboardAgent) {
 export function removeAgent(id: string) {
   state.agents.delete(id);
   state.agentHistory.delete(id);
-  if (focusedAgentId === id) focusedAgentId = null;
+  if (state.focusedAgentId === id) state.focusedAgentId = null;
   recalcStats();
   renderAgentList();
 }
@@ -193,22 +183,6 @@ export function updateBulkArchiveButton() {
   DOM.bulkArchiveBtn.title = count > 0
     ? `Clear ${count} inactive unregistered agent${count === 1 ? '' : 's'}`
     : 'No inactive unregistered agents available to clear';
-}
-
-function updateFilterUI() {
-  const registeredOnly = isRegisteredOnlyFilterEnabled();
-  const badgeText = registeredOnly ? 'Registered Only' : 'All Agents';
-
-  [DOM.officeFilterBadge, DOM.agentListFilterBadge].forEach((badge) => {
-    if (!badge) return;
-    badge.textContent = badgeText;
-    badge.classList.toggle('is-off', !registeredOnly);
-  });
-
-  [DOM.officeFilterToggle, DOM.agentListFilterToggle].forEach((toggle) => {
-    if (!toggle) return;
-    toggle.checked = registeredOnly;
-  });
 }
 
 function renderOfficeRoster() {
@@ -224,28 +198,13 @@ function renderOfficeRoster() {
 export function setRegisteredOnlyFilter(enabled: boolean) {
   state.filters.registeredOnly = !!enabled;
   localStorage.setItem(REGISTERED_FILTER_STORAGE_KEY, enabled ? 'true' : 'false');
-  updateFilterUI();
   renderAgentList();
 }
 
-export function initFilterControls() {
-  [DOM.officeFilterToggle, DOM.agentListFilterToggle].forEach((toggle) => {
-    if (!toggle) return;
-    toggle.addEventListener('change', () => {
-      setRegisteredOnlyFilter(toggle.checked);
-    });
-  });
-  updateFilterUI();
-}
-
 export function renderAgentList() {
-  const visibleAgents = getVisibleAgents();
-  renderInto(
-    DOM.agentPanel,
-    createElement(AgentPanel, { agents: visibleAgents, focusedAgentId }),
-  );
   updateBulkArchiveButton();
   renderOfficeRoster();
+  notifyDashboardStore();
 }
 
 export async function clearUnregisteredAgents(): Promise<void> {
@@ -281,15 +240,15 @@ export async function clearUnregisteredAgents(): Promise<void> {
 
 export function updateAgentUI(agent: DashboardAgent) {
   const nextFocusedAgentId = state.agents.has(agent.id) && shouldDisplayAgent(agent)
-    ? focusedAgentId
-    : focusedAgentId === agent.id
+    ? state.focusedAgentId
+    : state.focusedAgentId === agent.id
       ? null
-      : focusedAgentId;
-  focusedAgentId = nextFocusedAgentId;
+      : state.focusedAgentId;
+  state.focusedAgentId = nextFocusedAgentId;
   renderAgentList();
 }
 
 export function setFocusedAgentCard(agentId: string | null) {
-  focusedAgentId = agentId;
+  state.focusedAgentId = agentId;
   renderAgentList();
 }

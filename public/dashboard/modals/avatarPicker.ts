@@ -128,17 +128,13 @@ export function setupAvatarPicker(updateAgentUI) {
     if (event.key === 'Escape' && modal.style.display !== 'none') modal.style.display = 'none';
   }, { capture: true });
 
-  document.addEventListener('click', async (event) => {
-    const btn = event.target.closest('.agent-avatar-btn');
-    if (!btn) return;
-    event.stopPropagation();
-    currentRegistryId = btn.dataset.avatarId;
-    currentAgentId = btn.dataset.agentId;
+  async function openAvatarPickerModal(agentId: string, registryId: string) {
+    currentRegistryId = registryId;
+    currentAgentId = agentId;
 
     const agent = state.agents.get(currentAgentId);
     const currentIndex = agent ? (agent.avatarIndex != null ? agent.avatarIndex : 0) : 0;
 
-    // Reset to All tab
     activeTab = 'All';
     await refreshSharedAvatarData();
     renderAvatarPicker();
@@ -146,5 +142,7 @@ export function setupAvatarPicker(updateAgentUI) {
 
     modal.style.display = '';
     requestAnimationFrame(() => modal.focus());
-  });
+  }
+
+  (globalThis as any).openAvatarPickerModal = openAvatarPickerModal;
 }

@@ -1,28 +1,74 @@
 import React, { type ReactElement } from 'react';
+import {
+  assignTaskToAgent,
+  changeAgentAvatar,
+  deleteAgentRecord,
+  focusAgentCard,
+  formTeamForAgent,
+  mergeWorkspaceAgent,
+  openAgentHistory,
+  removeWorkspaceAgent,
+  terminateAgent,
+  unregisterAgent,
+} from '../agentActions.js';
+import { AgentPanel } from '../react/agentPanel.js';
+import type {
+  DashboardAgent,
+  DashboardAgentHistoryEntry,
+  DashboardTerminalEntry,
+} from '../shared.js';
+import { TerminalTabs } from '../terminal/chrome.js';
+import { activateTerminalTab, closeTerminal } from '../terminal/ui.js';
+import { FloorTabsContainer } from './floorTabsContainer.js';
 import { type DashboardView } from '../state/store.js';
+import styles from './officeView.module.scss';
 
 export function OfficeView({
+  activeTerminalId,
+  agentHistory,
+  currentFloorName,
   currentView,
+  focusedAgentId,
   registeredOnly,
+  stats,
+  terminals,
+  visibleAgents,
+  onSetRegisteredOnly,
 }: {
+  activeTerminalId: string | null;
+  agentHistory: Map<string, DashboardAgentHistoryEntry[]>;
+  currentFloorName: string;
   currentView: DashboardView;
+  focusedAgentId: string | null;
   registeredOnly: boolean;
+  stats: {
+    active: number;
+    completed: number;
+    errorCount: number;
+    total: number;
+  };
+  terminals: Array<[string, DashboardTerminalEntry]>;
+  visibleAgents: DashboardAgent[];
+  onSetRegisteredOnly: (enabled: boolean) => void;
 }): ReactElement {
+  const registeredOnlyLabel = registeredOnly ? 'Registered Only' : 'All Agents';
+  const hasErrors = stats.errorCount > 0;
+
   return (
     <div id="officeView" className={`view-section${currentView === 'office' ? ' active' : ''}`}>
       <div className="kpi-grid">
         <div className="panel kpi-card">
           <div className="kpi-title">Active Agents</div>
           <div className="kpi-value blue" id="kpiActiveAgents">
-            0{' '}
-            <span style={{ fontSize: '0.8rem', color: 'var(--color-text-dark)' }}>
-              / <span id="kpiTotalAgents">0</span>
+            {stats.active}{' '}
+            <span className={styles.kpiSplit}>
+              / <span id="kpiTotalAgents">{stats.total}</span>
             </span>
           </div>
         </div>
         <div className="kpi-card panel">
           <div className="kpi-title">Errors (24h)</div>
-          <div className="kpi-value green" id="kpiErrors">0</div>
+          <div className={`kpi-value ${hasErrors ? 'error' : 'green'}`} id="kpiErrors">{stats.errorCount}</div>
         </div>
       </div>
 
@@ -33,11 +79,21 @@ export function OfficeView({
               <div className="panel-header-title">
                 <span>Office</span>
                 <span className="panel-header-badge">LIVE</span>
-                <span className="panel-header-badge panel-header-filter-badge" id="officeFilterBadge">Registered Only</span>
+                <span
+                  className={`panel-header-badge panel-header-filter-badge${registeredOnly ? '' : ' is-off'}`}
+                  id="officeFilterBadge"
+                >
+                  {registeredOnlyLabel}
+                </span>
               </div>
               <div className="panel-header-actions">
                 <label className="panel-filter-toggle" htmlFor="officeRegisteredFilterToggle" title="Show only registered agents">
-                  <input type="checkbox" id="officeRegisteredFilterToggle" defaultChecked={registeredOnly} />
+                  <input
+                    checked={registeredOnly}
+                    id="officeRegisteredFilterToggle"
+                    type="checkbox"
+                    onChange={(event) => onSetRegisteredOnly(event.currentTarget.checked)}
+                  />
                   <span>Registered Only</span>
                 </label>
                 <button className="pip-toggle-btn" id="overlayToggleBtn" title="Overlay (Always on top)" type="button">
@@ -57,14 +113,7 @@ export function OfficeView({
             </div>
 
             <div className="floor-tabs" id="floorTabs">
-              <div className="floor-tabs-list" id="floorTabsList" />
-              <button className="floor-tab-add" id="floorAddBtn" title="Add Floor" type="button">+</button>
-              <button className="floor-tab-manage" id="floorManageBtn" title="Manage Floors" type="button">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="3" />
-                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-                </svg>
-              </button>
+              <FloorTabsContainer />
             </div>
 
             <div className="panel-body">
@@ -85,12 +134,22 @@ export function OfficeView({
           <div className="panel agent-list-panel" id="agentListPanel">
             <div className="panel-header">
               <div className="panel-header-title">
-                <span>Agent List</span>
-                <span className="panel-header-badge panel-header-filter-badge" id="agentListFilterBadge">Registered Only</span>
+                <span>{`Agent List - ${currentFloorName}`}</span>
+                <span
+                  className={`panel-header-badge panel-header-filter-badge${registeredOnly ? '' : ' is-off'}`}
+                  id="agentListFilterBadge"
+                >
+                  {registeredOnlyLabel}
+                </span>
               </div>
               <div className="panel-header-actions">
                 <label className="panel-filter-toggle" htmlFor="agentListRegisteredFilterToggle" title="Show only registered agents">
-                  <input type="checkbox" id="agentListRegisteredFilterToggle" defaultChecked={registeredOnly} />
+                  <input
+                    checked={registeredOnly}
+                    id="agentListRegisteredFilterToggle"
+                    type="checkbox"
+                    onChange={(event) => onSetRegisteredOnly(event.currentTarget.checked)}
+                  />
                   <span>Registered Only</span>
                 </label>
                 <button className="bulk-archive-btn" id="bulkArchiveBtn" title="Clear inactive unregistered agents" type="button">
@@ -102,10 +161,21 @@ export function OfficeView({
               </div>
             </div>
             <div className="panel-body" id="agentPanel">
-              <div className="standby-state" id="standbyMessage">
-                <div>No agents dispatched.</div>
-                <div style={{ fontSize: '0.7rem', marginTop: '6px' }}>Spawn an agent via CLI to populate roster.</div>
-              </div>
+              <AgentPanel
+                agents={visibleAgents}
+                focusedAgentId={focusedAgentId}
+                historyByAgent={agentHistory}
+                onAssignTask={assignTaskToAgent}
+                onChangeAvatar={changeAgentAvatar}
+                onDelete={deleteAgentRecord}
+                onFocus={focusAgentCard}
+                onFormTeam={formTeamForAgent}
+                onMergeWorkspace={mergeWorkspaceAgent}
+                onOpenHistory={openAgentHistory}
+                onRemoveWorkspace={removeWorkspaceAgent}
+                onTerminate={terminateAgent}
+                onUnregister={unregisterAgent}
+              />
             </div>
           </div>
         </div>
@@ -114,7 +184,14 @@ export function OfficeView({
 
         <div className="office-right-col panel" id="terminalPanel">
           <div className="terminal-tabs" id="terminalTabs">
-            <div className="terminal-tabs-list" id="terminalTabsList" />
+            <div className="terminal-tabs-list" id="terminalTabsList">
+              <TerminalTabs
+                activeId={activeTerminalId}
+                terminals={terminals}
+                onActivate={activateTerminalTab}
+                onClose={closeTerminal}
+              />
+            </div>
             <div className="terminal-toolbar">
               <button className="terminal-collapse-btn" id="terminalCollapseBtn" type="button" aria-controls="terminalPanel" aria-expanded="true" title="Collapse Terminal">
                 &gt;
@@ -123,13 +200,13 @@ export function OfficeView({
             </div>
           </div>
           <div className="terminal-container" id="terminalContainer">
-            <div className="terminal-empty-state" id="terminalEmptyState">
+            <div className="terminal-empty-state" hidden={terminals.length > 0} id="terminalEmptyState">
               <svg width="48" height="48" fill="none" stroke="#8b949e" strokeWidth="1.5">
                 <polyline points="8 34 20 22 8 10" />
                 <line x1="24" y1="38" x2="40" y2="38" />
               </svg>
-              <div style={{ marginTop: '12px' }}>No terminal open</div>
-              <div style={{ fontSize: '0.7rem', marginTop: '6px', color: 'var(--color-text-dark)' }}>Click an agent to open a terminal.</div>
+              <div className={styles.terminalEmptyTitle}>No terminal open</div>
+              <div className={styles.terminalEmptyHint}>Click an agent to open a terminal.</div>
             </div>
             <div className="terminal-launch-popover" id="terminalProfileMenu" />
           </div>

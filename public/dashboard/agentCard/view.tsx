@@ -1,8 +1,8 @@
 import React, { type CSSProperties, type ReactElement } from 'react';
 import {
   type DashboardAgent,
+  type DashboardAgentHistoryEntry,
   SHARED_AVATAR_FILES,
-  state,
 } from '../shared.js';
 import {
   formatWorkspaceTypeLabel,
@@ -10,6 +10,22 @@ import {
   getStateColor,
   humanizeToolName,
 } from '../agentViewHelpers.js';
+
+type AgentCardProps = {
+  agent: DashboardAgent;
+  focused: boolean;
+  history: DashboardAgentHistoryEntry[];
+  onAssignTask: (agentId: string) => void;
+  onChangeAvatar: (agentId: string, registryId: string) => void;
+  onDelete: (registryId: string) => void;
+  onFocus: (agentId: string) => void;
+  onFormTeam: (agentId: string, registryId: string) => void;
+  onMergeWorkspace: (registryId: string, branch: string) => void;
+  onOpenHistory: (registryId: string, agentName: string) => void;
+  onRemoveWorkspace: (registryId: string, branch: string) => void;
+  onTerminate: (agentId: string) => void;
+  onUnregister: (registryId: string) => void;
+};
 
 function activityLabel(statusClass: string, currentTool?: string | null): string {
   if (currentTool) return statusClass === 'thinking' ? 'Thinking' : 'Running';
@@ -28,161 +44,7 @@ function tooltipProps(label: string): Record<string, string> {
   };
 }
 
-function actionButtons(agent: DashboardAgent, workspaceBranch: string, isManagedWorktree: boolean): ReactElement[] {
-  const canTerminate = !['offline', 'done', 'completed'].includes(agent.status);
-  const isLocalRegistered = !!agent.isRegistered && agent.metadata?.source !== 'central';
-  const actions: ReactElement[] = [];
-
-  if (isLocalRegistered && agent.registryId) {
-    actions.push(
-      <button
-        key="history"
-        className="agent-history-btn"
-        data-agent-name={agent.nickname || agent.name || 'Agent'}
-        data-history-id={agent.registryId}
-        type="button"
-        {...tooltipProps('Session History')}
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M12 8v4l3 3" />
-          <circle cx="12" cy="12" r="9" />
-        </svg>
-      </button>,
-    );
-    actions.push(
-      <button
-        key="assign"
-        className="agent-assign-task-btn"
-        data-agent-id={agent.id}
-        type="button"
-        {...tooltipProps('Assign Task')}
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M12 5v14M5 12h14" />
-        </svg>
-      </button>,
-    );
-    actions.push(
-      <button
-        key="team"
-        className="agent-form-team-btn"
-        data-agent-id={agent.id}
-        data-registry-id={agent.registryId}
-        type="button"
-        {...tooltipProps('Form Team')}
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-          <circle cx="9" cy="7" r="4" />
-          <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-        </svg>
-      </button>,
-    );
-  }
-
-  if (isLocalRegistered && agent.registryId && workspaceBranch && isManagedWorktree) {
-    actions.push(
-      <button
-        key="merge"
-        className="agent-workspace-btn merge"
-        data-branch={workspaceBranch}
-        data-workspace-merge-id={agent.registryId}
-        type="button"
-        {...tooltipProps('Merge branch and clean up workspace')}
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <circle cx="6" cy="6" r="2" />
-          <circle cx="18" cy="6" r="2" />
-          <circle cx="12" cy="18" r="2" />
-          <path d="M8 6h8" />
-          <path d="M6 8v4c0 2 2 4 4 4h2" />
-          <path d="M18 8v4c0 2-2 4-4 4h-2" />
-        </svg>
-      </button>,
-    );
-    actions.push(
-      <button
-        key="remove-workspace"
-        className="agent-workspace-btn remove"
-        data-branch={workspaceBranch}
-        data-workspace-remove-id={agent.registryId}
-        type="button"
-        {...tooltipProps('Remove workspace and delete branch without merge')}
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M3 6h18" />
-          <path d="M8 6V4h8v2" />
-          <path d="M19 6l-1 14H6L5 6" />
-          <path d="M10 11v6" />
-          <path d="M14 11v6" />
-        </svg>
-      </button>,
-    );
-  }
-
-  if (isLocalRegistered && agent.registryId) {
-    actions.push(
-      <button
-        key="avatar"
-        className="agent-avatar-btn"
-        data-agent-id={agent.id}
-        data-avatar-id={agent.registryId}
-        type="button"
-        {...tooltipProps('Change avatar')}
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <circle cx="12" cy="8" r="4" />
-          <path d="M5 20c0-4 3.5-7 7-7s7 3 7 7" />
-        </svg>
-      </button>,
-    );
-  }
-
-  if (canTerminate) {
-    actions.push(
-      <button
-        key="terminate"
-        className="agent-terminate-btn"
-        data-terminate-id={agent.id}
-        type="button"
-        {...tooltipProps('Force terminate session')}
-      >
-        Stop
-      </button>,
-    );
-  }
-
-  if (isLocalRegistered && agent.registryId) {
-    actions.push(
-      <button
-        key="unregister"
-        className="agent-unregister-btn"
-        data-archive-id={agent.registryId}
-        type="button"
-        {...tooltipProps('Unregister agent and move record to Archive')}
-      >
-        Unregister
-      </button>,
-    );
-    actions.push(
-      <button
-        key="delete"
-        className="agent-delete-btn agent-delete-inline"
-        data-delete-id={agent.registryId}
-        type="button"
-        {...tooltipProps('Delete agent record permanently')}
-      >
-        Delete
-      </button>,
-    );
-  }
-
-  return actions;
-}
-
-function timeline(agentId: string): ReactElement | null {
-  const history = state.agentHistory.get(agentId) || [];
+function renderTimeline(history: DashboardAgentHistoryEntry[]): ReactElement | null {
   if (history.length === 0) return null;
 
   const now = Date.now();
@@ -201,7 +63,24 @@ function timeline(agentId: string): ReactElement | null {
   );
 }
 
-export function AgentCard({ agent, focused }: { agent: DashboardAgent; focused: boolean }): ReactElement {
+export function AgentCard({
+  agent,
+  focused,
+  history,
+  onAssignTask,
+  onChangeAvatar,
+  onDelete,
+  onFocus,
+  onFormTeam,
+  onMergeWorkspace,
+  onOpenHistory,
+  onRemoveWorkspace,
+  onTerminate,
+  onUnregister,
+}: AgentCardProps): ReactElement {
+  const avatarFile = SHARED_AVATAR_FILES[agent.avatarIndex != null ? agent.avatarIndex : 0]
+    || SHARED_AVATAR_FILES[0]
+    || 'avatar_0.webp';
   const statusClass = ['working', 'thinking', 'error', 'done', 'completed', 'offline'].includes(agent.status)
     ? agent.status
     : 'waiting';
@@ -215,16 +94,19 @@ export function AgentCard({ agent, focused }: { agent: DashboardAgent; focused: 
   const workspaceBadge = workspaceMeta
     ? <span className="mc-type-badge workspace" title={workspaceType}>{workspaceType}</span>
     : null;
-  const avatarFile = SHARED_AVATAR_FILES[agent.avatarIndex != null ? agent.avatarIndex : 0]
-    || SHARED_AVATAR_FILES[0]
-    || 'avatar_0.webp';
-  const actions = actionButtons(agent, workspaceBranch, workspaceMeta?.type === 'git-worktree');
+  const isLocalRegistered = !!agent.isRegistered && agent.metadata?.source !== 'central';
+  const canTerminate = !['offline', 'done', 'completed'].includes(agent.status);
   const activityIcon = getActivityIcon(statusClass, agent.currentTool);
   const activityStateClass = isActive ? `mc-agent-activity active ${statusClass}` : `mc-agent-activity ${statusClass}`;
   const toolName = agent.currentTool ? humanizeToolName(agent.currentTool) : '';
 
   return (
-    <div className={`mc-agent-card${focused ? ' is-focused' : ''}`} data-id={agent.id} data-status={agent.status}>
+    <div
+      className={`mc-agent-card${focused ? ' is-focused' : ''}`}
+      data-id={agent.id}
+      data-status={agent.status}
+      onClick={() => onFocus(agent.id)}
+    >
       <div className="mc-agent-header">
         <div className="mc-agent-identity">
           <div className="mc-agent-title-row">
@@ -253,12 +135,79 @@ export function AgentCard({ agent, focused }: { agent: DashboardAgent; focused: 
           <span className="mc-agent-workspace-branch">{workspaceBranch}</span>
         </div>
       ) : null}
-      {actions.length > 0 ? <div className="mc-agent-actions">{actions}</div> : null}
+      <div className="mc-agent-actions">
+        {isLocalRegistered && agent.registryId ? (
+          <>
+            <button className="agent-history-btn" type="button" onClick={(event) => { event.stopPropagation(); onOpenHistory(agent.registryId!, agent.nickname || agent.name || 'Agent'); }} {...tooltipProps('Session History')}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 8v4l3 3" />
+                <circle cx="12" cy="12" r="9" />
+              </svg>
+            </button>
+            <button className="agent-assign-task-btn" type="button" onClick={(event) => { event.stopPropagation(); onAssignTask(agent.id); }} {...tooltipProps('Assign Task')}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+            </button>
+            <button className="agent-form-team-btn" type="button" onClick={(event) => { event.stopPropagation(); onFormTeam(agent.id, agent.registryId!); }} {...tooltipProps('Form Team')}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+              </svg>
+            </button>
+          </>
+        ) : null}
+        {isLocalRegistered && agent.registryId && workspaceBranch && workspaceMeta?.type === 'git-worktree' ? (
+          <>
+            <button className="agent-workspace-btn merge" type="button" onClick={(event) => { event.stopPropagation(); onMergeWorkspace(agent.registryId!, workspaceBranch); }} {...tooltipProps('Merge branch and clean up workspace')}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="6" cy="6" r="2" />
+                <circle cx="18" cy="6" r="2" />
+                <circle cx="12" cy="18" r="2" />
+                <path d="M8 6h8" />
+                <path d="M6 8v4c0 2 2 4 4 4h2" />
+                <path d="M18 8v4c0 2-2 4-4 4h-2" />
+              </svg>
+            </button>
+            <button className="agent-workspace-btn remove" type="button" onClick={(event) => { event.stopPropagation(); onRemoveWorkspace(agent.registryId!, workspaceBranch); }} {...tooltipProps('Remove workspace and delete branch without merge')}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 6h18" />
+                <path d="M8 6V4h8v2" />
+                <path d="M19 6l-1 14H6L5 6" />
+                <path d="M10 11v6" />
+                <path d="M14 11v6" />
+              </svg>
+            </button>
+          </>
+        ) : null}
+        {isLocalRegistered && agent.registryId ? (
+          <button className="agent-avatar-btn" type="button" onClick={(event) => { event.stopPropagation(); onChangeAvatar(agent.id, agent.registryId!); }} {...tooltipProps('Change avatar')}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="8" r="4" />
+              <path d="M5 20c0-4 3.5-7 7-7s7 3 7 7" />
+            </svg>
+          </button>
+        ) : null}
+        {canTerminate ? (
+          <button className="agent-terminate-btn" type="button" onClick={(event) => { event.stopPropagation(); onTerminate(agent.id); }} {...tooltipProps('Force terminate session')}>
+            Stop
+          </button>
+        ) : null}
+        {isLocalRegistered && agent.registryId ? (
+          <>
+            <button className="agent-unregister-btn" type="button" onClick={(event) => { event.stopPropagation(); onUnregister(agent.registryId!); }} {...tooltipProps('Unregister agent and move record to Archive')}>
+              Unregister
+            </button>
+            <button className="agent-delete-btn agent-delete-inline" type="button" onClick={(event) => { event.stopPropagation(); onDelete(agent.registryId!); }} {...tooltipProps('Delete agent record permanently')}>
+              Delete
+            </button>
+          </>
+        ) : null}
+      </div>
       <div className={activityStateClass}>
-        <span
-          className="mc-activity-indicator"
-          dangerouslySetInnerHTML={{ __html: activityIcon }}
-        />
+        <span className="mc-activity-indicator" dangerouslySetInnerHTML={{ __html: activityIcon }} />
         <span className="mc-activity-label">{activityLabel(statusClass, agent.currentTool)}</span>
         {agent.currentTool
           ? <span className="mc-activity-tool">{toolName}</span>
@@ -266,7 +215,7 @@ export function AgentCard({ agent, focused }: { agent: DashboardAgent; focused: 
             ? <span className="mc-activity-dots"><i /><i /><i /></span>
             : null}
       </div>
-      {timeline(agent.id)}
+      {renderTimeline(history)}
     </div>
   );
 }

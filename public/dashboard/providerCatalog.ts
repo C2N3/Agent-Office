@@ -49,6 +49,10 @@ export function getProviderIds() {
   return DASHBOARD_PROVIDER_DEFINITIONS.map((provider) => provider.id);
 }
 
+export function getProviderDefinitions() {
+  return DASHBOARD_PROVIDER_DEFINITIONS;
+}
+
 export function normalizeProvider(provider?: string | null, fallback = DEFAULT_PROVIDER_ID) {
   const candidate = String(provider || '').trim().toLowerCase();
   if (DASHBOARD_PROVIDER_DEFINITIONS.some((definition) => definition.id === candidate)) {
@@ -71,24 +75,4 @@ export function getProviderModels(provider?: string | null) {
 export function getTerminalBootCommand(provider?: string | null, sessionId?: string | null) {
   const definition = getProviderDefinition(provider);
   return definition.buildTerminalBootCommand ? definition.buildTerminalBootCommand(sessionId) : null;
-}
-
-export function renderProviderButtons(selectedProvider = DEFAULT_PROVIDER_ID) {
-  const selected = normalizeProvider(selectedProvider);
-  return DASHBOARD_PROVIDER_DEFINITIONS
-    .map((provider) => {
-      const activeClass = provider.id === selected ? ' active' : '';
-      return `<button type="button" class="provider-btn${activeClass}" data-provider="${provider.id}">${provider.label}</button>`;
-    })
-    .join('');
-}
-
-export function renderProviderRadioOptions(name: string, selectedProvider = DEFAULT_PROVIDER_ID) {
-  const selected = normalizeProvider(selectedProvider);
-  return DASHBOARD_PROVIDER_DEFINITIONS
-    .map((provider) => {
-      const checked = provider.id === selected ? ' checked' : '';
-      return `<label class="modal-radio-option"><input type="radio" name="${name}" value="${provider.id}"${checked}><span>${provider.label}</span></label>`;
-    })
-    .join('');
 }

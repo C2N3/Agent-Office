@@ -1,4 +1,3 @@
-import { createElement } from 'react';
 import {
   dashboardResumeUtils,
   getDashboardAPI,
@@ -8,8 +7,7 @@ import {
 } from '../shared.js';
 import { initTerminalPanelCollapse, revealTerminalPanel } from './collapse.js';
 import { setupTerminalResizableHandles } from './resizable.js';
-import { renderInto } from '../react/root.js';
-import { TerminalTabs } from './chrome.js';
+import { notifyDashboardStore } from '../state/store.js';
 
 export async function resumeLatestRegisteredSession(registryId, label, resumeRegisteredSession) {
   const dashboardAPI = getDashboardAPI();
@@ -50,15 +48,7 @@ export function renderTerminalTabs() {
   if (termState.terminals.size > 0) {
     revealTerminalPanel();
   }
-  renderInto(
-    document.getElementById('terminalTabsList'),
-    createElement(TerminalTabs, {
-      activeId: termState.activeId,
-      terminals: Array.from(termState.terminals.entries()),
-      onActivate: activateTerminalTab,
-      onClose: closeTerminal,
-    }),
-  );
+  notifyDashboardStore();
 }
 
 export function activateTerminalTab(agentId) {
@@ -100,8 +90,6 @@ export function closeTerminal(agentId) {
 
   termState.activeId = null;
   renderTerminalTabs();
-  const emptyState = document.getElementById('terminalEmptyState');
-  if (emptyState) emptyState.style.display = '';
 }
 
 export function createXtermInstance(agentId, label) {
@@ -112,8 +100,6 @@ export function createXtermInstance(agentId, label) {
 
   const dashboardAPI = getDashboardAPI();
   const container = document.getElementById('terminalContainer');
-  const emptyState = document.getElementById('terminalEmptyState');
-  if (emptyState) emptyState.style.display = 'none';
 
   const element = document.createElement('div');
   element.className = 'terminal-instance active';
