@@ -24,6 +24,7 @@ This file tracks client-side work that is planned, discovered, blocked, or compl
 
 ## Done
 
+- [x] Replace ad hoc dashboard modal globals with a typed modal registry and move the terminal PowerShell-policy banner/profile launcher surfaces into React-owned state.
 - [x] Move the dashboard heatmap/archive surfaces into React-owned views and split the dashboard runtime bootstrap out of the React root mount.
 - [x] Split browser-authored UI into `src/client` and `src/renderer`, move static assets to `assets/`, and run `index`/`dashboard`/`pip`/`overlay` through Vite while keeping the Electron main process, dashboard server, and preloads on the `dist` + `tsgo` runtime path.
 - [x] Make the sidebar `Cloudflare` tab available in production builds instead of hiding it behind the dashboard dev-mode gate.

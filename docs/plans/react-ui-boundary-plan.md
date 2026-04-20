@@ -24,6 +24,8 @@ The current branch has already landed a few of the high-value dashboard slices:
 - the remote view is React-owned while its polling/data layer stays imperative
 - the heatmap and archive surfaces now render from React components instead of `innerHTML`
 - dashboard runtime bootstrapping is split from the React root mount so the imperative setup is easier to follow
+- modal launch wiring now goes through a typed registry instead of ad hoc `globalThis.open*Modal` handlers
+- the terminal PowerShell-policy banner and profile launcher menu now render from React-owned state while the xterm host stays imperative
 
 That leaves the remaining work focused on shrinking the imperative DOM surface area around modals, terminal hosts, and office-side adapters rather than proving the boundary from scratch.
 
@@ -217,12 +219,12 @@ Do not rewrite `src/client/office/officeRenderer.ts` or related runtime modules 
 
 ## Suggested Next Task
 
-Continue with the dashboard modal and terminal surfaces, because they still mix React-owned markup with imperative element lookup and listener setup.
+Continue with the remaining office-side and overlay-side adapters, because those areas still keep React and imperative DOM/canvas coordination close together.
 
 The next migration slice should include:
 
-- modal state/actions under `src/client/dashboard/modals/*`
-- terminal host/bootstrap code under `src/client/dashboard/terminal/*`
-- any remaining runtime-global bridges that only exist to reach DOM-owned handlers
+- the remaining office-side adapter bridges under `src/client/dashboard/office.ts` and `src/client/office/*`
+- overlay toolbar/context surfaces under `src/renderer/*` that still hand-build DOM around runtime state
+- any leftover runtime globals that only exist to bridge React-owned UI to imperative handlers
 
-That keeps the office renderer imperative while reducing the leftover React/DOM ownership split in the dashboard shell.
+That keeps the rendering engines imperative while continuing to narrow the leftover ownership split at the shell/adaptor layer.
