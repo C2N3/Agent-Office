@@ -1,54 +1,8 @@
 /**
- * UI Components — Dashboard button, keyboard shortcuts, context menu
+ * UI Components — keyboard shortcuts and context menu bridge
  */
 
-export function createWebDashboardButton() {
-  const button = document.createElement('button');
-  button.id = 'web-dashboard-btn';
-  button.className = 'web-dashboard-btn';
-  button.innerHTML = '🌐 Agent Desk';
-  button.title = 'Open Agent Desk (Ctrl+D)';
-
-  button.onclick = async () => {
-    button.disabled = true;
-    const originalHTML = button.innerHTML;
-    button.innerHTML = '⏳ Opening...';
-
-    try {
-      if (window.electronAPI && window.electronAPI.openWebDashboard) {
-        const result = await window.electronAPI.openWebDashboard();
-
-        if (result.success) {
-          button.innerHTML = '✓ Opened';
-          setTimeout(() => {
-            button.innerHTML = '🌐 Agent Desk';
-            button.disabled = false;
-          }, 2000);
-        } else {
-          button.innerHTML = '✗ Failed';
-          console.error('[Renderer] Failed to open dashboard:', result.error);
-          setTimeout(() => {
-            button.innerHTML = originalHTML;
-            button.disabled = false;
-          }, 2000);
-        }
-      } else {
-        console.error('[Renderer] electronAPI.openWebDashboard not available');
-        button.disabled = false;
-        button.innerHTML = originalHTML;
-      }
-    } catch (error) {
-      console.error('[Renderer] Error opening dashboard:', error);
-      button.innerHTML = '✗ Error';
-      setTimeout(() => {
-        button.innerHTML = originalHTML;
-        button.disabled = false;
-      }, 2000);
-    }
-  };
-
-  return button;
-}
+import { closeOverlayContextMenu, openOverlayContextMenu } from './overlayShellController.js';
 
 export function setupKeyboardShortcuts() {
   document.addEventListener('keydown', (e) => {
@@ -80,10 +34,7 @@ export function setupKeyboardShortcuts() {
 
     // Escape: Close any overlays/modals
     if (e.key === 'Escape') {
-      const contextMenu = document.querySelector('.context-menu');
-      if (contextMenu) {
-        contextMenu.remove();
-      }
+      closeOverlayContextMenu();
     }
 
     // Enter: Focus terminal for active agent
@@ -141,43 +92,11 @@ export function setupContextMenu() {
     const agentId = agentCard.dataset.agentId;
     if (!agentId) return;
 
-    const existingMenu = document.querySelector('.context-menu');
-    if (existingMenu) existingMenu.remove();
-
-    const menu = document.createElement('div');
-    menu.className = 'context-menu';
-    menu.innerHTML = `
-      <div class="context-menu-item" data-action="focus">
-        <span class="menu-icon">🎯</span>
-        <span class="menu-label">Focus Terminal</span>
-        <span class="menu-shortcut">Enter</span>
-      </div>
-    `;
-
-    menu.style.left = `${e.clientX}px`;
-    menu.style.top = `${e.clientY}px`;
-
-    menu.querySelectorAll('.context-menu-item').forEach(item => {
-      item.addEventListener('click', () => {
-        if (item.dataset.action === 'focus') {
-          if (window.electronAPI && window.electronAPI.focusTerminal) {
-            window.electronAPI.focusTerminal(agentId);
-          }
-        }
-        menu.remove();
-      });
+    openOverlayContextMenu({
+      agentId,
+      x: e.clientX,
+      y: e.clientY,
     });
-
-    document.body.appendChild(menu);
-
-    const closeMenu = (event) => {
-      const closeTarget = event.target as Node | null;
-      if (!document.body.contains(menu) || !menu.contains(closeTarget)) {
-        if (document.body.contains(menu)) menu.remove();
-        document.removeEventListener('click', closeMenu);
-      }
-    };
-    setTimeout(() => document.addEventListener('click', closeMenu), 0);
   });
 
 }

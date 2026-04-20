@@ -2,11 +2,14 @@
  * Renderer Init — initialization, visibility handling
  */
 
+import { createElement } from 'react';
+import { createRoot } from 'react-dom/client';
 import { AVATAR_FILES, lastAgents, agentStates } from './config.js';
 import { playAnimation } from './animationManager.js';
 import { addAgent, updateAgent, removeAgent, cleanupAgents, updateGridLayout, showIdleAvatar } from './agentGrid.js';
-import { createWebDashboardButton, setupKeyboardShortcuts, setupContextMenu } from './uiComponents.js';
+import { setupKeyboardShortcuts, setupContextMenu } from './uiComponents.js';
 import { createErrorUI } from './errorUI.js';
+import { OverlayShell } from './overlayShell.js';
 import { installHoverTooltips } from '../../public/uiTooltip.js';
 
 let availableAvatars = [];
@@ -16,6 +19,11 @@ async function init() {
   if (!window.electronAPI) {
     console.error('[Renderer] electronAPI not available');
     return;
+  }
+
+  const mount = document.getElementById('renderer-root');
+  if (mount) {
+    createRoot(mount).render(createElement(OverlayShell));
   }
 
   setupKeyboardShortcuts();
@@ -43,12 +51,6 @@ async function init() {
 
   // Display idle avatar
   showIdleAvatar(idleAvatar);
-
-  // Dashboard button — floating overlay at bottom-right corner
-  const toolbar = document.createElement('div');
-  toolbar.className = 'avatar-toolbar';
-  toolbar.appendChild(createWebDashboardButton());
-  document.body.appendChild(toolbar);
 
   // Register event listeners
   window.electronAPI.onAgentAdded(addAgent);

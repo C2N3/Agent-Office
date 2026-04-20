@@ -16,7 +16,21 @@ import {
   updateSatelliteAvatar,
 } from './agentGrid/satellites.js';
 
-const agentGrid = document.getElementById('agent-grid');
+function getAgentGrid() {
+  return document.getElementById('agent-grid');
+}
+
+function getIdleContainer() {
+  return document.getElementById('container');
+}
+
+function getIdleCharacter() {
+  return document.getElementById('character');
+}
+
+function getIdleBubble() {
+  return document.getElementById('speech-bubble');
+}
 
 export function addAgent(agent) {
   if (!lastAgents.some(a => a.id === agent.id)) {
@@ -44,6 +58,9 @@ export function addAgent(agent) {
   }
 
   const card = createAgentCard(agent);
+  const agentGrid = getAgentGrid();
+  if (!agentGrid) return;
+
   agentGrid.appendChild(card);
 
   updateAgentState(agent.id, card, agent);
@@ -165,11 +182,9 @@ export function cleanupAgents(data) {
 }
 
 // --- Idle avatar for empty state (0 agents) ---
-const idleContainer = document.getElementById('container');
-const idleCharacter = document.getElementById('character');
-const idleBubble = document.getElementById('speech-bubble');
-
 export function startIdleAnimation() {
+  const idleCharacter = getIdleCharacter();
+  const idleBubble = getIdleBubble();
   if (!idleCharacter) return;
   const seq = ANIM_SEQUENCES.waiting;
   drawFrameOn(idleCharacter, seq.frames[0]);
@@ -177,6 +192,8 @@ export function startIdleAnimation() {
 }
 
 export function showIdleAvatar(avatarFile) {
+  const idleContainer = getIdleContainer();
+  const idleCharacter = getIdleCharacter();
   if (!idleContainer) return;
   idleContainer.style.display = 'flex';
   if (idleCharacter && avatarFile) {
@@ -186,5 +203,8 @@ export function showIdleAvatar(avatarFile) {
 }
 
 export function updateGridLayout() {
+  const agentGrid = getAgentGrid();
+  const idleContainer = getIdleContainer();
+  if (!agentGrid) return;
   updateGridLayoutElements(agentGrid, idleContainer);
 }
