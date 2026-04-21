@@ -41,6 +41,7 @@ The current branch has already landed a few of the high-value dashboard slices:
 - the terminal profile launcher menu now uses the React-owned New Terminal button ref for outside-click containment instead of rediscovering `terminalNewBtn` by global ID, while profile actions and xterm hosts stay behind the existing terminal adapters
 - the Remote view now owns polling lifecycle from its React `active` prop; `remote/polling.ts` refreshes only when React has started it and no longer rediscovers `remoteView` by global ID/class guards
 - the dashboard horizontal/vertical resize handles now start resizing from React-owned refs and `onMouseDown` handlers instead of `document.getElementById('resizeH'/'resizeV').addEventListener(...)`, while the document-level drag session and terminal fit behavior stay in a small imperative adapter
+- the heatmap tooltip host now belongs to `HeatmapView` through React ref registration instead of `document.getElementById('mcTooltip')`, while tooltip positioning stays behind the existing activity view adapter
 
 That leaves the remaining work focused on shrinking the imperative DOM surface area around modals, auxiliary dashboard panels, overlay cards, and office-side adapters rather than proving the boundary from scratch.
 
@@ -70,11 +71,12 @@ Completed or mostly completed:
 - React-owned terminal profile menu outside-click trigger containment via a launcher button ref instead of a global `terminalNewBtn` lookup
 - React-owned Remote view active-state polling lifecycle, with central-server polling/SSE refresh kept behind the existing remote polling adapter
 - React-owned dashboard resizable handle start events via refs and `onMouseDown`, with document mousemove/mouseup drag continuation kept behind a small terminal resize adapter
+- React-owned heatmap tooltip host registration, with activity view tooltip positioning kept as a small adapter
 - office canvas renderer, sprite animation, pathfinding, and movement left imperative
 
 Still remaining:
 
-- continue auditing any newly discovered React-rendered dashboard controls for follow-up `getElementById(...).addEventListener(...)` wiring; the latest audit left dashboard root mounting, xterm host lookup, tooltip lookup, and office canvas/popover adapters outside the resizable-handle slice
+- continue auditing any newly discovered React-rendered dashboard controls for follow-up `getElementById(...).addEventListener(...)` wiring; the latest audit left dashboard root mounting, xterm host lookup and office canvas/popover adapters outside the heatmap-tooltip slice
 - audit the overlay grid boundary for any remaining same-DOM dual ownership; card-list and layout mutations are now behind adapters while animation and resize runtime code remain imperative
 - refine the office-side adapter so React supplies host elements and the runtime owns setup/update/teardown explicitly
 
@@ -272,7 +274,7 @@ Continue with small ownership cleanup slices rather than a broad rewrite.
 
 Recommended order:
 
-1. Continue dashboard adapter cleanup for remaining React-rendered DOM lookups, starting with xterm host lookup or tooltip lookup only where a small owner can be identified.
+1. Continue dashboard adapter cleanup for remaining React-rendered DOM lookups, starting with xterm host lookup only where a small owner can be identified.
 2. Refine office-side adapters under `src/client/dashboard/office.ts` and `src/client/office/*` so runtime listeners and render-loop lifecycle have clear setup/update/teardown boundaries.
 3. Audit the overlay grid boundary for any remaining same-DOM dual ownership while leaving animation scheduling and resize calculations imperative.
 

@@ -37,7 +37,9 @@ describe('dashboard activity views react boundary', () => {
   afterEach(() => {
     delete global.confirm;
     delete global.dashboardAPI;
+    delete global.document;
     delete global.localStorage;
+    delete global.window;
   });
 
   test('renders the React-owned heatmap and archive shells with stable ids', () => {
@@ -78,5 +80,50 @@ describe('dashboard activity views react boundary', () => {
     expect(global.dashboardAPI.deleteRegisteredAgent).toHaveBeenCalledWith('arch-1');
     expect(global.dashboardAPI.listArchivedAgents).toHaveBeenCalled();
     expect(archiveState.items).toEqual([]);
+  });
+
+  test('positions the heatmap tooltip through the registered React host', () => {
+    const {
+      hideTooltip,
+      registerHeatmapTooltipHost,
+      showTooltip,
+    } = require('../src/client/dashboard/activityViews.ts');
+    const tooltip = {
+      innerHTML: '',
+      offsetHeight: 40,
+      offsetWidth: 200,
+      style: {},
+    };
+    const cell = {
+      getBoundingClientRect: () => ({
+        bottom: 122,
+        height: 10,
+        left: 120,
+        top: 112,
+        width: 10,
+      }),
+    };
+    global.document = {
+      getElementById: jest.fn(),
+    };
+    global.window = {
+      innerWidth: 800,
+    };
+
+    registerHeatmapTooltipHost(tooltip);
+    showTooltip(cell, '2026-04-18', { sessions: 3 });
+
+    expect(global.document.getElementById).not.toHaveBeenCalled();
+    expect(tooltip.innerHTML).toContain('2026-04-18');
+    expect(tooltip.innerHTML).toContain('Sessions');
+    expect(tooltip.innerHTML).toContain('3');
+    expect(tooltip.style.display).toBe('block');
+    expect(tooltip.style.left).toBe('25px');
+    expect(tooltip.style.top).toBe('62px');
+
+    hideTooltip();
+
+    expect(tooltip.style.display).toBe('none');
+    registerHeatmapTooltipHost(null);
   });
 });

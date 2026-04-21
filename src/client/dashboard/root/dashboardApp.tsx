@@ -64,7 +64,6 @@ export function DashboardApp(): ReactElement {
         </main>
       </div>
 
-      <div className="mc-tooltip" id="mcTooltip" />
       <DashboardModals />
     </>
   );

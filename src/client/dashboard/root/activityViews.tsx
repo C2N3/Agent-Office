@@ -12,6 +12,7 @@ import {
   getHeatmapRefreshToken,
   hideTooltip,
   openArchivedAgentHistory,
+  registerHeatmapTooltipHost,
   renderArchiveView,
   renderHeatmapView,
   showTooltip,
@@ -231,6 +232,7 @@ export function HeatmapView({ currentView }: { currentView: DashboardView }): Re
           More
         </div>
       </div>
+      <div ref={registerHeatmapTooltipHost} className="mc-tooltip" />
     </div>
   );
 }

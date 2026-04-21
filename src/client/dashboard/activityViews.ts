@@ -7,8 +7,10 @@ import {
 } from './shared.js';
 import { dashboardModalRegistry } from './modals/registry.js';
 
-function getTooltip(): HTMLDivElement | null {
-  return document.getElementById('mcTooltip') as HTMLDivElement | null;
+let heatmapTooltipHost: HTMLDivElement | null = null;
+
+export function registerHeatmapTooltipHost(element: HTMLDivElement | null): void {
+  heatmapTooltipHost = element;
 }
 
 const heatmapListeners = new Set<() => void>();
@@ -60,7 +62,7 @@ async function fetchHistory(): Promise<void> {
 }
 
 export function showTooltip(element: HTMLElement, dateString: string, data?: DashboardDayStats) {
-  const tooltip = getTooltip();
+  const tooltip = heatmapTooltipHost;
   if (!tooltip) return;
   const bounds = element.getBoundingClientRect();
   tooltip.innerHTML = `<div class="tt-head">${dateString}</div>`;
@@ -76,7 +78,7 @@ export function showTooltip(element: HTMLElement, dateString: string, data?: Das
 }
 
 export function hideTooltip() {
-  const tooltip = getTooltip();
+  const tooltip = heatmapTooltipHost;
   if (!tooltip) return;
   tooltip.style.display = 'none';
 }
