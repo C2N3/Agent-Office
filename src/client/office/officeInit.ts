@@ -10,6 +10,7 @@ import { loadAvatarFiles, loadOfficeLayout, loadSpriteFrames } from './officeCon
 import { officeCharacters } from './character/index.js';
 import { officeRenderer } from './officeRenderer.js';
 import { floorManager } from './floorManager.js';
+import { getOfficeCanvasHost } from './host.js';
 
 let officeInitialized = false;
 
@@ -43,14 +44,14 @@ export async function initOffice() {
   // Initialize floor manager
   floorManager.init();
 
-  const canvas = document.getElementById('office-canvas') as HTMLCanvasElement | null;
+  const canvas = getOfficeCanvasHost();
   if (!canvas) return;
 
   // Show loading indicator
   const container = canvas.parentElement as HTMLElement;
   let loadingEl = container.querySelector('.office-loading') as HTMLElement | null;
   if (!loadingEl) {
-    loadingEl = document.createElement('div');
+    loadingEl = canvas.ownerDocument.createElement('div');
     loadingEl.className = 'office-loading';
     loadingEl.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);color:#fff;font-size:14px;z-index:10;';
     loadingEl.textContent = 'Loading Office...';

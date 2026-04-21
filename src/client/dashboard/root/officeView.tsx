@@ -35,6 +35,7 @@ import {
   useWindowControlsSnapshot,
 } from '../app/windowControls.js';
 import { registerOfficePopoverHost } from '../office.js';
+import { registerOfficeCanvasHost } from '../../office/index.js';
 import styles from './officeView.module.scss';
 
 export function OfficeView({
@@ -184,7 +185,7 @@ export function OfficeView({
             </div>
 
             <div className="panel-body">
-              <canvas id="office-canvas" style={{ display: windowControls.pipOpen ? 'none' : 'block' }} />
+              <canvas ref={registerOfficeCanvasHost} id="office-canvas" style={{ display: windowControls.pipOpen ? 'none' : 'block' }} />
               <div className="pip-placeholder" id="pipPlaceholder" style={{ display: windowControls.pipOpen ? 'flex' : 'none' }}>
                 <svg width="48" height="48" viewBox="0 0 48 48" fill="none" stroke="#8b949e" strokeWidth="2">
                   <rect x="4" y="8" width="40" height="32" rx="4" />

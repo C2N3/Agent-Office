@@ -1,7 +1,11 @@
 describe('office popover host registration', () => {
+  let mockOfficeCanvasHost;
+
   beforeEach(() => {
     jest.resetModules();
+    mockOfficeCanvasHost = null;
     jest.doMock('../src/client/office/index.ts', () => ({
+      getOfficeCanvasHost: jest.fn(() => mockOfficeCanvasHost),
       OFFICE: { FRAME_H: 140, FRAME_W: 106 },
       officeCharacters: null,
       officeRenderer: null,
@@ -25,6 +29,7 @@ describe('office popover host registration', () => {
     const canvasListeners = {};
     global.HTMLCanvasElement = class {};
     const canvas = new global.HTMLCanvasElement();
+    mockOfficeCanvasHost = canvas;
     Object.assign(canvas, {
       addEventListener: jest.fn((eventName, listener) => {
         canvasListeners[eventName] = listener;
@@ -39,7 +44,7 @@ describe('office popover host registration', () => {
       addEventListener: jest.fn((eventName, listener) => {
         documentListeners[eventName] = listener;
       }),
-      getElementById: jest.fn((id) => (id === 'office-canvas' ? canvas : null)),
+      getElementById: jest.fn(() => null),
     };
     global.window = {
       addEventListener: jest.fn(),
@@ -53,7 +58,7 @@ describe('office popover host registration', () => {
     registerOfficePopoverHost(popover);
     setupOfficeClickHandler(jest.fn());
 
-    expect(global.document.getElementById).toHaveBeenCalledWith('office-canvas');
+    expect(global.document.getElementById).not.toHaveBeenCalled();
     expect(global.document.getElementById).not.toHaveBeenCalledWith('officePopover');
     expect(typeof canvasListeners.click).toBe('function');
 

@@ -6,7 +6,7 @@ import {
   getDashboardAPI,
   state,
 } from './shared.js';
-import { OFFICE, officeCharacters, officeRenderer } from '../office/index.js';
+import { getOfficeCanvasHost, OFFICE, officeCharacters, officeRenderer } from '../office/index.js';
 import { dashboardModalRegistry } from './modals/registry.js';
 
 let officePopoverHost: HTMLDivElement | null = null;
@@ -145,7 +145,7 @@ function hideOfficePopover() {
 }
 
 export function setupOfficeClickHandler(openTerminalForAgent: (agentId: string, openOptions?: DashboardOpenOptions) => Promise<void> | void) {
-  const canvasEl = document.getElementById('office-canvas');
+  const canvasEl = getOfficeCanvasHost();
   if (!(canvasEl instanceof HTMLCanvasElement)) return;
   const canvas = canvasEl;
 

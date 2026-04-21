@@ -25,6 +25,7 @@ export {
 } from './officeCoords.js';
 export { initOffice, officeOnAgentCreated, officeOnAgentRemoved, officeOnAgentUpdated, resumeOffice, stopOffice, switchOfficeFloor } from './officeInit.js';
 export { floorManager } from './floorManager.js';
+export { getOfficeCanvasHost, registerOfficeCanvasHost } from './host.js';
 export {
   buildOfficeLayers,
   getNearestRoom,
