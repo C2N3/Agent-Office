@@ -13,7 +13,6 @@ This file tracks client-side work that is planned, discovered, blocked, or compl
 ## Open
 
 - [ ] Execute the client UI runtime boundary direction in `docs/plans/client-ui-runtime-boundary.md` by keeping Vite limited to browser entries, moving React-rendered control events into React ownership, and keeping office canvas/runtime code imperative TypeScript.
-- [ ] Refine the office canvas adapter around `src/client/dashboard/office.ts` and `src/client/office/officeInit.ts` so React supplies host elements and the runtime exposes setup/update/teardown entrypoints.
 - [ ] Add full Gemini session visualization support by implementing Gemini session ingestion/monitoring, transcript statistics, recovery metadata, and provider registry/catalog capability updates comparable to Claude and Codex.
 - [ ] Execute the SQLite persistence migration plan in `docs/plans/sqlite-persistence-plan.md`.
 - [ ] Complete Phase 1 of `docs/plans/sqlite-persistence-plan.md`.
@@ -36,6 +35,7 @@ This file tracks client-side work that is planned, discovered, blocked, or compl
 - [x] Move the heatmap tooltip host from `document.getElementById('mcTooltip')` lookup to a React-owned `HeatmapView` ref registration while preserving the small tooltip positioning adapter.
 - [x] Move the office popover host from `document.getElementById('officePopover')` lookup to React-owned `OfficeView` ref registration while preserving the imperative canvas click/drag runtime.
 - [x] Move the office canvas host from `document.getElementById('office-canvas')` lookup to React-owned `OfficeView` ref registration while preserving imperative office renderer initialization and canvas click/drag behavior.
+- [x] Refine the office canvas adapter around `src/client/dashboard/office.ts` and `src/client/office/officeInit.ts` so React supplies host elements and the runtime exposes setup/update/teardown entrypoints for canvas click/drag listeners and renderer startup control.
 - [x] Move the terminal panel collapse button from dashboard runtime DOM listener wiring into React-owned state and handlers while preserving terminal fit scheduling.
 - [x] Move archive Refresh/History/Delete controls and the agent-list bulk clear button from dashboard runtime DOM listener wiring into React-owned handlers.
 - [x] Move the overlay grid and idle-shell host lookup in `src/renderer/agentGrid.ts` behind React-owned refs registered by `src/renderer/overlayShell.tsx`.

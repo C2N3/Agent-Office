@@ -74,6 +74,8 @@ React components should not reach into sprite, pathfinding, renderer, or charact
 
    Prefer adapter functions that receive the host element, current options, and callbacks over modules that discover React-rendered nodes by global IDs. Add teardown paths when adapters install listeners, `ResizeObserver`, timers, or animation loops.
 
+   Current office status: the dashboard office click/drag adapter exposes setup, host-update, and teardown entrypoints, and `officeInit.ts` exposes setup/update/teardown aliases over the existing renderer lifecycle. `OfficeView` supplies the canvas and popover hosts through React refs, while the office renderer, sprite/pathfinding logic, and render loop remain imperative.
+
 5. Reduce mutable state hazards.
 
    Dashboard state can remain a module-level store with `useSyncExternalStore`, but state changes should flow through named functions that call `notifyDashboardStore`. Avoid direct `state.*` writes in new React-facing code.
@@ -86,7 +88,7 @@ React components should not reach into sprite, pathfinding, renderer, or charact
 
 1. Move event ownership for React-rendered dashboard controls into React handlers.
 2. Migrate remaining modal and panel markup away from `innerHTML` feature by feature.
-3. Refine the office canvas adapter so React supplies the canvas host and the runtime owns the lifecycle.
+3. Keep future office canvas adapter changes behind the existing setup/update/teardown lifecycle while React supplies host elements.
 4. Continue overlay shell migration while leaving animation and resize runtime code imperative.
 
 ## Acceptance Criteria

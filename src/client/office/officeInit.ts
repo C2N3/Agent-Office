@@ -113,6 +113,10 @@ export async function initOffice() {
   officeInitialized = true;
 }
 
+export async function setupOfficeRuntime() {
+  await initOffice();
+}
+
 /** Called from dashboard SSE agent.created handler */
 export function officeOnAgentCreated(data: any) {
   if (!officeInitialized) return;
@@ -201,4 +205,12 @@ export function resumeOffice() {
   if (officeInitialized) {
     officeRenderer.resume();
   }
+}
+
+export function updateOfficeRuntime() {
+  resumeOffice();
+}
+
+export function teardownOfficeRuntime() {
+  stopOffice();
 }

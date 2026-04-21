@@ -8,7 +8,7 @@ import {
   renderAgentList,
   updateAgent,
 } from '../agentViews.js';
-import { setupOfficeClickHandler } from '../office.js';
+import { setupOfficeInteractionRuntime } from '../office.js';
 import {
   fitActiveTerminal,
   initResizableHandles,
@@ -18,10 +18,10 @@ import {
   refreshTerminalProfiles,
 } from '../terminal/index.js';
 import {
-  initOffice,
   officeOnAgentCreated,
   officeOnAgentRemoved,
   officeOnAgentUpdated,
+  setupOfficeRuntime,
 } from '../../office/index.js';
 import { installHoverTooltips } from '../../../shared/uiTooltip.js';
 import { startCentralAgentSync } from '../centralAgents/index.js';
@@ -58,10 +58,10 @@ function initTerminalRuntime() {
 
 function initOfficeRuntime() {
   setTimeout(() => {
-    initOffice()
+    setupOfficeRuntime()
       .then(() => renderAgentList())
       .catch((error: DashboardUiError) => console.error('[Office Init]', error));
-    setupOfficeClickHandler(openTerminalForAgent);
+    setupOfficeInteractionRuntime({ openTerminalForAgent });
   }, 100);
 }
 

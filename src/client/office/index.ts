@@ -23,7 +23,18 @@ export {
   parseRoomObjectCoordinates,
   parseAllRoomCoordinates,
 } from './officeCoords.js';
-export { initOffice, officeOnAgentCreated, officeOnAgentRemoved, officeOnAgentUpdated, resumeOffice, stopOffice, switchOfficeFloor } from './officeInit.js';
+export {
+  initOffice,
+  officeOnAgentCreated,
+  officeOnAgentRemoved,
+  officeOnAgentUpdated,
+  resumeOffice,
+  setupOfficeRuntime,
+  stopOffice,
+  switchOfficeFloor,
+  teardownOfficeRuntime,
+  updateOfficeRuntime,
+} from './officeInit.js';
 export { floorManager } from './floorManager.js';
 export { getOfficeCanvasHost, registerOfficeCanvasHost } from './host.js';
 export {

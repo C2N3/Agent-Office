@@ -1,4 +1,4 @@
-import React, { type MouseEvent, type ReactElement, useRef, useSyncExternalStore } from 'react';
+import React, { type MouseEvent, type ReactElement, useCallback, useRef, useSyncExternalStore } from 'react';
 import {
   assignTaskToAgent,
   changeAgentAvatar,
@@ -34,7 +34,7 @@ import {
   togglePipWindow,
   useWindowControlsSnapshot,
 } from '../app/windowControls.js';
-import { registerOfficePopoverHost } from '../office.js';
+import { registerOfficePopoverHost, updateOfficeInteractionRuntime } from '../office.js';
 import { registerOfficeCanvasHost } from '../../office/index.js';
 import styles from './officeView.module.scss';
 
@@ -89,6 +89,14 @@ export function OfficeView({
   const agentListPanelRef = useRef<HTMLDivElement | null>(null);
   const resizeHorizontalRef = useRef<HTMLDivElement | null>(null);
   const resizeVerticalRef = useRef<HTMLDivElement | null>(null);
+  const registerOfficeCanvas = useCallback((element: HTMLCanvasElement | null) => {
+    registerOfficeCanvasHost(element);
+    updateOfficeInteractionRuntime();
+  }, []);
+  const registerOfficePopover = useCallback((element: HTMLDivElement | null) => {
+    registerOfficePopoverHost(element);
+    updateOfficeInteractionRuntime();
+  }, []);
 
   const startHorizontalResize = (event: MouseEvent<HTMLDivElement>) => {
     beginHorizontalPanelResize({
@@ -185,7 +193,7 @@ export function OfficeView({
             </div>
 
             <div className="panel-body">
-              <canvas ref={registerOfficeCanvasHost} id="office-canvas" style={{ display: windowControls.pipOpen ? 'none' : 'block' }} />
+              <canvas ref={registerOfficeCanvas} id="office-canvas" style={{ display: windowControls.pipOpen ? 'none' : 'block' }} />
               <div className="pip-placeholder" id="pipPlaceholder" style={{ display: windowControls.pipOpen ? 'flex' : 'none' }}>
                 <svg width="48" height="48" viewBox="0 0 48 48" fill="none" stroke="#8b949e" strokeWidth="2">
                   <rect x="4" y="8" width="40" height="32" rx="4" />
@@ -263,7 +271,7 @@ export function OfficeView({
         />
       </div>
 
-      <div ref={registerOfficePopoverHost} className="office-popover" id="officePopover" />
+      <div ref={registerOfficePopover} className="office-popover" id="officePopover" />
     </div>
   );
 }

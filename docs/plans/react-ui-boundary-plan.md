@@ -45,6 +45,7 @@ The current branch has already landed a few of the high-value dashboard slices:
 - the heatmap tooltip host now belongs to `HeatmapView` through React ref registration instead of `document.getElementById('mcTooltip')`, while tooltip positioning stays behind the existing activity view adapter
 - the office popover host now belongs to `OfficeView` through React ref registration instead of `document.getElementById('officePopover')`, while canvas click/drag hit testing and popover positioning remain in the imperative office adapter
 - the office canvas host now belongs to `OfficeView` through React ref registration instead of `document.getElementById('office-canvas')`, while renderer initialization and canvas click/drag behavior remain imperative
+- the office click/drag adapter now has explicit setup, host-update, and teardown entrypoints; `officeInit.ts` also exposes setup/update/teardown aliases over the existing renderer lifecycle while the canvas renderer, sprite movement, and pathfinding remain imperative
 
 That leaves the remaining work focused on shrinking the imperative DOM surface area around modals, auxiliary dashboard panels, overlay cards, and office-side adapters rather than proving the boundary from scratch.
 
@@ -78,13 +79,13 @@ Completed or mostly completed:
 - React-owned heatmap tooltip host registration, with activity view tooltip positioning kept as a small adapter
 - React-owned office popover host registration, with canvas click/drag hit testing and popover positioning kept in the office adapter
 - React-owned office canvas host registration, with renderer initialization and canvas click/drag behavior kept in imperative office adapters
+- Explicit setup/update/teardown lifecycle for office canvas click/drag listeners and renderer startup control, with React ref callbacks refreshing the host binding
 - office canvas renderer, sprite animation, pathfinding, and movement left imperative
 
 Still remaining:
 
 - continue auditing any newly discovered React-rendered dashboard controls for follow-up `getElementById(...).addEventListener(...)` wiring; the latest audit left dashboard root mounting outside the office-canvas-host slice
 - audit the overlay grid boundary for any remaining same-DOM dual ownership; card-list and layout mutations are now behind adapters while animation and resize runtime code remain imperative
-- refine the office-side adapter so the runtime owns setup/update/teardown explicitly now that React supplies the canvas and popover hosts
 
 ## Current Boundary
 
@@ -280,8 +281,8 @@ Continue with small ownership cleanup slices rather than a broad rewrite.
 
 Recommended order:
 
-1. Continue dashboard adapter cleanup for remaining React-rendered DOM lookups, moving next to office canvas/popover adapters only where a small owner can be identified.
-2. Refine office-side adapters under `src/client/dashboard/office.ts` and `src/client/office/*` so runtime listeners and render-loop lifecycle have clear setup/update/teardown boundaries.
-3. Audit the overlay grid boundary for any remaining same-DOM dual ownership while leaving animation scheduling and resize calculations imperative.
+1. Continue dashboard adapter cleanup for remaining React-rendered DOM lookups where a small owner can be identified.
+2. Audit the overlay grid boundary for any remaining same-DOM dual ownership while leaving animation scheduling and resize calculations imperative.
+3. Keep future office-side changes behind the explicit setup/update/teardown adapter lifecycle instead of adding host discovery or one-way listener installs.
 
 That keeps the rendering engines imperative while continuing to narrow the leftover ownership split at the shell/adapter layer.

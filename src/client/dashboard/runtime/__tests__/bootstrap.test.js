@@ -12,7 +12,7 @@ jest.mock('../../activityViews.ts', () => ({
 }));
 
 jest.mock('../../office.ts', () => ({
-  setupOfficeClickHandler: jest.fn(),
+  setupOfficeInteractionRuntime: jest.fn(),
 }));
 
 jest.mock('../../terminal/index.ts', () => ({
@@ -26,10 +26,10 @@ jest.mock('../../terminal/index.ts', () => ({
 }));
 
 jest.mock('../../../office/index.ts', () => ({
-  initOffice: jest.fn(() => Promise.resolve()),
   officeOnAgentCreated: jest.fn(),
   officeOnAgentRemoved: jest.fn(),
   officeOnAgentUpdated: jest.fn(),
+  setupOfficeRuntime: jest.fn(() => Promise.resolve()),
 }));
 
 jest.mock('../../centralAgents/index.ts', () => ({
@@ -74,7 +74,8 @@ describe('dashboard runtime bootstrap', () => {
 
   test('installs runtime globals and passes the terminal opener through setup', async () => {
     const { initDashboardRuntime } = require('../bootstrap.ts');
-    const { setupOfficeClickHandler } = require('../../office.ts');
+    const { setupOfficeInteractionRuntime } = require('../../office.ts');
+    const { setupOfficeRuntime } = require('../../../office/index.ts');
     const { openTerminalForAgent, initTerminals, initTerminalProfileMenu, refreshTerminalProfiles } = require('../../terminal/index.ts');
     const { initPipControls, initOverlayControls } = require('../../app/windowControls.ts');
     const { installHoverTooltips } = require('../../../../shared/uiTooltip.ts');
@@ -82,7 +83,8 @@ describe('dashboard runtime bootstrap', () => {
     await initDashboardRuntime();
 
     expect(global.openTerminalForAgent).toBe(openTerminalForAgent);
-    expect(setupOfficeClickHandler).toHaveBeenCalledWith(openTerminalForAgent);
+    expect(setupOfficeInteractionRuntime).toHaveBeenCalledWith({ openTerminalForAgent });
+    expect(setupOfficeRuntime).toHaveBeenCalled();
     expect(initPipControls).toHaveBeenCalled();
     expect(initOverlayControls).toHaveBeenCalled();
     expect(initTerminals).toHaveBeenCalled();
