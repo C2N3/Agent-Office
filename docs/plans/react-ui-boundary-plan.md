@@ -49,6 +49,7 @@ The current branch has already landed a few of the high-value dashboard slices:
 - the overlay Agent Desk Ctrl/Cmd+D shortcut now lives with the React-owned `WebDashboardButton` instead of rediscovering `web-dashboard-btn` and clicking it from the legacy keyboard adapter
 - the overlay agent-card context menu now opens from the React-owned `agent-grid` host instead of a document-level `contextmenu` listener, while focus-terminal actions still go through the overlay shell controller
 - the overlay context menu now owns its Escape-key close behavior without duplicate legacy keyboard adapter routing
+- the overlay agent-card Tab/Enter/Arrow keyboard navigation now runs through a React-registered `agent-grid` host adapter instead of document-level agent-card queries
 
 That leaves the remaining work focused on shrinking the imperative DOM surface area around modals, auxiliary dashboard panels, overlay cards, and office-side adapters rather than proving the boundary from scratch.
 
@@ -86,12 +87,13 @@ Completed or mostly completed:
 - React-owned overlay Agent Desk shortcut handling, with legacy overlay keyboard navigation no longer querying the React-rendered dashboard button
 - React-owned overlay agent-card context menu ownership on the registered grid host
 - React-owned overlay context-menu Escape close behavior
+- React-registered overlay grid keyboard navigation for agent-card Tab/Enter/Arrow behavior
 - office canvas renderer, sprite animation, pathfinding, and movement left imperative
 
 Still remaining:
 
 - continue auditing any newly discovered React-rendered dashboard controls for follow-up `getElementById(...).addEventListener(...)` wiring; the latest audit left dashboard root mounting outside the office-canvas-host slice
-- audit the overlay grid boundary for any remaining same-DOM dual ownership; card-list and layout mutations are now behind adapters while animation and resize runtime code remain imperative
+- audit future overlay grid changes for same-DOM dual ownership; card-list, layout, context-menu, and keyboard navigation mutations are now behind React-registered host adapters while animation and resize runtime code remain imperative
 
 ## Current Boundary
 

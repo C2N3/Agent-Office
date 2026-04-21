@@ -7,7 +7,6 @@ import { createRoot } from 'react-dom/client';
 import { AVATAR_FILES, lastAgents, agentStates } from './config.js';
 import { playAnimation } from './animationManager.js';
 import { addAgent, updateAgent, removeAgent, cleanupAgents, updateGridLayout, showIdleAvatar } from './agentGrid.js';
-import { setupKeyboardShortcuts } from './uiComponents.js';
 import { createErrorUI } from './errorUI.js';
 import { OverlayShell } from './overlayShell.js';
 import { installHoverTooltips } from '../shared/uiTooltip.js';
@@ -26,7 +25,6 @@ async function init() {
     createRoot(mount).render(createElement(OverlayShell));
   }
 
-  setupKeyboardShortcuts();
   installHoverTooltips({
     selector: '.agent-card [data-tooltip], .agent-card [title], #web-dashboard-btn[title]',
   });

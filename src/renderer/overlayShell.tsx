@@ -2,6 +2,7 @@ import React, { memo, useCallback, useEffect, useLayoutEffect, useRef, useState 
 import { createPortal } from 'react-dom';
 import { resolveAgentContextMenuState } from './overlayContextMenu.js';
 import { registerAgentGridElements } from './agentGrid/elements.js';
+import { installAgentGridKeyboardNavigation } from './agentGrid/keyboard.js';
 import { registerOverlayShellController, type OverlayContextMenuState } from './overlayShellController.js';
 import { isOpenDashboardShortcut } from './overlayShortcuts.js';
 
@@ -29,6 +30,12 @@ const AgentGridShell = memo(function AgentGridShell({
     return () => {
       registerAgentGridElements(null);
     };
+  }, []);
+
+  useEffect(() => {
+    const grid = gridRef.current;
+    if (!grid) return undefined;
+    return installAgentGridKeyboardNavigation(grid);
   }, []);
 
   return (
