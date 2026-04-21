@@ -13,7 +13,6 @@ function isRemoteInputFocused(): boolean {
 }
 
 export async function renderRemoteView(): Promise<void> {
-  if (!document.getElementById('remoteView')) return;
   await refreshRemoteViewData();
 }
 
@@ -29,10 +28,7 @@ export function startRemoteViewPolling(): void {
   if (pollInterval) return;
   pollInterval = setInterval(() => {
     if (isRemoteInputFocused()) return;
-    const remoteView = document.getElementById('remoteView');
-    if (remoteView?.classList.contains('active') || remoteView?.closest('.view-section.active')) {
-      void renderRemoteView();
-    }
+    void renderRemoteView();
   }, 3000);
 }
 

@@ -29,6 +29,7 @@ This file tracks client-side work that is planned, discovered, blocked, or compl
 
 ## Done
 
+- [x] Move Remote view polling active-state ownership from `document.getElementById('remoteView')` guards to the React `RemoteViewRoot` `active` prop while preserving the central-server polling adapter.
 - [x] Move the terminal profile menu outside-click trigger from `document.getElementById('terminalNewBtn')` to a React-owned button ref while preserving terminal profile actions and xterm runtime ownership.
 - [x] Move the terminal panel collapse button from dashboard runtime DOM listener wiring into React-owned state and handlers while preserving terminal fit scheduling.
 - [x] Move archive Refresh/History/Delete controls and the agent-list bulk clear button from dashboard runtime DOM listener wiring into React-owned handlers.

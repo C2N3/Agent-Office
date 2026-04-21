@@ -15,15 +15,6 @@ function syncActiveView(currentView: ReturnType<typeof useDashboardSnapshot>['cu
   } else if (currentView === 'archive') {
     void renderArchiveView();
   }
-
-  if (currentView === 'remote') {
-    import('../remote/polling.js').then((module) => {
-      void module.renderRemoteView();
-      module.startRemoteViewPolling();
-    });
-  } else {
-    import('../remote/polling.js').then((module) => module.stopRemoteViewPolling());
-  }
 }
 
 export function DashboardApp(): ReactElement {

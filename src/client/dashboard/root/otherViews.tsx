@@ -14,7 +14,7 @@ export function OtherViews({ currentView }: { currentView: DashboardView }): Rea
       <HeatmapView currentView={currentView} />
 
       <div id="remoteView" className={viewClass(currentView, 'remote')}>
-        <RemoteViewRoot />
+        <RemoteViewRoot active={currentView === 'remote'} />
       </div>
 
       <div id="cloudflareView" className={viewClass(currentView, 'cloudflare')}>

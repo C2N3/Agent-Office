@@ -39,6 +39,7 @@ The current branch has already landed a few of the high-value dashboard slices:
 - the overlay grid layout mutation now goes through an explicit `agentGrid/layoutHost` adapter for grid classes, idle-shell visibility, card coordinates, and card ordering while layout calculation, animation scheduling, and resize remain outside React
 - the terminal panel collapse button now owns click, label, title, and ARIA state in React while the collapse adapter only stores/reveals state and preserves existing terminal fit scheduling
 - the terminal profile launcher menu now uses the React-owned New Terminal button ref for outside-click containment instead of rediscovering `terminalNewBtn` by global ID, while profile actions and xterm hosts stay behind the existing terminal adapters
+- the Remote view now owns polling lifecycle from its React `active` prop; `remote/polling.ts` refreshes only when React has started it and no longer rediscovers `remoteView` by global ID/class guards
 
 That leaves the remaining work focused on shrinking the imperative DOM surface area around modals, auxiliary dashboard panels, overlay cards, and office-side adapters rather than proving the boundary from scratch.
 
@@ -66,11 +67,12 @@ Completed or mostly completed:
 - overlay grid class, idle-shell, card coordinate, and card order mutation routed through an explicit `agentGrid/layoutHost` adapter while preserving imperative layout calculations and resize scheduling
 - React-owned terminal panel collapse button events and button state, with expand/reveal calls kept behind a small terminal collapse state adapter
 - React-owned terminal profile menu outside-click trigger containment via a launcher button ref instead of a global `terminalNewBtn` lookup
+- React-owned Remote view active-state polling lifecycle, with central-server polling/SSE refresh kept behind the existing remote polling adapter
 - office canvas renderer, sprite animation, pathfinding, and movement left imperative
 
 Still remaining:
 
-- continue auditing any newly discovered React-rendered dashboard controls for follow-up `getElementById(...).addEventListener(...)` wiring; the latest audit left dashboard root mounting, remote view polling guards, xterm host lookup, resizable handles, tooltip lookup, and office canvas/popover adapters outside the terminal-profile slice
+- continue auditing any newly discovered React-rendered dashboard controls for follow-up `getElementById(...).addEventListener(...)` wiring; the latest audit left dashboard root mounting, xterm host lookup, resizable handles, tooltip lookup, and office canvas/popover adapters outside the remote-polling slice
 - audit the overlay grid boundary for any remaining same-DOM dual ownership; card-list and layout mutations are now behind adapters while animation and resize runtime code remain imperative
 - refine the office-side adapter so React supplies host elements and the runtime owns setup/update/teardown explicitly
 
@@ -268,8 +270,8 @@ Continue with small ownership cleanup slices rather than a broad rewrite.
 
 Recommended order:
 
-1. Move the terminal panel collapse control away from follow-up DOM queries while keeping terminal resize and xterm fitting imperative.
-2. Continue overlay grid layout-mutation cleanup while leaving animation scheduling and resize calculations imperative.
-3. Refine office-side adapters under `src/client/dashboard/office.ts` and `src/client/office/*` so runtime listeners and render-loop lifecycle have clear setup/update/teardown boundaries.
+1. Continue dashboard adapter cleanup for remaining React-rendered DOM lookups, starting with xterm host lookup, resizable handles, or tooltip lookup only where a small owner can be identified.
+2. Refine office-side adapters under `src/client/dashboard/office.ts` and `src/client/office/*` so runtime listeners and render-loop lifecycle have clear setup/update/teardown boundaries.
+3. Audit the overlay grid boundary for any remaining same-DOM dual ownership while leaving animation scheduling and resize calculations imperative.
 
 That keeps the rendering engines imperative while continuing to narrow the leftover ownership split at the shell/adapter layer.
