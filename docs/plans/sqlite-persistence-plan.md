@@ -36,9 +36,9 @@ The migration should reduce full-file rewrites, make task/team/agent queries mor
   - `terminal-preferences.json` is a single preference object.
 - `src/main/centralWorker/config.ts`
   - Stores tiny config values and sensitive tokens/secrets where a DB does not materially improve the design.
-- `public/shared/avatars.json`
+- `assets/shared/avatars.json`
   - Generated asset manifest written from files on disk at startup.
-- `public/shared/sprite-frames.json`
+- `assets/shared/sprite-frames.json`
   - Static render metadata consumed as a build/runtime asset.
 
 ## Migration Principles

@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { URL } from 'url';
-import { APP_ROOT, HTML_FILE, MIME_TYPES, OVERLAY_FILE, PIP_FILE, PROJECT_ROOT } from './constants.js';
+import { APP_ROOT, ASSET_ROOT, HTML_FILE, MIME_TYPES, OVERLAY_FILE, PIP_FILE, PROJECT_ROOT } from './constants.js';
 import {
   apiRoutes,
   handleAgentApiRoute,
@@ -44,6 +44,16 @@ function serveFile(
     });
     res.end(data);
   });
+}
+
+function resolveStaticAssetPath(pathname: string): string | null {
+  const relativeAssetPath = decodeURIComponent(pathname.slice('/assets/'.length));
+  const resolved = path.resolve(ASSET_ROOT, relativeAssetPath);
+  const rel = path.relative(ASSET_ROOT, resolved);
+  if (rel.startsWith('..') || path.isAbsolute(rel)) {
+    return null;
+  }
+  return resolved;
 }
 
 function handleRequest(req: RequestLike, res: ResponseLike): void {
@@ -98,15 +108,14 @@ function handleRequest(req: RequestLike, res: ResponseLike): void {
     }
   }
 
-  if (pathname.startsWith('/public/')) {
-    const resolved = path.resolve(PROJECT_ROOT, decodeURIComponent(pathname).slice(1));
-    const rel = path.relative(PROJECT_ROOT, resolved);
-    if (rel.startsWith('..') || path.isAbsolute(rel)) {
+  if (pathname.startsWith('/assets/')) {
+    const assetPath = resolveStaticAssetPath(pathname);
+    if (!assetPath) {
       res.writeHead(403, { 'Content-Type': 'text/plain' });
       res.end('Forbidden');
       return;
     }
-    serveFile(res, resolved, MIME_TYPES[path.extname(resolved)] || 'application/octet-stream', 'no-cache');
+    serveFile(res, assetPath, MIME_TYPES[path.extname(assetPath)] || 'application/octet-stream', 'no-cache');
     return;
   }
 

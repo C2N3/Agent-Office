@@ -446,11 +446,11 @@ describe('dashboard-server', () => {
       expect(res.writeHead).toHaveBeenCalledWith(500, { 'Content-Type': 'text/plain' });
     });
 
-    test('/public/* serves static files with correct MIME types', () => {
+    test('/assets/* serves static files with correct MIME types', () => {
       const fs = require('fs');
       fs.readFile.mockImplementation((_path, cb) => cb(null, Buffer.from('data')));
 
-      const { req, res } = createMockReqRes('GET', '/public/characters/agent.png');
+      const { req, res } = createMockReqRes('GET', '/assets/characters/agent.png');
       handler(req, res);
 
       expect(res.writeHead).toHaveBeenCalledWith(
@@ -477,9 +477,9 @@ describe('dashboard-server', () => {
     });
 
     test('path traversal via ../ is prevented by URL normalization', () => {
-      // URL class normalizes /public/../../etc/passwd → /etc/passwd
-      // which doesn't start with /public/, so falls through to general 404
-      const { req, res } = createMockReqRes('GET', '/public/../../etc/passwd');
+      // URL class normalizes /assets/../../etc/passwd → /etc/passwd
+      // which doesn't start with /assets/, so falls through to general 404
+      const { req, res } = createMockReqRes('GET', '/assets/../../etc/passwd');
       handler(req, res);
 
       expect(res.writeHead).toHaveBeenCalledWith(404, { 'Content-Type': 'text/plain' });
@@ -489,7 +489,7 @@ describe('dashboard-server', () => {
       const fs = require('fs');
       fs.readFile.mockImplementation((_path, cb) => cb(new Error('ENOENT')));
 
-      const { req, res } = createMockReqRes('GET', '/public/nonexistent.js');
+      const { req, res } = createMockReqRes('GET', '/assets/nonexistent.js');
       handler(req, res);
 
       expect(res.writeHead).toHaveBeenCalledWith(404, { 'Content-Type': 'text/plain' });

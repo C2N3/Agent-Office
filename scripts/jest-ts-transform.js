@@ -1,4 +1,5 @@
 const parser = require('@babel/parser');
+const { transformSync } = require('@babel/core');
 const traverse = require('@babel/traverse').default;
 const t = require('@babel/types');
 const generate = require('@babel/generator').default;
@@ -205,14 +206,23 @@ module.exports = {
       sourceType: 'unambiguous',
       plugins: [
         'typescript',
+        'jsx',
         'importAttributes',
       ],
     });
 
     stripTypeSyntax(ast, sourcePath);
+    const transformed = transformSync(
+      generate(ast, { sourceMaps: 'inline' }, sourceText).code,
+      {
+        babelrc: false,
+        configFile: false,
+        plugins: [['@babel/plugin-transform-react-jsx', { runtime: 'classic' }]],
+      },
+    );
 
     return {
-      code: generate(ast, { sourceMaps: 'inline' }, sourceText).code,
+      code: transformed?.code || generate(ast, { sourceMaps: 'inline' }, sourceText).code,
     };
   },
 };

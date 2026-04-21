@@ -79,6 +79,7 @@ export function createEventHandlers({
     get firstToolUseDone() {
       return state.firstToolUseDone;
     },
+    resolveAgentId: state.resolveAgentId,
     resolveSessionId: state.resolveSessionId,
   };
 }

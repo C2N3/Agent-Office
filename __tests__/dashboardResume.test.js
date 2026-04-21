@@ -2,7 +2,7 @@ const {
   findLatestResumableSession,
   getDirectResumeSessionId,
   shouldAutoResumeRegisteredAgent,
-} = require('../public/dashboardResume');
+} = require('../src/client/dashboardResume');
 
 describe('dashboardResume utils', () => {
   describe('findLatestResumableSession', () => {

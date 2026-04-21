@@ -4,9 +4,34 @@
 
 import { stateConfig, agentStates, agentAvatars, AVATAR_FILES, avatarFromAgentId } from './config.js';
 import { playAnimation } from './animationManager.js';
-import { createSatelliteTray } from './agentCard/satellites.js';
+import { mountAgentCardShell, unmountAgentCardShell } from './agentCard/lifecycle.js';
+import { toRelativeAssetPath } from '../shared/assetPaths.js';
 
 export { createMiniAvatar } from './agentCard/satellites.js';
+export { unmountAgentCardShell as unmountAgentCard };
+
+function renderThinkingDots(bubble) {
+  const wrapper = document.createElement('span');
+  wrapper.className = 'thinking-dots';
+  wrapper.appendChild(document.createElement('span')).textContent = '.';
+  wrapper.appendChild(document.createElement('span')).textContent = '.';
+  wrapper.appendChild(document.createElement('span')).textContent = '.';
+  bubble.replaceChildren(wrapper);
+}
+
+function resolveAgentAvatar(agent) {
+  let assignedAvatar = agentAvatars.get(agent.id);
+  if (assignedAvatar) return assignedAvatar;
+
+  if (agent.avatarIndex !== undefined && agent.avatarIndex !== null && AVATAR_FILES[agent.avatarIndex]) {
+    assignedAvatar = AVATAR_FILES[agent.avatarIndex];
+  } else {
+    assignedAvatar = avatarFromAgentId(agent.id);
+  }
+
+  agentAvatars.set(agent.id, assignedAvatar);
+  return assignedAvatar;
+}
 
 export function updateAgentState(agentId, container, agentOrState) {
   const isAgentObj = typeof agentOrState === 'object';
@@ -55,7 +80,7 @@ export function updateAgentState(agentId, container, agentOrState) {
       const currentCached = agentAvatars.get(agentId);
       if (currentCached !== newAvatarFile) {
         agentAvatars.set(agentId, newAvatarFile);
-        character.style.backgroundImage = `url('./public/characters/${newAvatarFile}')`;
+        character.style.backgroundImage = `url('${toRelativeAssetPath(`characters/${newAvatarFile}`)}')`;
       }
     }
   }
@@ -120,7 +145,7 @@ export function updateAgentState(agentId, container, agentOrState) {
     if (bubble) {
       // Thinking state: show animated dots
       if (state === 'Thinking' && !isAggregated) {
-        bubble.innerHTML = '<span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span>';
+        renderThinkingDots(bubble);
       } else {
         bubble.textContent = config.label;
       }
@@ -144,122 +169,14 @@ export function createAgentCard(agent) {
     card.setAttribute('aria-label', `Subagent ${agent.displayName || 'Agent'} - ${agent.state || 'Waiting'}`);
   }
 
-  // Create bubble
-  const bubble = document.createElement('div');
-  bubble.className = 'agent-bubble';
-  bubble.textContent = 'Waiting...';
-  bubble.setAttribute('role', 'status');
-  bubble.setAttribute('aria-live', 'polite');
-
-  // Create character
-  const character = document.createElement('div');
-  character.className = 'agent-character';
-
   // Assign avatar per agent — server-assigned avatarIndex first, fallback: hash
-  let assignedAvatar = agentAvatars.get(agent.id);
-  if (!assignedAvatar) {
-    if (agent.avatarIndex !== undefined && agent.avatarIndex !== null && AVATAR_FILES[agent.avatarIndex]) {
-      assignedAvatar = AVATAR_FILES[agent.avatarIndex];
-    } else {
-      assignedAvatar = avatarFromAgentId(agent.id);
-    }
-    agentAvatars.set(agent.id, assignedAvatar);
-  }
-
-  if (assignedAvatar) {
-    character.style.backgroundImage = `url('./public/characters/${assignedAvatar}')`;
-  }
+  const assignedAvatar = resolveAgentAvatar(agent);
 
   // Card type class (for CSS color distinction only)
   const typeClass = agent.isSubagent ? 'type-sub' : (agent.isTeammate ? 'type-team' : 'type-main');
   card.classList.add(typeClass);
 
-  // Top badge — unified to project basename
-  const basename = agent.projectPath ? agent.projectPath.replace(/[\\/]+$/, '').split(/[\\/]/).pop() : '';
-  const typeTag = document.createElement('span');
-  typeTag.className = `type-tag ${typeClass}`;
-  typeTag.textContent = basename || 'Agent';
-  typeTag.title = agent.projectPath || '';
-
-  // Agent name — show nickname or slug-based name
-  const nameBadge = document.createElement('div');
-  nameBadge.className = 'agent-name';
-  const hasNickname = !!agent.nickname;
-  const hasSlugName = agent.slug && agent.displayName && agent.displayName !== 'Agent';
-  nameBadge.textContent = hasNickname ? agent.nickname : (hasSlugName ? agent.displayName : '');
-  nameBadge.title = agent.projectPath || '';
-  if (!hasNickname && !hasSlugName) nameBadge.style.display = 'none';
-
-  // Timer element (pre-created to avoid dynamic DOM insertion in updateAgentState)
-  const timerEl = document.createElement('div');
-  timerEl.className = 'agent-timer';
-  timerEl.style.visibility = 'hidden';
-
-  // Satellite tray (for mini child avatars)
-  const satelliteTray = createSatelliteTray();
-
-  // Assemble card (satellite tray first = visually top)
-  card.appendChild(satelliteTray);
-  card.appendChild(typeTag);
-  card.appendChild(bubble);
-  card.appendChild(timerEl);
-  card.appendChild(character);
-  card.appendChild(nameBadge);
-
-  // Terminal focus button
-  const focusBtn = document.createElement('button');
-  focusBtn.className = 'focus-terminal-btn';
-  focusBtn.innerHTML = '<span class="focus-icon">&#xF0;</span>';
-  const focusTooltip = 'Focus terminal (click to switch to this terminal)';
-  focusBtn.dataset.tooltip = focusTooltip;
-  focusBtn.setAttribute('aria-label', `Focus terminal for ${agent.displayName || 'Agent'}`);
-  focusBtn.onclick = async (e) => {
-    e.stopPropagation();
-    if (window.electronAPI && window.electronAPI.focusTerminal) {
-      const result = await window.electronAPI.focusTerminal(agent.id);
-      if (result && result.success) {
-        focusBtn.classList.add('clicked');
-        setTimeout(() => focusBtn.classList.remove('clicked'), 300);
-      } else {
-        // Shake animation on failure
-        focusBtn.style.animation = 'shake 0.3s ease';
-        focusBtn.dataset.tooltip = 'Could not find PID';
-        setTimeout(() => {
-          focusBtn.style.animation = '';
-          focusBtn.dataset.tooltip = focusTooltip;
-        }, 1500);
-      }
-    }
-  };
-  card.appendChild(focusBtn);
-
-  // Character poke interaction
-  character.style.cursor = 'pointer';
-  const pokeMessages = [
-    "Eek, you startled me!",
-    "Hard at work here!",
-    "Writing code...",
-    "Need more coffee",
-    "This isn't a bug, right?",
-    "That tickles!",
-    "Pretty fast typing, huh?",
-    "Say something nice!"
-  ];
-
-  let pokeTimeout = null;
-  character.onclick = (e) => {
-    e.stopPropagation();
-    if (pokeTimeout) return;
-    const originalText = bubble.textContent;
-    const randomMsg = pokeMessages[Math.floor(Math.random() * pokeMessages.length)];
-    bubble.textContent = randomMsg;
-    bubble.style.borderColor = '#ff4081';
-    pokeTimeout = setTimeout(() => {
-      bubble.style.borderColor = '';
-      pokeTimeout = null;
-      bubble.textContent = originalText;
-    }, 2000);
-  };
+  mountAgentCardShell(card, agent, assignedAvatar);
 
   return card;
 }

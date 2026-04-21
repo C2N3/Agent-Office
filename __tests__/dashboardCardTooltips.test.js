@@ -16,7 +16,7 @@ describe('dashboard character card tooltips', () => {
   });
 
   test('renders action buttons with app tooltip text and accessible labels', () => {
-    const { buildAgentCardHtml } = require('../public/dashboard/agentCard/markup.ts');
+    const { buildAgentCardHtml } = require('../src/client/dashboard/agentCard/markup.ts');
 
     const html = buildAgentCardHtml({
       id: 'agent-1',

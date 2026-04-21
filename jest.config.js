@@ -3,7 +3,11 @@ module.exports = {
   coverageDirectory: 'coverage',
   collectCoverageFrom: [
     'src/**/*.ts',
+    'src/**/*.tsx',
     'src/**/*.js',
+    'public/**/*.ts',
+    'public/**/*.tsx',
+    '!public/**/*.d.ts',
     '!src/**/*.d.ts',
     '!node_modules/**',
     '!coverage/**',
@@ -20,11 +24,13 @@ module.exports = {
   },
   forceExit: true,
   moduleNameMapper: {
-    '^electron$': '<rootDir>/__mocks__/electron.js'
+    '^electron$': '<rootDir>/__mocks__/electron.js',
+    '\\.(css|scss)$': '<rootDir>/__mocks__/styleMock.js'
   },
   moduleFileExtensions: [
     'js',
     'ts',
+    'tsx',
     'json',
     'node'
   ],
@@ -33,7 +39,7 @@ module.exports = {
   ],
   transform: {
     '^.+\\.js$': 'babel-jest',
-    '^.+\\.ts$': '<rootDir>/scripts/jest-ts-transform.js'
+    '^.+\\.tsx?$': '<rootDir>/scripts/jest-ts-transform.js'
   },
   verbose: true
 };

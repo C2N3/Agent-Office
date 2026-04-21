@@ -13,9 +13,21 @@ describe('dashboard module imports', () => {
     delete global.document;
   });
 
-  test('avatar picker resolves the shared office module', () => {
-    const { setupAvatarPicker } = require('../public/dashboard/modals/avatarPicker.ts');
+  test('avatar picker modal resolves the shared office module', () => {
+    const { AvatarPickerModal } = require('../src/client/dashboard/react/avatarPickerModal.tsx');
 
-    expect(typeof setupAvatarPicker).toBe('function');
+    expect(typeof AvatarPickerModal).toBe('function');
+  });
+
+  test('assign task modal resolves the dashboard modal registry module', () => {
+    const { AssignTaskModal } = require('../src/client/dashboard/react/assignTaskModal/index.tsx');
+
+    expect(typeof AssignTaskModal).toBe('function');
+  });
+
+  test('team formation modal resolves the shared dashboard module', () => {
+    const { TeamFormationModal } = require('../src/client/dashboard/react/teamFormationModal.tsx');
+
+    expect(typeof TeamFormationModal).toBe('function');
   });
 });

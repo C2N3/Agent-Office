@@ -1,10 +1,5 @@
 import { agentAvatars, AVATAR_FILES, avatarFromAgentId } from '../config.js';
-
-export function createSatelliteTray() {
-  const tray = document.createElement('div');
-  tray.className = 'satellite-tray';
-  return tray;
-}
+import { toRelativeAssetPath } from '../../shared/assetPaths.js';
 
 export function createMiniAvatar(agent) {
   const mini = document.createElement('div');
@@ -23,7 +18,7 @@ export function createMiniAvatar(agent) {
     agentAvatars.set(agent.id, assignedAvatar);
   }
   if (assignedAvatar) {
-    mini.style.backgroundImage = `url('./public/characters/${assignedAvatar}')`;
+    mini.style.backgroundImage = `url('${toRelativeAssetPath(`characters/${assignedAvatar}`)}')`;
   }
 
   // Tooltip

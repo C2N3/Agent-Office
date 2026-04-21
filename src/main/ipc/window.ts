@@ -28,28 +28,11 @@ function registerWindowHandlers({
   });
 
   ipcMain.on(electronIpcChannels.getAvatars, (event) => {
-    const imgRegex = /\.(webp|png|jpg|jpeg|gif)$/i;
     try {
-      const charsDir = path.join(__dirname, '..', '..', '..', 'public', 'characters');
-      if (fs.existsSync(charsDir)) {
-        const entries = fs.readdirSync(charsDir, { withFileTypes: true });
-        const categories = [];
-        const allFiles = [];
-        for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
-          if (!entry.isDirectory()) continue;
-          const folderFiles = fs.readdirSync(path.join(charsDir, entry.name))
-            .filter(f => imgRegex.test(f))
-            .sort();
-          const prefixed = folderFiles.map(f => `${entry.name}/${f}`);
-          if (prefixed.length > 0) {
-            categories.push({ name: entry.name, files: prefixed });
-            allFiles.push(...prefixed);
-          }
-        }
-        event.reply(electronIpcChannels.avatarsResponse, { categories, allFiles });
-      } else {
-        event.reply(electronIpcChannels.avatarsResponse, { categories: [], allFiles: [] });
-      }
+      const avatarCatalogPath = path.join(__dirname, '..', '..', '..', 'assets', 'shared', 'avatars.json');
+      const catalog = JSON.parse(fs.readFileSync(avatarCatalogPath, 'utf8'));
+      const allFiles = Array.isArray(catalog) ? catalog : (catalog?.allFiles || []);
+      event.reply(electronIpcChannels.avatarsResponse, allFiles);
     } catch (error) {
       errorHandler.capture(error, {
         code: 'E003',
@@ -57,7 +40,7 @@ function registerWindowHandlers({
         severity: 'WARNING',
       });
       debugLog(`[Main] get-avatars error: ${error.message}`);
-      event.reply(electronIpcChannels.avatarsResponse, { categories: [], allFiles: [] });
+      event.reply(electronIpcChannels.avatarsResponse, []);
     }
   });
 

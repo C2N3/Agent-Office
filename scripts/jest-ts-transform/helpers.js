@@ -51,13 +51,15 @@ function resolveImportSource(sourceValue, sourcePath) {
     return sourceValue;
   }
 
-  const candidatePath = path.resolve(
-    path.dirname(sourcePath),
-    sourceValue.slice(0, -3) + '.ts',
-  );
+  for (const extension of ['.ts', '.tsx']) {
+    const candidatePath = path.resolve(
+      path.dirname(sourcePath),
+      sourceValue.slice(0, -3) + extension,
+    );
 
-  if (fs.existsSync(candidatePath)) {
-    return sourceValue.slice(0, -3) + '.ts';
+    if (fs.existsSync(candidatePath)) {
+      return sourceValue.slice(0, -3) + extension;
+    }
   }
 
   return sourceValue;

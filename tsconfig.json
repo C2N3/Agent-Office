@@ -3,6 +3,7 @@
     "allowJs": true,
     "checkJs": false,
     "noEmit": true,
+    "jsx": "react-jsx",
     "target": "ES2022",
     "lib": ["ES2022", "DOM"],
     "module": "NodeNext",
@@ -20,20 +21,25 @@
   },
   "include": [
     "src/**/*.ts",
+    "src/**/*.tsx",
     "src/**/*.d.ts",
     "src/**/*.js",
-    "public/**/*.ts",
-    "public/**/*.js",
     "__tests__/**/*.ts",
+    "__tests__/**/*.tsx",
     "__tests__/**/*.js",
     "scripts/**/*.ts",
+    "scripts/**/*.tsx",
     "scripts/**/*.js",
     "*.ts",
+    "*.tsx",
     "*.js"
   ],
   "exclude": [
     "node_modules",
     "release",
-    "dist"
+    "dist",
+    "src/client",
+    "src/renderer",
+    "vite.config.ts"
   ]
 }

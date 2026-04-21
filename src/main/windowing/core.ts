@@ -20,8 +20,8 @@ function createWindowManagerCore(context) {
   let overlayWindow = null;
   let keepAliveInterval = null;
   let dashboardServer = null;
-  const dashboardClientUrl = process.env.DASHBOARD_DEV_SERVER_URL || 'http://localhost:3000';
-  const dashboardRootUrl = process.argv.includes('--dev') ? dashboardClientUrl : 'http://localhost:3000';
+  const browserDevServerUrl = process.env.DASHBOARD_DEV_SERVER_URL || 'http://127.0.0.1:3001';
+  const dashboardRootUrl = process.argv.includes('--dev') ? browserDevServerUrl : 'http://localhost:3000';
   const refs = {
     get dashboardWindow() { return dashboardWindow; },
     set dashboardWindow(value) { dashboardWindow = value; },
@@ -47,6 +47,10 @@ function createWindowManagerCore(context) {
     adaptAgentToDashboard,
     debugLog,
   });
+
+  function resolveBrowserDevUrl(targetPath) {
+    return new URL(targetPath, `${browserDevServerUrl}/`).toString();
+  }
 
   function resizeWindowForAgents(agentsOrCount) {
     if (!mainWindow || mainWindow.isDestroyed()) return;
@@ -106,7 +110,11 @@ function createWindowManagerCore(context) {
       },
     });
 
-    mainWindow.loadFile(path.join(__dirname, '..', '..', 'index.html'));
+    if (process.argv.includes('--dev')) {
+      mainWindow.loadURL(resolveBrowserDevUrl('/index.html'));
+    } else {
+      mainWindow.loadFile(path.join(__dirname, '..', '..', 'index.html'));
+    }
     errorHandler.setMainWindow(mainWindow);
 
     let constraining = false;

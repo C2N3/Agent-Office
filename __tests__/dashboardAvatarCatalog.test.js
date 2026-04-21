@@ -8,7 +8,7 @@ describe('dashboard avatar catalog', () => {
   });
 
   test('updates shared avatar arrays in place for already loaded card renderers', () => {
-    const catalog = require('../public/dashboard/avatarCatalog.ts');
+    const catalog = require('../src/client/dashboard/avatarCatalog.ts');
     const filesReference = catalog.SHARED_AVATAR_FILES;
     const dataReference = catalog.SHARED_AVATAR_DATA;
 
@@ -26,7 +26,7 @@ describe('dashboard avatar catalog', () => {
 
   test('merges live character files into the dashboard avatar catalog', async () => {
     global.fetch = jest.fn((url) => {
-      if (url === '/public/shared/avatars.json') {
+      if (url === '/assets/shared/avatars.json') {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({
@@ -49,7 +49,7 @@ describe('dashboard avatar catalog', () => {
       }
       return Promise.resolve({ ok: false, json: () => Promise.resolve({}) });
     });
-    const { refreshSharedAvatarData, SHARED_AVATAR_FILES } = require('../public/dashboard/avatarCatalog.ts');
+    const { refreshSharedAvatarData, SHARED_AVATAR_FILES } = require('../src/client/dashboard/avatarCatalog.ts');
 
     const result = await refreshSharedAvatarData();
 

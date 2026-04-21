@@ -40,27 +40,27 @@ const DEFAULT_LAPTOP_SEAT_MAP = {
 
 function buildRoomTemplateAssets(roomDir) {
   return {
-    background: `/public/office/${roomDir}/map/office_bg_32.webp`,
-    foreground: `/public/office/${roomDir}/map/office_fg_32.webp`,
-    coordinates: `/public/office/${roomDir}/map/office_xy.webp`,
-    collision: `/public/office/${roomDir}/map/office_collision.webp`,
-    laptopSpots: `/public/office/${roomDir}/ojects/office_laptop.webp`,
+    background: `/assets/office/${roomDir}/map/office_bg_32.webp`,
+    foreground: `/assets/office/${roomDir}/map/office_fg_32.webp`,
+    coordinates: `/assets/office/${roomDir}/map/office_xy.webp`,
+    collision: `/assets/office/${roomDir}/map/office_collision.webp`,
+    laptopSpots: `/assets/office/${roomDir}/objects/office_laptop.webp`,
     laptopStates: {
       down: {
-        closed: `/public/office/${roomDir}/ojects/office_laptop_front_close.webp`,
-        open: `/public/office/${roomDir}/ojects/office_laptop_front_open.webp`,
+        closed: `/assets/office/${roomDir}/objects/office_laptop_front_close.webp`,
+        open: `/assets/office/${roomDir}/objects/office_laptop_front_open.webp`,
       },
       up: {
-        closed: `/public/office/${roomDir}/ojects/office_laptop_back_close.webp`,
-        open: `/public/office/${roomDir}/ojects/office_laptop_back_open.webp`,
+        closed: `/assets/office/${roomDir}/objects/office_laptop_back_close.webp`,
+        open: `/assets/office/${roomDir}/objects/office_laptop_back_open.webp`,
       },
       left: {
-        closed: `/public/office/${roomDir}/ojects/office_laptop_left_close.webp`,
-        open: `/public/office/${roomDir}/ojects/office_laptop_left_open.webp`,
+        closed: `/assets/office/${roomDir}/objects/office_laptop_left_close.webp`,
+        open: `/assets/office/${roomDir}/objects/office_laptop_left_open.webp`,
       },
       right: {
-        closed: `/public/office/${roomDir}/ojects/office_laptop_right_close.webp`,
-        open: `/public/office/${roomDir}/ojects/office_laptop_right_open.webp`,
+        closed: `/assets/office/${roomDir}/objects/office_laptop_right_close.webp`,
+        open: `/assets/office/${roomDir}/objects/office_laptop_right_open.webp`,
       },
     },
   };

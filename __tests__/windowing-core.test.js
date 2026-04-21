@@ -96,4 +96,47 @@ describe('windowing core', () => {
       expect(fs.existsSync(preloadPath) || fs.existsSync(sourcePath)).toBe(true);
     });
   });
+
+  test('keeps dashboard dev URLs on slash routes for dashboard, pip, and overlay windows', () => {
+    BrowserWindow.mockImplementation(createBrowserWindowMock);
+    const originalArgv = process.argv;
+    process.argv = [...process.argv, '--dev'];
+    process.env.DASHBOARD_DEV_SERVER_URL = 'http://127.0.0.1:3001';
+
+    try {
+      const windowManager = createWindowManager();
+      windowManager.createDashboardWindow();
+      windowManager.createPipWindow();
+      windowManager.createOverlayWindow();
+
+      const loadUrls = BrowserWindow.mock.results.map((result) => result.value.loadURL.mock.calls[0][0]);
+      expect(loadUrls).toEqual([
+        'http://127.0.0.1:3001/',
+        'http://127.0.0.1:3001/pip',
+        'http://127.0.0.1:3001/overlay',
+      ]);
+    } finally {
+      process.argv = originalArgv;
+      delete process.env.DASHBOARD_DEV_SERVER_URL;
+    }
+  });
+
+  test('loads the main renderer from the Vite dev server in dev mode', () => {
+    BrowserWindow.mockImplementation(createBrowserWindowMock);
+    const originalArgv = process.argv;
+    process.argv = [...process.argv, '--dev'];
+    process.env.DASHBOARD_DEV_SERVER_URL = 'http://127.0.0.1:3001';
+
+    try {
+      const windowManager = createWindowManager();
+      windowManager.createWindow();
+
+      const mainWindow = BrowserWindow.mock.results[0].value;
+      expect(mainWindow.loadURL).toHaveBeenCalledWith('http://127.0.0.1:3001/index.html');
+      expect(mainWindow.loadFile).not.toHaveBeenCalled();
+    } finally {
+      process.argv = originalArgv;
+      delete process.env.DASHBOARD_DEV_SERVER_URL;
+    }
+  });
 });
