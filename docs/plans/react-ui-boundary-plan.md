@@ -51,11 +51,13 @@ The current branch has already landed a few of the high-value dashboard slices:
 - the overlay context menu now owns its Escape-key close behavior without duplicate legacy keyboard adapter routing
 - the overlay agent-card Tab/Enter/Arrow keyboard navigation now runs through a React-registered `agent-grid` host adapter instead of document-level agent-card queries
 
-That leaves the remaining work focused on shrinking the imperative DOM surface area around modals, auxiliary dashboard panels, overlay cards, and office-side adapters rather than proving the boundary from scratch.
+That leaves no known small React-owned dashboard or overlay control slice still routed through legacy `getElementById(...).addEventListener(...)` or `getElementById(...).click()` wiring.
+
+Residual direct ID listener wiring remains in `src/client/pip.ts` and `src/client/overlay.ts`, but those controls are static non-React browser entries. Converting them would be a separate PiP/overlay shell Reactification or explicit non-React adapter pass, not a small React boundary cleanup slice.
 
 ## Current Status
 
-This plan is partially implemented.
+This plan is implemented for the current React-owned dashboard and overlay boundary scope. Residual static non-React browser-entry controls are noted below.
 
 Completed or mostly completed:
 
@@ -90,10 +92,11 @@ Completed or mostly completed:
 - React-registered overlay grid keyboard navigation for agent-card Tab/Enter/Arrow behavior
 - office canvas renderer, sprite animation, pathfinding, and movement left imperative
 
-Still remaining:
+Residual Scope:
 
-- continue auditing any newly discovered React-rendered dashboard controls for follow-up `getElementById(...).addEventListener(...)` wiring; the latest audit left dashboard root mounting outside the office-canvas-host slice
-- audit future overlay grid changes for same-DOM dual ownership; card-list, layout, context-menu, and keyboard navigation mutations are now behind React-registered host adapters while animation and resize runtime code remain imperative
+- No known React-rendered dashboard or overlay controls still rely on follow-up `getElementById(...).addEventListener(...)` wiring or `getElementById(...).click()` routing.
+- Future overlay grid changes should continue avoiding same-DOM dual ownership; card-list, layout, context-menu, and keyboard navigation mutations are now behind React-registered host adapters while animation and resize runtime code remain imperative.
+- Static non-React `pip.html` and `overlay.html` controls still use direct ID listener wiring in `src/client/pip.ts` and `src/client/overlay.ts`. Moving those controls to React would be a larger shell migration because it introduces new React roots around separate browser entries that also own canvas startup and preload window controls.
 
 ## Current Boundary
 
@@ -289,8 +292,8 @@ Continue with small ownership cleanup slices rather than a broad rewrite.
 
 Recommended order:
 
-1. Continue dashboard adapter cleanup for remaining React-rendered DOM lookups where a small owner can be identified.
-2. Audit the overlay grid boundary for any remaining same-DOM dual ownership while leaving animation scheduling and resize calculations imperative.
-3. Keep future office-side changes behind the explicit setup/update/teardown adapter lifecycle instead of adding host discovery or one-way listener installs.
+1. Keep future dashboard and overlay React controls in React props/state/ref ownership instead of adding follow-up document ID listener wiring.
+2. Keep future office-side changes behind the explicit setup/update/teardown adapter lifecycle instead of adding host discovery or one-way listener installs.
+3. Treat any conversion of `pip.html` or `overlay.html` hover controls to React as a separate shell migration, with its own host/lifecycle plan for canvas startup and preload window controls.
 
 That keeps the rendering engines imperative while continuing to narrow the leftover ownership split at the shell/adapter layer.

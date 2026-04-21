@@ -17,6 +17,8 @@ The current structure is a sound fit for the app:
 
 The main improvement area is not replacing more code with React by default. It is making ownership boundaries explicit so React-rendered DOM and imperative runtime code do not both manage the same elements.
 
+Current audit status: the known React-rendered dashboard and overlay controls have been moved away from follow-up `getElementById(...).addEventListener(...)` wiring and `getElementById(...).click()` routing. Remaining direct ID listener wiring is limited to static non-React `pip.html` and `overlay.html` hover controls.
+
 ## Target Boundary
 
 ### Vite Owns Browser Entries
@@ -88,10 +90,10 @@ React components should not reach into sprite, pathfinding, renderer, or charact
 
 ## Suggested Order
 
-1. Move event ownership for React-rendered dashboard controls into React handlers.
-2. Migrate remaining modal and panel markup away from `innerHTML` feature by feature.
+1. Keep future React-rendered dashboard and overlay controls in React handlers, refs, or explicit host adapters.
+2. Migrate any future DOM-heavy modal or panel markup away from `innerHTML` feature by feature.
 3. Keep future office canvas adapter changes behind the existing setup/update/teardown lifecycle while React supplies host elements.
-4. Continue overlay shell migration while leaving animation and resize runtime code imperative.
+4. Treat Reactifying static `pip.html` or `overlay.html` controls as a separate shell migration because those entries also own canvas startup and preload window controls.
 
 ## Acceptance Criteria
 
