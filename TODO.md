@@ -31,6 +31,7 @@ This file tracks client-side work that is planned, discovered, blocked, or compl
 - [x] Land the initial React UI boundary milestones in `docs/plans/react-ui-boundary-plan.md`: single dashboard React root, React-owned remote/heatmap/archive/agent-card surfaces, and imperative office renderer preservation.
 - [x] Move Remote view polling active-state ownership from `document.getElementById('remoteView')` guards to the React `RemoteViewRoot` `active` prop while preserving the central-server polling adapter.
 - [x] Move the terminal profile menu outside-click trigger from `document.getElementById('terminalNewBtn')` to a React-owned button ref while preserving terminal profile actions and xterm runtime ownership.
+- [x] Move xterm/task-log terminal host lookup from `document.getElementById('terminalContainer'/'terminalEmptyState')` to React-owned `TerminalPanel` ref registration while preserving imperative xterm and task-log creation.
 - [x] Move dashboard resizable handle start events from `document.getElementById('resizeH'/'resizeV').addEventListener(...)` wiring to React-owned refs and `onMouseDown` handlers while preserving the imperative drag session and terminal fit behavior.
 - [x] Move the heatmap tooltip host from `document.getElementById('mcTooltip')` lookup to a React-owned `HeatmapView` ref registration while preserving the small tooltip positioning adapter.
 - [x] Move the terminal panel collapse button from dashboard runtime DOM listener wiring into React-owned state and handlers while preserving terminal fit scheduling.

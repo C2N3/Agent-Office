@@ -15,6 +15,8 @@ import {
   activateTerminalTab,
   closeTerminal,
   fitActiveTerminal,
+  registerTerminalContainerHost,
+  registerTerminalEmptyStateHost,
 } from '../terminal/ui.js';
 import { toggleTerminalPanelCollapsed } from '../terminal/collapse.js';
 
@@ -101,8 +103,8 @@ export function TerminalPanel({
           </button>
         </div>
       </div>
-      <div className="terminal-container" id="terminalContainer">
-        <div className="terminal-empty-state" hidden={terminals.length > 0} id="terminalEmptyState">
+      <div ref={registerTerminalContainerHost} className="terminal-container" id="terminalContainer">
+        <div ref={registerTerminalEmptyStateHost} className="terminal-empty-state" hidden={terminals.length > 0} id="terminalEmptyState">
           <svg width="48" height="48" fill="none" stroke="#8b949e" strokeWidth="1.5">
             <polyline points="8 34 20 22 8 10" />
             <line x1="24" y1="38" x2="40" y2="38" />

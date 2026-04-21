@@ -8,6 +8,25 @@ import {
 import { initTerminalPanelCollapse, revealTerminalPanel } from './collapse.js';
 import { notifyDashboardStore } from '../state/store.js';
 
+let terminalContainerHost: HTMLDivElement | null = null;
+let terminalEmptyStateHost: HTMLDivElement | null = null;
+
+export function registerTerminalContainerHost(element: HTMLDivElement | null): void {
+  terminalContainerHost = element;
+}
+
+export function registerTerminalEmptyStateHost(element: HTMLDivElement | null): void {
+  terminalEmptyStateHost = element;
+}
+
+export function getTerminalContainerHost(): HTMLDivElement | null {
+  return terminalContainerHost;
+}
+
+export function getTerminalEmptyStateHost(): HTMLDivElement | null {
+  return terminalEmptyStateHost;
+}
+
 export async function resumeLatestRegisteredSession(registryId, label, resumeRegisteredSession) {
   const dashboardAPI = getDashboardAPI();
   if (!dashboardAPI?.getSessionHistory) {
@@ -98,9 +117,11 @@ export function createXtermInstance(agentId, label) {
   }
 
   const dashboardAPI = getDashboardAPI();
-  const container = document.getElementById('terminalContainer');
+  const container = getTerminalContainerHost();
+  if (!container) return;
+  const doc = container.ownerDocument;
 
-  const element = document.createElement('div');
+  const element = doc.createElement('div');
   element.className = 'terminal-instance active';
   element.dataset.agentId = agentId;
   container.appendChild(element);

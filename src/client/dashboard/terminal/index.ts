@@ -5,6 +5,8 @@ import {
   activateTerminalTab,
   createXtermInstance,
   fitActiveTerminal,
+  getTerminalContainerHost,
+  getTerminalEmptyStateHost,
   getTerminalOpenContext,
   initResizableHandles as initResizableHandlesHelper,
   renderTerminalTabs,
@@ -189,11 +191,13 @@ export function openTaskLogTab(taskId: string, agentRegistryId: string, label: s
   const agentName = agent?.nickname || agent?.name || label || 'Agent';
 
   // Create chat container (replaces xterm)
-  const container = document.getElementById('terminalContainer');
-  const emptyState = document.getElementById('terminalEmptyState');
+  const container = getTerminalContainerHost();
+  if (!container) return;
+  const emptyState = getTerminalEmptyStateHost();
   if (emptyState) emptyState.style.display = 'none';
+  const doc = container.ownerDocument;
 
-  const element = document.createElement('div');
+  const element = doc.createElement('div');
   element.className = 'terminal-instance active';
   element.dataset.agentId = tabId;
   container!.appendChild(element);
@@ -201,11 +205,11 @@ export function openTaskLogTab(taskId: string, agentRegistryId: string, label: s
     if (inst !== element) inst.classList.remove('active');
   });
 
-  const chatEl = document.createElement('div');
+  const chatEl = doc.createElement('div');
   chatEl.className = 'task-chat-container';
 
   // Initial group with avatar
-  const group = document.createElement('div');
+  const group = doc.createElement('div');
   group.className = 'task-chat-group';
   group.innerHTML = `
     <div class="task-chat-avatar" style="background-image:url('/assets/characters/${avatarFile}')"></div>
@@ -252,7 +256,7 @@ export function appendTaskChatMessage(taskId: string, data: { text: string; type
 
   if (data.type === 'tool_use') {
     // Tool use → separate line
-    const toolEl = document.createElement('div');
+    const toolEl = chat.chatEl.ownerDocument.createElement('div');
     toolEl.className = 'task-chat-tool';
     toolEl.innerHTML = `<span class="task-chat-tool-icon">&gt;</span><span>${escapeHtml(data.text)}</span>`;
     body.appendChild(toolEl);
@@ -260,7 +264,7 @@ export function appendTaskChatMessage(taskId: string, data: { text: string; type
     chat.lastType = 'tool_use';
   } else if (data.type === 'error' || data.type === 'context_exhaustion') {
     // Error → red line
-    const errEl = document.createElement('div');
+    const errEl = chat.chatEl.ownerDocument.createElement('div');
     errEl.className = 'task-chat-error';
     errEl.textContent = data.text;
     body.appendChild(errEl);
@@ -271,7 +275,7 @@ export function appendTaskChatMessage(taskId: string, data: { text: string; type
     if (data.merge !== false && chat.lastType === 'text' && chat.lastBubble) {
       chat.lastBubble.textContent += '\n' + data.text;
     } else {
-      const bubble = document.createElement('div');
+      const bubble = chat.chatEl.ownerDocument.createElement('div');
       bubble.className = 'task-chat-bubble';
       bubble.textContent = data.text;
       body.appendChild(bubble);
