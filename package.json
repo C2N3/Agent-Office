@@ -12,7 +12,7 @@
     "prestart": "npm run build:dist",
     "start": "node scripts/run-electron.js",
     "dev": "node scripts/dev-runtime.js",
-    "typecheck": "node node_modules/@typescript/native-preview/bin/tsgo.js -p tsconfig.json --noEmit && node node_modules/@typescript/native-preview/bin/tsgo.js -p tsconfig.client.json --noEmit",
+    "typecheck": "tsgo -p tsconfig.json --noEmit && tsgo -p tsconfig.client.json --noEmit",
     "test": "jest",
     "test:coverage": "jest --coverage",
     "test:watch": "jest --watch",
