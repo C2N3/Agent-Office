@@ -6,15 +6,6 @@ import { closeOverlayContextMenu, openOverlayContextMenu } from './overlayShellC
 
 export function setupKeyboardShortcuts() {
   document.addEventListener('keydown', (e) => {
-    // Ctrl/Cmd + D: Open Mission Control Dashboard
-    if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
-      e.preventDefault();
-      const dashboardBtn = document.getElementById('web-dashboard-btn');
-      if (dashboardBtn && !dashboardBtn.disabled) {
-        dashboardBtn.click();
-      }
-    }
-
     // Tab: Navigate between agents
     if (e.key === 'Tab' && !e.ctrlKey && !e.metaKey && !e.altKey) {
       const agents = Array.from(document.querySelectorAll('.agent-card'));

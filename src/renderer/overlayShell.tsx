@@ -2,6 +2,7 @@ import React, { memo, useCallback, useEffect, useLayoutEffect, useRef, useState 
 import { createPortal } from 'react-dom';
 import { registerAgentGridElements } from './agentGrid/elements.js';
 import { registerOverlayShellController, type OverlayContextMenuState } from './overlayShellController.js';
+import { isOpenDashboardShortcut } from './overlayShortcuts.js';
 
 const AgentGridShell = memo(function AgentGridShell() {
   const gridRef = useRef<HTMLDivElement | null>(null);
@@ -57,7 +58,7 @@ function WebDashboardButton() {
     }, 2000);
   }, []);
 
-  const handleClick = useCallback(async () => {
+  const openDashboard = useCallback(async () => {
     if (status !== 'idle') return;
 
     setStatus('loading');
@@ -82,6 +83,19 @@ function WebDashboardButton() {
     scheduleReset();
   }, [scheduleReset, status]);
 
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!isOpenDashboardShortcut(event)) return;
+      event.preventDefault();
+      void openDashboard();
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [openDashboard]);
+
   const label = status === 'loading'
     ? '⏳ Opening...'
     : status === 'success'
@@ -95,7 +109,7 @@ function WebDashboardButton() {
       id="web-dashboard-btn"
       className="web-dashboard-btn"
       title="Open Agent Desk (Ctrl+D)"
-      onClick={handleClick}
+      onClick={() => { void openDashboard(); }}
       disabled={status !== 'idle'}
     >
       {label}

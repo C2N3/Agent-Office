@@ -76,6 +76,8 @@ React components should not reach into sprite, pathfinding, renderer, or charact
 
    Current office status: the dashboard office click/drag adapter exposes setup, host-update, and teardown entrypoints, and `officeInit.ts` exposes setup/update/teardown aliases over the existing renderer lifecycle. `OfficeView` supplies the canvas and popover hosts through React refs, while the office renderer, sprite/pathfinding logic, and render loop remain imperative.
 
+   Current overlay status: the React-owned Agent Desk button owns its Ctrl/Cmd+D shortcut handling instead of being rediscovered and clicked from the legacy keyboard adapter.
+
 5. Reduce mutable state hazards.
 
    Dashboard state can remain a module-level store with `useSyncExternalStore`, but state changes should flow through named functions that call `notifyDashboardStore`. Avoid direct `state.*` writes in new React-facing code.
