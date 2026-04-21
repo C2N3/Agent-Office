@@ -1,4 +1,4 @@
-import React, { type ReactElement, useSyncExternalStore } from 'react';
+import React, { type MouseEvent, type ReactElement, useRef, useSyncExternalStore } from 'react';
 import {
   assignTaskToAgent,
   changeAgentAvatar,
@@ -24,6 +24,8 @@ import {
   getTerminalPanelCollapsed,
   subscribeTerminalPanelCollapse,
 } from '../terminal/collapse.js';
+import { beginHorizontalPanelResize, beginVerticalPanelResize } from '../terminal/resizable.js';
+import { fitActiveTerminal } from '../terminal/ui.js';
 import { FloorTabsContainer } from './floorTabsContainer.js';
 import { TerminalPanel } from './terminalPanel.js';
 import { type DashboardView } from '../state/store.js';
@@ -79,6 +81,32 @@ export function OfficeView({
   const clearableUnregisteredCount = getClearableUnregisteredAgents().length;
   const clearableUnregisteredLabel = clearableUnregisteredCount > 0 ? `Clear Unregistered (${clearableUnregisteredCount})` : 'Clear Unregistered';
   const clearableUnregisteredTitle = clearableUnregisteredCount > 0 ? `Clear ${clearableUnregisteredCount} inactive unregistered agent${clearableUnregisteredCount === 1 ? '' : 's'}` : 'No inactive unregistered agents available to clear';
+  const mainLayoutRef = useRef<HTMLDivElement | null>(null);
+  const leftColRef = useRef<HTMLDivElement | null>(null);
+  const officePanelRef = useRef<HTMLDivElement | null>(null);
+  const agentListPanelRef = useRef<HTMLDivElement | null>(null);
+  const resizeHorizontalRef = useRef<HTMLDivElement | null>(null);
+  const resizeVerticalRef = useRef<HTMLDivElement | null>(null);
+
+  const startHorizontalResize = (event: MouseEvent<HTMLDivElement>) => {
+    beginHorizontalPanelResize({
+      agentListPanel: agentListPanelRef.current,
+      event,
+      handle: resizeHorizontalRef.current,
+      leftCol: leftColRef.current,
+      officePanel: officePanelRef.current,
+    });
+  };
+
+  const startVerticalResize = (event: MouseEvent<HTMLDivElement>) => {
+    beginVerticalPanelResize({
+      event,
+      fitActiveTerminal,
+      handle: resizeVerticalRef.current,
+      leftCol: leftColRef.current,
+      mainLayout: mainLayoutRef.current,
+    });
+  };
 
   return (
     <div id="officeView" className={`view-section${currentView === 'office' ? ' active' : ''}`}>
@@ -98,9 +126,9 @@ export function OfficeView({
         </div>
       </div>
 
-      <div className={`office-terminal-layout${terminalPanelCollapsed ? ' terminal-collapsed' : ''}`} id="mainLayout">
-        <div className="office-left-col" id="leftCol">
-          <div className="panel office-canvas-panel" id="officePanel">
+      <div ref={mainLayoutRef} className={`office-terminal-layout${terminalPanelCollapsed ? ' terminal-collapsed' : ''}`} id="mainLayout">
+        <div ref={leftColRef} className="office-left-col" id="leftCol">
+          <div ref={officePanelRef} className="panel office-canvas-panel" id="officePanel">
             <div className="panel-header">
               <div className="panel-header-title">
                 <span>Office</span>
@@ -167,9 +195,9 @@ export function OfficeView({
             </div>
           </div>
 
-          <div className="resize-handle-h" id="resizeH" />
+          <div ref={resizeHorizontalRef} className="resize-handle-h" id="resizeH" onMouseDown={startHorizontalResize} />
 
-          <div className="panel agent-list-panel" id="agentListPanel">
+          <div ref={agentListPanelRef} className="panel agent-list-panel" id="agentListPanel">
             <div className="panel-header">
               <div className="panel-header-title">
                 <span>{`Agent List - ${currentFloorName}`}</span>
@@ -219,7 +247,7 @@ export function OfficeView({
           </div>
         </div>
 
-        <div className="resize-handle-v" id="resizeV" />
+        <div ref={resizeVerticalRef} className="resize-handle-v" id="resizeV" onMouseDown={startVerticalResize} />
 
         <TerminalPanel
           activeTerminalId={activeTerminalId}

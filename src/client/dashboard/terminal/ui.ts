@@ -6,7 +6,6 @@ import {
   type DashboardOpenOptions,
 } from '../shared.js';
 import { initTerminalPanelCollapse, revealTerminalPanel } from './collapse.js';
-import { setupTerminalResizableHandles } from './resizable.js';
 import { notifyDashboardStore } from '../state/store.js';
 
 export async function resumeLatestRegisteredSession(registryId, label, resumeRegisteredSession) {
@@ -219,7 +218,6 @@ export function fitActiveTerminal() {
 
 export function initResizableHandles() {
   initTerminalPanelCollapse(fitActiveTerminal);
-  setupTerminalResizableHandles(fitActiveTerminal);
 }
 
 export function getTerminalOpenContext(agentId: string, openOptions: DashboardOpenOptions = {}) {
