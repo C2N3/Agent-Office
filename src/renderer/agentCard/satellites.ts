@@ -1,12 +1,6 @@
 import { agentAvatars, AVATAR_FILES, avatarFromAgentId } from '../config.js';
 import { toRelativeAssetPath } from '../../shared/assetPaths.js';
 
-export function createSatelliteTray() {
-  const tray = document.createElement('div');
-  tray.className = 'satellite-tray';
-  return tray;
-}
-
 export function createMiniAvatar(agent) {
   const mini = document.createElement('div');
   mini.className = 'mini-avatar';

@@ -3,7 +3,7 @@
  */
 
 import { ANIM_SEQUENCES, lastAgents } from './config.js';
-import { updateAgentState, createAgentCard } from './agentCard.js';
+import { updateAgentState, createAgentCard, unmountAgentCard } from './agentCard.js';
 import { drawFrameOn, requestDynamicResize } from './agentGridResize.js';
 import { updateGridLayoutElements } from './agentGrid/layout.js';
 import { toRelativeAssetPath } from '../shared/assetPaths.js';
@@ -111,6 +111,7 @@ export function updateAgent(agent) {
     if (parentCard) {
       // Remove standalone card and add as satellite
       cleanupAgentState(agent.id);
+      unmountAgentCard(card);
       card.remove();
 
       addSatelliteAvatar(parentCard, agent);
@@ -172,6 +173,7 @@ export function removeAgent(data) {
   // Remove DOM element after exit animation
   card.classList.add('removing');
   setTimeout(() => {
+    unmountAgentCard(card);
     card.remove();
     updateGridLayout();
     requestDynamicResize();

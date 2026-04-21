@@ -33,6 +33,7 @@ The current branch has already landed a few of the high-value dashboard slices:
 - the create-agent modal now owns open/close, provider selection, form/error, workspace browse/inspection, and submit state in React while workspace registration calls stay behind dashboard API adapters
 - the Cloudflare tunnel tab now owns status, actions, copy feedback, and polling in React while tunnel fetch/start/stop calls stay in a small adapter
 - the central-server connection surface now uses the React Remote tab/status views; `serverConnection.ts` only owns config fetch/save and SSE refresh notifications instead of replacing an `innerHTML` card
+- the overlay agent card child shell now renders through React, including badge/name/bubble/timer placeholders plus focus and poke event handlers, while state updates, timers, sprite animation, and resize remain imperative
 
 That leaves the remaining work focused on shrinking the imperative DOM surface area around modals, auxiliary dashboard panels, overlay cards, and office-side adapters rather than proving the boundary from scratch.
 
@@ -53,12 +54,13 @@ Completed or mostly completed:
 - React-owned Cloudflare and central-server connection panels with imperative fetch/action/SSE adapters
 - React-owned PiP and Overlay dashboard control events with window-state subscription kept in an adapter
 - React-owned overlay toolbar and context menu shell
+- React-owned overlay agent-card child shell with imperative animation/timer/state update ownership preserved
 - office canvas renderer, sprite animation, pathfinding, and movement left imperative
 
 Still remaining:
 
 - move any remaining React-rendered dashboard control events away from follow-up `getElementById(...).addEventListener(...)` wiring
-- continue the overlay card/grid shell migration while keeping animation and resize runtime code imperative
+- continue the remaining overlay grid/card-list shell migration while keeping animation and resize runtime code imperative
 - refine the office-side adapter so React supplies host elements and the runtime owns setup/update/teardown explicitly
 
 ## Current Boundary
@@ -210,7 +212,7 @@ Expected benefit:
 Migrate only the DOM shell around the existing overlay renderer:
 
 - `src/renderer/uiComponents.ts`
-- card/bubble/timer/focus button composition from `src/renderer/agentCard.ts`
+- card/bubble/timer/focus button composition from `src/renderer/agentCard.ts` (card child shell complete; dynamic state/timer updates remain imperative)
 - grid container state from `src/renderer/agentGrid.ts`
 
 Keep:
@@ -256,7 +258,7 @@ Continue with small ownership cleanup slices rather than a broad rewrite.
 Recommended order:
 
 1. Move any remaining React-rendered dashboard control events away from follow-up DOM queries.
-2. Continue overlay card/grid shell migration while leaving animation scheduling and resize calculations imperative.
+2. Continue the remaining overlay grid/card-list shell migration while leaving animation scheduling and resize calculations imperative.
 3. Refine office-side adapters under `src/client/dashboard/office.ts` and `src/client/office/*` so runtime listeners and render-loop lifecycle have clear setup/update/teardown boundaries.
 
 That keeps the rendering engines imperative while continuing to narrow the leftover ownership split at the shell/adapter layer.

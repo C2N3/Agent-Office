@@ -16,7 +16,7 @@ This file tracks client-side work that is planned, discovered, blocked, or compl
 - [x] Rebuild the dashboard as a single React app root, move React-owned UI toward hooks/components, and add SCSS module support for React surfaces.
 - [ ] Execute the client UI runtime boundary direction in `docs/plans/client-ui-runtime-boundary.md` by keeping Vite limited to browser entries, moving React-rendered control events into React ownership, and keeping office canvas/runtime code imperative TypeScript.
 - [x] Move the Cloudflare and central-server connection panels out of `innerHTML` rendering into React-owned dashboard views.
-- [ ] Continue overlay shell migration by moving `src/renderer/agentCard.ts` and `src/renderer/agentGrid.ts` DOM composition toward React-owned shell components while keeping animation and resize runtime code imperative.
+- [ ] Continue overlay shell migration by moving the remaining `src/renderer/agentGrid.ts` grid/card-list shell ownership toward React-owned components while keeping animation and resize runtime code imperative.
 - [ ] Refine the office canvas adapter around `src/client/dashboard/office.ts` and `src/client/office/officeInit.ts` so React supplies host elements and the runtime exposes setup/update/teardown entrypoints.
 - [ ] Add full Gemini session visualization support by implementing Gemini session ingestion/monitoring, transcript statistics, recovery metadata, and provider registry/catalog capability updates comparable to Claude and Codex.
 - [ ] Execute the SQLite persistence migration plan in `docs/plans/sqlite-persistence-plan.md`.
@@ -28,6 +28,7 @@ This file tracks client-side work that is planned, discovered, blocked, or compl
 
 ## Done
 
+- [x] Move the `src/renderer/agentCard.ts` overlay card child shell into React-owned composition with React-owned focus/poke handlers while preserving imperative state updates, timers, sprite animation, and resize behavior.
 - [x] Move the create-agent modal from `src/client/dashboard/modals/createAgent.ts` DOM binding into React-owned state and handlers in `src/client/dashboard/react/createAgentModal/`.
 - [x] Move nickname edit behavior from `src/client/dashboard/modals/nicknameEdit.ts` DOM binding into React-owned agent card state and handlers.
 - [x] Move the task report and team report modals from `src/client/dashboard/modals/taskReport.ts` and `src/client/dashboard/modals/teamReport.ts` DOM binding into React-owned state and handlers.

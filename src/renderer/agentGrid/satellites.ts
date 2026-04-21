@@ -1,7 +1,7 @@
 
 import { stateConfig, lastAgents, agentStates, agentAvatars } from '../config.js';
 import { animationManager, playAnimation } from '../animationManager.js';
-import { createMiniAvatar } from '../agentCard.js';
+import { createMiniAvatar, unmountAgentCard } from '../agentCard.js';
 import { requestDynamicResize } from '../agentGridResize.js';
 
 const MINI_AVATAR_SCALE = 0.5;
@@ -86,6 +86,7 @@ export function migrateSatellites(agentGrid, parentCard, parentId) {
     if (!isSatelliteCandidate(agentData)) return;
 
     cleanupAgentState(childId);
+    unmountAgentCard(card);
     card.remove();
     addSatelliteAvatar(parentCard, agentData);
     migrated = true;

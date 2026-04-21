@@ -1,5 +1,6 @@
 
 import { lastAgents } from '../config.js';
+import { unmountAgentCard } from '../agentCard.js';
 import { findParentCard, isSatelliteCandidate } from './satellites.js';
 
 export function updateGridLayoutElements(agentGrid, idleContainer) {
@@ -61,6 +62,7 @@ export function updateGridLayoutElements(agentGrid, idleContainer) {
   const sortedIds = new Set(sorted.map(s => s.card.dataset.agentId));
   (Array.from(agentGrid.querySelectorAll('.agent-card')) as HTMLElement[]).forEach(card => {
     if (!sortedIds.has(card.dataset.agentId)) {
+      unmountAgentCard(card);
       card.remove();
     }
   });
