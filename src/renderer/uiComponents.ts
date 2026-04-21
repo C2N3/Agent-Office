@@ -1,8 +1,6 @@
 /**
- * UI Components — keyboard shortcuts for the overlay runtime
+ * UI Components — keyboard shortcuts for overlay agent-card navigation
  */
-
-import { closeOverlayContextMenu } from './overlayShellController.js';
 
 export function setupKeyboardShortcuts() {
   document.addEventListener('keydown', (e) => {
@@ -21,11 +19,6 @@ export function setupKeyboardShortcuts() {
         e.preventDefault();
         agents[0].focus();
       }
-    }
-
-    // Escape: Close any overlays/modals
-    if (e.key === 'Escape') {
-      closeOverlayContextMenu();
     }
 
     // Enter: Focus terminal for active agent

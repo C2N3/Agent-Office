@@ -38,6 +38,7 @@ This file tracks client-side work that is planned, discovered, blocked, or compl
 - [x] Refine the office canvas adapter around `src/client/dashboard/office.ts` and `src/client/office/officeInit.ts` so React supplies host elements and the runtime exposes setup/update/teardown entrypoints for canvas click/drag listeners and renderer startup control.
 - [x] Move the overlay Agent Desk Ctrl/Cmd+D shortcut from legacy `document.getElementById('web-dashboard-btn').click()` routing into the React-owned `WebDashboardButton` keyboard handler.
 - [x] Move overlay agent-card context menu ownership from `document.addEventListener('contextmenu')` into the React-owned `agent-grid` host handler while keeping focus-terminal actions behind the existing overlay shell controller.
+- [x] Remove duplicate overlay Escape context-menu close handling from the legacy keyboard adapter now that the React context menu owns its keydown close behavior.
 - [x] Move the terminal panel collapse button from dashboard runtime DOM listener wiring into React-owned state and handlers while preserving terminal fit scheduling.
 - [x] Move archive Refresh/History/Delete controls and the agent-list bulk clear button from dashboard runtime DOM listener wiring into React-owned handlers.
 - [x] Move the overlay grid and idle-shell host lookup in `src/renderer/agentGrid.ts` behind React-owned refs registered by `src/renderer/overlayShell.tsx`.
