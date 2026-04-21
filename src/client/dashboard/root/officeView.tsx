@@ -1,4 +1,4 @@
-import React, { type ReactElement } from 'react';
+import React, { type ReactElement, useSyncExternalStore } from 'react';
 import {
   assignTaskToAgent,
   changeAgentAvatar,
@@ -20,16 +20,12 @@ import type {
   DashboardAgentHistoryEntry,
   DashboardTerminalEntry,
 } from '../shared.js';
-import { TerminalProfileMenu, TerminalTabs } from '../terminal/chrome.js';
-import { activateTerminalTab, closeTerminal } from '../terminal/ui.js';
 import {
-  closeTerminalProfileMenu,
-  openTerminalProfileMenu,
-  refreshTerminalProfiles,
-  setDefaultTerminalProfile,
-} from '../terminal/profiles.js';
-import { openTerminalForAgent } from '../terminal/index.js';
+  getTerminalPanelCollapsed,
+  subscribeTerminalPanelCollapse,
+} from '../terminal/collapse.js';
 import { FloorTabsContainer } from './floorTabsContainer.js';
+import { TerminalPanel } from './terminalPanel.js';
 import { type DashboardView } from '../state/store.js';
 import {
   toggleOverlayWindow,
@@ -74,33 +70,15 @@ export function OfficeView({
 }): ReactElement {
   const registeredOnlyLabel = registeredOnly ? 'Registered Only' : 'All Agents';
   const hasErrors = stats.errorCount > 0;
-  const defaultTerminalProfile = terminalProfiles.find((profile) => profile.id === terminalDefaultProfileId) || terminalProfiles[0] || null;
+  const terminalPanelCollapsed = useSyncExternalStore(
+    subscribeTerminalPanelCollapse,
+    getTerminalPanelCollapsed,
+    getTerminalPanelCollapsed,
+  );
   const windowControls = useWindowControlsSnapshot();
   const clearableUnregisteredCount = getClearableUnregisteredAgents().length;
   const clearableUnregisteredLabel = clearableUnregisteredCount > 0 ? `Clear Unregistered (${clearableUnregisteredCount})` : 'Clear Unregistered';
   const clearableUnregisteredTitle = clearableUnregisteredCount > 0 ? `Clear ${clearableUnregisteredCount} inactive unregistered agent${clearableUnregisteredCount === 1 ? '' : 's'}` : 'No inactive unregistered agents available to clear';
-
-  const handleTerminalNewClick = async () => {
-    if (terminalProfileMenuOpen) {
-      closeTerminalProfileMenu();
-      return;
-    }
-
-    try {
-      await refreshTerminalProfiles();
-      openTerminalProfileMenu();
-    } catch (error) {
-      console.error('[Terminal Profiles]', error);
-    }
-  };
-
-  const handleOpenProfile = async (profileId: string) => {
-    const profile = terminalProfiles.find((entry) => entry.id === profileId) || defaultTerminalProfile;
-    await openTerminalForAgent(`local-${Date.now()}`, {
-      profileId,
-      label: profile?.title || 'Terminal',
-    });
-  };
 
   return (
     <div id="officeView" className={`view-section${currentView === 'office' ? ' active' : ''}`}>
@@ -120,7 +98,7 @@ export function OfficeView({
         </div>
       </div>
 
-      <div className="office-terminal-layout" id="mainLayout">
+      <div className={`office-terminal-layout${terminalPanelCollapsed ? ' terminal-collapsed' : ''}`} id="mainLayout">
         <div className="office-left-col" id="leftCol">
           <div className="panel office-canvas-panel" id="officePanel">
             <div className="panel-header">
@@ -243,54 +221,16 @@ export function OfficeView({
 
         <div className="resize-handle-v" id="resizeV" />
 
-        <div className="office-right-col panel" id="terminalPanel">
-          <div className="terminal-tabs" id="terminalTabs">
-            <div className="terminal-tabs-list" id="terminalTabsList">
-              <TerminalTabs
-                activeId={activeTerminalId}
-                terminals={terminals}
-                onActivate={activateTerminalTab}
-                onClose={closeTerminal}
-              />
-            </div>
-            <div className="terminal-toolbar">
-              <button className="terminal-collapse-btn" id="terminalCollapseBtn" type="button" aria-controls="terminalPanel" aria-expanded="true" title="Collapse Terminal">
-                &gt;
-              </button>
-              <button
-                className="terminal-new-btn"
-                id="terminalNewBtn"
-                title={defaultTerminalProfile ? `New Terminal (${defaultTerminalProfile.title})` : 'New Terminal'}
-                type="button"
-                onClick={() => {
-                  void handleTerminalNewClick();
-                }}
-              >
-                +
-              </button>
-            </div>
-          </div>
-          <div className="terminal-container" id="terminalContainer">
-            <div className="terminal-empty-state" hidden={terminals.length > 0} id="terminalEmptyState">
-              <svg width="48" height="48" fill="none" stroke="#8b949e" strokeWidth="1.5">
-                <polyline points="8 34 20 22 8 10" />
-                <line x1="24" y1="38" x2="40" y2="38" />
-              </svg>
-              <div className={styles.terminalEmptyTitle}>No terminal open</div>
-              <div className={styles.terminalEmptyHint}>Click an agent to open a terminal.</div>
-            </div>
-            <TerminalProfileMenu
-              defaultProfileId={terminalDefaultProfileId}
-              open={terminalProfileMenuOpen}
-              onClose={closeTerminalProfileMenu}
-              onOpenProfile={handleOpenProfile}
-              onSetDefaultProfile={(profileId) => {
-                void setDefaultTerminalProfile(profileId);
-              }}
-              profiles={terminalProfiles}
-            />
-          </div>
-        </div>
+        <TerminalPanel
+          activeTerminalId={activeTerminalId}
+          collapsed={terminalPanelCollapsed}
+          terminalEmptyHintClassName={styles.terminalEmptyHint}
+          terminalEmptyTitleClassName={styles.terminalEmptyTitle}
+          terminalDefaultProfileId={terminalDefaultProfileId}
+          terminalProfileMenuOpen={terminalProfileMenuOpen}
+          terminalProfiles={terminalProfiles}
+          terminals={terminals}
+        />
       </div>
 
       <div className="office-popover" id="officePopover" />

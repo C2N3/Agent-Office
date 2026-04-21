@@ -37,6 +37,7 @@ The current branch has already landed a few of the high-value dashboard slices:
 - the overlay agent card child shell now renders through React, including badge/name/bubble/timer placeholders plus focus and poke event handlers, while state updates, timers, sprite animation, and resize remain imperative
 - the overlay card-list append/reorder/remove operations now go through an explicit `agentGrid/cardList` adapter backed by the React-registered grid host, while state updates, timers, sprite animation, and resize remain imperative
 - the overlay grid layout mutation now goes through an explicit `agentGrid/layoutHost` adapter for grid classes, idle-shell visibility, card coordinates, and card ordering while layout calculation, animation scheduling, and resize remain outside React
+- the terminal panel collapse button now owns click, label, title, and ARIA state in React while the collapse adapter only stores/reveals state and preserves existing terminal fit scheduling
 
 That leaves the remaining work focused on shrinking the imperative DOM surface area around modals, auxiliary dashboard panels, overlay cards, and office-side adapters rather than proving the boundary from scratch.
 
@@ -62,11 +63,12 @@ Completed or mostly completed:
 - React-owned overlay grid and idle-shell host registration so `agentGrid.ts` updates the card list through an explicit shell boundary instead of rediscovering those hosts globally
 - overlay card-list append/reorder/remove operations routed through an explicit `agentGrid/cardList` adapter while preserving imperative layout calculations and resize scheduling
 - overlay grid class, idle-shell, card coordinate, and card order mutation routed through an explicit `agentGrid/layoutHost` adapter while preserving imperative layout calculations and resize scheduling
+- React-owned terminal panel collapse button events and button state, with expand/reveal calls kept behind a small terminal collapse state adapter
 - office canvas renderer, sprite animation, pathfinding, and movement left imperative
 
 Still remaining:
 
-- move the remaining terminal panel collapse control and any other discovered React-rendered dashboard controls away from follow-up `getElementById(...).addEventListener(...)` wiring
+- audit any other discovered React-rendered dashboard controls for follow-up `getElementById(...).addEventListener(...)` wiring
 - audit the overlay grid boundary for any remaining same-DOM dual ownership; card-list and layout mutations are now behind adapters while animation and resize runtime code remain imperative
 - refine the office-side adapter so React supplies host elements and the runtime owns setup/update/teardown explicitly
 

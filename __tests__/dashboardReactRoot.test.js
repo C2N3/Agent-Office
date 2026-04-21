@@ -24,6 +24,7 @@ describe('dashboard react-owned surfaces', () => {
     delete global.dashboardAPI;
     delete global.document;
     delete global.localStorage;
+    delete global.requestAnimationFrame;
   });
 
   test('setDashboardView normalizes and persists the current view', () => {
@@ -165,6 +166,56 @@ describe('dashboard react-owned surfaces', () => {
     expect(markup).toContain('PowerShell');
     expect(markup).toContain('terminal-profile-badge');
     expect(markup).toContain('Use when pressing the New Terminal button');
+  });
+
+  test('terminal panel collapse state toggles without binding the rendered button', () => {
+    global.localStorage.getItem.mockReturnValue('true');
+    global.requestAnimationFrame = jest.fn((callback) => {
+      callback();
+      return 1;
+    });
+    const {
+      getTerminalPanelCollapsed,
+      initTerminalPanelCollapse,
+      subscribeTerminalPanelCollapse,
+      toggleTerminalPanelCollapsed,
+    } = require('../src/client/dashboard/terminal/collapse.ts');
+    const listener = jest.fn();
+    const fitActiveTerminal = jest.fn();
+
+    const unsubscribe = subscribeTerminalPanelCollapse(listener);
+    initTerminalPanelCollapse(fitActiveTerminal);
+    expect(getTerminalPanelCollapsed()).toBe(true);
+    expect(global.document.getElementById).not.toHaveBeenCalledWith('terminalCollapseBtn');
+
+    toggleTerminalPanelCollapsed(fitActiveTerminal);
+    expect(getTerminalPanelCollapsed()).toBe(false);
+    expect(global.localStorage.setItem).toHaveBeenCalledWith('mc-terminal-panel-collapsed', 'false');
+    expect(global.requestAnimationFrame).toHaveBeenCalled();
+    expect(fitActiveTerminal).toHaveBeenCalled();
+    expect(listener).toHaveBeenCalled();
+
+    unsubscribe();
+  });
+
+  test('TerminalPanel renders collapse button state from React props', () => {
+    const { TerminalPanel } = require('../src/client/dashboard/root/terminalPanel.tsx');
+
+    const markup = renderToStaticMarkup(
+      React.createElement(TerminalPanel, {
+        activeTerminalId: null,
+        collapsed: true,
+        terminalDefaultProfileId: null,
+        terminalProfileMenuOpen: false,
+        terminalProfiles: [],
+        terminals: [],
+      }),
+    );
+
+    expect(markup).toContain('id="terminalCollapseBtn"');
+    expect(markup).toContain('aria-expanded="false"');
+    expect(markup).toContain('aria-label="Expand Terminal"');
+    expect(markup).toContain('&lt;');
   });
 
   test('DashboardModals keeps inactive modals unmounted by default', () => {
