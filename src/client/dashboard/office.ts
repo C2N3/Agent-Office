@@ -9,8 +9,14 @@ import {
 import { OFFICE, officeCharacters, officeRenderer } from '../office/index.js';
 import { dashboardModalRegistry } from './modals/registry.js';
 
+let officePopoverHost: HTMLDivElement | null = null;
+
+export function registerOfficePopoverHost(element: HTMLDivElement | null): void {
+  officePopoverHost = element;
+}
+
 function getPopoverEl(): HTMLDivElement | null {
-  return document.getElementById('officePopover') as HTMLDivElement | null;
+  return officePopoverHost;
 }
 
 function hitTestOfficeCharacter(canvas: HTMLCanvasElement, event: MouseEvent): OfficeCharacter | null {

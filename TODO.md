@@ -34,6 +34,7 @@ This file tracks client-side work that is planned, discovered, blocked, or compl
 - [x] Move xterm/task-log terminal host lookup from `document.getElementById('terminalContainer'/'terminalEmptyState')` to React-owned `TerminalPanel` ref registration while preserving imperative xterm and task-log creation.
 - [x] Move dashboard resizable handle start events from `document.getElementById('resizeH'/'resizeV').addEventListener(...)` wiring to React-owned refs and `onMouseDown` handlers while preserving the imperative drag session and terminal fit behavior.
 - [x] Move the heatmap tooltip host from `document.getElementById('mcTooltip')` lookup to a React-owned `HeatmapView` ref registration while preserving the small tooltip positioning adapter.
+- [x] Move the office popover host from `document.getElementById('officePopover')` lookup to React-owned `OfficeView` ref registration while preserving the imperative canvas click/drag runtime.
 - [x] Move the terminal panel collapse button from dashboard runtime DOM listener wiring into React-owned state and handlers while preserving terminal fit scheduling.
 - [x] Move archive Refresh/History/Delete controls and the agent-list bulk clear button from dashboard runtime DOM listener wiring into React-owned handlers.
 - [x] Move the overlay grid and idle-shell host lookup in `src/renderer/agentGrid.ts` behind React-owned refs registered by `src/renderer/overlayShell.tsx`.

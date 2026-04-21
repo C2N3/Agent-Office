@@ -34,6 +34,7 @@ import {
   togglePipWindow,
   useWindowControlsSnapshot,
 } from '../app/windowControls.js';
+import { registerOfficePopoverHost } from '../office.js';
 import styles from './officeView.module.scss';
 
 export function OfficeView({
@@ -261,7 +262,7 @@ export function OfficeView({
         />
       </div>
 
-      <div className="office-popover" id="officePopover" />
+      <div ref={registerOfficePopoverHost} className="office-popover" id="officePopover" />
     </div>
   );
 }
