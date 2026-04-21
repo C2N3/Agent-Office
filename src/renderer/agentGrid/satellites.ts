@@ -3,6 +3,7 @@ import { stateConfig, lastAgents, agentStates, agentAvatars } from '../config.js
 import { animationManager, playAnimation } from '../animationManager.js';
 import { createMiniAvatar, unmountAgentCard } from '../agentCard.js';
 import { requestDynamicResize } from '../agentGridResize.js';
+import { findAgentCardElement } from './elements.js';
 
 const MINI_AVATAR_SCALE = 0.5;
 
@@ -12,7 +13,7 @@ export function isSatelliteCandidate(agent) {
 
 export function findParentCard(agent) {
   if (!agent || !agent.parentId) return null;
-  return document.querySelector(`[data-agent-id="${agent.parentId}"]`);
+  return findAgentCardElement(agent.parentId);
 }
 
 export function cleanupAgentState(agentId, clearAvatar = false) {

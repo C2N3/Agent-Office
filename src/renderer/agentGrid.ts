@@ -5,6 +5,7 @@
 import { ANIM_SEQUENCES, lastAgents } from './config.js';
 import { updateAgentState, createAgentCard, unmountAgentCard } from './agentCard.js';
 import { drawFrameOn, requestDynamicResize } from './agentGridResize.js';
+import { findAgentCardElement, findMiniAvatarElement, getAgentGridElements } from './agentGrid/elements.js';
 import { updateGridLayoutElements } from './agentGrid/layout.js';
 import { toRelativeAssetPath } from '../shared/assetPaths.js';
 import {
@@ -17,33 +18,17 @@ import {
   updateSatelliteAvatar,
 } from './agentGrid/satellites.js';
 
-function getAgentGrid() {
-  return document.getElementById('agent-grid');
-}
-
-function getIdleContainer() {
-  return document.getElementById('container');
-}
-
-function getIdleCharacter() {
-  return document.getElementById('character');
-}
-
-function getIdleBubble() {
-  return document.getElementById('speech-bubble');
-}
-
 export function addAgent(agent) {
   if (!lastAgents.some(a => a.id === agent.id)) {
     lastAgents.push(agent);
   }
 
   // Check for existing DOM (satellite or card)
-  if (document.querySelector(`[data-agent-id="${agent.id}"]`)) {
+  if (findAgentCardElement(agent.id)) {
     return;
   }
   // Also check if already exists as mini-avatar inside a satellite tray
-  if (document.querySelector(`.mini-avatar[data-agent-id="${agent.id}"]`)) {
+  if (findMiniAvatarElement(agent.id)) {
     return;
   }
 
@@ -59,15 +44,15 @@ export function addAgent(agent) {
   }
 
   const card = createAgentCard(agent);
-  const agentGrid = getAgentGrid();
-  if (!agentGrid) return;
+  const elements = getAgentGridElements();
+  if (!elements) return;
 
-  agentGrid.appendChild(card);
+  elements.grid.appendChild(card);
 
   updateAgentState(agent.id, card, agent);
 
   // If this is a parent, check if children arrived earlier and migrate them
-  migrateSatellites(agentGrid, card, agent.id);
+  migrateSatellites(elements.grid, card, agent.id);
 
   updateGridLayout();
   requestDynamicResize();
@@ -92,7 +77,7 @@ export function updateAgent(agent) {
     }
   }
 
-  const card = document.querySelector(`[data-agent-id="${agent.id}"]`);
+  const card = findAgentCardElement(agent.id);
   if (!card) return;
 
   // Detect agent type change (e.g., Main created via auto-create then switched to Sub via SubagentStart)
@@ -154,7 +139,7 @@ export function removeAgent(data) {
     }
   }
 
-  const card = document.querySelector(`[data-agent-id="${data.id}"]`);
+  const card = findAgentCardElement(data.id);
   if (!card) return;
 
   // Clean up satellite children inside this card (if this is a parent being removed)
@@ -186,8 +171,9 @@ export function cleanupAgents(data) {
 
 // --- Idle avatar for empty state (0 agents) ---
 export function startIdleAnimation() {
-  const idleCharacter = getIdleCharacter();
-  const idleBubble = getIdleBubble();
+  const elements = getAgentGridElements();
+  const idleCharacter = elements?.idleCharacter;
+  const idleBubble = elements?.idleBubble;
   if (!idleCharacter) return;
   const seq = ANIM_SEQUENCES.waiting;
   drawFrameOn(idleCharacter, seq.frames[0]);
@@ -195,8 +181,9 @@ export function startIdleAnimation() {
 }
 
 export function showIdleAvatar(avatarFile) {
-  const idleContainer = getIdleContainer();
-  const idleCharacter = getIdleCharacter();
+  const elements = getAgentGridElements();
+  const idleContainer = elements?.idleContainer;
+  const idleCharacter = elements?.idleCharacter;
   if (!idleContainer) return;
   idleContainer.style.display = 'flex';
   if (idleCharacter && avatarFile) {
@@ -206,8 +193,7 @@ export function showIdleAvatar(avatarFile) {
 }
 
 export function updateGridLayout() {
-  const agentGrid = getAgentGrid();
-  const idleContainer = getIdleContainer();
-  if (!agentGrid) return;
-  updateGridLayoutElements(agentGrid, idleContainer);
+  const elements = getAgentGridElements();
+  if (!elements) return;
+  updateGridLayoutElements(elements.grid, elements.idleContainer);
 }

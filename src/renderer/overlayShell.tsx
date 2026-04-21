@@ -1,13 +1,35 @@
-import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
+import React, { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { registerAgentGridElements } from './agentGrid/elements.js';
 import { registerOverlayShellController, type OverlayContextMenuState } from './overlayShellController.js';
 
 const AgentGridShell = memo(function AgentGridShell() {
+  const gridRef = useRef<HTMLDivElement | null>(null);
+  const idleContainerRef = useRef<HTMLDivElement | null>(null);
+  const idleBubbleRef = useRef<HTMLDivElement | null>(null);
+  const idleCharacterRef = useRef<HTMLDivElement | null>(null);
+
+  useLayoutEffect(() => {
+    const grid = gridRef.current;
+    if (!grid) return;
+
+    registerAgentGridElements({
+      grid,
+      idleContainer: idleContainerRef.current,
+      idleBubble: idleBubbleRef.current,
+      idleCharacter: idleCharacterRef.current,
+    });
+
+    return () => {
+      registerAgentGridElements(null);
+    };
+  }, []);
+
   return (
-    <div className="agent-grid" id="agent-grid">
-      <div className="container" id="container" style={{ display: 'none' }}>
-        <div className="speech-bubble" id="speech-bubble">Waiting...</div>
-        <div className="character" id="character"></div>
+    <div ref={gridRef} className="agent-grid" id="agent-grid">
+      <div ref={idleContainerRef} className="container" id="container" style={{ display: 'none' }}>
+        <div ref={idleBubbleRef} className="speech-bubble" id="speech-bubble">Waiting...</div>
+        <div ref={idleCharacterRef} className="character" id="character"></div>
       </div>
     </div>
   );
