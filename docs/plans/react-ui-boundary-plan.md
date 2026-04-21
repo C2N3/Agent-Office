@@ -35,6 +35,7 @@ The current branch has already landed a few of the high-value dashboard slices:
 - the central-server connection surface now uses the React Remote tab/status views; `serverConnection.ts` only owns config fetch/save and SSE refresh notifications instead of replacing an `innerHTML` card
 - the overlay agent card child shell now renders through React, including badge/name/bubble/timer placeholders plus focus and poke event handlers, while state updates, timers, sprite animation, and resize remain imperative
 - the overlay card-list append/reorder/remove operations now go through an explicit `agentGrid/cardList` adapter backed by the React-registered grid host, while state updates, timers, sprite animation, and resize remain imperative
+- the overlay grid layout mutation now goes through an explicit `agentGrid/layoutHost` adapter for grid classes, idle-shell visibility, card coordinates, and card ordering while layout calculation, animation scheduling, and resize remain outside React
 
 That leaves the remaining work focused on shrinking the imperative DOM surface area around modals, auxiliary dashboard panels, overlay cards, and office-side adapters rather than proving the boundary from scratch.
 
@@ -58,12 +59,13 @@ Completed or mostly completed:
 - React-owned overlay agent-card child shell with imperative animation/timer/state update ownership preserved
 - React-owned overlay grid and idle-shell host registration so `agentGrid.ts` updates the card list through an explicit shell boundary instead of rediscovering those hosts globally
 - overlay card-list append/reorder/remove operations routed through an explicit `agentGrid/cardList` adapter while preserving imperative layout calculations and resize scheduling
+- overlay grid class, idle-shell, card coordinate, and card order mutation routed through an explicit `agentGrid/layoutHost` adapter while preserving imperative layout calculations and resize scheduling
 - office canvas renderer, sprite animation, pathfinding, and movement left imperative
 
 Still remaining:
 
 - move any remaining React-rendered dashboard control events away from follow-up `getElementById(...).addEventListener(...)` wiring
-- continue overlay grid cleanup at the layout-mutation boundary if needed; card-list append/reorder/remove ownership is now behind the adapter while animation and resize runtime code remain imperative
+- audit the overlay grid boundary for any remaining same-DOM dual ownership; card-list and layout mutations are now behind adapters while animation and resize runtime code remain imperative
 - refine the office-side adapter so React supplies host elements and the runtime owns setup/update/teardown explicitly
 
 ## Current Boundary
@@ -216,7 +218,7 @@ Migrate only the DOM shell around the existing overlay renderer:
 
 - `src/renderer/uiComponents.ts`
 - card/bubble/timer/focus button composition from `src/renderer/agentCard.ts` (card child shell complete; dynamic state/timer updates remain imperative)
-- grid host lookup from `src/renderer/agentGrid.ts` (host registration complete; card-list append/reorder/remove behavior now goes through the card-list adapter; layout mutation remains imperative)
+- grid host lookup from `src/renderer/agentGrid.ts` (host registration complete; card-list append/reorder/remove behavior now goes through the card-list adapter; layout mutation now goes through the layout-host adapter)
 
 Keep:
 
