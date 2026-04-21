@@ -31,6 +31,8 @@ The current branch has already landed a few of the high-value dashboard slices:
 - the task report, team report, and conversation viewer modals now own open/close, loading, action, and navigation state in React while report/history fetches stay behind small callbacks
 - nickname editing now owns edit/draft/save/cancel state in React agent card components while nickname persistence stays behind a small dashboard action
 - the create-agent modal now owns open/close, provider selection, form/error, workspace browse/inspection, and submit state in React while workspace registration calls stay behind dashboard API adapters
+- the Cloudflare tunnel tab now owns status, actions, copy feedback, and polling in React while tunnel fetch/start/stop calls stay in a small adapter
+- the central-server connection surface now uses the React Remote tab/status views; `serverConnection.ts` only owns config fetch/save and SSE refresh notifications instead of replacing an `innerHTML` card
 
 That leaves the remaining work focused on shrinking the imperative DOM surface area around modals, auxiliary dashboard panels, overlay cards, and office-side adapters rather than proving the boundary from scratch.
 
@@ -48,6 +50,7 @@ Completed or mostly completed:
 - React-owned assign task, team formation, avatar picker, create-agent, task report, team report, and conversation viewer modal behavior with imperative API calls kept behind small submit/update functions
 - React-owned nickname edit behavior on dashboard agent cards with persistence kept behind a small action
 - React-owned terminal tab/profile/banner chrome while xterm hosts stay imperative
+- React-owned Cloudflare and central-server connection panels with imperative fetch/action/SSE adapters
 - React-owned PiP and Overlay dashboard control events with window-state subscription kept in an adapter
 - React-owned overlay toolbar and context menu shell
 - office canvas renderer, sprite animation, pathfinding, and movement left imperative
@@ -55,7 +58,6 @@ Completed or mostly completed:
 Still remaining:
 
 - move any remaining React-rendered dashboard control events away from follow-up `getElementById(...).addEventListener(...)` wiring
-- replace `innerHTML` rendering in Cloudflare and central-server connection panels with React-owned views
 - continue the overlay card/grid shell migration while keeping animation and resize runtime code imperative
 - refine the office-side adapter so React supplies host elements and the runtime owns setup/update/teardown explicitly
 
@@ -253,7 +255,7 @@ Continue with small ownership cleanup slices rather than a broad rewrite.
 
 Recommended order:
 
-1. Replace Cloudflare and central-server connection `innerHTML` panels with React-owned views.
+1. Move any remaining React-rendered dashboard control events away from follow-up DOM queries.
 2. Continue overlay card/grid shell migration while leaving animation scheduling and resize calculations imperative.
 3. Refine office-side adapters under `src/client/dashboard/office.ts` and `src/client/office/*` so runtime listeners and render-loop lifecycle have clear setup/update/teardown boundaries.
 

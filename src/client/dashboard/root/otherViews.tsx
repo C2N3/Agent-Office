@@ -1,5 +1,6 @@
 import React, { type ReactElement } from 'react';
 import { RemoteViewRoot } from '../remote/root.js';
+import { CloudflarePanel } from '../react/cloudflarePanel.js';
 import { type DashboardView } from '../state/store.js';
 import { ArchiveView, HeatmapView } from './activityViews.js';
 
@@ -17,9 +18,7 @@ export function OtherViews({ currentView }: { currentView: DashboardView }): Rea
       </div>
 
       <div id="cloudflareView" className={viewClass(currentView, 'cloudflare')}>
-        <div className="panel remote-panel">
-          <div className="standby-state">Loading…</div>
-        </div>
+        <CloudflarePanel active={currentView === 'cloudflare'} />
       </div>
 
       <ArchiveView currentView={currentView} />

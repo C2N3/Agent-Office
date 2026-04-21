@@ -15,7 +15,7 @@ This file tracks client-side work that is planned, discovered, blocked, or compl
 - [x] Land the initial React UI boundary milestones in `docs/plans/react-ui-boundary-plan.md`: single dashboard React root, React-owned remote/heatmap/archive/agent-card surfaces, and imperative office renderer preservation.
 - [x] Rebuild the dashboard as a single React app root, move React-owned UI toward hooks/components, and add SCSS module support for React surfaces.
 - [ ] Execute the client UI runtime boundary direction in `docs/plans/client-ui-runtime-boundary.md` by keeping Vite limited to browser entries, moving React-rendered control events into React ownership, and keeping office canvas/runtime code imperative TypeScript.
-- [ ] Move the Cloudflare and central-server connection panels out of `innerHTML` rendering into React-owned dashboard views.
+- [x] Move the Cloudflare and central-server connection panels out of `innerHTML` rendering into React-owned dashboard views.
 - [ ] Continue overlay shell migration by moving `src/renderer/agentCard.ts` and `src/renderer/agentGrid.ts` DOM composition toward React-owned shell components while keeping animation and resize runtime code imperative.
 - [ ] Refine the office canvas adapter around `src/client/dashboard/office.ts` and `src/client/office/officeInit.ts` so React supplies host elements and the runtime exposes setup/update/teardown entrypoints.
 - [ ] Add full Gemini session visualization support by implementing Gemini session ingestion/monitoring, transcript statistics, recovery metadata, and provider registry/catalog capability updates comparable to Claude and Codex.

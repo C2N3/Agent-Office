@@ -24,15 +24,6 @@ function syncActiveView(currentView: ReturnType<typeof useDashboardSnapshot>['cu
   } else {
     import('../remote/polling.js').then((module) => module.stopRemoteViewPolling());
   }
-
-  if (currentView === 'cloudflare') {
-    import('../cloudflareView.js').then((module) => {
-      void module.renderCloudflareView();
-      module.startCloudflareViewPolling();
-    });
-  } else {
-    import('../cloudflareView.js').then((module) => module.stopCloudflareViewPolling());
-  }
 }
 
 export function DashboardApp(): ReactElement {

@@ -1,7 +1,8 @@
 import { refreshRemoteViewData } from './controller.js';
-import { startCentralServerConnection, stopCentralServerConnection } from '../serverConnection.js';
+import { startCentralServerConnection, stopCentralServerConnection, subscribeCentralServerConnection } from '../serverConnection.js';
 
 let pollInterval: ReturnType<typeof setInterval> | null = null;
+let centralConnectionCleanup: (() => void) | null = null;
 
 function isRemoteInputFocused(): boolean {
   const focusedId = document.activeElement?.id;
@@ -18,6 +19,13 @@ export async function renderRemoteView(): Promise<void> {
 
 export function startRemoteViewPolling(): void {
   void startCentralServerConnection();
+  if (!centralConnectionCleanup) {
+    centralConnectionCleanup = subscribeCentralServerConnection(() => {
+      if (!isRemoteInputFocused()) {
+        void renderRemoteView();
+      }
+    });
+  }
   if (pollInterval) return;
   pollInterval = setInterval(() => {
     if (isRemoteInputFocused()) return;
@@ -30,5 +38,9 @@ export function startRemoteViewPolling(): void {
 
 export function stopRemoteViewPolling(): void {
   if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+  if (centralConnectionCleanup) {
+    centralConnectionCleanup();
+    centralConnectionCleanup = null;
+  }
   stopCentralServerConnection();
 }
