@@ -1,4 +1,4 @@
-import React, { type ReactElement } from 'react';
+import React, { type ReactElement, useRef } from 'react';
 import type {
   DashboardTerminalEntry,
   DashboardTerminalProfile,
@@ -37,6 +37,7 @@ export function TerminalPanel({
   terminalProfiles: DashboardTerminalProfile[];
   terminals: Array<[string, DashboardTerminalEntry]>;
 }): ReactElement {
+  const newTerminalButtonRef = useRef<HTMLButtonElement | null>(null);
   const defaultTerminalProfile = terminalProfiles.find((profile) => profile.id === terminalDefaultProfileId) || terminalProfiles[0] || null;
   const collapseLabel = collapsed ? 'Expand Terminal' : 'Collapse Terminal';
 
@@ -87,6 +88,7 @@ export function TerminalPanel({
             {collapsed ? '<' : '>'}
           </button>
           <button
+            ref={newTerminalButtonRef}
             className="terminal-new-btn"
             id="terminalNewBtn"
             title={defaultTerminalProfile ? `New Terminal (${defaultTerminalProfile.title})` : 'New Terminal'}
@@ -117,6 +119,7 @@ export function TerminalPanel({
             void setDefaultTerminalProfile(profileId);
           }}
           profiles={terminalProfiles}
+          triggerRef={newTerminalButtonRef}
         />
       </div>
     </div>

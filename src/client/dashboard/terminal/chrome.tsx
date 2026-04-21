@@ -1,4 +1,4 @@
-import React, { type ReactElement, useEffect, useMemo, useRef } from 'react';
+import React, { type ReactElement, type RefObject, useEffect, useMemo, useRef } from 'react';
 import type { DashboardTerminalEntry, DashboardTerminalProfile } from '../shared.js';
 
 export function TerminalTabs({
@@ -58,6 +58,15 @@ export function PowerShellPolicyBanner({
   );
 }
 
+export function isOutsideTerminalProfileMenu(
+  target: Node | null,
+  menuElement: HTMLElement | null,
+  triggerElement: HTMLElement | null,
+): boolean {
+  if (!target) return true;
+  return !menuElement?.contains(target) && !triggerElement?.contains(target);
+}
+
 export function TerminalProfileMenu({
   defaultProfileId,
   onClose,
@@ -65,6 +74,7 @@ export function TerminalProfileMenu({
   onSetDefaultProfile,
   open,
   profiles,
+  triggerRef,
 }: {
   defaultProfileId: string | null;
   onClose: () => void;
@@ -72,6 +82,7 @@ export function TerminalProfileMenu({
   onSetDefaultProfile: (profileId: string) => void | Promise<void>;
   open: boolean;
   profiles: DashboardTerminalProfile[];
+  triggerRef: RefObject<HTMLElement | null>;
 }): ReactElement | null {
   const menuRef = useRef<HTMLDivElement | null>(null);
   const defaultProfile = useMemo(
@@ -84,8 +95,7 @@ export function TerminalProfileMenu({
 
     const onDocumentClick = (event: MouseEvent) => {
       const target = event.target instanceof Node ? event.target : null;
-      const trigger = document.getElementById('terminalNewBtn');
-      if (menuRef.current?.contains(target) || trigger?.contains(target)) return;
+      if (!isOutsideTerminalProfileMenu(target, menuRef.current, triggerRef.current)) return;
       onClose();
     };
 
@@ -101,7 +111,7 @@ export function TerminalProfileMenu({
       document.removeEventListener('click', onDocumentClick);
       document.removeEventListener('keydown', onDocumentKeydown);
     };
-  }, [open, onClose]);
+  }, [open, onClose, triggerRef]);
 
   if (!open) return null;
 
