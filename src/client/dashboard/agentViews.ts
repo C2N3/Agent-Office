@@ -12,7 +12,7 @@ import {
 } from '../office/index.js';
 import { updateConnectionStatus } from './connectionStatus.js';
 import { getStateColor } from './agentViewHelpers.js';
-import { appendTaskChatMessage, openTaskLogTab, openTerminalForAgent } from './terminal/index.js';
+import { appendTaskChatMessage, openTaskLogTab } from './terminal/index.js';
 import {
   getClearableUnregisteredAgents,
   getVisibleAgents,
@@ -83,18 +83,9 @@ export function connectSSE() {
   });
   eventSource.addEventListener('task.running', (event: MessageEvent) => {
     try {
-      const data = JSON.parse(event.data) as { data: { id?: string; agentRegistryId?: string; terminalId?: string; title?: string } };
+      const data = JSON.parse(event.data) as { data: { id?: string; agentRegistryId?: string; title?: string } };
       const task = data.data;
-      if (task.terminalId) {
-        // Legacy PTY terminal path (manual terminals)
-        openTerminalForAgent(task.terminalId, {
-          forceTerminalTab: true,
-          skipProviderBoot: true,
-          skipAutoResume: true,
-          label: task.title || 'Task',
-        });
-      } else if (task.id && task.agentRegistryId) {
-        // Headless task: open a log-only tab (no PTY)
+      if (task.id && task.agentRegistryId) {
         openTaskLogTab(task.id, task.agentRegistryId, task.title || 'Task');
       }
     } catch {}

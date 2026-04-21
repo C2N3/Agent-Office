@@ -14,7 +14,6 @@ export type CreateAgentFormState = {
   name: string;
   role: string;
   workspacePath: string;
-  openTerminal: boolean;
   strategy: DashboardPathRegistrationStrategy;
   branchName: string;
   startPoint: string;
@@ -41,7 +40,6 @@ export function buildDefaultCreateAgentFormState(): CreateAgentFormState {
     name: '',
     role: '',
     workspacePath: '',
-    openTerminal: true,
     strategy: 'auto',
     branchName: '',
     startPoint: '',

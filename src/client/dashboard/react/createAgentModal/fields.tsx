@@ -100,14 +100,6 @@ export function CreateAgentFormFields({
         </div>
       </label>
       <div className="create-agent-preview">{previewStatus}</div>
-      <label className="modal-checkbox">
-        <input
-          checked={formState.openTerminal}
-          onChange={(event) => onChange({ openTerminal: event.currentTarget.checked })}
-          type="checkbox"
-        />
-        <span>Open embedded terminal after create</span>
-      </label>
       <details className="create-agent-advanced">
         <summary>Advanced Options</summary>
         <div className="create-agent-advanced-body">

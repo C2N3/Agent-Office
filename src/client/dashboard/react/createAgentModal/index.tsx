@@ -9,7 +9,6 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { openTerminalForAgent } from '../../terminal/index.js';
 import { dashboardModalRegistry } from '../../modals/registry.js';
 import { getDashboardAPI } from '../../shared.js';
 import { syncCentralAgentRecord } from '../../centralAgents/index.js';
@@ -215,28 +214,7 @@ export function CreateAgentModal(): ReactElement | null {
       console.warn('[Central Agents] create sync failed', caughtError);
     });
 
-    const shouldOpenTerminal = formState.openTerminal;
-    const agentId = result.agent?.id;
-    const terminalCwd = result.workspace?.worktreePath || result.projectPath || formState.workspacePath.trim();
-    const terminalLabel = formState.name.trim();
     closeCreateAgent();
-
-    if (!shouldOpenTerminal || !agentId) return;
-
-    try {
-      await openTerminalForAgent(agentId, {
-        cwd: terminalCwd,
-        label: terminalLabel,
-        skipProviderBoot: true,
-      });
-      if (result.effectiveStrategy === 'worktree' && result.bootstrapCommand && dashboardAPI.writeTerminal) {
-        window.setTimeout(() => {
-          dashboardAPI.writeTerminal?.(agentId, `${result.bootstrapCommand}\r`);
-        }, 250);
-      }
-    } catch (caughtError) {
-      console.error('[Create Agent Terminal]', caughtError);
-    }
   }, [closeCreateAgent, formState, submitting]);
 
   const handleOverlayClick = useCallback((event: MouseEvent<HTMLDivElement>) => {

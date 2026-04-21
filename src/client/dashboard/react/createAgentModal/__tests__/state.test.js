@@ -12,7 +12,6 @@ describe('create agent modal state helpers', () => {
   test('builds stable default form state', () => {
     expect(buildDefaultCreateAgentFormState()).toEqual(expect.objectContaining({
       branchMode: 'auto',
-      openTerminal: true,
       provider: 'claude',
       strategy: 'auto',
     }));
