@@ -35,6 +35,8 @@ describe('dashboard activity views react boundary', () => {
   });
 
   afterEach(() => {
+    delete global.confirm;
+    delete global.dashboardAPI;
     delete global.localStorage;
   });
 
@@ -56,7 +58,25 @@ describe('dashboard activity views react boundary', () => {
 
     expect(archiveMarkup).toContain('id="archiveRefreshBtn"');
     expect(archiveMarkup).toContain('id="archiveGrid"');
-    expect(archiveMarkup).toContain('data-delete-id="arch-1"');
+    expect(archiveMarkup).toContain('archive-delete-btn');
+    expect(archiveMarkup).not.toContain('data-delete-id="arch-1"');
     expect(archiveMarkup).toContain('Archived Agent');
+  });
+
+  test('deletes archived agent records through the archive adapter', async () => {
+    const { archiveState } = require('../src/client/dashboard/shared.ts');
+    const { deleteArchivedAgentRecord } = require('../src/client/dashboard/activityViews.ts');
+
+    global.confirm = jest.fn(() => true);
+    global.dashboardAPI = {
+      deleteRegisteredAgent: jest.fn(() => Promise.resolve()),
+      listArchivedAgents: jest.fn(() => Promise.resolve([])),
+    };
+
+    await deleteArchivedAgentRecord('arch-1');
+
+    expect(global.dashboardAPI.deleteRegisteredAgent).toHaveBeenCalledWith('arch-1');
+    expect(global.dashboardAPI.listArchivedAgents).toHaveBeenCalled();
+    expect(archiveState.items).toEqual([]);
   });
 });

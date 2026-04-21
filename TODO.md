@@ -29,6 +29,7 @@ This file tracks client-side work that is planned, discovered, blocked, or compl
 
 ## Done
 
+- [x] Move archive Refresh/History/Delete controls and the agent-list bulk clear button from dashboard runtime DOM listener wiring into React-owned handlers.
 - [x] Move the overlay grid and idle-shell host lookup in `src/renderer/agentGrid.ts` behind React-owned refs registered by `src/renderer/overlayShell.tsx`.
 - [x] Move the `src/renderer/agentCard.ts` overlay card child shell into React-owned composition with React-owned focus/poke handlers while preserving imperative state updates, timers, sprite animation, and resize behavior.
 - [x] Move the create-agent modal from `src/client/dashboard/modals/createAgent.ts` DOM binding into React-owned state and handlers in `src/client/dashboard/react/createAgentModal/`.

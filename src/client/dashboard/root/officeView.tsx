@@ -13,6 +13,7 @@ import {
   terminateAgent,
   unregisterAgent,
 } from '../agentActions.js';
+import { clearUnregisteredAgents, getClearableUnregisteredAgents } from '../agentViews.js';
 import { AgentPanel } from '../react/agentPanel.js';
 import type {
   DashboardAgent,
@@ -75,6 +76,9 @@ export function OfficeView({
   const hasErrors = stats.errorCount > 0;
   const defaultTerminalProfile = terminalProfiles.find((profile) => profile.id === terminalDefaultProfileId) || terminalProfiles[0] || null;
   const windowControls = useWindowControlsSnapshot();
+  const clearableUnregisteredCount = getClearableUnregisteredAgents().length;
+  const clearableUnregisteredLabel = clearableUnregisteredCount > 0 ? `Clear Unregistered (${clearableUnregisteredCount})` : 'Clear Unregistered';
+  const clearableUnregisteredTitle = clearableUnregisteredCount > 0 ? `Clear ${clearableUnregisteredCount} inactive unregistered agent${clearableUnregisteredCount === 1 ? '' : 's'}` : 'No inactive unregistered agents available to clear';
 
   const handleTerminalNewClick = async () => {
     if (terminalProfileMenuOpen) {
@@ -208,8 +212,8 @@ export function OfficeView({
                   />
                   <span>Registered Only</span>
                 </label>
-                <button className="bulk-archive-btn" id="bulkArchiveBtn" title="Clear inactive unregistered agents" type="button">
-                  Clear Unregistered
+                <button className="bulk-archive-btn" disabled={clearableUnregisteredCount === 0} id="bulkArchiveBtn" title={clearableUnregisteredTitle} type="button" onClick={() => { void clearUnregisteredAgents(); }}>
+                  {clearableUnregisteredLabel}
                 </button>
                 <button className="agent-create-btn" id="createAgentBtn" title="Register New Agent" type="button" onClick={openCreateAgentModal}>
                   + New

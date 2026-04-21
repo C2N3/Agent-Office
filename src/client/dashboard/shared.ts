@@ -200,15 +200,6 @@ export const DOM = {
   get agentListFilterToggle(): HTMLInputElement | null {
     return getElementById('agentListRegisteredFilterToggle') as HTMLInputElement | null;
   },
-  get bulkArchiveBtn(): HTMLButtonElement | null {
-    return getElementById('bulkArchiveBtn') as HTMLButtonElement | null;
-  },
-  get archiveGrid(): HTMLElement | null {
-    return getElementById('archiveGrid') as HTMLElement | null;
-  },
-  get archiveRefreshBtn(): HTMLButtonElement | null {
-    return getElementById('archiveRefreshBtn') as HTMLButtonElement | null;
-  },
 };
 
 export const dashboardResumeUtils: DashboardResumeUtils = dashboardResumeUtilsModule;

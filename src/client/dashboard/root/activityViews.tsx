@@ -7,9 +7,11 @@ import {
   type DashboardArchiveItem,
 } from '../shared.js';
 import {
+  deleteArchivedAgentRecord,
   getArchiveRefreshToken,
   getHeatmapRefreshToken,
   hideTooltip,
+  openArchivedAgentHistory,
   renderArchiveView,
   renderHeatmapView,
   showTooltip,
@@ -255,7 +257,7 @@ export function ArchiveView({ currentView }: { currentView: DashboardView }): Re
               Archived agent records with session history and lifecycle totals.
             </div>
           </div>
-          <button className="btn-secondary archive-refresh-btn" id="archiveRefreshBtn" type="button">Refresh</button>
+          <button className="btn-secondary archive-refresh-btn" id="archiveRefreshBtn" type="button" onClick={() => { void renderArchiveView(true); }}>Refresh</button>
         </div>
         <div className="archive-grid" id="archiveGrid">
           {isLoading ? (
@@ -279,8 +281,8 @@ export function ArchiveView({ currentView }: { currentView: DashboardView }): Re
                   <div><span>Last End</span><strong>{formatDateTime(card.lastSession?.endedAt)}</strong></div>
                 </div>
                 <div className="archive-card-actions">
-                  <button className="agent-history-btn" data-history-id={card.item.id} data-agent-name={card.item.name || 'Workspace'}>History</button>
-                  <button className="agent-delete-btn archive-delete-btn" data-delete-id={card.item.id} title="Delete archived record">Delete</button>
+                  <button className="agent-history-btn" type="button" onClick={() => openArchivedAgentHistory(card.item.id, card.item.name || 'Workspace')}>History</button>
+                  <button className="agent-delete-btn archive-delete-btn" title="Delete archived record" type="button" onClick={() => { void deleteArchivedAgentRecord(card.item.id); }}>Delete</button>
                 </div>
               </article>
             ))

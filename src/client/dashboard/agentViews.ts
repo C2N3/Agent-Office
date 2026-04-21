@@ -1,6 +1,5 @@
 import {
   type DashboardAgent,
-  DOM,
   REGISTERED_FILTER_STORAGE_KEY,
   state,
   getDashboardAPI,
@@ -175,16 +174,6 @@ export function removeAgent(id: string) {
   renderAgentList();
 }
 
-export function updateBulkArchiveButton() {
-  if (!DOM.bulkArchiveBtn) return;
-  const count = getClearableUnregisteredAgents().length;
-  DOM.bulkArchiveBtn.disabled = count === 0;
-  DOM.bulkArchiveBtn.textContent = count > 0 ? `Clear Unregistered (${count})` : 'Clear Unregistered';
-  DOM.bulkArchiveBtn.title = count > 0
-    ? `Clear ${count} inactive unregistered agent${count === 1 ? '' : 's'}`
-    : 'No inactive unregistered agents available to clear';
-}
-
 function renderOfficeRoster() {
   for (const agent of state.agents.values()) {
     if (shouldDisplayAgent(agent)) {
@@ -202,7 +191,6 @@ export function setRegisteredOnlyFilter(enabled: boolean) {
 }
 
 export function renderAgentList() {
-  updateBulkArchiveButton();
   renderOfficeRoster();
   notifyDashboardStore();
 }
@@ -220,8 +208,6 @@ export async function clearUnregisteredAgents(): Promise<void> {
   const dashboardAPI = getDashboardAPI();
   if (!dashboardAPI?.clearInactiveUnregisteredAgents) return;
 
-  if (DOM.bulkArchiveBtn) DOM.bulkArchiveBtn.disabled = true;
-
   let clearedCount = 0;
   try {
     const result = await dashboardAPI.clearInactiveUnregisteredAgents();
@@ -232,7 +218,7 @@ export async function clearUnregisteredAgents(): Promise<void> {
     console.error('[Clear Unregistered]', error);
   }
 
-  updateBulkArchiveButton();
+  notifyDashboardStore();
   if (clearedCount !== count) {
     alert(`Cleared ${clearedCount} of ${count} agents. Some items may have changed state before removal.`);
   }

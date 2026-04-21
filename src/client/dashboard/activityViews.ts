@@ -5,6 +5,7 @@ import {
   getDashboardAPI,
   historyState,
 } from './shared.js';
+import { dashboardModalRegistry } from './modals/registry.js';
 
 function getTooltip(): HTMLDivElement | null {
   return document.getElementById('mcTooltip') as HTMLDivElement | null;
@@ -118,6 +119,20 @@ async function loadArchivedAgents(force = false): Promise<DashboardArchiveItem[]
 
 export async function fetchArchivedAgents(force = false): Promise<DashboardArchiveItem[]> {
   return loadArchivedAgents(force);
+}
+
+export function openArchivedAgentHistory(historyId: string, agentName = 'Workspace'): void {
+  const opener = dashboardModalRegistry.openSessionHistory || globalThis.openSessionHistory;
+  opener?.(historyId, agentName || 'Workspace');
+}
+
+export async function deleteArchivedAgentRecord(registryId: string): Promise<void> {
+  if (!confirm('Delete this archived agent record permanently? This cannot be undone.')) return;
+  const deleteResult = getDashboardAPI()?.deleteRegisteredAgent?.(registryId);
+  if (!deleteResult) return;
+  await deleteResult;
+  archiveState.items = null;
+  await renderArchiveView(true);
 }
 
 export async function renderArchiveView(force = false): Promise<void> {

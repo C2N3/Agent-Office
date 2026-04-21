@@ -5,7 +5,6 @@ jest.mock('../../agentViews.ts', () => ({
   renderAgentList: jest.fn(),
   updateAgent: jest.fn(),
   updateAgentUI: jest.fn(),
-  updateBulkArchiveButton: jest.fn(),
 }));
 
 jest.mock('../../activityViews.ts', () => ({
@@ -93,5 +92,23 @@ describe('dashboard runtime bootstrap', () => {
       selector: '.mc-agent-card [data-tooltip], .mc-agent-card button[title]',
     });
     expect(global.window.addEventListener).toHaveBeenCalledWith('resize', expect.any(Function));
+  });
+
+  test('does not bind events to React-owned archive controls during runtime bootstrap', async () => {
+    const archiveRefreshBtn = { addEventListener: jest.fn() };
+    const bulkArchiveBtn = { addEventListener: jest.fn() };
+    const archiveGrid = { addEventListener: jest.fn() };
+    global.document.getElementById = jest.fn((id) => ({
+      archiveRefreshBtn,
+      bulkArchiveBtn,
+      archiveGrid,
+    })[id] || null);
+
+    const { initDashboardRuntime } = require('../bootstrap.ts');
+    await initDashboardRuntime();
+
+    expect(archiveRefreshBtn.addEventListener).not.toHaveBeenCalled();
+    expect(bulkArchiveBtn.addEventListener).not.toHaveBeenCalled();
+    expect(archiveGrid.addEventListener).not.toHaveBeenCalled();
   });
 });

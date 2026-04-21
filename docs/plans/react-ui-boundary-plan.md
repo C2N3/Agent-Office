@@ -33,6 +33,7 @@ The current branch has already landed a few of the high-value dashboard slices:
 - the create-agent modal now owns open/close, provider selection, form/error, workspace browse/inspection, and submit state in React while workspace registration calls stay behind dashboard API adapters
 - the Cloudflare tunnel tab now owns status, actions, copy feedback, and polling in React while tunnel fetch/start/stop calls stay in a small adapter
 - the central-server connection surface now uses the React Remote tab/status views; `serverConnection.ts` only owns config fetch/save and SSE refresh notifications instead of replacing an `innerHTML` card
+- the archive Refresh/History/Delete controls and the agent-list bulk clear control now own click events in React; dashboard runtime bootstrap no longer attaches follow-up DOM listeners for those React-rendered controls
 - the overlay agent card child shell now renders through React, including badge/name/bubble/timer placeholders plus focus and poke event handlers, while state updates, timers, sprite animation, and resize remain imperative
 - the overlay card-list append/reorder/remove operations now go through an explicit `agentGrid/cardList` adapter backed by the React-registered grid host, while state updates, timers, sprite animation, and resize remain imperative
 - the overlay grid layout mutation now goes through an explicit `agentGrid/layoutHost` adapter for grid classes, idle-shell visibility, card coordinates, and card ordering while layout calculation, animation scheduling, and resize remain outside React
@@ -55,6 +56,7 @@ Completed or mostly completed:
 - React-owned terminal tab/profile/banner chrome while xterm hosts stay imperative
 - React-owned Cloudflare and central-server connection panels with imperative fetch/action/SSE adapters
 - React-owned PiP and Overlay dashboard control events with window-state subscription kept in an adapter
+- React-owned archive Refresh/History/Delete events and agent-list bulk clear event, with archive delete kept behind a small adapter call
 - React-owned overlay toolbar and context menu shell
 - React-owned overlay agent-card child shell with imperative animation/timer/state update ownership preserved
 - React-owned overlay grid and idle-shell host registration so `agentGrid.ts` updates the card list through an explicit shell boundary instead of rediscovering those hosts globally
@@ -64,7 +66,7 @@ Completed or mostly completed:
 
 Still remaining:
 
-- move any remaining React-rendered dashboard control events away from follow-up `getElementById(...).addEventListener(...)` wiring
+- move the remaining terminal panel collapse control and any other discovered React-rendered dashboard controls away from follow-up `getElementById(...).addEventListener(...)` wiring
 - audit the overlay grid boundary for any remaining same-DOM dual ownership; card-list and layout mutations are now behind adapters while animation and resize runtime code remain imperative
 - refine the office-side adapter so React supplies host elements and the runtime owns setup/update/teardown explicitly
 
@@ -262,7 +264,7 @@ Continue with small ownership cleanup slices rather than a broad rewrite.
 
 Recommended order:
 
-1. Move any remaining React-rendered dashboard control events away from follow-up DOM queries.
+1. Move the terminal panel collapse control away from follow-up DOM queries while keeping terminal resize and xterm fitting imperative.
 2. Continue overlay grid layout-mutation cleanup while leaving animation scheduling and resize calculations imperative.
 3. Refine office-side adapters under `src/client/dashboard/office.ts` and `src/client/office/*` so runtime listeners and render-loop lifecycle have clear setup/update/teardown boundaries.
 
