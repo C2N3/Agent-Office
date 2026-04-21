@@ -1,8 +1,8 @@
 /**
- * UI Components — keyboard shortcuts and context menu bridge
+ * UI Components — keyboard shortcuts for the overlay runtime
  */
 
-import { closeOverlayContextMenu, openOverlayContextMenu } from './overlayShellController.js';
+import { closeOverlayContextMenu } from './overlayShellController.js';
 
 export function setupKeyboardShortcuts() {
   document.addEventListener('keydown', (e) => {
@@ -68,26 +68,6 @@ export function setupKeyboardShortcuts() {
 
       agents[nextIndex].focus();
     }
-  });
-
-}
-
-export function setupContextMenu() {
-  document.addEventListener('contextmenu', (e) => {
-    const target = e.target as HTMLElement | null;
-    const agentCard = target?.closest('.agent-card');
-    if (!agentCard) return;
-
-    e.preventDefault();
-
-    const agentId = agentCard.dataset.agentId;
-    if (!agentId) return;
-
-    openOverlayContextMenu({
-      agentId,
-      x: e.clientX,
-      y: e.clientY,
-    });
   });
 
 }

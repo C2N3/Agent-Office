@@ -47,6 +47,7 @@ The current branch has already landed a few of the high-value dashboard slices:
 - the office canvas host now belongs to `OfficeView` through React ref registration instead of `document.getElementById('office-canvas')`, while renderer initialization and canvas click/drag behavior remain imperative
 - the office click/drag adapter now has explicit setup, host-update, and teardown entrypoints; `officeInit.ts` also exposes setup/update/teardown aliases over the existing renderer lifecycle while the canvas renderer, sprite movement, and pathfinding remain imperative
 - the overlay Agent Desk Ctrl/Cmd+D shortcut now lives with the React-owned `WebDashboardButton` instead of rediscovering `web-dashboard-btn` and clicking it from the legacy keyboard adapter
+- the overlay agent-card context menu now opens from the React-owned `agent-grid` host instead of a document-level `contextmenu` listener, while focus-terminal actions still go through the overlay shell controller
 
 That leaves the remaining work focused on shrinking the imperative DOM surface area around modals, auxiliary dashboard panels, overlay cards, and office-side adapters rather than proving the boundary from scratch.
 
@@ -82,6 +83,7 @@ Completed or mostly completed:
 - React-owned office canvas host registration, with renderer initialization and canvas click/drag behavior kept in imperative office adapters
 - Explicit setup/update/teardown lifecycle for office canvas click/drag listeners and renderer startup control, with React ref callbacks refreshing the host binding
 - React-owned overlay Agent Desk shortcut handling, with legacy overlay keyboard navigation no longer querying the React-rendered dashboard button
+- React-owned overlay agent-card context menu ownership on the registered grid host
 - office canvas renderer, sprite animation, pathfinding, and movement left imperative
 
 Still remaining:

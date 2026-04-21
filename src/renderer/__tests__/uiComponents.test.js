@@ -29,4 +29,12 @@ describe('overlay keyboard adapter', () => {
     expect(preventDefault).not.toHaveBeenCalled();
     expect(global.document.getElementById).not.toHaveBeenCalled();
   });
+
+  test('leaves context menu ownership with the React grid host', () => {
+    const { setupKeyboardShortcuts } = require('../uiComponents.ts');
+
+    setupKeyboardShortcuts();
+
+    expect(global.document.addEventListener).not.toHaveBeenCalledWith('contextmenu', expect.any(Function));
+  });
 });

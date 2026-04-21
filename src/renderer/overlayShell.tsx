@@ -1,10 +1,15 @@
 import React, { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { resolveAgentContextMenuState } from './overlayContextMenu.js';
 import { registerAgentGridElements } from './agentGrid/elements.js';
 import { registerOverlayShellController, type OverlayContextMenuState } from './overlayShellController.js';
 import { isOpenDashboardShortcut } from './overlayShortcuts.js';
 
-const AgentGridShell = memo(function AgentGridShell() {
+const AgentGridShell = memo(function AgentGridShell({
+  onAgentContextMenu,
+}: {
+  onAgentContextMenu: (event: React.MouseEvent<HTMLDivElement>) => void;
+}) {
   const gridRef = useRef<HTMLDivElement | null>(null);
   const idleContainerRef = useRef<HTMLDivElement | null>(null);
   const idleBubbleRef = useRef<HTMLDivElement | null>(null);
@@ -27,7 +32,7 @@ const AgentGridShell = memo(function AgentGridShell() {
   }, []);
 
   return (
-    <div ref={gridRef} className="agent-grid" id="agent-grid">
+    <div ref={gridRef} className="agent-grid" id="agent-grid" onContextMenu={onAgentContextMenu}>
       <div ref={idleContainerRef} className="container" id="container" style={{ display: 'none' }}>
         <div ref={idleBubbleRef} className="speech-bubble" id="speech-bubble">Waiting...</div>
         <div ref={idleCharacterRef} className="character" id="character"></div>
@@ -179,6 +184,14 @@ export function OverlayShell() {
     setContextMenu(null);
   }, []);
 
+  const handleAgentContextMenu = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    const contextMenuState = resolveAgentContextMenuState(event);
+    if (!contextMenuState) return;
+
+    event.preventDefault();
+    openContextMenu(contextMenuState);
+  }, [openContextMenu]);
+
   useEffect(() => {
     registerOverlayShellController({
       openContextMenu,
@@ -192,7 +205,7 @@ export function OverlayShell() {
 
   return (
     <>
-      <AgentGridShell />
+      <AgentGridShell onAgentContextMenu={handleAgentContextMenu} />
       <div className="avatar-toolbar">
         <WebDashboardButton />
       </div>

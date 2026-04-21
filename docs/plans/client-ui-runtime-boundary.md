@@ -76,7 +76,7 @@ React components should not reach into sprite, pathfinding, renderer, or charact
 
    Current office status: the dashboard office click/drag adapter exposes setup, host-update, and teardown entrypoints, and `officeInit.ts` exposes setup/update/teardown aliases over the existing renderer lifecycle. `OfficeView` supplies the canvas and popover hosts through React refs, while the office renderer, sprite/pathfinding logic, and render loop remain imperative.
 
-   Current overlay status: the React-owned Agent Desk button owns its Ctrl/Cmd+D shortcut handling instead of being rediscovered and clicked from the legacy keyboard adapter.
+   Current overlay status: the React-owned Agent Desk button owns its Ctrl/Cmd+D shortcut handling instead of being rediscovered and clicked from the legacy keyboard adapter. The React-owned `agent-grid` host owns agent-card context menu opening instead of a document-level `contextmenu` listener.
 
 5. Reduce mutable state hazards.
 
