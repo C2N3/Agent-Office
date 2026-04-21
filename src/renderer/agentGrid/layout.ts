@@ -1,10 +1,11 @@
 
 import { lastAgents } from '../config.js';
 import { unmountAgentCard } from '../agentCard.js';
+import { applyAgentGridCardOrder, getAgentGridCardElements } from './cardList.js';
 import { findParentCard, isSatelliteCandidate } from './satellites.js';
 
 export function updateGridLayoutElements(agentGrid, idleContainer) {
-  const cards = Array.from(agentGrid.querySelectorAll('.agent-card')) as HTMLElement[];
+  const cards = getAgentGridCardElements(agentGrid);
   if (cards.length === 0) {
     agentGrid.classList.remove('has-multiple');
     agentGrid.querySelectorAll('.agent-party-bg').forEach(el => el.remove());
@@ -52,18 +53,8 @@ export function updateGridLayoutElements(agentGrid, idleContainer) {
     item.card.style.gridColumn = String(col);
     item.card.style.gridRow = String(currentRow);
 
-    if (item.card.parentNode !== agentGrid) {
-      agentGrid.appendChild(item.card);
-    }
-
     col++;
   });
 
-  const sortedIds = new Set(sorted.map(s => s.card.dataset.agentId));
-  (Array.from(agentGrid.querySelectorAll('.agent-card')) as HTMLElement[]).forEach(card => {
-    if (!sortedIds.has(card.dataset.agentId)) {
-      unmountAgentCard(card);
-      card.remove();
-    }
-  });
+  applyAgentGridCardOrder(agentGrid, sorted.map(item => item.card), unmountAgentCard);
 }

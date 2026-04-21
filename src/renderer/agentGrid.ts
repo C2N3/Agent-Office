@@ -6,6 +6,7 @@ import { ANIM_SEQUENCES, lastAgents } from './config.js';
 import { updateAgentState, createAgentCard, unmountAgentCard } from './agentCard.js';
 import { drawFrameOn, requestDynamicResize } from './agentGridResize.js';
 import { findAgentCardElement, findMiniAvatarElement, getAgentGridElements } from './agentGrid/elements.js';
+import { appendAgentGridCard, removeAgentGridCard } from './agentGrid/cardList.js';
 import { updateGridLayoutElements } from './agentGrid/layout.js';
 import { toRelativeAssetPath } from '../shared/assetPaths.js';
 import {
@@ -44,15 +45,13 @@ export function addAgent(agent) {
   }
 
   const card = createAgentCard(agent);
-  const elements = getAgentGridElements();
-  if (!elements) return;
-
-  elements.grid.appendChild(card);
+  const grid = appendAgentGridCard(card);
+  if (!grid) return;
 
   updateAgentState(agent.id, card, agent);
 
   // If this is a parent, check if children arrived earlier and migrate them
-  migrateSatellites(elements.grid, card, agent.id);
+  migrateSatellites(grid, card, agent.id);
 
   updateGridLayout();
   requestDynamicResize();
@@ -96,8 +95,7 @@ export function updateAgent(agent) {
     if (parentCard) {
       // Remove standalone card and add as satellite
       cleanupAgentState(agent.id);
-      unmountAgentCard(card);
-      card.remove();
+      removeAgentGridCard(card, unmountAgentCard);
 
       addSatelliteAvatar(parentCard, agent);
       updateGridLayout();
@@ -158,8 +156,7 @@ export function removeAgent(data) {
   // Remove DOM element after exit animation
   card.classList.add('removing');
   setTimeout(() => {
-    unmountAgentCard(card);
-    card.remove();
+    removeAgentGridCard(card, unmountAgentCard);
     updateGridLayout();
     requestDynamicResize();
   }, 250);
