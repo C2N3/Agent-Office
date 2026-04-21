@@ -24,7 +24,6 @@ import {
   initTerminals,
   openTerminalForAgent,
   refreshTerminalProfiles,
-  resumeRegisteredSession,
 } from '../terminal/index.js';
 import {
   initOffice,
@@ -34,10 +33,7 @@ import {
 } from '../../office/index.js';
 import {
   setupAgentModal,
-  setupConversationViewer,
   setupNicknameEdit,
-  setupTaskReportModal,
-  setupTeamReportModal,
 } from '../modals/index.js';
 import { installHoverTooltips } from '../../../shared/uiTooltip.js';
 import { startCentralAgentSync } from '../centralAgents/index.js';
@@ -125,9 +121,6 @@ function initOfficeRuntime() {
 function initModalRuntime() {
   setupNicknameEdit();
   setupAgentModal(openTerminalForAgent);
-  setupConversationViewer(resumeRegisteredSession);
-  setupTaskReportModal();
-  setupTeamReportModal();
 }
 
 export function initDashboardRuntime() {

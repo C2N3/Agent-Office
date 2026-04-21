@@ -6,7 +6,10 @@ import {
 import styles from '../styles/modals.module.scss';
 import { AssignTaskModal } from './assignTaskModal/index.js';
 import { AvatarPickerModal } from './avatarPickerModal.js';
+import { ConversationViewerModal } from './conversationViewerModal.js';
+import { TaskReportModal } from './taskReportModal.js';
 import { TeamFormationModal } from './teamFormationModal.js';
+import { TeamReportModal } from './teamReportModal.js';
 
 function ProviderButtons(): ReactElement {
   return (
@@ -79,32 +82,10 @@ export function DashboardModals(): ReactElement {
 
       <AssignTaskModal />
       <AvatarPickerModal />
-      <div className="modal-overlay" id="taskReportModal" style={{ display: 'none' }}>
-        <div className="modal-content task-report-modal">
-          <div className="modal-header"><span id="taskReportTitle">Task Report</span><button className="conv-modal-close" id="closeTaskReportBtn">&times;</button></div>
-          <div className="task-report-body">
-            <div className="task-report-section"><h4>Output</h4><div className="task-report-md" id="taskReportOutput">Loading...</div></div>
-            <div className="task-report-section"><h4>Changes</h4><div id="taskReportChanges" /></div>
-          </div>
-          <div className="task-report-section task-report-followup-section">
-            <h4>Follow-up Task</h4>
-            <div className="task-report-followup-help">Queue a new task on this workspace. The new task inherits this worktree&apos;s changes as its starting point.</div>
-            <textarea id="taskReportFollowUpPrompt" className="modal-input modal-textarea" rows={3} placeholder="What should the agent do next?" />
-            <div className="modal-error" id="taskReportFollowUpError" />
-          </div>
-          <div className="modal-actions task-report-actions"><button className="btn-secondary" id="taskReportFollowUpBtn">Send Follow-up</button><button className="btn-primary" id="taskReportMergeBtn">Merge</button><button className="btn-secondary btn-danger" id="taskReportRejectBtn">Reject</button></div>
-        </div>
-      </div>
-
       <TeamFormationModal />
-
-      <div className="modal-overlay" id="teamReportModal" style={{ display: 'none' }}>
-        <div className="modal-content task-report-modal">
-          <div className="modal-header"><span id="teamReportTitle">Team Report</span><button className="conv-modal-close" id="closeTeamReportBtn">&times;</button></div>
-          <div className="task-report-body" id="teamReportBody" />
-          <div className="modal-actions task-report-actions"><button className="btn-primary" id="teamReportMergeBtn">Merge All</button><button className="btn-secondary btn-danger" id="teamReportRejectBtn">Reject</button></div>
-        </div>
-      </div>
+      <TaskReportModal />
+      <TeamReportModal />
+      <ConversationViewerModal />
     </>
   );
 }

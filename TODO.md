@@ -15,7 +15,7 @@ This file tracks client-side work that is planned, discovered, blocked, or compl
 - [x] Land the initial React UI boundary milestones in `docs/plans/react-ui-boundary-plan.md`: single dashboard React root, React-owned remote/heatmap/archive/agent-card surfaces, and imperative office renderer preservation.
 - [x] Rebuild the dashboard as a single React app root, move React-owned UI toward hooks/components, and add SCSS module support for React surfaces.
 - [ ] Execute the client UI runtime boundary direction in `docs/plans/client-ui-runtime-boundary.md` by keeping Vite limited to browser entries, moving React-rendered control events into React ownership, and keeping office canvas/runtime code imperative TypeScript.
-- [ ] Migrate remaining dashboard modal behavior in `src/client/dashboard/modals/*` from ID-based DOM binding toward React-owned component state and handlers.
+- [ ] Migrate the remaining create-agent and nickname-edit modal behavior in `src/client/dashboard/modals/*` from ID-based DOM binding toward React-owned component state and handlers.
 - [ ] Move the Cloudflare and central-server connection panels out of `innerHTML` rendering into React-owned dashboard views.
 - [ ] Continue overlay shell migration by moving `src/renderer/agentCard.ts` and `src/renderer/agentGrid.ts` DOM composition toward React-owned shell components while keeping animation and resize runtime code imperative.
 - [ ] Refine the office canvas adapter around `src/client/dashboard/office.ts` and `src/client/office/officeInit.ts` so React supplies host elements and the runtime exposes setup/update/teardown entrypoints.
@@ -29,6 +29,8 @@ This file tracks client-side work that is planned, discovered, blocked, or compl
 
 ## Done
 
+- [x] Move the task report and team report modals from `src/client/dashboard/modals/taskReport.ts` and `src/client/dashboard/modals/teamReport.ts` DOM binding into React-owned state and handlers.
+- [x] Move the conversation viewer from `src/client/dashboard/modals/conversationViewer.ts` dynamic DOM creation into React-owned state and handlers.
 - [x] Move the assign task modal from `src/client/dashboard/modals/assignTask.ts` DOM binding into React-owned state and handlers in `src/client/dashboard/react/assignTaskModal/`.
 - [x] Move the team formation modal from `src/client/dashboard/modals/teamFormation.ts` DOM binding into React-owned state and handlers in `src/client/dashboard/react/teamFormationModal.tsx`.
 - [x] Move the avatar picker modal from `src/client/dashboard/modals/avatarPicker.ts` DOM binding into React-owned state and handlers in `src/client/dashboard/react/avatarPickerModal.tsx`.

@@ -174,6 +174,49 @@ describe('dashboard react-owned surfaces', () => {
     expect(markup).toContain('data-provider="claude"');
     expect(markup).toContain('data-provider="codex"');
     expect(markup).not.toContain('id="assignTaskModal"');
+    expect(markup).not.toContain('id="taskReportModal"');
+    expect(markup).not.toContain('id="teamReportModal"');
+    expect(markup).not.toContain('conv-overlay');
     expect(markup).not.toContain('dangerouslySetInnerHTML');
+  });
+
+  test('React report helpers parse diffs and preserve follow-up task context', () => {
+    const { parseDiffToFiles } = require('../src/client/dashboard/react/reportDiff.tsx');
+    const { createFollowUpTaskPayload } = require('../src/client/dashboard/react/taskReportData.ts');
+
+    const files = parseDiffToFiles([
+      'diff --git a/src/app.ts b/src/app.ts',
+      'index 111..222 100644',
+      '--- a/src/app.ts',
+      '+++ b/src/app.ts',
+      '@@ -1 +1 @@',
+      '-old',
+      '+new',
+    ].join('\n'));
+
+    expect(files).toEqual([
+      expect.objectContaining({
+        additions: 1,
+        deletions: 1,
+        name: 'src/app.ts',
+      }),
+    ]);
+    expect(createFollowUpTaskPayload({
+      agentRegistryId: 'agent-1',
+      executionEnvironment: 'native',
+      model: 'gpt-5.4',
+      provider: 'codex',
+      repositoryPath: '/repo/app',
+      taskId: 'task-1',
+      title: 'Task Report',
+    }, 'Fix the remaining issue')).toMatchObject({
+      agentRegistryId: 'agent-1',
+      executionEnvironment: 'native',
+      model: 'gpt-5.4',
+      parentTaskId: 'task-1',
+      provider: 'codex',
+      repositoryPath: '/repo/app',
+      title: 'Follow-up: Fix the remaining issue',
+    });
   });
 });

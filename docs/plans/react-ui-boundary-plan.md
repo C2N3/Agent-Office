@@ -28,6 +28,7 @@ The current branch has already landed a few of the high-value dashboard slices:
 - the terminal PowerShell-policy banner and profile launcher menu now render from React-owned state while the xterm host stays imperative
 - the assign task modal now owns open/close, provider/model selection, validation, and submit state in React while the `/api/tasks` request payload stays in a small helper
 - the team formation modal now owns open/close, member selection, and submit state in React while the `/api/teams` request stays in a small imperative call
+- the task report, team report, and conversation viewer modals now own open/close, loading, action, and navigation state in React while report/history fetches stay behind small callbacks
 
 That leaves the remaining work focused on shrinking the imperative DOM surface area around modals, auxiliary dashboard panels, overlay cards, and office-side adapters rather than proving the boundary from scratch.
 
@@ -42,7 +43,7 @@ Completed or mostly completed:
 - React-owned remote mode view with imperative polling/data adapter
 - React-owned heatmap and archive views with imperative fetch/refresh adapters
 - React-owned modal shells and typed modal registry
-- React-owned assign task, team formation, and avatar picker modal behavior with imperative API calls kept behind small submit/update functions
+- React-owned assign task, team formation, avatar picker, task report, team report, and conversation viewer modal behavior with imperative API calls kept behind small submit/update functions
 - React-owned terminal tab/profile/banner chrome while xterm hosts stay imperative
 - React-owned PiP and Overlay dashboard control events with window-state subscription kept in an adapter
 - React-owned overlay toolbar and context menu shell
@@ -51,7 +52,7 @@ Completed or mostly completed:
 Still remaining:
 
 - move any remaining React-rendered dashboard control events away from follow-up `getElementById(...).addEventListener(...)` wiring
-- migrate modal behavior modules under `src/client/dashboard/modals/*` from DOM lookup/binding toward React component handlers
+- migrate the remaining create-agent and nickname-edit modal behavior under `src/client/dashboard/modals/*` from DOM lookup/binding toward React component handlers
 - replace `innerHTML` rendering in Cloudflare and central-server connection panels with React-owned views
 - continue the overlay card/grid shell migration while keeping animation and resize runtime code imperative
 - refine the office-side adapter so React supplies host elements and the runtime owns setup/update/teardown explicitly
@@ -250,7 +251,7 @@ Continue with small ownership cleanup slices rather than a broad rewrite.
 
 Recommended order:
 
-1. Convert the remaining modal behavior modules one modal at a time.
+1. Convert the remaining create-agent and nickname-edit modal behavior modules.
 2. Replace Cloudflare and central-server connection `innerHTML` panels with React-owned views.
 3. Continue overlay card/grid shell migration while leaving animation scheduling and resize calculations imperative.
 4. Refine office-side adapters under `src/client/dashboard/office.ts` and `src/client/office/*` so runtime listeners and render-loop lifecycle have clear setup/update/teardown boundaries.
