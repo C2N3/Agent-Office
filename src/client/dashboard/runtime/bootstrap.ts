@@ -31,7 +31,6 @@ import {
   officeOnAgentRemoved,
   officeOnAgentUpdated,
 } from '../../office/index.js';
-import { setupAgentModal } from '../modals/index.js';
 import { installHoverTooltips } from '../../../shared/uiTooltip.js';
 import { startCentralAgentSync } from '../centralAgents/index.js';
 import { initOverlayControls, initPipControls } from '../app/windowControls.js';
@@ -115,10 +114,6 @@ function initOfficeRuntime() {
   }, 100);
 }
 
-function initModalRuntime() {
-  setupAgentModal(openTerminalForAgent);
-}
-
 export function initDashboardRuntime() {
   installDashboardRuntimeGlobals(openTerminalForAgent);
 
@@ -133,7 +128,6 @@ export function initDashboardRuntime() {
     selector: '.mc-agent-card [data-tooltip], .mc-agent-card button[title]',
   });
   initArchiveEvents();
-  initModalRuntime();
 
   window.addEventListener('resize', () => {
     fitActiveTerminal();

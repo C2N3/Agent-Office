@@ -1,6 +1,7 @@
 import type { DashboardAgent } from '../shared.js';
 
 export type DashboardModalRegistry = {
+  openCreateAgentModal?: () => void;
   openAssignTaskModal?: (agent: DashboardAgent) => void;
   openAvatarPickerModal?: (agentId: string, registryId: string) => Promise<void> | void;
   openSessionHistory?: (historyId: string, agentName?: string) => void;

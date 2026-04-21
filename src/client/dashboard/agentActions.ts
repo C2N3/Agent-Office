@@ -9,6 +9,10 @@ export function openAgentHistory(historyId: string, agentName: string): void {
   dashboardModalRegistry.openSessionHistory?.(historyId, agentName || 'Agent');
 }
 
+export function openCreateAgentModal(): void {
+  dashboardModalRegistry.openCreateAgentModal?.();
+}
+
 export function assignTaskToAgent(agentId: string): void {
   const agent = state.agents.get(agentId);
   if (agent) {

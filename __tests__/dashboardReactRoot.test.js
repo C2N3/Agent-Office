@@ -167,18 +167,51 @@ describe('dashboard react-owned surfaces', () => {
     expect(markup).toContain('Use when pressing the New Terminal button');
   });
 
-  test('DashboardModals renders create-agent provider options from typed provider data', () => {
+  test('DashboardModals keeps inactive modals unmounted by default', () => {
     const { DashboardModals } = require('../src/client/dashboard/react/modals.tsx');
 
     const markup = renderToStaticMarkup(React.createElement(DashboardModals));
 
-    expect(markup).toContain('data-provider="claude"');
-    expect(markup).toContain('data-provider="codex"');
+    expect(markup).not.toContain('id="createAgentModal"');
     expect(markup).not.toContain('id="assignTaskModal"');
     expect(markup).not.toContain('id="taskReportModal"');
     expect(markup).not.toContain('id="teamReportModal"');
     expect(markup).not.toContain('conv-overlay');
     expect(markup).not.toContain('dangerouslySetInnerHTML');
+  });
+
+  test('CreateAgentFormFields renders provider options from typed provider data', () => {
+    const { CreateAgentFormFields } = require('../src/client/dashboard/react/createAgentModal/fields.tsx');
+    const { buildDefaultCreateAgentFormState } = require('../src/client/dashboard/react/createAgentModal/state.ts');
+
+    const noop = jest.fn();
+    const markup = renderToStaticMarkup(React.createElement(CreateAgentFormFields, {
+      baseBranchOptions: [],
+      error: '',
+      formState: buildDefaultCreateAgentFormState(),
+      inspectStatus: 'Worktree options are available when the effective strategy is managed git worktree.',
+      nameInputRef: { current: null },
+      previewStatus: 'Enter a workspace path to inspect how it will be registered.',
+      submitting: false,
+      worktreeEnabled: false,
+      onBaseBranchChange: noop,
+      onBranchChange: noop,
+      onBranchFocus: noop,
+      onBrowseWorkspaceParent: noop,
+      onBrowseWorkspacePath: noop,
+      onCancel: noop,
+      onChange: noop,
+      onProviderChange: noop,
+      onStartPointChange: noop,
+      onSubmit: noop,
+      onSymlinkPathsChange: noop,
+    }));
+
+    expect(markup).toContain('Claude');
+    expect(markup).toContain('Codex');
+    expect(markup).toContain('Gemini');
+    expect(markup).toContain('provider-btn active');
+    expect(markup).not.toContain('data-provider=');
   });
 
   test('React report helpers parse diffs and preserve follow-up task context', () => {

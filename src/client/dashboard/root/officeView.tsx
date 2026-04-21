@@ -7,6 +7,7 @@ import {
   formTeamForAgent,
   mergeWorkspaceAgent,
   openAgentHistory,
+  openCreateAgentModal,
   removeWorkspaceAgent,
   renameAgentNickname,
   terminateAgent,
@@ -210,7 +211,7 @@ export function OfficeView({
                 <button className="bulk-archive-btn" id="bulkArchiveBtn" title="Clear inactive unregistered agents" type="button">
                   Clear Unregistered
                 </button>
-                <button className="agent-create-btn" id="createAgentBtn" title="Register New Agent" type="button">
+                <button className="agent-create-btn" id="createAgentBtn" title="Register New Agent" type="button" onClick={openCreateAgentModal}>
                   + New
                 </button>
               </div>
