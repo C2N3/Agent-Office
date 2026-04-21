@@ -61,6 +61,18 @@
   white-space: nowrap;
 }
 
+.nickname-input {
+  background: #1a1d23;
+  color: #e6edf3;
+  border: 1px solid #3b82f6;
+  border-radius: 4px;
+  padding: 1px 4px;
+  font: inherit;
+  width: 100%;
+  box-sizing: border-box;
+  outline: none;
+}
+
 .mc-agent-badges {
   display: flex;
   flex-wrap: wrap;

@@ -93,6 +93,7 @@ describe('dashboard react-owned surfaces', () => {
         onMergeWorkspace: jest.fn(),
         onOpenHistory: jest.fn(),
         onRemoveWorkspace: jest.fn(),
+        onRename: jest.fn(),
         onTerminate: jest.fn(),
         onUnregister: jest.fn(),
       }),

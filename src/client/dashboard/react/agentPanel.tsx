@@ -18,6 +18,7 @@ export function AgentPanel({
   onMergeWorkspace,
   onOpenHistory,
   onRemoveWorkspace,
+  onRename,
   onTerminate,
   onUnregister,
 }: {
@@ -32,6 +33,7 @@ export function AgentPanel({
   onMergeWorkspace: (registryId: string, branch: string) => void;
   onOpenHistory: (registryId: string, agentName: string) => void;
   onRemoveWorkspace: (registryId: string, branch: string) => void;
+  onRename: (agentId: string, nickname: string) => boolean | Promise<boolean>;
   onTerminate: (agentId: string) => void;
   onUnregister: (registryId: string) => void;
 }): ReactElement {
@@ -64,6 +66,7 @@ export function AgentPanel({
           onMergeWorkspace={onMergeWorkspace}
           onOpenHistory={onOpenHistory}
           onRemoveWorkspace={onRemoveWorkspace}
+          onRename={onRename}
           onTerminate={onTerminate}
           onUnregister={onUnregister}
         />

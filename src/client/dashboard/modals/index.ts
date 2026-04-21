@@ -1,3 +1,2 @@
-export { setupNicknameEdit } from './nicknameEdit.js';
 export { setupAgentModal } from './createAgent.js';
 export { dashboardModalRegistry } from './registry.js';

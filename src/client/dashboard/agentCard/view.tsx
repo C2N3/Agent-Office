@@ -10,6 +10,7 @@ import {
   getStateColor,
   humanizeToolName,
 } from '../agentViewHelpers.js';
+import { AgentNameEditor } from './nameEditor.js';
 
 type AgentCardProps = {
   agent: DashboardAgent;
@@ -23,6 +24,7 @@ type AgentCardProps = {
   onMergeWorkspace: (registryId: string, branch: string) => void;
   onOpenHistory: (registryId: string, agentName: string) => void;
   onRemoveWorkspace: (registryId: string, branch: string) => void;
+  onRename: (agentId: string, nickname: string) => boolean | Promise<boolean>;
   onTerminate: (agentId: string) => void;
   onUnregister: (registryId: string) => void;
 };
@@ -75,6 +77,7 @@ export function AgentCard({
   onMergeWorkspace,
   onOpenHistory,
   onRemoveWorkspace,
+  onRename,
   onTerminate,
   onUnregister,
 }: AgentCardProps): ReactElement {
@@ -99,6 +102,7 @@ export function AgentCard({
   const activityIcon = getActivityIcon(statusClass, agent.currentTool);
   const activityStateClass = isActive ? `mc-agent-activity active ${statusClass}` : `mc-agent-activity ${statusClass}`;
   const toolName = agent.currentTool ? humanizeToolName(agent.currentTool) : '';
+  const displayName = agent.nickname || agent.name || 'Agent';
 
   return (
     <div
@@ -112,9 +116,12 @@ export function AgentCard({
           <div className="mc-agent-title-row">
             <div className="mc-agent-avatar" style={{ backgroundImage: `url('/assets/characters/${avatarFile}')` }} />
             <div className="mc-agent-name">
-              <span className="agent-display-name" data-agent-id={agent.id} title="Double-click to rename">
-                {agent.nickname || agent.name || 'Agent'}
-              </span>
+              <AgentNameEditor
+                agentId={agent.id}
+                displayName={displayName}
+                hasNickname={!!agent.nickname}
+                onRename={onRename}
+              />
             </div>
           </div>
           <div className="mc-agent-badges">
@@ -138,7 +145,7 @@ export function AgentCard({
       <div className="mc-agent-actions">
         {isLocalRegistered && agent.registryId ? (
           <>
-            <button className="agent-history-btn" type="button" onClick={(event) => { event.stopPropagation(); onOpenHistory(agent.registryId!, agent.nickname || agent.name || 'Agent'); }} {...tooltipProps('Session History')}>
+            <button className="agent-history-btn" type="button" onClick={(event) => { event.stopPropagation(); onOpenHistory(agent.registryId!, displayName); }} {...tooltipProps('Session History')}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M12 8v4l3 3" />
                 <circle cx="12" cy="12" r="9" />

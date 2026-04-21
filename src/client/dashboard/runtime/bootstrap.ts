@@ -31,10 +31,7 @@ import {
   officeOnAgentRemoved,
   officeOnAgentUpdated,
 } from '../../office/index.js';
-import {
-  setupAgentModal,
-  setupNicknameEdit,
-} from '../modals/index.js';
+import { setupAgentModal } from '../modals/index.js';
 import { installHoverTooltips } from '../../../shared/uiTooltip.js';
 import { startCentralAgentSync } from '../centralAgents/index.js';
 import { initOverlayControls, initPipControls } from '../app/windowControls.js';
@@ -119,7 +116,6 @@ function initOfficeRuntime() {
 }
 
 function initModalRuntime() {
-  setupNicknameEdit();
   setupAgentModal(openTerminalForAgent);
 }
 

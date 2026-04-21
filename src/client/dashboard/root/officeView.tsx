@@ -8,6 +8,7 @@ import {
   mergeWorkspaceAgent,
   openAgentHistory,
   removeWorkspaceAgent,
+  renameAgentNickname,
   terminateAgent,
   unregisterAgent,
 } from '../agentActions.js';
@@ -227,6 +228,7 @@ export function OfficeView({
                 onMergeWorkspace={mergeWorkspaceAgent}
                 onOpenHistory={openAgentHistory}
                 onRemoveWorkspace={removeWorkspaceAgent}
+                onRename={renameAgentNickname}
                 onTerminate={terminateAgent}
                 onUnregister={unregisterAgent}
               />

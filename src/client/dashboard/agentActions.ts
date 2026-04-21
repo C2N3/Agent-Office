@@ -1,6 +1,6 @@
 import { archiveState, getDashboardAPI, state } from './shared.js';
 import { renderArchiveView } from './activityViews.js';
-import { officeRenderer } from '../office/index.js';
+import { officeOnAgentUpdated, officeRenderer } from '../office/index.js';
 import { syncCentralAgentRemoval } from './centralAgents/index.js';
 import { notifyDashboardStore } from './state/store.js';
 import { dashboardModalRegistry } from './modals/registry.js';
@@ -96,4 +96,46 @@ export function focusAgentCard(agentId: string | null): void {
 
 export function changeAgentAvatar(agentId: string, registryId: string): void {
   dashboardModalRegistry.openAvatarPickerModal?.(agentId, registryId);
+}
+
+export async function renameAgentNickname(agentId: string, nickname: string): Promise<boolean> {
+  const trimmed = nickname.trim();
+  const dashboardAPI = getDashboardAPI();
+  const updateRequest = trimmed
+    ? dashboardAPI?.setNickname?.(agentId, trimmed)
+    : dashboardAPI?.removeNickname?.(agentId);
+
+  if (!updateRequest) {
+    alert('Nickname updates are unavailable in this environment.');
+    return false;
+  }
+
+  let result;
+  try {
+    result = await updateRequest;
+  } catch (error) {
+    console.error('[Nickname Edit]', error);
+    alert(error instanceof Error ? error.message : 'Nickname update failed.');
+    return false;
+  }
+  if (result?.success === false) {
+    alert(result.error || 'Nickname update failed.');
+    return false;
+  }
+
+  const agent = state.agents.get(agentId);
+  if (agent) {
+    const savedNickname = trimmed && result && 'nickname' in result && result.nickname
+      ? result.nickname
+      : trimmed;
+    const nextAgent = {
+      ...agent,
+      nickname: trimmed ? savedNickname : null,
+    };
+    state.agents.set(agentId, nextAgent);
+    officeOnAgentUpdated(nextAgent);
+    notifyDashboardStore();
+  }
+
+  return true;
 }

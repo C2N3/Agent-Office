@@ -35,7 +35,6 @@ jest.mock('../../../office/index.ts', () => ({
 
 jest.mock('../../modals/index.ts', () => ({
   setupAgentModal: jest.fn(),
-  setupNicknameEdit: jest.fn(),
 }));
 
 jest.mock('../../centralAgents/index.ts', () => ({
@@ -84,13 +83,12 @@ describe('dashboard runtime bootstrap', () => {
     const { openTerminalForAgent, initTerminals, initTerminalProfileMenu, refreshTerminalProfiles } = require('../../terminal/index.ts');
     const { initPipControls, initOverlayControls } = require('../../app/windowControls.ts');
     const { installHoverTooltips } = require('../../../../shared/uiTooltip.ts');
-    const { setupAgentModal, setupNicknameEdit } = require('../../modals/index.ts');
+    const { setupAgentModal } = require('../../modals/index.ts');
 
     await initDashboardRuntime();
 
     expect(global.openTerminalForAgent).toBe(openTerminalForAgent);
     expect(setupOfficeClickHandler).toHaveBeenCalledWith(openTerminalForAgent);
-    expect(setupNicknameEdit).toHaveBeenCalled();
     expect(setupAgentModal).toHaveBeenCalledWith(openTerminalForAgent);
     expect(initPipControls).toHaveBeenCalled();
     expect(initOverlayControls).toHaveBeenCalled();
