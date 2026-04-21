@@ -166,16 +166,14 @@ describe('dashboard react-owned surfaces', () => {
     expect(markup).toContain('Use when pressing the New Terminal button');
   });
 
-  test('DashboardModals renders provider options from typed provider data', () => {
+  test('DashboardModals renders create-agent provider options from typed provider data', () => {
     const { DashboardModals } = require('../src/client/dashboard/react/modals.tsx');
 
     const markup = renderToStaticMarkup(React.createElement(DashboardModals));
 
     expect(markup).toContain('data-provider="claude"');
     expect(markup).toContain('data-provider="codex"');
-    expect(markup).toContain('name="taskProvider"');
-    expect(markup).toContain('name="taskExecutionEnvironment"');
-    expect(markup).toContain('Current App');
+    expect(markup).not.toContain('id="assignTaskModal"');
     expect(markup).not.toContain('dangerouslySetInnerHTML');
   });
 });

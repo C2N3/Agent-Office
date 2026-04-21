@@ -34,7 +34,6 @@ import {
 } from '../../office/index.js';
 import {
   setupAgentModal,
-  setupAssignTaskModal,
   setupConversationViewer,
   setupNicknameEdit,
   setupTaskReportModal,
@@ -126,7 +125,6 @@ function initOfficeRuntime() {
 function initModalRuntime() {
   setupNicknameEdit();
   setupAgentModal(openTerminalForAgent);
-  setupAssignTaskModal();
   setupConversationViewer(resumeRegisteredSession);
   setupTaskReportModal();
   setupTeamReportModal();

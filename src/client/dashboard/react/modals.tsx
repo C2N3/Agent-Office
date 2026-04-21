@@ -4,6 +4,7 @@ import {
   getProviderDefinitions,
 } from '../providerCatalog.js';
 import styles from '../styles/modals.module.scss';
+import { AssignTaskModal } from './assignTaskModal/index.js';
 import { AvatarPickerModal } from './avatarPickerModal.js';
 import { TeamFormationModal } from './teamFormationModal.js';
 
@@ -24,42 +25,7 @@ function ProviderButtons(): ReactElement {
   );
 }
 
-function ProviderRadioOptions(): ReactElement {
-  return (
-    <>
-      {getProviderDefinitions().map((provider) => (
-        <label key={provider.id} className={`modal-radio-option ${styles.radioOption}`}>
-          <input
-            defaultChecked={provider.id === DEFAULT_PROVIDER_ID}
-            name="taskProvider"
-            type="radio"
-            value={provider.id}
-          />
-          <span className={styles.radioLabel}>{provider.label}</span>
-        </label>
-      ))}
-    </>
-  );
-}
-
-function ExecutionEnvironmentOptions(): ReactElement {
-  return (
-    <>
-      <label className={`modal-radio-option ${styles.radioOption}`}>
-        <input defaultChecked name="taskExecutionEnvironment" type="radio" value="native" />
-        <span className={styles.radioLabel}>Current App</span>
-      </label>
-      <label className={`modal-radio-option ${styles.radioOption}`}>
-        <input name="taskExecutionEnvironment" type="radio" value="wsl" />
-        <span className={styles.radioLabel}>WSL</span>
-      </label>
-    </>
-  );
-}
-
 export function DashboardModals(): ReactElement {
-  const isWindowsRuntime = (globalThis as any).dashboardAPI?.platform === 'win32';
-
   return (
     <>
       <div className="modal-overlay" id="createAgentModal" style={{ display: 'none' }}>
@@ -111,40 +77,7 @@ export function DashboardModals(): ReactElement {
         </div>
       </div>
 
-      <div className="modal-overlay" id="assignTaskModal" style={{ display: 'none' }}>
-        <div className="modal-content create-agent-modal">
-          <div className="modal-header">Assign Task — <span id="assignTaskAgentName" /></div>
-          <form id="assignTaskForm">
-            <label className="modal-label">Task Prompt<textarea id="taskPromptInput" className="modal-input modal-textarea" rows={4} placeholder="What should this agent do?" required /></label>
-            <div className="modal-input-row">
-              <label className="modal-label">
-                Provider
-                <div className={`modal-radio-group ${styles.radioGroup}`} id="taskProviderInput">
-                  <ProviderRadioOptions />
-                </div>
-              </label>
-              <label className="modal-label">Model<select id="taskModelInput" className="modal-input"><option value="">Default</option></select></label>
-            </div>
-            <div className="modal-input-row">
-              <label className="modal-label">Max Turns<input type="number" id="taskMaxTurnsInput" className="modal-input" defaultValue="30" min="1" max="200" /></label>
-              <label className="modal-label">Priority<select id="taskPriorityInput" className="modal-input"><option value="low">Low</option><option value="normal" defaultValue="normal">Normal</option><option value="high">High</option><option value="critical">Critical</option></select></label>
-            </div>
-            {isWindowsRuntime ? (
-              <div className="modal-label">
-                Execution Environment
-                <div className={`modal-radio-group modal-radio-group-wide ${styles.radioGroup}`} id="taskExecutionEnvironmentInput">
-                  <ExecutionEnvironmentOptions />
-                </div>
-                <span className="modal-help">WSL runs the task through wsl.exe when Agent-Office is running on Windows.</span>
-              </div>
-            ) : null}
-            <label className="modal-checkbox"><input type="checkbox" id="taskAutoMergeInput" /><span>Auto-merge branch on success</span></label>
-            <div className="modal-error" id="assignTaskError" />
-            <div className="modal-actions"><button type="button" className="btn-secondary" id="cancelAssignTaskBtn">Cancel</button><button type="submit" className="btn-primary">Assign Task</button></div>
-          </form>
-        </div>
-      </div>
-
+      <AssignTaskModal />
       <AvatarPickerModal />
       <div className="modal-overlay" id="taskReportModal" style={{ display: 'none' }}>
         <div className="modal-content task-report-modal">

@@ -19,6 +19,12 @@ describe('dashboard module imports', () => {
     expect(typeof AvatarPickerModal).toBe('function');
   });
 
+  test('assign task modal resolves the dashboard modal registry module', () => {
+    const { AssignTaskModal } = require('../src/client/dashboard/react/assignTaskModal/index.tsx');
+
+    expect(typeof AssignTaskModal).toBe('function');
+  });
+
   test('team formation modal resolves the shared dashboard module', () => {
     const { TeamFormationModal } = require('../src/client/dashboard/react/teamFormationModal.tsx');
 

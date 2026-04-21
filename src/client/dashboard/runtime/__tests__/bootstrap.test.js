@@ -35,7 +35,6 @@ jest.mock('../../../office/index.ts', () => ({
 
 jest.mock('../../modals/index.ts', () => ({
   setupAgentModal: jest.fn(),
-  setupAssignTaskModal: jest.fn(),
   setupConversationViewer: jest.fn(),
   setupNicknameEdit: jest.fn(),
   setupTaskReportModal: jest.fn(),

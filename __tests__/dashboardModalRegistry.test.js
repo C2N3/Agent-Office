@@ -1,55 +1,3 @@
-function createElement(overrides = {}) {
-  return {
-    addEventListener: jest.fn(),
-    classList: { add: jest.fn(), remove: jest.fn(), toggle: jest.fn() },
-    dataset: {},
-    innerHTML: '',
-    style: {},
-    textContent: '',
-    value: '',
-    checked: false,
-    focus: jest.fn(),
-    reset: jest.fn(),
-    ...overrides,
-  };
-}
-
-function installModalDocument() {
-  const elements = {
-    assignTaskModal: createElement(),
-    assignTaskForm: createElement(),
-    cancelAssignTaskBtn: createElement(),
-    assignTaskError: createElement(),
-    assignTaskAgentName: createElement(),
-    taskModelInput: createElement(),
-    taskPromptInput: createElement(),
-    taskMaxTurnsInput: createElement({ value: '30' }),
-    taskPriorityInput: createElement({ value: 'normal' }),
-    taskAutoMergeInput: createElement({ checked: false }),
-  };
-
-  const providerInputs = [
-    createElement({ value: 'claude', checked: true }),
-    createElement({ value: 'codex', checked: false }),
-  ];
-  const executionEnvironmentInputs = [
-    createElement({ value: 'native', checked: true }),
-    createElement({ value: 'sandbox', checked: false }),
-  ];
-
-  global.document = {
-    getElementById: jest.fn((id) => elements[id] || null),
-    querySelectorAll: jest.fn((selector) => {
-      if (selector === 'input[name="taskProvider"]') return providerInputs;
-      if (selector === 'input[name="taskExecutionEnvironment"]') return executionEnvironmentInputs;
-      return [];
-    }),
-    addEventListener: jest.fn(),
-  };
-
-  return { elements, providerInputs, executionEnvironmentInputs };
-}
-
 function resetDashboardModalRegistry() {
   const { dashboardModalRegistry } = require('../src/client/dashboard/modals/registry.ts');
   for (const key of Object.keys(dashboardModalRegistry)) {
@@ -61,7 +9,9 @@ function resetDashboardModalRegistry() {
 describe('dashboard modal registry', () => {
   beforeEach(() => {
     jest.resetModules();
-    installModalDocument();
+    global.document = {
+      getElementById: jest.fn(() => null),
+    };
     global.localStorage = {
       getItem: jest.fn(() => null),
       setItem: jest.fn(),
@@ -77,15 +27,6 @@ describe('dashboard modal registry', () => {
       state.agentHistory.clear();
       state.focusedAgentId = null;
     } catch {}
-  });
-
-  test('setupAssignTaskModal registers an open handler', () => {
-    const dashboardModalRegistry = resetDashboardModalRegistry();
-    const { setupAssignTaskModal } = require('../src/client/dashboard/modals/assignTask.ts');
-
-    setupAssignTaskModal();
-
-    expect(typeof dashboardModalRegistry.openAssignTaskModal).toBe('function');
   });
 
   test('agentActions invoke registered modal controllers', () => {
@@ -116,5 +57,47 @@ describe('dashboard modal registry', () => {
     expect(dashboardModalRegistry.openAvatarPickerModal).toHaveBeenCalledWith('agent-1', 'registry-1');
     expect(dashboardModalRegistry.openTeamFormationModal).toHaveBeenCalledWith('agent-1', 'registry-1');
     expect(dashboardModalRegistry.openSessionHistory).toHaveBeenCalledWith('history-1', 'Agent One');
+  });
+
+  test('assign task payload preserves agent workspace defaults', () => {
+    const { createAssignTaskPayload } = require('../src/client/dashboard/react/assignTaskModal/index.tsx');
+
+    const payload = createAssignTaskPayload(
+      {
+        id: 'agent-1',
+        registryId: 'registry-1',
+        name: 'Builder',
+        status: 'waiting',
+        metadata: {
+          workspace: {
+            repositoryPath: '/repo/app',
+            worktreePath: '/worktree/app',
+          },
+          provider: 'codex',
+        },
+      },
+      {
+        prompt: '  Fix the failing dashboard test  ',
+        provider: 'codex',
+        model: '',
+        maxTurns: '42',
+        priority: 'high',
+        executionEnvironment: 'native',
+        autoMergeOnSuccess: true,
+      },
+    );
+
+    expect(payload).toMatchObject({
+      title: 'Builder: Fix the failing dashboard test',
+      prompt: 'Fix the failing dashboard test',
+      provider: 'codex',
+      executionEnvironment: 'native',
+      model: null,
+      maxTurns: 42,
+      repositoryPath: '/repo/app',
+      priority: 'high',
+      autoMergeOnSuccess: true,
+      agentRegistryId: 'registry-1',
+    });
   });
 });

@@ -29,6 +29,7 @@ This file tracks client-side work that is planned, discovered, blocked, or compl
 
 ## Done
 
+- [x] Move the assign task modal from `src/client/dashboard/modals/assignTask.ts` DOM binding into React-owned state and handlers in `src/client/dashboard/react/assignTaskModal/`.
 - [x] Move the team formation modal from `src/client/dashboard/modals/teamFormation.ts` DOM binding into React-owned state and handlers in `src/client/dashboard/react/teamFormationModal.tsx`.
 - [x] Move the avatar picker modal from `src/client/dashboard/modals/avatarPicker.ts` DOM binding into React-owned state and handlers in `src/client/dashboard/react/avatarPickerModal.tsx`.
 - [x] Move dashboard PiP and Overlay button ownership from DOM event binding in `src/client/dashboard/app/windowControls.ts` to React-rendered handlers in `src/client/dashboard/root/officeView.tsx`.
