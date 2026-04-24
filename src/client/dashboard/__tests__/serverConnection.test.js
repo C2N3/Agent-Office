@@ -91,4 +91,19 @@ describe('central server connection adapter', () => {
     jest.advanceTimersByTime(250);
     expect(listener).toHaveBeenCalledTimes(1);
   });
+
+  test('treats timed out config requests as unavailable', async () => {
+    global.fetch = jest.fn((_url, init = {}) => new Promise((_resolve, reject) => {
+      const abortError = new Error('aborted');
+      abortError.name = 'AbortError';
+      init.signal.addEventListener('abort', () => reject(abortError), { once: true });
+    }));
+
+    const { fetchCentralServerConfig } = require('../serverConnection.ts');
+    const pending = fetchCentralServerConfig();
+
+    jest.advanceTimersByTime(5000);
+
+    await expect(pending).resolves.toBeNull();
+  });
 });

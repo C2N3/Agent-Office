@@ -3,6 +3,7 @@ import { startCentralServerConnection, stopCentralServerConnection, subscribeCen
 
 let pollInterval: ReturnType<typeof setInterval> | null = null;
 let centralConnectionCleanup: (() => void) | null = null;
+let inFlightRender: Promise<void> | null = null;
 
 function isRemoteInputFocused(): boolean {
   const focusedId = document.activeElement?.id;
@@ -13,7 +14,14 @@ function isRemoteInputFocused(): boolean {
 }
 
 export async function renderRemoteView(): Promise<void> {
-  await refreshRemoteViewData();
+  if (inFlightRender) {
+    await inFlightRender;
+    return;
+  }
+  inFlightRender = refreshRemoteViewData().finally(() => {
+    inFlightRender = null;
+  });
+  await inFlightRender;
 }
 
 export function startRemoteViewPolling(): void {

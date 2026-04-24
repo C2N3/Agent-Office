@@ -19,7 +19,8 @@ function createWindowManagerCore(context) {
   let pipWindow = null;
   let overlayWindow = null;
   let keepAliveInterval = null;
-  let dashboardServer = null;
+  let dashboardServer: any = null;
+  let dashboardServerStartPromise: Promise<any> | null = null;
   const browserDevServerUrl = process.env.DASHBOARD_DEV_SERVER_URL || 'http://127.0.0.1:3001';
   const dashboardRootUrl = process.argv.includes('--dev') ? browserDevServerUrl : 'http://localhost:3000';
   const refs = {
@@ -146,24 +147,59 @@ function createWindowManagerCore(context) {
     startKeepAlive();
   }
 
-  function startDashboardServer() {
+  function waitForServerListening(server: any): Promise<any> {
+    if (!server || typeof server.once !== 'function' || typeof server.off !== 'function') {
+      return Promise.resolve(server);
+    }
+    if (server.listening) {
+      return Promise.resolve(server);
+    }
+    return new Promise((resolve, reject) => {
+      const handleListening = () => {
+        cleanup();
+        resolve(server);
+      };
+      const handleError = (error: any) => {
+        cleanup();
+        reject(error);
+      };
+      const cleanup = () => {
+        server.off('listening', handleListening);
+        server.off('error', handleError);
+      };
+      server.once('listening', handleListening);
+      server.once('error', handleError);
+    });
+  }
+
+  async function startDashboardServer() {
     if (dashboardServer) {
       debugLog('[Dashboard] Server is already running.');
-      return;
+      return dashboardServer;
+    }
+    if (dashboardServerStartPromise) {
+      return dashboardServerStartPromise;
     }
 
     debugLog('[Dashboard] Starting server...');
-    try {
+    dashboardServerStartPromise = (async () => {
       const serverModule = require('../../dashboardServer/index.js');
       if (agentManager) serverModule.setAgentManager(agentManager);
       if (sessionScanner) serverModule.setSessionScanner(sessionScanner);
       if (heatmapScanner) serverModule.setHeatmapScanner(heatmapScanner);
       if (agentRegistry) serverModule.setAgentRegistry(agentRegistry);
-      dashboardServer = serverModule.startServer();
+      const startedServer = serverModule.startServer();
+      dashboardServer = await waitForServerListening(startedServer);
       debugLog('[Dashboard] Server started (port 3000)');
-    } catch (error) {
+      return dashboardServer;
+    })().catch((error) => {
+      dashboardServer = null;
       debugLog(`[Dashboard] Failed to start: ${error.message}`);
-    }
+      throw error;
+    }).finally(() => {
+      dashboardServerStartPromise = null;
+    });
+    return dashboardServerStartPromise;
   }
 
   function stopDashboardServer() {

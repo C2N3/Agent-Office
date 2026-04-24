@@ -54,12 +54,13 @@ function createMockReqRes(method, urlPath, headers = {}) {
     headers: { host: 'localhost:3000', ...headers },
   });
 
-  const res = {
+  const resEmitter = new EventEmitter();
+  const res = Object.assign(resEmitter, {
     writeHead: jest.fn(),
     setHeader: jest.fn(),
     end: jest.fn(),
     write: jest.fn(),
-  };
+  });
 
   return { req, res };
 }
@@ -404,6 +405,29 @@ describe('dashboard-server', () => {
           method: 'POST',
         })
       );
+      expect(res.writeHead).toHaveBeenCalledWith(200, expect.objectContaining({
+        'Content-Type': 'application/json',
+      }));
+    });
+
+    test('proxied central requests do not abort on a normal request close event', async () => {
+      let fetchSignal;
+      global.fetch = jest.fn(async (_url, init) => {
+        fetchSignal = init.signal;
+        return {
+          ok: true,
+          status: 200,
+          headers: { get: () => 'application/json' },
+          text: async () => JSON.stringify({ workers: [] }),
+        };
+      });
+
+      const { req, res } = createMockReqRes('GET', '/api/server/workers');
+      handler(req, res);
+      req.emit('close');
+      await new Promise(setImmediate);
+
+      expect(fetchSignal.aborted).toBe(false);
       expect(res.writeHead).toHaveBeenCalledWith(200, expect.objectContaining({
         'Content-Type': 'application/json',
       }));

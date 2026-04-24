@@ -7,7 +7,7 @@ jest.mock('../src/dashboardServer/index.ts', () => ({
   setSessionScanner: jest.fn(),
   setHeatmapScanner: jest.fn(),
   setAgentRegistry: jest.fn(),
-  startServer: jest.fn(() => ({ close: jest.fn() })),
+  startServer: jest.fn(() => ({ close: jest.fn(), listening: true })),
 }));
 
 const dashboardServer = require('../src/dashboardServer/index.ts');
@@ -64,16 +64,32 @@ describe('windowing core', () => {
     });
   });
 
-  test('starts the dashboard server from the emitted windowing module path', () => {
+  test('starts the dashboard server from the emitted windowing module path', async () => {
     const windowManager = createWindowManager();
 
-    windowManager.startDashboardServer();
+    await windowManager.startDashboardServer();
 
     expect(dashboardServer.setAgentManager).toHaveBeenCalled();
     expect(dashboardServer.setSessionScanner).toHaveBeenCalled();
     expect(dashboardServer.setHeatmapScanner).toHaveBeenCalled();
     expect(dashboardServer.setAgentRegistry).toHaveBeenCalled();
     expect(dashboardServer.startServer).toHaveBeenCalledTimes(1);
+  });
+
+  test('rejects startup when the dashboard server emits a listen error', async () => {
+    const EventEmitter = require('events');
+    const debugLog = jest.fn();
+    const windowManager = createWindowManager({ debugLog });
+    dashboardServer.startServer.mockImplementationOnce(() => {
+      const server = new EventEmitter();
+      server.close = jest.fn();
+      server.listening = false;
+      setImmediate(() => server.emit('error', new Error('Port 3000 already in use')));
+      return server;
+    });
+
+    await expect(windowManager.startDashboardServer()).rejects.toThrow('Port 3000 already in use');
+    expect(debugLog).toHaveBeenCalledWith('[Dashboard] Failed to start: Port 3000 already in use');
   });
 
   test('resolves window preload paths to existing files', () => {

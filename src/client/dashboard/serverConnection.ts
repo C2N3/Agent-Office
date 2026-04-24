@@ -1,4 +1,5 @@
 import type { RemoteMode } from './remoteMode.js';
+import { fetchWithTimeout } from './fetchWithTimeout.js';
 
 export interface CentralServerConfig {
   baseUrl: string;
@@ -53,7 +54,7 @@ let refreshTimer: ReturnType<typeof setTimeout> | null = null;
 const statusListeners = new Set<CentralServerConnectionListener>();
 
 async function fetchJSON<T>(path: string): Promise<T> {
-  const res = await fetch(path, { cache: 'no-store' });
+  const res = await fetchWithTimeout(path, { cache: 'no-store' });
   if (!res.ok) {
     const text = await res.text();
     throw new Error(text || `HTTP ${res.status}`);
@@ -97,7 +98,7 @@ export async function saveCentralServerConfig(config: {
   roomSecret?: string;
   remoteMode?: RemoteMode;
 }): Promise<CentralServerConfig> {
-  const res = await fetch('/api/server/config', {
+  const res = await fetchWithTimeout('/api/server/config', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(config),

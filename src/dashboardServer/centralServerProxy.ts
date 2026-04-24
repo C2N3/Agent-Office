@@ -11,6 +11,12 @@ import {
   isCentralWorkerTokenConfigured,
   saveCentralServerConfig,
 } from '../main/centralWorker/config.js';
+import {
+  CENTRAL_PROXY_TIMEOUT_MS,
+  createProxyRequestAbort,
+  writeJSON,
+  writeProxyError,
+} from './proxySupport.js';
 
 interface ResponseLike {
   writeHead(statusCode: number, headers?: Record<string, string>): void;
@@ -59,21 +65,6 @@ function makeCentralURL(pathname: string, search = ''): string {
   return url.toString();
 }
 
-function writeJSON(res: ResponseLike, status: number, payload: unknown): void {
-  res.writeHead(status, { 'Content-Type': 'application/json' });
-  res.end(JSON.stringify(payload));
-}
-
-function writeProxyError(res: ResponseLike, error: unknown): void {
-  const message = error instanceof Error ? error.message : String(error || 'Central server request failed');
-  writeJSON(res, 502, {
-    error: {
-      message,
-      targetUrl: getCentralServerBaseUrl(),
-    },
-  });
-}
-
 function readRequestBody(req: RequestLike): Promise<string> {
   return new Promise((resolve, reject) => {
     if (!req.on) {
@@ -113,13 +104,12 @@ async function updateCentralServerConfig(req: RequestLike, res: ResponseLike): P
 }
 
 async function proxyJSON(req: RequestLike, res: ResponseLike, pathname: string, search = ''): Promise<void> {
-  const controller = new AbortController();
-  req.on?.('close', () => controller.abort());
+  const abort = createProxyRequestAbort(req, res);
 
   try {
     const response = await fetch(makeCentralURL(pathname, search), {
       headers: centralRequestHeaders({ Accept: 'application/json' }),
-      signal: controller.signal,
+      signal: abort.signal,
     });
     const body = await response.text();
     res.writeHead(response.status, {
@@ -128,14 +118,19 @@ async function proxyJSON(req: RequestLike, res: ResponseLike, pathname: string, 
     });
     res.end(body);
   } catch (error) {
-    if (controller.signal.aborted) return;
-    writeProxyError(res, error);
+    if (abort.wasTimedOut()) {
+      writeProxyError(res, getCentralServerBaseUrl(), new Error(`Central server request timed out after ${CENTRAL_PROXY_TIMEOUT_MS}ms`));
+      return;
+    }
+    if (abort.signal.aborted) return;
+    writeProxyError(res, getCentralServerBaseUrl(), error);
+  } finally {
+    abort.cleanup();
   }
 }
 
 async function proxyRequest(req: RequestLike, res: ResponseLike, pathname: string, search = ''): Promise<void> {
-  const controller = new AbortController();
-  req.on?.('close', () => controller.abort());
+  const abort = createProxyRequestAbort(req, res);
 
   try {
     const body = req.method === 'GET' || req.method === 'DELETE' ? undefined : await readRequestBody(req);
@@ -146,7 +141,7 @@ async function proxyRequest(req: RequestLike, res: ResponseLike, pathname: strin
         ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
       }),
       body,
-      signal: controller.signal,
+      signal: abort.signal,
     });
     const responseBody = await response.text();
     res.writeHead(response.status, {
@@ -155,20 +150,25 @@ async function proxyRequest(req: RequestLike, res: ResponseLike, pathname: strin
     });
     res.end(responseBody);
   } catch (error) {
-    if (controller.signal.aborted) return;
-    writeProxyError(res, error);
+    if (abort.wasTimedOut()) {
+      writeProxyError(res, getCentralServerBaseUrl(), new Error(`Central server request timed out after ${CENTRAL_PROXY_TIMEOUT_MS}ms`));
+      return;
+    }
+    if (abort.signal.aborted) return;
+    writeProxyError(res, getCentralServerBaseUrl(), error);
+  } finally {
+    abort.cleanup();
   }
 }
 
 async function proxyEvents(req: RequestLike, res: ResponseLike): Promise<void> {
-  const controller = new AbortController();
+  const abort = createProxyRequestAbort(req, res, 0);
   let streamStarted = false;
-  req.on?.('close', () => controller.abort());
 
   try {
     const response = await fetch(makeCentralURL('/api/events'), {
       headers: centralRequestHeaders({ Accept: 'text/event-stream' }),
-      signal: controller.signal,
+      signal: abort.signal,
     });
     if (!response.ok || !response.body) {
       writeJSON(res, response.status || 502, {
@@ -190,7 +190,7 @@ async function proxyEvents(req: RequestLike, res: ResponseLike): Promise<void> {
     const reader = response.body.getReader();
     for (;;) {
       const { done, value } = await reader.read();
-      if (controller.signal.aborted) return;
+      if (abort.signal.aborted) return;
       if (done) {
         res.end();
         return;
@@ -198,12 +198,14 @@ async function proxyEvents(req: RequestLike, res: ResponseLike): Promise<void> {
       if (value) res.write(value);
     }
   } catch (error) {
-    if (controller.signal.aborted) return;
+    if (abort.signal.aborted) return;
     if (streamStarted) {
       res.end();
       return;
     }
-    writeProxyError(res, error);
+    writeProxyError(res, getCentralServerBaseUrl(), error);
+  } finally {
+    abort.cleanup();
   }
 }
 

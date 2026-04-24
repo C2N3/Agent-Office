@@ -1,5 +1,5 @@
-function loadPollingWithMocks({ activeElement = null } = {}) {
-  const refreshRemoteViewData = jest.fn(() => Promise.resolve());
+function loadPollingWithMocks({ activeElement = null, refreshImpl } = {}) {
+  const refreshRemoteViewData = jest.fn(refreshImpl || (() => Promise.resolve()));
   const startCentralServerConnection = jest.fn();
   const stopCentralServerConnection = jest.fn();
   const cleanupCentralServerConnection = jest.fn();
@@ -81,6 +81,30 @@ describe('remote view polling adapter', () => {
     listener();
 
     expect(refreshRemoteViewData).not.toHaveBeenCalled();
+
+    polling.stopRemoteViewPolling();
+  });
+
+  test('reuses an in-flight refresh instead of stacking polling requests', async () => {
+    let resolveRefresh;
+    const { polling, refreshRemoteViewData } = loadPollingWithMocks({
+      refreshImpl: () => new Promise((resolve) => {
+        resolveRefresh = resolve;
+      }),
+    });
+
+    polling.startRemoteViewPolling();
+    jest.advanceTimersByTime(3000);
+    jest.advanceTimersByTime(3000);
+
+    expect(refreshRemoteViewData).toHaveBeenCalledTimes(1);
+
+    resolveRefresh();
+    await Promise.resolve();
+
+    jest.advanceTimersByTime(3000);
+
+    expect(refreshRemoteViewData).toHaveBeenCalledTimes(2);
 
     polling.stopRemoteViewPolling();
   });

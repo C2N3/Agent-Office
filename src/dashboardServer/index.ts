@@ -28,6 +28,17 @@ import { calculateStats as calculateStatsImpl } from './stats.js';
 const server = http.createServer(handleRequest as any);
 attachWebSocketUpgrade(server as any);
 
+function logServerError(err: any): void {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`[Dashboard Server] ❌ Port ${PORT} already in use!`);
+    console.error('[Dashboard Server] 💡 Another server is already running on this port.');
+    return;
+  }
+  console.error('[Dashboard Server] ❌ Server error:', err);
+}
+
+server.on('error', logServerError);
+
 export function setAgentManager(manager: any): void {
   setAgentManagerRef(manager);
   attachAgentManagerBroadcasts(manager);
@@ -76,18 +87,11 @@ export function setAppMeta(appMeta: { isDev?: boolean } | null | undefined): voi
 }
 
 export function startServer(): any {
-  server.listen(PORT, () => {
-    // Startup logging is handled elsewhere.
-  });
-
-  server.on('error', (err: any) => {
-    if (err.code === 'EADDRINUSE') {
-      console.error(`[Dashboard Server] ❌ Port ${PORT} already in use!`);
-      console.error('[Dashboard Server] 💡 Another server is already running on this port.');
-    } else {
-      console.error('[Dashboard Server] ❌ Server error:', err);
-    }
-  });
+  if (!server.listening) {
+    server.listen(PORT, () => {
+      // Startup logging is handled elsewhere.
+    });
+  }
 
   return server;
 }

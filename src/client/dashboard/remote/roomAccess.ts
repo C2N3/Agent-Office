@@ -1,4 +1,5 @@
 import { isAuthFailureMessage } from './messages.js';
+import { fetchWithTimeout } from '../fetchWithTimeout.js';
 import type { RoomAccessStatus } from '../remote/types.js';
 
 export type RoomAccessFetchStatus = 'ok' | 'auth' | 'unavailable';
@@ -10,7 +11,7 @@ type RoomAccessFetchResult = {
 
 export async function fetchRoomAccessStatus(): Promise<RoomAccessFetchResult> {
   try {
-    const res = await fetch('/api/server/room-access', { cache: 'no-store' });
+    const res = await fetchWithTimeout('/api/server/room-access', { cache: 'no-store' });
     if (res.ok) {
       return {
         roomAccess: await res.json() as RoomAccessStatus,

@@ -133,7 +133,7 @@ function syncAvatarFiles() {
   }
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   syncAvatarFiles();
   debugLog('========== Agent-Office started ==========');
 
@@ -265,7 +265,7 @@ app.whenReady().then(() => {
     debugLog,
     errorHandler,
   }));
-  startDashboardRuntime({
+  await startDashboardRuntime({
     windowManager,
     orchestrator,
     workspaceManager,
@@ -366,6 +366,9 @@ app.whenReady().then(() => {
     hookProcessor,
     codexProcessor,
   });
+}).catch((error) => {
+  console.error('[Main] Failed during startup:', error);
+  app.quit();
 });
 
 registerAppLifecycle({

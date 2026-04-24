@@ -1,4 +1,5 @@
 import { parseGuestInviteLink, type RemoteMode } from '../remoteMode.js';
+import { fetchWithTimeout } from '../fetchWithTimeout.js';
 import { createRoomAccessSecret, isLoopbackCentralServer } from './recovery.js';
 import { checkHostAccess, fetchRoomAccessStatus } from './roomAccess.js';
 import type { RoomAccessStatus } from './types.js';
@@ -26,7 +27,7 @@ class RoomAccessActionError extends Error {
 
 async function roomAccessAction(path: string, body?: Record<string, string>): Promise<RoomAccessStatus> {
   const requestBody = body ? JSON.stringify(body) : undefined;
-  const res = await fetch(path, {
+  const res = await fetchWithTimeout(path, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: requestBody,

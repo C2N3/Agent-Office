@@ -23,7 +23,7 @@ function createApplicationWindowManager({
   });
 }
 
-function startDashboardRuntime({
+async function startDashboardRuntime({
   windowManager,
   orchestrator,
   workspaceManager,
@@ -33,7 +33,7 @@ function startDashboardRuntime({
   debugLog,
   isDev,
 }) {
-  windowManager.startDashboardServer();
+  await windowManager.startDashboardServer();
 
   // Initialize remote access token and print info
   try {

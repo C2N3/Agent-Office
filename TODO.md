@@ -22,6 +22,7 @@ This file tracks client-side work that is planned, discovered, blocked, or compl
 
 ## Done
 
+- [x] Surface dashboard server bind failures and central proxy timeouts instead of leaving `client` remote `/api/server/*` requests pending.
 - [x] Execute the Remote invite UX plan in `docs/plans/remote-invite-ux-plan.md`.
 - [x] Narrow the remaining overlay grid layout mutation in `src/renderer/agentGrid/layout.ts` behind a layout-focused boundary while keeping animation scheduling and resize calculations imperative.
 - [x] Execute the current client UI runtime boundary direction in `docs/plans/client-ui-runtime-boundary.md` by keeping Vite limited to browser entries, moving React-rendered control events into React ownership, and keeping office canvas/runtime code imperative TypeScript.
