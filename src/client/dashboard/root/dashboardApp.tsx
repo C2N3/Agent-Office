@@ -45,21 +45,23 @@ export function DashboardApp(): ReactElement {
 
           <div className="scroll-container">
             <OfficeView
-              activeTerminalId={snapshot.activeTerminalId}
               agentHistory={snapshot.agentHistory}
               currentFloorName={snapshot.currentFloorName}
               currentView={snapshot.currentView}
               focusedAgentId={snapshot.focusedAgentId}
               registeredOnly={snapshot.registeredOnly}
               stats={snapshot.stats}
+              visibleAgents={snapshot.visibleAgents}
+              onSetRegisteredOnly={setRegisteredOnlyFilter}
+            />
+            <OtherViews
+              activeTerminalId={snapshot.activeTerminalId}
+              currentView={snapshot.currentView}
               terminalDefaultProfileId={snapshot.terminalDefaultProfileId}
               terminalProfileMenuOpen={snapshot.terminalProfileMenuOpen}
               terminalProfiles={snapshot.terminalProfiles}
               terminals={snapshot.terminals}
-              visibleAgents={snapshot.visibleAgents}
-              onSetRegisteredOnly={setRegisteredOnlyFilter}
             />
-            <OtherViews currentView={snapshot.currentView} />
           </div>
         </main>
       </div>

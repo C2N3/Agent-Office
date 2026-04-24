@@ -1,4 +1,4 @@
-import React, { type MouseEvent, type ReactElement, useCallback, useRef, useSyncExternalStore } from 'react';
+import React, { type MouseEvent, type ReactElement, useCallback, useRef } from 'react';
 import {
   assignTaskToAgent,
   changeAgentAvatar,
@@ -18,16 +18,9 @@ import { AgentPanel } from '../react/agentPanel.js';
 import type {
   DashboardAgent,
   DashboardAgentHistoryEntry,
-  DashboardTerminalEntry,
 } from '../shared.js';
-import {
-  getTerminalPanelCollapsed,
-  subscribeTerminalPanelCollapse,
-} from '../terminal/collapse.js';
-import { beginHorizontalPanelResize, beginVerticalPanelResize } from '../terminal/resizable.js';
-import { fitActiveTerminal } from '../terminal/ui.js';
+import { beginHorizontalPanelResize } from '../terminal/resizable.js';
 import { FloorTabsContainer } from './floorTabsContainer.js';
-import { TerminalPanel } from './terminalPanel.js';
 import { type DashboardView } from '../state/store.js';
 import {
   toggleOverlayWindow,
@@ -39,21 +32,15 @@ import { registerOfficeCanvasHost } from '../../office/index.js';
 import styles from './officeView.module.scss';
 
 export function OfficeView({
-  activeTerminalId,
   agentHistory,
   currentFloorName,
   currentView,
   focusedAgentId,
   registeredOnly,
   stats,
-  terminalDefaultProfileId,
-  terminalProfileMenuOpen,
-  terminalProfiles,
-  terminals,
   visibleAgents,
   onSetRegisteredOnly,
 }: {
-  activeTerminalId: string | null;
   agentHistory: Map<string, DashboardAgentHistoryEntry[]>;
   currentFloorName: string;
   currentView: DashboardView;
@@ -65,30 +52,19 @@ export function OfficeView({
     errorCount: number;
     total: number;
   };
-  terminalDefaultProfileId: string | null;
-  terminalProfileMenuOpen: boolean;
-  terminalProfiles: Array<{ id: string; title: string }>;
-  terminals: Array<[string, DashboardTerminalEntry]>;
   visibleAgents: DashboardAgent[];
   onSetRegisteredOnly: (enabled: boolean) => void;
 }): ReactElement {
   const registeredOnlyLabel = registeredOnly ? 'Registered Only' : 'All Agents';
   const hasErrors = stats.errorCount > 0;
-  const terminalPanelCollapsed = useSyncExternalStore(
-    subscribeTerminalPanelCollapse,
-    getTerminalPanelCollapsed,
-    getTerminalPanelCollapsed,
-  );
   const windowControls = useWindowControlsSnapshot();
   const clearableUnregisteredCount = getClearableUnregisteredAgents().length;
   const clearableUnregisteredLabel = clearableUnregisteredCount > 0 ? `Clear Unregistered (${clearableUnregisteredCount})` : 'Clear Unregistered';
   const clearableUnregisteredTitle = clearableUnregisteredCount > 0 ? `Clear ${clearableUnregisteredCount} inactive unregistered agent${clearableUnregisteredCount === 1 ? '' : 's'}` : 'No inactive unregistered agents available to clear';
-  const mainLayoutRef = useRef<HTMLDivElement | null>(null);
   const leftColRef = useRef<HTMLDivElement | null>(null);
   const officePanelRef = useRef<HTMLDivElement | null>(null);
   const agentListPanelRef = useRef<HTMLDivElement | null>(null);
   const resizeHorizontalRef = useRef<HTMLDivElement | null>(null);
-  const resizeVerticalRef = useRef<HTMLDivElement | null>(null);
   const registerOfficeCanvas = useCallback((element: HTMLCanvasElement | null) => {
     registerOfficeCanvasHost(element);
     updateOfficeInteractionRuntime();
@@ -105,16 +81,6 @@ export function OfficeView({
       handle: resizeHorizontalRef.current,
       leftCol: leftColRef.current,
       officePanel: officePanelRef.current,
-    });
-  };
-
-  const startVerticalResize = (event: MouseEvent<HTMLDivElement>) => {
-    beginVerticalPanelResize({
-      event,
-      fitActiveTerminal,
-      handle: resizeVerticalRef.current,
-      leftCol: leftColRef.current,
-      mainLayout: mainLayoutRef.current,
     });
   };
 
@@ -136,7 +102,7 @@ export function OfficeView({
         </div>
       </div>
 
-      <div ref={mainLayoutRef} className={`office-terminal-layout${terminalPanelCollapsed ? ' terminal-collapsed' : ''}`} id="mainLayout">
+      <div className="office-main-layout" id="mainLayout">
         <div ref={leftColRef} className="office-left-col" id="leftCol">
           <div ref={officePanelRef} className="panel office-canvas-panel" id="officePanel">
             <div className="panel-header">
@@ -256,19 +222,6 @@ export function OfficeView({
             </div>
           </div>
         </div>
-
-        <div ref={resizeVerticalRef} className="resize-handle-v" id="resizeV" onMouseDown={startVerticalResize} />
-
-        <TerminalPanel
-          activeTerminalId={activeTerminalId}
-          collapsed={terminalPanelCollapsed}
-          terminalEmptyHintClassName={styles.terminalEmptyHint}
-          terminalEmptyTitleClassName={styles.terminalEmptyTitle}
-          terminalDefaultProfileId={terminalDefaultProfileId}
-          terminalProfileMenuOpen={terminalProfileMenuOpen}
-          terminalProfiles={terminalProfiles}
-          terminals={terminals}
-        />
       </div>
 
       <div ref={registerOfficePopover} className="office-popover" id="officePopover" />

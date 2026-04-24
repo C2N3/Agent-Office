@@ -1,10 +1,13 @@
 import {
   type DashboardOpenOptions,
   type OfficeCharacter,
+  SHARED_AVATAR_FILES,
+  getDashboardAPI,
+  state,
 } from '../shared.js';
 import { dashboardModalRegistry } from '../modals/registry.js';
 import { getOfficeCanvasHost, OFFICE, officeCharacters, officeRenderer } from '../../office/index.js';
-import { getOfficePopoverHost, hideOfficePopover, showOfficePopover } from './popover.js';
+import { getOfficePopoverHost, hideOfficePopover } from './popover.js';
 
 type OpenTerminalForAgent = (agentId: string, openOptions?: DashboardOpenOptions) => Promise<void> | void;
 
@@ -158,7 +161,16 @@ function bindOfficeInteractionRuntime(
         return;
       }
     }
-    showOfficePopover(canvas, character, options.openTerminalForAgent);
+
+    const agent = state.agents.get(character.id);
+    const agentRegistryId = agent?.registryId || character.id;
+    const agentName = agent?.nickname || agent?.name || character.role || 'Agent';
+    const avatarIndex = agent?.avatarIndex != null ? agent.avatarIndex : 0;
+    const avatarFile = SHARED_AVATAR_FILES[avatarIndex] || SHARED_AVATAR_FILES[0] || 'Origin/avatar_0.webp';
+
+    const dashboardAPI = getDashboardAPI();
+    if (!dashboardAPI?.openTaskChatWindow) return;
+    void dashboardAPI.openTaskChatWindow({ agentRegistryId, agentName, avatarFile });
   };
 
   const onDocumentClick = (event: MouseEvent) => {

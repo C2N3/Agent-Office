@@ -23,6 +23,7 @@ function createWindowManagerCore(context) {
   let dashboardServerStartPromise: Promise<any> | null = null;
   const browserDevServerUrl = process.env.DASHBOARD_DEV_SERVER_URL || 'http://127.0.0.1:3001';
   const dashboardRootUrl = process.argv.includes('--dev') ? browserDevServerUrl : 'http://localhost:3000';
+  const taskChatWindows = new Map();
   const refs = {
     get dashboardWindow() { return dashboardWindow; },
     set dashboardWindow(value) { dashboardWindow = value; },
@@ -30,15 +31,19 @@ function createWindowManagerCore(context) {
     set pipWindow(value) { pipWindow = value; },
     get overlayWindow() { return overlayWindow; },
     set overlayWindow(value) { overlayWindow = value; },
+    taskChatWindows,
   };
   const {
+    closeAllTaskChatWindows,
     closeDashboardWindow,
     closeOverlayWindow,
     closePipWindow,
+    closeTaskChatWindow,
     createDashboardWindow,
     createOverlayWindow,
     createPipWindow,
     focusDashboardWindow,
+    openTaskChatWindow,
     resizeOverlayWindow,
     toggleOverlayWindow,
   } = createSecondaryWindowControls({
@@ -233,6 +238,9 @@ function createWindowManagerCore(context) {
     toggleOverlayWindow,
     resizeOverlayWindow,
     focusDashboardWindow,
+    openTaskChatWindow,
+    closeTaskChatWindow,
+    closeAllTaskChatWindows,
     startDashboardServer,
     stopDashboardServer,
     resizeWindowForAgents,

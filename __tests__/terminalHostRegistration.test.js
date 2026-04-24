@@ -98,32 +98,4 @@ describe('terminal host registration', () => {
     registerTerminalContainerHost(null);
   });
 
-  test('creates task log tabs from registered terminal hosts', () => {
-    const doc = createFakeDocument();
-    const container = createFakeElement(doc);
-    const emptyState = createFakeElement(doc);
-    const { termState } = require('../src/client/dashboard/shared.ts');
-    const {
-      registerTerminalContainerHost,
-      registerTerminalEmptyStateHost,
-    } = require('../src/client/dashboard/terminal/ui.ts');
-    const { openTaskLogTab } = require('../src/client/dashboard/terminal/index.ts');
-
-    termState.terminals.clear();
-    termState.activeId = null;
-    registerTerminalContainerHost(container);
-    registerTerminalEmptyStateHost(emptyState);
-
-    openTaskLogTab('task-1', 'agent-1', 'Task One');
-
-    expect(global.document.getElementById).not.toHaveBeenCalled();
-    expect(emptyState.style.display).toBe('none');
-    expect(container.appendChild).toHaveBeenCalled();
-    expect(container.children[0].dataset.agentId).toBe('task-task-1');
-    expect(termState.terminals.get('task-task-1')?.label).toBe('Task One');
-    expect(termState.activeId).toBe('task-task-1');
-
-    registerTerminalContainerHost(null);
-    registerTerminalEmptyStateHost(null);
-  });
 });

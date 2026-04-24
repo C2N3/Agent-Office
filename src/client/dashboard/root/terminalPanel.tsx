@@ -14,26 +14,18 @@ import {
 import {
   activateTerminalTab,
   closeTerminal,
-  fitActiveTerminal,
   registerTerminalContainerHost,
   registerTerminalEmptyStateHost,
 } from '../terminal/ui.js';
-import { toggleTerminalPanelCollapsed } from '../terminal/collapse.js';
 
 export function TerminalPanel({
   activeTerminalId,
-  collapsed,
-  terminalEmptyHintClassName,
-  terminalEmptyTitleClassName,
   terminalDefaultProfileId,
   terminalProfileMenuOpen,
   terminalProfiles,
   terminals,
 }: {
   activeTerminalId: string | null;
-  collapsed: boolean;
-  terminalEmptyHintClassName?: string;
-  terminalEmptyTitleClassName?: string;
   terminalDefaultProfileId: string | null;
   terminalProfileMenuOpen: boolean;
   terminalProfiles: DashboardTerminalProfile[];
@@ -41,7 +33,6 @@ export function TerminalPanel({
 }): ReactElement {
   const newTerminalButtonRef = useRef<HTMLButtonElement | null>(null);
   const defaultTerminalProfile = terminalProfiles.find((profile) => profile.id === terminalDefaultProfileId) || terminalProfiles[0] || null;
-  const collapseLabel = collapsed ? 'Expand Terminal' : 'Collapse Terminal';
 
   const handleTerminalNewClick = async () => {
     if (terminalProfileMenuOpen) {
@@ -66,7 +57,7 @@ export function TerminalPanel({
   };
 
   return (
-    <div className="office-right-col panel" id="terminalPanel">
+    <div className="terminal-view-panel panel" id="terminalPanel">
       <div className="terminal-tabs" id="terminalTabs">
         <div className="terminal-tabs-list" id="terminalTabsList">
           <TerminalTabs
@@ -77,18 +68,6 @@ export function TerminalPanel({
           />
         </div>
         <div className="terminal-toolbar">
-          <button
-            aria-controls="terminalPanel"
-            aria-expanded={!collapsed}
-            aria-label={collapseLabel}
-            className="terminal-collapse-btn"
-            id="terminalCollapseBtn"
-            title={collapseLabel}
-            type="button"
-            onClick={() => toggleTerminalPanelCollapsed(fitActiveTerminal)}
-          >
-            {collapsed ? '<' : '>'}
-          </button>
           <button
             ref={newTerminalButtonRef}
             className="terminal-new-btn"
@@ -109,8 +88,8 @@ export function TerminalPanel({
             <polyline points="8 34 20 22 8 10" />
             <line x1="24" y1="38" x2="40" y2="38" />
           </svg>
-          <div className={terminalEmptyTitleClassName}>No terminal open</div>
-          <div className={terminalEmptyHintClassName}>Click an agent to open a terminal.</div>
+          <div className="terminal-empty-title">No terminal open</div>
+          <div className="terminal-empty-hint">Click an agent to open a terminal.</div>
         </div>
         <TerminalProfileMenu
           defaultProfileId={terminalDefaultProfileId}

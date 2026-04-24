@@ -198,13 +198,12 @@ describe('dashboard react-owned surfaces', () => {
     unsubscribe();
   });
 
-  test('TerminalPanel renders collapse button state from React props', () => {
+  test('TerminalPanel renders the standalone terminal chrome', () => {
     const { TerminalPanel } = require('../src/client/dashboard/root/terminalPanel.tsx');
 
     const markup = renderToStaticMarkup(
       React.createElement(TerminalPanel, {
         activeTerminalId: null,
-        collapsed: true,
         terminalDefaultProfileId: null,
         terminalProfileMenuOpen: false,
         terminalProfiles: [],
@@ -212,10 +211,10 @@ describe('dashboard react-owned surfaces', () => {
       }),
     );
 
-    expect(markup).toContain('id="terminalCollapseBtn"');
-    expect(markup).toContain('aria-expanded="false"');
-    expect(markup).toContain('aria-label="Expand Terminal"');
-    expect(markup).toContain('&lt;');
+    expect(markup).toContain('class="terminal-view-panel panel"');
+    expect(markup).toContain('id="terminalNewBtn"');
+    expect(markup).toContain('No terminal open');
+    expect(markup).not.toContain('id="terminalCollapseBtn"');
   });
 
   test('DashboardModals keeps inactive modals unmounted by default', () => {

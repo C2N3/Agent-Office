@@ -94,4 +94,10 @@ export type DashboardAPI = {
   onTerminalExit?: (callback: (agentId: string, exitCode: number) => void) => CleanupFn | void;
   onPsPolicyBlocked?: (callback: () => void) => CleanupFn | void;
   openPsPolicyTerminal?: () => Promise<DashboardActionResult> | void;
+  openTaskChatWindow?: (params: {
+    agentRegistryId: string;
+    agentName?: string | null;
+    avatarFile?: string | null;
+  }) => Promise<(DashboardActionResult & { alreadyOpen?: boolean }) | undefined>;
+  closeTaskChatWindow?: (agentRegistryId: string) => void;
 };

@@ -74,4 +74,9 @@ export const dashboardIpcChannels = {
   orchestratorGetTask: 'orchestrator:get-task',
   orchestratorListTasks: 'orchestrator:list-tasks',
   orchestratorDeleteTask: 'orchestrator:delete-task',
+  taskChatOpen: 'task-chat:open',
+  taskChatClose: 'task-chat:close',
+  taskChatHistory: 'task-chat:history',
+  taskChatAppend: 'task-chat:append',
+  taskChatClearHistory: 'task-chat:clear-history',
 } as const;

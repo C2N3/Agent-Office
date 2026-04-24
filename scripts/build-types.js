@@ -18,6 +18,7 @@ const watchTargets = [
   path.join(projectRoot, 'overlay.html'),
   path.join(projectRoot, 'pip.html'),
   path.join(projectRoot, 'remote.html'),
+  path.join(projectRoot, 'taskChat.html'),
   path.join(projectRoot, 'styles.css'),
   path.join(projectRoot, 'tsconfig.json'),
   path.join(projectRoot, 'tsconfig.emit.json'),
@@ -66,6 +67,7 @@ function cleanBrowserOutputs() {
     path.join(distRoot, 'dashboard.html'),
     path.join(distRoot, 'overlay.html'),
     path.join(distRoot, 'pip.html'),
+    path.join(distRoot, 'taskChat.html'),
     path.join(distRoot, 'styles.css'),
   ];
 

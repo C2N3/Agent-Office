@@ -12,6 +12,7 @@ import {
 
 export const DASHBOARD_VIEWS = [
   'office',
+  'terminal',
   'heatmap',
   'archive',
   'remote',

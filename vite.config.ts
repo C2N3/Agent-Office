@@ -104,6 +104,7 @@ export default defineConfig(({ command }) => ({
         index: path.join(projectRoot, 'index.html'),
         overlay: path.join(projectRoot, 'overlay.html'),
         pip: path.join(projectRoot, 'pip.html'),
+        taskChat: path.join(projectRoot, 'taskChat.html'),
       },
     },
   },

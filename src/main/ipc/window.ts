@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { ipcMain, screen } = require('electron');
 const { electronIpcChannels, dashboardIpcChannels } = require('../../shared/contracts/ipc');
+const { appendChatMessage, clearChatHistory, loadChatHistory } = require('../taskChatStore');
 
 function registerWindowHandlers({
   agentManager,
@@ -141,6 +142,44 @@ function registerWindowHandlers({
 
   ipcMain.on(dashboardIpcChannels.overlayResize, (_event, { width, height }) => {
     windowManager.resizeOverlayWindow(width, height);
+  });
+
+  ipcMain.handle(dashboardIpcChannels.taskChatOpen, async (_event, params) => {
+    try {
+      return windowManager.openTaskChatWindow(params || {});
+    } catch (error) {
+      debugLog(`[TaskChat] Error opening window: ${error.message}`);
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.on(dashboardIpcChannels.taskChatClose, (_event, agentRegistryId) => {
+    windowManager.closeTaskChatWindow(agentRegistryId);
+  });
+
+  ipcMain.handle(dashboardIpcChannels.taskChatHistory, async (_event, agentRegistryId) => {
+    if (!agentRegistryId) return [];
+    return loadChatHistory(agentRegistryId);
+  });
+
+  ipcMain.handle(dashboardIpcChannels.taskChatAppend, async (_event, agentRegistryId, message) => {
+    if (!agentRegistryId || !message || typeof message.text !== 'string') {
+      return { success: false, error: 'invalid message' };
+    }
+    const saved = appendChatMessage(agentRegistryId, {
+      id: String(message.id || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
+      kind: message.kind || 'assistant-text',
+      text: message.text,
+      timestamp: message.timestamp || Date.now(),
+      taskId: message.taskId || null,
+    });
+    return { success: true, message: saved };
+  });
+
+  ipcMain.handle(dashboardIpcChannels.taskChatClearHistory, async (_event, agentRegistryId) => {
+    if (!agentRegistryId) return { success: false };
+    clearChatHistory(agentRegistryId);
+    return { success: true };
   });
 }
 

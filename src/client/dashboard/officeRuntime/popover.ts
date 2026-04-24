@@ -1,13 +1,10 @@
 import {
-  type DashboardOpenOptions,
   type OfficeCharacter,
   escapeText,
   getDashboardAPI,
   state,
 } from '../shared.js';
 import { OFFICE, officeCharacters } from '../../office/index.js';
-
-type OpenTerminalForAgent = (agentId: string, openOptions?: DashboardOpenOptions) => Promise<void> | void;
 
 let officePopoverHost: HTMLDivElement | null = null;
 let popoverActionListener: ((event: MouseEvent) => void) | null = null;
@@ -48,7 +45,7 @@ async function promptRenameAgent(agentId: string): Promise<void> {
   hideOfficePopover();
 }
 
-function attachOfficePopoverActions(character: OfficeCharacter, openTerminalForAgent: OpenTerminalForAgent): void {
+function attachOfficePopoverActions(character: OfficeCharacter): void {
   const popoverEl = getOfficePopoverHost();
   if (!popoverEl) return;
   clearOfficePopoverActions();
@@ -58,10 +55,6 @@ function attachOfficePopoverActions(character: OfficeCharacter, openTerminalForA
     if (!action) return;
     if (action === 'rename') {
       void promptRenameAgent(character.id);
-      return;
-    }
-    if (action === 'open-terminal') {
-      void openTerminalForAgent(character.id);
       return;
     }
     if (action === 'unpin') {
@@ -97,7 +90,6 @@ function positionOfficePopover(canvas: HTMLCanvasElement, character: OfficeChara
 export function showOfficePopover(
   canvas: HTMLCanvasElement,
   character: OfficeCharacter,
-  openTerminalForAgent: OpenTerminalForAgent,
 ): void {
   const popoverEl = getOfficePopoverHost();
   if (!popoverEl) return;
@@ -128,11 +120,10 @@ export function showOfficePopover(
     <div class="pop-row"><span>Tool</span><span class="pop-val">${tool}</span></div>
     <div class="pop-row"><span>Model</span><span class="pop-val">${model}</span></div>
     <button class="pop-terminal-btn" data-action="rename">Rename</button>
-    <button class="pop-terminal-btn" data-action="open-terminal">Open Terminal</button>
     ${unpinButton}
   `;
   popoverEl.style.display = 'block';
-  attachOfficePopoverActions(character, openTerminalForAgent);
+  attachOfficePopoverActions(character);
   positionOfficePopover(canvas, character, popoverEl);
 }
 

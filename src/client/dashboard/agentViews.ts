@@ -12,7 +12,6 @@ import {
 } from '../office/index.js';
 import { updateConnectionStatus } from './connectionStatus.js';
 import { getStateColor } from './agentViewHelpers.js';
-import { appendTaskChatMessage, openTaskLogTab } from './terminal/index.js';
 import {
   getClearableUnregisteredAgents,
   getVisibleAgents,
@@ -80,30 +79,6 @@ export function connectSSE() {
     const data = JSON.parse(event.data) as { data: { id: string } };
     removeAgent(data.data.id);
     officeOnAgentRemoved(data.data);
-  });
-  eventSource.addEventListener('task.running', (event: MessageEvent) => {
-    try {
-      const data = JSON.parse(event.data) as { data: { id?: string; agentRegistryId?: string; title?: string } };
-      const task = data.data;
-      if (task.id && task.agentRegistryId) {
-        openTaskLogTab(task.id, task.agentRegistryId, task.title || 'Task');
-      }
-    } catch {}
-  });
-  eventSource.addEventListener('task.output', (event: MessageEvent) => {
-    try {
-      const data = JSON.parse(event.data) as { data: { taskId?: string; text?: string; stream?: string } };
-      const { taskId, text } = data.data;
-      if (taskId && text) {
-        try {
-          const parsed = JSON.parse(text) as { text: string; type: string; toolName?: string | null; merge?: boolean };
-          appendTaskChatMessage(taskId, parsed);
-        } catch {
-          // Fallback: plain text
-          appendTaskChatMessage(taskId, { text: text, type: 'text' });
-        }
-      }
-    } catch {}
   });
   eventSource.addEventListener('task.succeeded', (event: MessageEvent) => {
     try {

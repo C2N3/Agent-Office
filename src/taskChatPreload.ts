@@ -1,0 +1,17 @@
+/**
+ * Task Chat Preload Script
+ * Provides secure IPC bridge for task chat popup windows.
+ */
+
+const { contextBridge, ipcRenderer } = require('electron');
+const { dashboardIpcChannels } = require('./shared/contracts/ipc');
+
+contextBridge.exposeInMainWorld('taskChatAPI', {
+  close: (agentRegistryId: string) => ipcRenderer.send(dashboardIpcChannels.taskChatClose, agentRegistryId),
+  loadHistory: (agentRegistryId: string) => ipcRenderer.invoke(dashboardIpcChannels.taskChatHistory, agentRegistryId),
+  appendMessage: (
+    agentRegistryId: string,
+    message: { id?: string; kind: string; text: string; timestamp?: number; taskId?: string | null },
+  ) => ipcRenderer.invoke(dashboardIpcChannels.taskChatAppend, agentRegistryId, message),
+  clearHistory: (agentRegistryId: string) => ipcRenderer.invoke(dashboardIpcChannels.taskChatClearHistory, agentRegistryId),
+});

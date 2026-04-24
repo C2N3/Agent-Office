@@ -94,6 +94,8 @@ const dashboardAPI: DashboardAPI = {
     return () => ipcRenderer.removeListener(dashboardIpcChannels.powershellPolicyBlocked, listener);
   },
   openPsPolicyTerminal: () => ipcRenderer.invoke(dashboardIpcChannels.powershellOpenPolicyTerminal),
+  openTaskChatWindow: (params) => ipcRenderer.invoke(dashboardIpcChannels.taskChatOpen, params),
+  closeTaskChatWindow: (taskId: string) => ipcRenderer.send(dashboardIpcChannels.taskChatClose, taskId),
 };
 
 contextBridge.exposeInMainWorld('dashboardAPI', dashboardAPI);
