@@ -53,11 +53,46 @@ let eventsConnected = false;
 let refreshTimer: ReturnType<typeof setTimeout> | null = null;
 const statusListeners = new Set<CentralServerConnectionListener>();
 
+function formatResponseError(
+  payload: unknown,
+  fallback: string,
+): string {
+  if (!payload || typeof payload !== 'object') {
+    return typeof payload === 'string' && payload.trim() ? payload : fallback;
+  }
+
+  const error = (payload as {
+    error?: string | { message?: string; targetUrl?: string };
+  }).error;
+  if (typeof error === 'string' && error.trim()) {
+    return error;
+  }
+  if (!error || typeof error !== 'object') {
+    return fallback;
+  }
+
+  const message = typeof error.message === 'string' ? error.message.trim() : '';
+  const targetUrl = typeof error.targetUrl === 'string' ? error.targetUrl.trim() : '';
+  if (message && targetUrl) {
+    return `${message} (target: ${targetUrl})`;
+  }
+  if (message) {
+    return message;
+  }
+  return fallback;
+}
+
 async function fetchJSON<T>(path: string): Promise<T> {
   const res = await fetchWithTimeout(path, { cache: 'no-store' });
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(text || `HTTP ${res.status}`);
+    let payload: unknown = text;
+    if (text) {
+      try {
+        payload = JSON.parse(text);
+      } catch {}
+    }
+    throw new Error(formatResponseError(payload, text || `HTTP ${res.status}`));
   }
   return res.json() as Promise<T>;
 }
@@ -105,7 +140,7 @@ export async function saveCentralServerConfig(config: {
   });
   const payload = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(payload.error || `HTTP ${res.status}`);
+    throw new Error(formatResponseError(payload, `HTTP ${res.status}`));
   }
   return payload as CentralServerConfig;
 }

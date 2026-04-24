@@ -110,11 +110,14 @@ export async function applyRemoteSettings(update: {
 export async function refreshRemoteViewData(): Promise<void> {
   await maybeAutoJoinGuestInvite();
 
-  const [config, snapshot, roomAccessResult] = await Promise.all([
+  const [config, snapshot] = await Promise.all([
     fetchCentralServerConfig(),
     fetchCentralServerSnapshot(),
-    fetchRoomAccessStatus(),
   ]);
+  const persistedMode = config?.remoteMode || snapshot.config?.remoteMode || 'local';
+  const roomAccessResult = persistedMode === 'guest'
+    ? { roomAccess: null, status: 'unavailable' as const }
+    : await fetchRoomAccessStatus();
 
   const currentBaseUrl = config?.baseUrl || snapshot.config?.baseUrl || '';
   const ownerAccessError = config?.remoteMode === 'host'

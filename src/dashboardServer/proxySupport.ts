@@ -8,7 +8,7 @@ export interface ProxyRequestLike {
   on?(event: string, listener: (...args: any[]) => void): void;
 }
 
-export const CENTRAL_PROXY_TIMEOUT_MS = 5000;
+export const CENTRAL_PROXY_TIMEOUT_MS = 15000;
 
 export function writeJSON(res: ProxyResponseLike, status: number, payload: unknown): void {
   res.writeHead(status, { 'Content-Type': 'application/json' });

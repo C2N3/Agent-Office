@@ -1,4 +1,4 @@
-export const CENTRAL_SERVER_REQUEST_TIMEOUT_MS = 5000;
+export const CENTRAL_SERVER_REQUEST_TIMEOUT_MS = 16000;
 
 export async function fetchWithTimeout(
   input: RequestInfo | URL,

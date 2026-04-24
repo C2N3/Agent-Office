@@ -100,10 +100,42 @@ describe('central server connection adapter', () => {
     }));
 
     const { fetchCentralServerConfig } = require('../serverConnection.ts');
+    const { CENTRAL_SERVER_REQUEST_TIMEOUT_MS } = require('../fetchWithTimeout.ts');
     const pending = fetchCentralServerConfig();
 
-    jest.advanceTimersByTime(5000);
+    jest.advanceTimersByTime(CENTRAL_SERVER_REQUEST_TIMEOUT_MS);
 
     await expect(pending).resolves.toBeNull();
+  });
+
+  test('formats proxy timeout errors with the upstream target URL', async () => {
+    global.fetch = jest.fn(async (url) => {
+      if (String(url) === '/api/server/config') {
+        return {
+          ok: true,
+          json: async () => ({
+            remoteMode: 'guest',
+            baseUrl: 'https://central.example.test',
+            healthPath: '/api/server/health',
+            workersPath: '/api/server/workers',
+          }),
+        };
+      }
+
+      return {
+        ok: false,
+        text: async () => JSON.stringify({
+          error: {
+            message: 'Central server request timed out after 15000ms',
+            targetUrl: 'https://central.example.test',
+          },
+        }),
+      };
+    });
+
+    const { fetchCentralServerSnapshot } = require('../serverConnection.ts');
+    const snapshot = await fetchCentralServerSnapshot();
+
+    expect(snapshot.error).toBe('Central server request timed out after 15000ms (target: https://central.example.test)');
   });
 });

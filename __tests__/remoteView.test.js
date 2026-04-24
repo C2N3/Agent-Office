@@ -732,3 +732,28 @@ describe('remote view react boundary', () => {
     expect(getRemoteViewState().remoteActionError).toContain('another owner credential');
     expect(getRemoteViewState().remoteActionError).toContain('restore the owner secret');
   });
+
+  test('refreshing guest mode skips owner-only room access polling', async () => {
+    serverConnection.fetchCentralServerConfig.mockResolvedValue({
+      remoteMode: 'guest',
+      roomSecretConfigured: true,
+      workerTokenConfigured: false,
+      baseUrl: 'https://central.example.test',
+    });
+    serverConnection.fetchCentralServerSnapshot.mockResolvedValue(createRemoteSnapshot('https://central.example.test', {
+      remoteMode: 'guest',
+    }));
+    global.fetch = jest.fn(async (path) => {
+      if (path === '/api/server/room-access') {
+        throw new Error('Guest mode should not request room access');
+      }
+      throw new Error(`Unexpected fetch: ${path}`);
+    });
+
+    const { refreshRemoteViewData, getRemoteViewState } = loadRemoteModules();
+    await refreshRemoteViewData();
+
+    expect(global.fetch).not.toHaveBeenCalledWith('/api/server/room-access', expect.anything());
+    expect(getRemoteViewState().roomAccess).toBeNull();
+    expect(getRemoteViewState().remoteActionError).toBe('');
+  });
