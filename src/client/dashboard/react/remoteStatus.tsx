@@ -46,7 +46,7 @@ export function RemoteStatusDetails({
             <div className="server-health-value">{snapshot.config?.baseUrl || '-'}</div>
           </div>
           <div>
-            <div className="remote-info-label">Connection</div>
+            <div className="remote-info-label">Worker bridge</div>
             <div className="server-health-value">
               <span className={`server-status-pill ${workerStatusClass(workerStatus)}`}>{workerStatus}</span>
             </div>

@@ -26,6 +26,9 @@ export function resolveWorkerConnectionAuth(input: WorkerConnectionAuthInput): W
   if (input.remoteMode === 'host' && roomSecret) {
     return { token: '', roomSecret };
   }
+  if (input.remoteMode === 'host' && !token) {
+    return { token: '', roomSecret: '', error: 'host mode requires a room secret or worker token' };
+  }
   if (!token && !baseUrl) {
     return { token: '', roomSecret: '', error: 'baseUrl required' };
   }

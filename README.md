@@ -149,19 +149,27 @@ Safety rules:
 
 ## Remote Access
 
-The dashboard Remote tab includes a Central Server card. Edit `Server URL` there to point the local proxy at a different central server. Entering only a port such as `47824` expands to `http://127.0.0.1:47824`.
-
-The saved value is stored in `~/.agent-office/central-server-url.txt`. `AO_CENTRAL_SERVER_URL` is still supported as the startup fallback when no saved value exists.
-
-The same tab now includes an explicit mode selector with `Local Only`, `Host`, and `Guest`. Picking a pill only changes the draft selection. The mode changes when you press the primary action for that sheet: `Use Local Only`, `Start Host`, or `Join as Guest`.
+The dashboard Remote tab has three modes:
 
 - `Local Only` keeps the central server URL on disk, but leaves the worker bridge and character sync off.
-- `Host` uses the server URL, opens the host session, enables the public room, and stores the owner secret automatically.
-- `Guest` accepts an invite link, stores the guest room secret locally, and then turns on the worker bridge and character sync through that room secret. Opening an invite link on a machine that already has Agent-Office running at `http://localhost:3000` can join automatically from the URL fragment.
+- `Host` shares this office from the configured host server and creates guest invite links.
+- `Guest` joins an existing host from an invite link.
 
-The selected mode is stored in `~/.agent-office/central-remote-mode.txt`. Room secrets are stored in `~/.agent-office/central-room-secret.txt`.
+Picking a mode pill only changes the draft selection. The mode changes when you press that sheet's primary action: `Switch to Local Only`, `Start Hosting`, or `Join Host`.
 
-When Guest mode is active without a stored room secret, the worker bridge and character sync stay off until an invite is joined. When Guest mode is active with a stored secret, the worker bridge uses that room secret instead of the worker token. The Remote tab and central agent mirror keep using polling fallback in Guest mode because the central event stream is not relied on there.
+In Host mode, `Host server` is the only server-address control. Enter a full URL or just a port such as `47824`; ports expand to `http://127.0.0.1:47824`. Use `Start Hosting` for the first setup, and `Update Server` only when moving this host to another server.
+
+Guest sharing is managed from the `Guest invite` section:
+
+- `Create Invite Link` starts accepting guests and generates the first invite.
+- `New Invite Link` invalidates the previous guest link and creates a replacement.
+- `Stop Sharing` stops accepting guests while keeping Host mode and the server address configured.
+
+`Create Invite Link` and `New Invite Link` require the current owner secret for that host server. If the server was already claimed and this device no longer has owner access, the Remote tab shows a recovery error instead of an empty invite state. In that case, reopen Agent Office on the host machine or restore the owner secret before creating another invite.
+
+The saved server URL is stored in `~/.agent-office/central-server-url.txt`. `AO_CENTRAL_SERVER_URL` is still supported as the startup fallback when no saved value exists. The selected mode is stored in `~/.agent-office/central-remote-mode.txt`, and room secrets are stored in `~/.agent-office/central-room-secret.txt`.
+
+When Guest mode is active without a stored room secret, the worker bridge and character sync stay off until an invite is joined. When Guest mode is active with a stored secret, the worker bridge uses that room secret instead of the worker token. Opening an invite link on a machine that already has Agent-Office running at `http://localhost:3000` can join automatically from the URL fragment.
 
 The sidebar also exposes a separate `Cloudflare` tab. That tab keeps the quick-tunnel controls available without mixing them into the Host/Guest product UI.
 

@@ -121,6 +121,7 @@ function sent(socket, type) {
 
 function makeConnector(options = {}) {
   const registry = options.agentRegistry || new FakeAgentRegistry(options.activeAgents || []);
+  const setStatus = options.setStatus || jest.fn();
   const connector = new CentralWorkerConnector({
     workerId: options.workerId || 'worker-pc-a',
     agentRegistry: registry,
@@ -128,15 +129,15 @@ function makeConnector(options = {}) {
     debugLog: jest.fn(),
     WebSocketImpl: FakeWebSocket,
     getBaseUrl: () => options.centralServerUrl || 'http://central.example.test',
-    getToken: () => options.workerToken || 'worker-token',
+    getToken: () => options.workerToken ?? 'worker-token',
     getRoomSecret: () => options.roomSecret || '',
     getRemoteMode: () => options.remoteMode || 'local',
     getWorkerEnabled: () => true,
     getAgentSyncEnabled: () => options.agentSyncEnabled ?? true,
     onConfigChanged: () => () => {},
-    setStatus: jest.fn(),
+    setStatus,
   });
-  return { connector, registry };
+  return { connector, registry, setStatus };
 }
 
 describe('central worker WebSocket URL helper', () => {
@@ -310,6 +311,19 @@ describe('CentralWorkerConnector', () => {
     connector.start();
     const socket = FakeWebSocket.instances[0];
     expect(socket.url).toBe('ws://central.example.test/api/workers/connect?roomSecret=guest-secret');
+    connector.stop();
+  });
+
+  test('does not reconnect host mode without host access or a worker token', () => {
+    const { connector, setStatus } = makeConnector({
+      remoteMode: 'host',
+      roomSecret: '',
+      workerToken: '',
+    });
+    connector.start();
+
+    expect(FakeWebSocket.instances).toHaveLength(0);
+    expect(setStatus).toHaveBeenCalledWith('error');
     connector.stop();
   });
 });

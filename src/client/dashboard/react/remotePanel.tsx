@@ -8,6 +8,8 @@ import styles from '../styles/remote/remote-panel.module.scss';
 export function RemotePanel({
   currentBaseUrl,
   guestInviteValue,
+  hostOwnerAccessMessage,
+  hostOwnerAccessRequired,
   inviteLink,
   mode,
   persistedMode,
@@ -33,6 +35,8 @@ export function RemotePanel({
   copiedInvite: boolean;
   currentBaseUrl: string;
   guestInviteValue: string;
+  hostOwnerAccessMessage: string;
+  hostOwnerAccessRequired: boolean;
   inviteLink: string;
   mode: RemoteMode;
   persistedMode: RemoteMode;
@@ -55,14 +59,30 @@ export function RemotePanel({
   onStatusDetailsToggle: (expanded: boolean) => void;
 }): ReactElement {
   const options: Array<{ value: RemoteMode; label: string; title: string; hint: string }> = [
-    { value: 'local', label: 'Local Only', title: 'Local registry only', hint: '이 기기에서만 사용합니다.' },
-    { value: 'host', label: 'Host', title: 'Host room owner', hint: '서버 주소만 입력하면 공유를 시작할 수 있습니다.' },
-    { value: 'guest', label: 'Guest', title: 'Join by invite link', hint: '초대 링크를 열면 바로 연결됩니다.' },
+    { value: 'local', label: 'Local Only', title: 'Use this device only', hint: '이 기기의 agent만 표시하고 외부 연결은 끕니다.' },
+    { value: 'host', label: 'Host', title: 'Share this office', hint: '서버 주소를 정한 뒤 초대 링크를 만들어 다른 기기를 연결합니다.' },
+    { value: 'guest', label: 'Guest', title: 'Join a host', hint: '호스트가 보낸 초대 링크로 기존 office에 들어갑니다.' },
   ];
   const selected = options.find((option) => option.value === mode) || options[0];
   const hasPendingSelection = mode !== persistedMode;
   const isActiveLocal = persistedMode === 'local';
   const isActiveHost = persistedMode === 'host';
+  const hostGuestAccessEnabled = isActiveHost && !!roomAccess?.publicMode;
+  const showOwnerAccessState = isActiveHost && hostOwnerAccessRequired;
+  const hostStatusLabel = !isActiveHost
+    ? 'Hosting is not active'
+    : showOwnerAccessState
+      ? 'Owner access required'
+      : hostGuestAccessEnabled
+      ? 'Guests can join with the current invite'
+      : 'Guests cannot join yet';
+  const hostStatusHint = !isActiveHost
+    ? 'Enter the server address and start hosting first.'
+    : showOwnerAccessState
+      ? hostOwnerAccessMessage
+    : hostGuestAccessEnabled
+      ? 'Share the invite link below. Create a new one whenever the old link should stop working.'
+      : 'Create an invite link when you are ready to accept guests.';
 
   return (
     <div className={`panel remote-panel ${styles.panelRoot}`}>
@@ -105,29 +125,22 @@ export function RemotePanel({
       {mode === 'local' ? (
         <div className={`remote-mode-block ${styles.modeBlock}`}>
           {isActiveLocal
-            ? <div className={`remote-hint ${styles.modeHint}`}>Using Local Only</div>
-            : <button className="btn-primary modal-browse-btn" id="localApplyBtn" type="button" onClick={onLocalApply}>Use Local Only</button>}
+            ? <div className={`remote-hint ${styles.modeHint}`}>Local Only is active. Remote worker sync and shared agent visibility are off.</div>
+            : <button className="btn-primary modal-browse-btn" id="localApplyBtn" type="button" onClick={onLocalApply}>Switch to Local Only</button>}
         </div>
       ) : null}
       {mode === 'host' ? (
         <>
-          {isActiveHost ? (
-            <div className={`remote-status-row remote-mode-block ${styles.statusRow} ${styles.modeBlock}`}>
-              <div className={`remote-dot server-dot ${styles.statusDot} ${roomAccess?.publicMode ? 'online' : 'offline'}`} />
-              <span className="remote-status-label">{roomAccess?.publicMode ? 'Public room enabled' : 'Public room disabled'}</span>
-              <div className={styles.spacer} />
-              <button className="btn-primary remote-action-btn" id="hostEnableBtn" type="button" onClick={onHostEnable}>
-                {roomAccess?.publicMode ? 'Reopen Public Room' : 'Open Public Room'}
-              </button>
-              <button className="btn-secondary remote-action-btn" id="hostRotateBtn" type="button" onClick={onHostRotate}>Rotate Invite</button>
-              <button className="btn-secondary remote-action-btn" id="hostDisableBtn" type="button" onClick={onHostDisable}>Close Public Room</button>
+          <div className={`${styles.hostSummary} ${styles.modeBlock}`}>
+            <div className={`remote-dot server-dot ${styles.statusDot} ${hostGuestAccessEnabled ? 'online' : 'offline'}`} />
+            <div>
+              <div className={styles.hostSummaryTitle}>{hostStatusLabel}</div>
+              <div className={styles.hostSummaryHint}>{hostStatusHint}</div>
             </div>
-          ) : (
-            <div className={`remote-hint ${styles.modeHint}`}>서버 주소를 넣고 <code>Start Host</code>를 누르면 바로 시작됩니다.</div>
-          )}
+          </div>
           <div className={`remote-mode-block ${styles.modeBlock}`}>
             <div className={`remote-info-block ${styles.infoBlock}`}>
-              <div className={`remote-info-label ${styles.infoLabel}`}>Server URL</div>
+              <div className={`remote-info-label ${styles.infoLabel}`}>Host server</div>
               <div className="modal-path-field">
                 <input
                   autoComplete="off"
@@ -140,30 +153,50 @@ export function RemotePanel({
                   onChange={(event) => onServerUrlChange(event.currentTarget.value)}
                 />
                 <button className="btn-primary modal-browse-btn" id="hostStartBtn" type="button" onClick={onHostStart}>
-                  {isActiveHost ? 'Save Address' : 'Start Host'}
+                  {isActiveHost ? 'Update Server' : 'Start Hosting'}
                 </button>
               </div>
               <div className={`remote-hint ${styles.modeHint}`}>포트만 입력해도 됩니다. 예: <code>47824</code> 또는 <code>http://127.0.0.1:47824</code></div>
             </div>
             <div className="remote-error" id="centralServerUrlError" hidden />
           </div>
-          {isActiveHost && inviteLink ? (
+          {isActiveHost ? (
             <div className={`remote-info-block ${styles.infoBlock}`}>
-              <div className={`remote-info-label ${styles.infoLabel}`}>Invite Link</div>
-              <div className={`remote-url-row ${styles.urlRow}`}>
-                <a className={`remote-url-text ${styles.urlText}`} href={inviteLink}>{inviteLink}</a>
-                <button className={`remote-copy-btn ${styles.copyButton}`} type="button" onClick={onCopyInvite}>{copiedInvite ? '복사됨!' : 'Copy'}</button>
+              <div className={`remote-info-label ${styles.infoLabel}`}>Guest invite</div>
+              {showOwnerAccessState ? (
+                <div className={styles.emptyInvite}>{hostOwnerAccessMessage}</div>
+              ) : hostGuestAccessEnabled && inviteLink ? (
+                <div className={`remote-url-row ${styles.urlRow}`}>
+                  <a className={`remote-url-text ${styles.urlText}`} href={inviteLink}>{inviteLink}</a>
+                  <button className={`remote-copy-btn ${styles.copyButton}`} type="button" onClick={onCopyInvite}>{copiedInvite ? 'Copied' : 'Copy'}</button>
+                </div>
+              ) : (
+                <div className={styles.emptyInvite}>
+                  {hostGuestAccessEnabled
+                    ? 'Guest access is on, but this client does not have a current invite link.'
+                    : 'No one can join until you create an invite link.'}
+                </div>
+              )}
+              <div className={styles.hostActionRow}>
+                {showOwnerAccessState ? null : hostGuestAccessEnabled ? (
+                  <>
+                    <button className="btn-secondary remote-action-btn" id="hostRotateBtn" type="button" onClick={onHostRotate}>New Invite Link</button>
+                    <button className="btn-secondary remote-action-btn" id="hostDisableBtn" type="button" onClick={onHostDisable}>Stop Sharing</button>
+                  </>
+                ) : (
+                  <button className="btn-primary remote-action-btn" id="hostEnableBtn" type="button" onClick={onHostEnable}>Create Invite Link</button>
+                )}
               </div>
             </div>
           ) : (
-            <div className={`remote-hint ${styles.modeHint}`}>{isActiveHost ? '새 초대 링크가 필요하면 <code>Rotate Invite</code>를 누르세요.' : 'Host를 시작하면 초대 링크를 받을 수 있습니다.'}</div>
+            <div className={`remote-hint ${styles.modeHint}`}>Start hosting first. The invite controls appear after this device owns the host session.</div>
           )}
         </>
       ) : null}
       {mode === 'guest' ? (
         <div className={`remote-mode-block ${styles.modeBlock}`}>
           <div className={`remote-info-block ${styles.infoBlock}`}>
-            <div className={`remote-info-label ${styles.infoLabel}`}>Invite Link</div>
+            <div className={`remote-info-label ${styles.infoLabel}`}>Host invite link</div>
             <div className="modal-path-field">
               <input
                 autoComplete="off"
@@ -176,10 +209,10 @@ export function RemotePanel({
                 onChange={(event) => onGuestInviteChange(event.currentTarget.value)}
               />
               <button className="btn-primary modal-browse-btn" id="guestJoinBtn" type="button" onClick={onGuestJoin}>
-                {persistedMode === 'guest' ? 'Use New Invite' : 'Join as Guest'}
+                {persistedMode === 'guest' ? 'Switch Invite' : 'Join Host'}
               </button>
             </div>
-            <div className={`remote-hint ${styles.modeHint}`}>{persistedMode === 'guest' ? '다른 호스트로 바꾸려면 새 초대 링크를 다시 여세요.' : '초대 링크를 열거나 여기에 붙여넣으세요.'}</div>
+            <div className={`remote-hint ${styles.modeHint}`}>{persistedMode === 'guest' ? '다른 호스트로 바꾸려면 새 초대 링크를 붙여넣으세요.' : '초대 링크를 열거나 여기에 붙여넣으세요.'}</div>
           </div>
         </div>
       ) : null}

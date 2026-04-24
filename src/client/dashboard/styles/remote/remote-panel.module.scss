@@ -107,13 +107,6 @@
   padding: 10px 14px;
 }
 
-.statusRow {
-  align-items: center;
-  display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
-}
-
 .statusDot {
   border-radius: 50%;
   flex-shrink: 0;
@@ -122,8 +115,44 @@
   width: 8px;
 }
 
-.spacer {
-  flex: 1 1 auto;
+.hostSummary {
+  align-items: flex-start;
+  background: var(--color-bg-input, rgba(255, 255, 255, 0.05));
+  border: 1px solid var(--color-border, rgba(255, 255, 255, 0.1));
+  border-radius: 6px;
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+}
+
+.hostSummaryTitle {
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.hostSummaryHint {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+  margin-top: 4px;
+}
+
+.hostActionRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.emptyInvite {
+  background: var(--color-bg-input, rgba(255, 255, 255, 0.04));
+  border: 1px dashed var(--color-border, rgba(255, 255, 255, 0.14));
+  border-radius: 6px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 12px;
 }
 
 .urlRow {
