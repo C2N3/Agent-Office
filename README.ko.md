@@ -198,7 +198,7 @@ Guest 공유는 `Guest invite` 영역에서 관리합니다.
 - `New Invite Link`는 이전 guest link를 무효화하고 새 link를 만듭니다.
 - `Stop Sharing`은 Host 모드와 서버 주소는 유지한 채 guest 입장을 막습니다.
 
-`Create Invite Link`와 `New Invite Link`는 현재 host server의 owner secret이 있어야 동작합니다. 서버가 이미 다른 owner credential로 claim되었고 이 기기에서 owner access를 잃은 상태라면, Remote 탭은 빈 invite 상태 대신 복구 안내 오류를 보여줍니다. 이 경우 host machine에서 Agent Office를 다시 열거나 owner secret을 복구한 뒤 invite를 다시 만들어야 합니다.
+`Create Invite Link`와 `New Invite Link`는 현재 host server의 owner secret이 있어야 동작합니다. 서버가 이미 다른 owner credential로 claim되었고 이 기기에서 owner access를 잃은 상태라면, Remote 탭은 빈 invite 상태 대신 복구 안내 오류를 보여줍니다. 이 경우 host machine에서 Agent Office를 다시 열거나 owner secret을 복구한 뒤 invite를 다시 만들어야 합니다. 저장된 owner secret이나 worker token이 없는 Host 모드에서는 access가 복구될 때까지 worker bridge와 character sync도 꺼진 상태를 유지합니다.
 
 저장된 서버 URL은 `~/.agent-office/central-server-url.txt`에 유지됩니다. 저장된 값이 없을 때는 기존처럼 `AO_CENTRAL_SERVER_URL`을 시작 시 fallback으로 사용할 수 있습니다. 선택한 모드는 `~/.agent-office/central-remote-mode.txt`에 저장되고, room secret은 `~/.agent-office/central-room-secret.txt`에 저장됩니다.
 

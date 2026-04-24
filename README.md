@@ -165,7 +165,7 @@ Guest sharing is managed from the `Guest invite` section:
 - `New Invite Link` invalidates the previous guest link and creates a replacement.
 - `Stop Sharing` stops accepting guests while keeping Host mode and the server address configured.
 
-`Create Invite Link` and `New Invite Link` require the current owner secret for that host server. If the server was already claimed and this device no longer has owner access, the Remote tab shows a recovery error instead of an empty invite state. In that case, reopen Agent Office on the host machine or restore the owner secret before creating another invite.
+`Create Invite Link` and `New Invite Link` require the current owner secret for that host server. If the server was already claimed and this device no longer has owner access, the Remote tab shows a recovery error instead of an empty invite state. In that case, reopen Agent Office on the host machine or restore the owner secret before creating another invite. Host mode without a stored owner secret or worker token now keeps the worker bridge and character sync off until access is restored.
 
 The saved server URL is stored in `~/.agent-office/central-server-url.txt`. `AO_CENTRAL_SERVER_URL` is still supported as the startup fallback when no saved value exists. The selected mode is stored in `~/.agent-office/central-remote-mode.txt`, and room secrets are stored in `~/.agent-office/central-room-secret.txt`.
 

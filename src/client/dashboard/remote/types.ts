@@ -15,6 +15,7 @@ export type RemoteServerConfig = {
   baseUrl?: string;
   remoteMode?: RemoteMode;
   roomSecretConfigured?: boolean;
+  workerTokenConfigured?: boolean;
   workerConnectionStatus?: string;
 };
 
@@ -29,6 +30,8 @@ export type RemoteViewState = {
   selectedRemoteMode: RemoteMode | null;
   serverUrlDraft: string;
   snapshot: RemoteSnapshot | null;
+  hostRecoveryExpanded: boolean;
+  hostRecoveryInProgress: boolean;
   statusDetailsExpanded: boolean;
 };
 
@@ -36,8 +39,11 @@ export type RemoteViewModel = {
   copiedInvite: boolean;
   currentBaseUrl: string;
   guestInviteValue: string;
+  hostAccessMissing: boolean;
   hostOwnerAccessMessage: string;
-  hostOwnerAccessRequired: boolean;
+  hostRecoveryAvailable: boolean;
+  hostRecoveryExpanded: boolean;
+  hostRecoveryInProgress: boolean;
   inviteLink: string;
   mode: RemoteMode;
   persistedMode: RemoteMode;
@@ -54,6 +60,8 @@ export type RemoteViewActions = {
   onGuestJoin: () => void | Promise<void>;
   onHostDisable: () => void | Promise<void>;
   onHostEnable: () => void | Promise<void>;
+  onHostRecoveryToggle: () => void;
+  onHostResetAccess: () => void | Promise<void>;
   onHostRotate: () => void | Promise<void>;
   onHostStart: () => void | Promise<void>;
   onLocalApply: () => void | Promise<void>;

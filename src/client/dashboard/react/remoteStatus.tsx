@@ -12,14 +12,17 @@ export function RemoteStatusDetails({
   expanded,
   onRefresh,
   onToggle,
+  hostAccessMissing,
   snapshot,
 }: {
   expanded: boolean;
+  hostAccessMissing: boolean;
   onRefresh: () => void;
   onToggle: (expanded: boolean) => void;
   snapshot: RemoteSnapshot;
 }): ReactElement {
-  const workerStatus = snapshot.config?.workerConnectionStatus || 'disconnected';
+  const workerStatus = hostAccessMissing ? 'access required' : (snapshot.config?.workerConnectionStatus || 'disconnected');
+  const workerStatusClassName = hostAccessMissing ? 'starting' : workerStatusClass(snapshot.config?.workerConnectionStatus);
   const isOnline = !!snapshot.health && !snapshot.error;
   const dotClass = isOnline ? (snapshot.eventsConnected ? 'online' : 'starting') : 'offline';
   const statusLabel = snapshot.error ? 'Offline' : snapshot.eventsConnected ? 'Live' : 'Reachable';
@@ -48,7 +51,7 @@ export function RemoteStatusDetails({
           <div>
             <div className="remote-info-label">Worker bridge</div>
             <div className="server-health-value">
-              <span className={`server-status-pill ${workerStatusClass(workerStatus)}`}>{workerStatus}</span>
+              <span className={`server-status-pill ${workerStatusClassName}`}>{workerStatus}</span>
             </div>
           </div>
         </div>

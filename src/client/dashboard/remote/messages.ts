@@ -16,6 +16,14 @@ export function ownerAccessRequiredMessage(): string {
   return 'This server is already hosted by another owner credential. To create invites, open Agent Office on the host machine or restore the owner secret.';
 }
 
+export function localHostRecoveryOnlyMessage(): string {
+  return 'Reset Host Access is only available when the host server points to this machine through a loopback address.';
+}
+
+export function resetHostAccessWarningMessage(): string {
+  return 'Reset Host Access replaces the current owner and guest secrets. Existing guest invite links stop working immediately.';
+}
+
 export function isOwnerAccessErrorMessage(message: string): boolean {
   return isAuthFailureMessage(message) || message.includes('owner credential') || message.includes('owner secret');
 }

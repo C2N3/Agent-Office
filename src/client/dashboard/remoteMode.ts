@@ -10,13 +10,24 @@ export type RemoteModeFlags = {
   agentSyncEnabled: boolean;
 };
 
+type RemoteModeFlagOptions = {
+  roomSecretConfigured?: boolean;
+  workerTokenConfigured?: boolean;
+};
+
+function hasWorkerBridgeAuth(options: RemoteModeFlagOptions): boolean {
+  return !!options.roomSecretConfigured || !!options.workerTokenConfigured;
+}
+
 export function flagsFromRemoteMode(
   mode: RemoteMode,
-  options: { roomSecretConfigured?: boolean } = {},
+  options: RemoteModeFlagOptions = {},
 ): RemoteModeFlags {
   switch (mode) {
     case 'host':
-      return { workerEnabled: true, agentSyncEnabled: true };
+      return hasWorkerBridgeAuth(options)
+        ? { workerEnabled: true, agentSyncEnabled: true }
+        : { workerEnabled: false, agentSyncEnabled: false };
     case 'guest':
       return options.roomSecretConfigured
         ? { workerEnabled: true, agentSyncEnabled: true }

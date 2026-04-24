@@ -3,6 +3,8 @@ import { type RemoteMode } from '../remoteMode.js';
 type RemoteConfig = {
   baseUrl?: string;
   remoteMode?: RemoteMode;
+  roomSecretConfigured?: boolean;
+  workerTokenConfigured?: boolean;
   workerConnectionStatus?: string;
 };
 

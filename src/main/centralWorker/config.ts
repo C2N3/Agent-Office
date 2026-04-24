@@ -46,13 +46,16 @@ function hasStoredRemoteMode(): boolean {
   } catch {}
   return false;
 }
+
 function deriveFlagsFromRemoteMode(
   mode: RemoteMode,
-  options: { roomSecretConfigured?: boolean } = {}
+  options: { roomSecretConfigured?: boolean; workerTokenConfigured?: boolean } = {}
 ): { workerEnabled: boolean; agentSyncEnabled: boolean } {
   switch (mode) {
     case 'host':
-      return { workerEnabled: true, agentSyncEnabled: true };
+      return options.roomSecretConfigured || options.workerTokenConfigured
+        ? { workerEnabled: true, agentSyncEnabled: true }
+        : { workerEnabled: false, agentSyncEnabled: false };
     case 'guest':
       return options.roomSecretConfigured
         ? { workerEnabled: true, agentSyncEnabled: true }
@@ -121,6 +124,7 @@ export function getAgentSyncEnabled(): boolean {
   if (hasStoredRemoteMode()) {
     configuredAgentSyncEnabled = deriveFlagsFromRemoteMode(getRemoteMode(), {
       roomSecretConfigured: isCentralRoomSecretConfigured(),
+      workerTokenConfigured: isCentralWorkerTokenConfigured(),
     }).agentSyncEnabled;
     return configuredAgentSyncEnabled;
   }
@@ -132,6 +136,7 @@ export function getWorkerEnabled(): boolean {
   if (hasStoredRemoteMode()) {
     configuredWorkerEnabled = deriveFlagsFromRemoteMode(getRemoteMode(), {
       roomSecretConfigured: isCentralRoomSecretConfigured(),
+      workerTokenConfigured: isCentralWorkerTokenConfigured(),
     }).workerEnabled;
     return configuredWorkerEnabled;
   }
@@ -237,10 +242,12 @@ export function saveCentralServerConfig(update: CentralServerConfigUpdate): void
     if (fs.existsSync(CENTRAL_ROOM_SECRET_FILE)) fs.unlinkSync(CENTRAL_ROOM_SECRET_FILE);
   }
   const effectiveRoomSecret = update.roomSecret !== undefined ? update.roomSecret.trim() : getCentralRoomSecret(nextMode).trim();
+  const effectiveWorkerToken = update.workerToken !== undefined ? update.workerToken.trim() : getCentralWorkerToken().trim();
   const derivedFlags =
     update.remoteMode !== undefined
       ? deriveFlagsFromRemoteMode(update.remoteMode, {
           roomSecretConfigured: effectiveRoomSecret.length > 0,
+          workerTokenConfigured: effectiveWorkerToken.length > 0,
         })
       : null;
 

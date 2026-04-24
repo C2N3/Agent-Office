@@ -21,7 +21,15 @@ describe('remoteMode helpers', () => {
 
   test('maps remote modes to derived worker and sync flags', () => {
     expect(flagsFromRemoteMode('local')).toEqual({ workerEnabled: false, agentSyncEnabled: false });
-    expect(flagsFromRemoteMode('host')).toEqual({ workerEnabled: true, agentSyncEnabled: true });
+    expect(flagsFromRemoteMode('host')).toEqual({ workerEnabled: false, agentSyncEnabled: false });
+    expect(flagsFromRemoteMode('host', { roomSecretConfigured: true })).toEqual({
+      workerEnabled: true,
+      agentSyncEnabled: true,
+    });
+    expect(flagsFromRemoteMode('host', { workerTokenConfigured: true })).toEqual({
+      workerEnabled: true,
+      agentSyncEnabled: true,
+    });
     expect(flagsFromRemoteMode('guest')).toEqual({ workerEnabled: false, agentSyncEnabled: false });
     expect(flagsFromRemoteMode('guest', { roomSecretConfigured: true })).toEqual({
       workerEnabled: true,

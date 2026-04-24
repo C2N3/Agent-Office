@@ -10,9 +10,9 @@ const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
 let serverConnection;
 
-function createRemoteSnapshot(baseUrl = 'https://central.example.test') {
+function createRemoteSnapshot(baseUrl = 'https://central.example.test', configOverrides = {}) {
   return {
-    config: { baseUrl, workerConnectionStatus: 'connected' },
+    config: { baseUrl, workerConnectionStatus: 'connected', ...configOverrides },
     error: null,
     eventsConnected: false,
     health: null,
@@ -44,6 +44,8 @@ function renderRemotePanelMarkup() {
       onGuestJoin: jest.fn(),
       onHostDisable: jest.fn(),
       onHostEnable: jest.fn(),
+      onHostRecoveryToggle: jest.fn(),
+      onHostResetAccess: jest.fn(),
       onHostRotate: jest.fn(),
       onHostStart: jest.fn(),
       onLocalApply: jest.fn(),
@@ -92,10 +94,20 @@ describe('remote view react boundary', () => {
         writeText: jest.fn().mockResolvedValue(undefined),
       },
     };
+    Object.defineProperty(global, 'crypto', {
+      configurable: true,
+      value: {
+        getRandomValues: jest.fn((bytes) => {
+          bytes.fill(1);
+          return bytes;
+        }),
+      },
+    });
 
     serverConnection.fetchCentralServerConfig.mockResolvedValue({
       remoteMode: 'local',
       roomSecretConfigured: false,
+      workerTokenConfigured: false,
       baseUrl: 'https://central.example.test',
     });
     serverConnection.fetchCentralServerSnapshot.mockResolvedValue(createRemoteSnapshot());
@@ -135,6 +147,7 @@ describe('remote view react boundary', () => {
     delete global.localStorage;
     delete global.navigator;
     delete global.window;
+    delete global.crypto;
   });
 
   test('renders the local-only panel state from the remote store model', () => {
@@ -144,6 +157,7 @@ describe('remote view react boundary', () => {
       config: {
         remoteMode: 'local',
         roomSecretConfigured: false,
+        workerTokenConfigured: false,
         baseUrl: 'https://central.example.test',
       },
       roomAccess: createRoomAccess(),
@@ -167,6 +181,7 @@ describe('remote view react boundary', () => {
       config: {
         remoteMode: 'host',
         roomSecretConfigured: true,
+        workerTokenConfigured: false,
         baseUrl: 'https://central.example.test',
       },
       roomAccess: createRoomAccess(),
@@ -192,6 +207,7 @@ describe('remote view react boundary', () => {
       config: {
         remoteMode: 'host',
         roomSecretConfigured: false,
+        workerTokenConfigured: false,
         baseUrl: 'https://central.example.test',
       },
       roomAccess: createRoomAccess({
@@ -207,8 +223,64 @@ describe('remote view react boundary', () => {
 
     expect(markup).toContain('Owner access required');
     expect(markup).toContain('another owner credential');
+    expect(markup).toContain('Switch to Local Only');
     expect(markup).not.toContain('No one can join until you create an invite link.');
     expect(markup).not.toContain('Create Invite Link');
+  });
+
+  test('shows loopback recovery controls and an access-required worker bridge state for host access loss', () => {
+    const { updateRemoteViewState } = loadRemoteModules();
+
+    updateRemoteViewState({
+      config: {
+        remoteMode: 'host',
+        roomSecretConfigured: false,
+        workerTokenConfigured: false,
+        baseUrl: 'http://127.0.0.1:47823',
+      },
+      hostRecoveryExpanded: true,
+      roomAccess: createRoomAccess({
+        publicMode: false,
+        ownerSecretSet: true,
+        ownerSecretState: 'set',
+      }),
+      serverUrlDraft: 'http://127.0.0.1:47823',
+      snapshot: createRemoteSnapshot('http://127.0.0.1:47823', {
+        workerConnectionStatus: 'disconnected',
+      }),
+    });
+
+    const markup = renderRemotePanelMarkup();
+
+    expect(markup).toContain('Hide Recovery Options');
+    expect(markup).toContain('Reset Host Access');
+    expect(markup).toContain('access required');
+    expect(markup).not.toContain('>error<');
+  });
+
+  test('hides reset controls when host access is missing on a non-loopback server', () => {
+    const { updateRemoteViewState } = loadRemoteModules();
+
+    updateRemoteViewState({
+      config: {
+        remoteMode: 'host',
+        roomSecretConfigured: false,
+        workerTokenConfigured: false,
+        baseUrl: 'https://central.example.test',
+      },
+      roomAccess: createRoomAccess({
+        publicMode: false,
+        ownerSecretSet: true,
+        ownerSecretState: 'set',
+      }),
+      serverUrlDraft: 'https://central.example.test',
+      snapshot: createRemoteSnapshot(),
+    });
+
+    const markup = renderRemotePanelMarkup();
+
+    expect(markup).not.toContain('Show Recovery Options');
+    expect(markup).not.toContain('Reset Host Access');
   });
 
   test('renders only the guest controls when persisted mode is guest', () => {
@@ -218,6 +290,7 @@ describe('remote view react boundary', () => {
       config: {
         remoteMode: 'guest',
         roomSecretConfigured: true,
+        workerTokenConfigured: false,
         baseUrl: 'https://central.example.test',
       },
       roomAccess: createRoomAccess(),
@@ -238,6 +311,7 @@ describe('remote view react boundary', () => {
       config: {
         remoteMode: 'local',
         roomSecretConfigured: false,
+        workerTokenConfigured: false,
         baseUrl: 'https://central.example.test',
       },
       roomAccess: createRoomAccess(),
@@ -270,6 +344,7 @@ describe('remote view react boundary', () => {
       config: {
         remoteMode: 'host',
         roomSecretConfigured: true,
+        workerTokenConfigured: false,
         baseUrl: 'https://central.example.test',
       },
       roomAccess: createRoomAccess({ publicMode: false, ownerSecretSet: true, guestSecretSet: false }),
@@ -336,6 +411,7 @@ describe('remote view react boundary', () => {
       config: {
         remoteMode: 'host',
         roomSecretConfigured: true,
+        workerTokenConfigured: false,
         baseUrl: 'https://central.example.test',
       },
       roomAccess: createRoomAccess({ publicMode: false, ownerSecretSet: true, guestSecretSet: true }),
@@ -387,6 +463,7 @@ describe('remote view react boundary', () => {
       config: {
         remoteMode: 'host',
         roomSecretConfigured: false,
+        workerTokenConfigured: false,
         baseUrl: 'https://central.example.test',
       },
       roomAccess: createRoomAccess(),
@@ -409,6 +486,7 @@ describe('remote view react boundary', () => {
     serverConnection.fetchCentralServerConfig.mockResolvedValue({
       remoteMode: 'host',
       roomSecretConfigured: false,
+      workerTokenConfigured: false,
       baseUrl: 'https://central.example.test',
     });
     global.fetch = jest.fn(async (path) => {
@@ -434,6 +512,7 @@ describe('remote view react boundary', () => {
       config: {
         remoteMode: 'host',
         roomSecretConfigured: false,
+        workerTokenConfigured: false,
         baseUrl: 'https://central.example.test',
       },
       roomAccess: createRoomAccess(),
@@ -450,6 +529,90 @@ describe('remote view react boundary', () => {
     expect(global.fetch).not.toHaveBeenCalledWith('/api/server/room-access/enable', expect.anything());
     expect(global.fetch).not.toHaveBeenCalledWith('/api/server/room-access/guest-secret/rotate', expect.anything());
     expect(getRemoteViewState().remoteActionError).toContain('another owner credential');
+  });
+
+  test('resetting host access bootstraps fresh local secrets for a loopback host', async () => {
+    let fillValue = 1;
+    global.crypto.getRandomValues.mockImplementation((bytes) => {
+      bytes.fill(fillValue);
+      fillValue += 1;
+      return bytes;
+    });
+    serverConnection.fetchCentralServerConfig.mockResolvedValue({
+      remoteMode: 'host',
+      roomSecretConfigured: true,
+      workerTokenConfigured: false,
+      baseUrl: 'http://127.0.0.1:47823',
+    });
+    serverConnection.fetchCentralServerSnapshot.mockResolvedValue(createRemoteSnapshot('http://127.0.0.1:47823', {
+      workerConnectionStatus: 'connected',
+    }));
+    global.fetch = jest.fn(async (path) => {
+      if (path === '/api/server/room-access/bootstrap') {
+        return {
+          ok: true,
+          json: async () => createRoomAccess({
+            publicMode: true,
+            ownerSecretSet: true,
+            guestSecretSet: true,
+            ownerSecretState: 'set',
+            guestSecretState: 'set',
+          }),
+        };
+      }
+      if (path === '/api/server/room-access') {
+        return {
+          ok: true,
+          json: async () => createRoomAccess({
+            publicMode: true,
+            ownerSecretSet: true,
+            guestSecretSet: true,
+            ownerSecretState: 'set',
+            guestSecretState: 'set',
+          }),
+        };
+      }
+      throw new Error(`Unexpected fetch: ${path}`);
+    });
+
+    const { createRemoteViewActions, getRemoteViewState, updateRemoteViewState } = loadRemoteModules();
+
+    updateRemoteViewState({
+      config: {
+        remoteMode: 'host',
+        roomSecretConfigured: false,
+        workerTokenConfigured: false,
+        baseUrl: 'http://127.0.0.1:47823',
+      },
+      hostRecoveryExpanded: true,
+      roomAccess: createRoomAccess({
+        publicMode: false,
+        ownerSecretSet: true,
+        ownerSecretState: 'set',
+      }),
+      serverUrlDraft: 'http://127.0.0.1:47823',
+      snapshot: createRemoteSnapshot('http://127.0.0.1:47823', {
+        workerConnectionStatus: 'disconnected',
+      }),
+    });
+
+    const actions = createRemoteViewActions();
+    await actions.onHostResetAccess();
+
+    const bootstrapCall = global.fetch.mock.calls.find(([path]) => path === '/api/server/room-access/bootstrap');
+    expect(bootstrapCall).toBeTruthy();
+    const bootstrapBody = JSON.parse(bootstrapCall[1].body);
+    expect(bootstrapBody.ownerSecret).toMatch(/^ao_[0-9a-f]{64}$/);
+    expect(bootstrapBody.guestSecret).toMatch(/^ao_[0-9a-f]{64}$/);
+    expect(bootstrapBody.ownerSecret).not.toBe(bootstrapBody.guestSecret);
+    expect(serverConnection.saveCentralServerConfig).toHaveBeenCalledWith({
+      remoteMode: 'host',
+      roomSecret: bootstrapBody.ownerSecret,
+    });
+    expect(getRemoteViewState().lastIssuedGuestSecret).toBe(bootstrapBody.guestSecret);
+    expect(getRemoteViewState().hostRecoveryExpanded).toBe(false);
+    expect(getRemoteViewState().hostRecoveryInProgress).toBe(false);
+    expect(getRemoteViewState().remoteActionError).toBe('');
   });
 
   test('auto-joins guest mode from invite hash without manual paste', async () => {
@@ -483,6 +646,7 @@ describe('remote view react boundary', () => {
       config: {
         remoteMode: 'host',
         roomSecretConfigured: true,
+        workerTokenConfigured: false,
         baseUrl: 'https://central.example.test',
       },
       roomAccess: createRoomAccess({ publicMode: true }),
@@ -516,6 +680,7 @@ describe('remote view react boundary', () => {
       config: {
         remoteMode: 'host',
         roomSecretConfigured: true,
+        workerTokenConfigured: false,
         baseUrl: 'https://central.example.test',
       },
       roomAccess: createRoomAccess({ publicMode: true }),
@@ -547,6 +712,7 @@ describe('remote view react boundary', () => {
     serverConnection.fetchCentralServerConfig.mockResolvedValue({
       remoteMode: 'host',
       roomSecretConfigured: false,
+      workerTokenConfigured: false,
       baseUrl: 'https://central.example.test',
     });
     global.fetch = jest.fn(async (path) => {

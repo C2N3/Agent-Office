@@ -1,5 +1,6 @@
 import React, { type ReactElement } from 'react';
 import type { RemoteMode } from '../remoteMode.js';
+import { resetHostAccessWarningMessage } from '../remote/messages.js';
 import type { RoomAccessStatus } from '../remote/types.js';
 import type { RemoteSnapshot } from '../remote/status.js';
 import { RemoteStatusDetails } from './remoteStatus.js';
@@ -8,8 +9,11 @@ import styles from '../styles/remote/remote-panel.module.scss';
 export function RemotePanel({
   currentBaseUrl,
   guestInviteValue,
+  hostAccessMissing,
   hostOwnerAccessMessage,
-  hostOwnerAccessRequired,
+  hostRecoveryAvailable,
+  hostRecoveryExpanded,
+  hostRecoveryInProgress,
   inviteLink,
   mode,
   persistedMode,
@@ -24,6 +28,8 @@ export function RemotePanel({
   onGuestJoin,
   onHostDisable,
   onHostEnable,
+  onHostRecoveryToggle,
+  onHostResetAccess,
   onHostRotate,
   onHostStart,
   onLocalApply,
@@ -35,8 +41,11 @@ export function RemotePanel({
   copiedInvite: boolean;
   currentBaseUrl: string;
   guestInviteValue: string;
+  hostAccessMissing: boolean;
   hostOwnerAccessMessage: string;
-  hostOwnerAccessRequired: boolean;
+  hostRecoveryAvailable: boolean;
+  hostRecoveryExpanded: boolean;
+  hostRecoveryInProgress: boolean;
   inviteLink: string;
   mode: RemoteMode;
   persistedMode: RemoteMode;
@@ -50,6 +59,8 @@ export function RemotePanel({
   onGuestJoin: () => void;
   onHostDisable: () => void;
   onHostEnable: () => void;
+  onHostRecoveryToggle: () => void;
+  onHostResetAccess: () => void;
   onHostRotate: () => void;
   onHostStart: () => void;
   onLocalApply: () => void;
@@ -68,7 +79,10 @@ export function RemotePanel({
   const isActiveLocal = persistedMode === 'local';
   const isActiveHost = persistedMode === 'host';
   const hostGuestAccessEnabled = isActiveHost && !!roomAccess?.publicMode;
-  const showOwnerAccessState = isActiveHost && hostOwnerAccessRequired;
+  const showOwnerAccessState = isActiveHost && hostAccessMissing;
+  const displayRemoteActionError = remoteActionError && remoteActionError !== hostOwnerAccessMessage
+    ? remoteActionError
+    : '';
   const hostStatusLabel = !isActiveHost
     ? 'Hosting is not active'
     : showOwnerAccessState
@@ -121,7 +135,7 @@ export function RemotePanel({
         <div className={`remote-mode-description ${styles.modeDescription}`}>{selected.hint}</div>
         {hasPendingSelection ? <div className={`remote-hint ${styles.modeHint}`}>아래 버튼으로 {selected.label} 모드를 적용합니다.</div> : null}
       </div>
-      {remoteActionError ? <div className={`remote-error ${styles.error}`}>{remoteActionError}</div> : null}
+      {displayRemoteActionError ? <div className={`remote-error ${styles.error}`}>{displayRemoteActionError}</div> : null}
       {mode === 'local' ? (
         <div className={`remote-mode-block ${styles.modeBlock}`}>
           {isActiveLocal
@@ -164,7 +178,33 @@ export function RemotePanel({
             <div className={`remote-info-block ${styles.infoBlock}`}>
               <div className={`remote-info-label ${styles.infoLabel}`}>Guest invite</div>
               {showOwnerAccessState ? (
-                <div className={styles.emptyInvite}>{hostOwnerAccessMessage}</div>
+                <>
+                  <div className={styles.emptyInvite}>{hostOwnerAccessMessage}</div>
+                  <div className={styles.hostActionRow}>
+                    <button className="btn-secondary remote-action-btn" id="hostLocalOnlyBtn" type="button" onClick={onLocalApply}>Switch to Local Only</button>
+                    {hostRecoveryAvailable ? (
+                      <button className="btn-secondary remote-action-btn" id="hostRecoveryToggleBtn" type="button" onClick={onHostRecoveryToggle}>
+                        {hostRecoveryExpanded ? 'Hide Recovery Options' : 'Show Recovery Options'}
+                      </button>
+                    ) : null}
+                  </div>
+                  {hostRecoveryExpanded && hostRecoveryAvailable ? (
+                    <div className={`remote-mode-block ${styles.modeBlock}`}>
+                      <div className={styles.emptyInvite}>{resetHostAccessWarningMessage()}</div>
+                      <div className={styles.hostActionRow}>
+                        <button
+                          className="btn-primary remote-action-btn"
+                          disabled={hostRecoveryInProgress}
+                          id="hostResetAccessBtn"
+                          type="button"
+                          onClick={onHostResetAccess}
+                        >
+                          {hostRecoveryInProgress ? 'Resetting...' : 'Reset Host Access'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+                </>
               ) : hostGuestAccessEnabled && inviteLink ? (
                 <div className={`remote-url-row ${styles.urlRow}`}>
                   <a className={`remote-url-text ${styles.urlText}`} href={inviteLink}>{inviteLink}</a>
@@ -219,6 +259,7 @@ export function RemotePanel({
       {mode !== 'local' ? (
         <RemoteStatusDetails
           expanded={statusDetailsExpanded}
+          hostAccessMissing={hostAccessMissing}
           snapshot={{
             ...snapshot,
             config: snapshot.config

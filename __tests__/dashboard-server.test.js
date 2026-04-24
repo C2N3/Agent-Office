@@ -337,6 +337,22 @@ describe('dashboard-server', () => {
       const body = JSON.parse(res.end.mock.calls[0][0]);
       expect(body.baseUrl).toBe('http://127.0.0.1:47824');
       expect(body.remoteMode).toBe('host');
+      expect(body.workerEnabled).toBe(false);
+      expect(body.agentSyncEnabled).toBe(false);
+    });
+
+    test('POST /api/server/config keeps host bridge enabled when a legacy worker token exists', async () => {
+      const { req, res } = createMockReqRes('POST', '/api/server/config');
+      handler(req, res);
+      req.emit('data', JSON.stringify({ remoteMode: 'host', workerToken: 'legacy-worker-token' }));
+      req.emit('end');
+      await new Promise(setImmediate);
+
+      expect(res.writeHead).toHaveBeenCalledWith(200, { 'Content-Type': 'application/json' });
+      const body = JSON.parse(res.end.mock.calls[0][0]);
+      expect(body.remoteMode).toBe('host');
+      expect(body.workerEnabled).toBe(true);
+      expect(body.agentSyncEnabled).toBe(true);
     });
 
     test('proxied central requests attach X-AO-Room-Secret when configured', async () => {

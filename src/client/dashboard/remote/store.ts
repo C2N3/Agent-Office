@@ -14,6 +14,8 @@ function createInitialState(): RemoteViewState {
     selectedRemoteMode: null,
     serverUrlDraft: '',
     snapshot: null,
+    hostRecoveryExpanded: false,
+    hostRecoveryInProgress: false,
     statusDetailsExpanded: false,
   };
 }

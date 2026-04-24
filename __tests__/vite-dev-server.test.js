@@ -1,3 +1,4 @@
+const path = require('path');
 const { startViteDevServer } = require('../scripts/vite-dev-server');
 
 describe('vite-dev-server', () => {
@@ -19,7 +20,7 @@ describe('vite-dev-server', () => {
     await server.ready;
 
     expect(createServer).toHaveBeenCalledWith(expect.objectContaining({
-      configFile: '/workspace/app/vite.config.ts',
+      configFile: path.join('/workspace/app', 'vite.config.ts'),
       server: expect.objectContaining({
         host: '127.0.0.1',
         port: 3001,
