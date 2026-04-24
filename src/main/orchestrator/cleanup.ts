@@ -1,3 +1,4 @@
+const { sharedSessionAllowlist } = require('./sessionAllowlist');
 
 function cleanupTaskRuntime(orchestrator, taskId) {
   const idleTimer = orchestrator.idleTimers.get(taskId);
@@ -21,6 +22,8 @@ function cleanupTaskRuntime(orchestrator, taskId) {
   if (orchestrator.processManager?.isRunning(taskId)) {
     orchestrator.processManager.kill(taskId).catch(() => {});
   }
+
+  sharedSessionAllowlist.unregister(taskId);
 }
 
 function cleanupTaskWorktree(orchestrator, taskId) {

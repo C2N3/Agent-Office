@@ -39,7 +39,7 @@ npm install
 npm start
 ```
 
-`npm install` automatically registers the Claude hook in `~/.claude/settings.json`. Codex does not use that hook registration path and instead relies on session files or the `exec --json` forwarder. Gemini is available as a provider for launched tasks when the CLI is installed.
+Agent characters react only to CLI sessions launched from Agent-Office tasks. External `claude`/`codex`/`gemini` runs in other terminals are not shown in the office. `npm install` migrates any previously-registered Agent-Office hook out of `~/.claude/settings.json` — Claude, Codex, and Gemini are detected through the orchestrator's own spawn path.
 
 ## Runtime Model
 
@@ -212,10 +212,10 @@ GitHub Actions tag releases currently build Windows artifacts and an unsigned ma
 
 **No avatars appear**
 
-- For Claude, confirm `~/.claude/settings.json` contains the Agent-Office hook
-- For Codex, confirm session files appear under `~/.codex/sessions` or use `codex exec --json ... | node dist/src/codex-forward.js`
-- For Gemini, confirm the Gemini CLI is installed and on `PATH`, then enable it with `PIXEL_AGENT_PROVIDERS=all` or `PIXEL_AGENT_PROVIDERS=claude,codex,gemini`
-- A `404` response from `curl http://localhost:47821/hook` is normal and confirms the hook server is listening
+- Agent characters only appear for tasks launched from Agent-Office. CLI sessions started in an external terminal (or the app's built-in terminal tab) are intentionally ignored.
+- To see a character, submit a task from the dashboard (Assign Task / Team Formation) or provision an agent from the Agent Panel.
+- Confirm the provider CLI is installed and on `PATH` for the task you're launching, then enable it with `PIXEL_AGENT_PROVIDERS=all` or `PIXEL_AGENT_PROVIDERS=claude,codex,gemini`.
+- A `404` response from `curl http://localhost:47821/hook` is normal and confirms the hook server is listening.
 
 **Ghost avatars remain**
 

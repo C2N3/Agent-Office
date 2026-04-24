@@ -8,7 +8,7 @@ const Ajv = require('ajv');
 const MAX_BODY_SIZE = 1024 * 1024;
 const CODEX_EVENT_SERVER_PORT = Number(process.env.PIXEL_AGENT_CODEX_PORT || 47822);
 
-function startCodexEventServer({ processCodexEvent, debugLog, errorHandler, port = CODEX_EVENT_SERVER_PORT }) {
+function startCodexEventServer({ processCodexEvent, debugLog, errorHandler, port = CODEX_EVENT_SERVER_PORT, sessionAllowlist = null }) {
   const schema = {
     type: 'object',
     required: ['type'],
@@ -57,6 +57,15 @@ function startCodexEventServer({ processCodexEvent, debugLog, errorHandler, port
         if (!validate(data)) {
           debugLog(`[Codex] Validation FAILED for ${data.type}: ${JSON.stringify(validate.errors)}`);
           return;
+        }
+
+        // Task-only gate: only accept events from orchestrator-spawned Codex sessions.
+        if (sessionAllowlist) {
+          const allowed = sessionAllowlist.accepts({ cwd: data.cwd });
+          if (!allowed) {
+            debugLog(`[Codex] Dropped non-task event ${data.type} cwd=${data.cwd || '?'}`);
+            return;
+          }
         }
 
         processCodexEvent(data);

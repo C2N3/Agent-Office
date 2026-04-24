@@ -9,6 +9,7 @@ const {
   handleTaskFailure,
   handleTaskSuccess,
 } = require('./completion');
+const { sharedSessionAllowlist } = require('./sessionAllowlist');
 
 async function dispatchTask(orchestrator, task) {
   orchestrator.taskStore.updateTask(task.id, { status: 'provisioning', updatedAt: Date.now() });
@@ -111,6 +112,15 @@ async function dispatchTask(orchestrator, task) {
       executionEnvironment: task.executionEnvironment || 'auto',
     },
   );
+
+  // Register with the session allowlist so provider gates (hook server,
+  // codex session monitor, liveness) only accept events from this task.
+  sharedSessionAllowlist.register({
+    taskId: task.id,
+    pid,
+    cwd: taskCwd,
+    provider,
+  });
 
   // Deliver prompt via stdin pipe immediately (no TUI ready-marker detection needed)
   if (adapter.buildStdinPrompt) {

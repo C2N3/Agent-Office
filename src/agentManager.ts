@@ -14,6 +14,12 @@ const {
 } = require('./agentManager/helpers');
 const { rekeyAgent, transitionAgentToOffline } = require('./agentManager/identity');
 
+// Sources that represent a provider CLI event pipeline (external signal).
+// New agents arriving from these sources without orchestrator context
+// (registryId, parentId for subagents, or teamId) are rejected — only
+// task-launched sessions should produce agent characters.
+const PROVIDER_SOURCES = new Set(['hook', 'http', 'codex']);
+
 /**
  * Merge a field: entry value wins if defined, then existing, then default.
  */
@@ -64,6 +70,20 @@ class AgentManager extends EventEmitter {
     const agentId = entry.registryId || entry.sessionId || entry.agentId || entry.uuid || 'unknown';
     const now = Date.now();
     const existingAgent = this.agents.get(agentId);
+
+    // Task-only gate (defense in depth): reject NEW agents arriving from a
+    // provider event pipeline unless they are tied to orchestrator context
+    // (registryId) or are a subagent/teammate of an existing task agent.
+    // Provider-level gates (hook server, codex monitor, liveness) already
+    // filter non-task sessions — this is the final backstop at the agent
+    // model boundary so characters only appear for Task-launched sessions.
+    if (!existingAgent && PROVIDER_SOURCES.has(source)) {
+      const hasOrchestratorContext = !!entry.registryId || !!entry.parentId || !!entry.teamId;
+      if (!hasOrchestratorContext) {
+        console.log(`[AgentManager] Rejected non-task ${source} agent (no registryId/parentId/teamId): ${agentId}`);
+        return null;
+      }
+    }
 
     // Soft warning: only warn if agent count is high (does not block registration)
     if (!existingAgent && this.agents.size >= this.config.softLimitWarning) {

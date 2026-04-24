@@ -1,38 +1,37 @@
 /**
- * Agent-Office - Auto Installation Script
+ * Agent-Office - Post-install Migration
  *
- * Automatically registers HTTP hooks in the Claude CLI config.
- * Runs automatically during npm install.
+ * Agent-Office no longer registers a global Claude hook. This script
+ * removes any Agent-Office hook entries previously written to
+ * ~/.claude/settings.json so upgrades leave the user's config clean.
  *
- * Delegates actual registration logic to a JS-only helper because postinstall
- * runs before the TypeScript sources are built into dist/.
+ * Runs automatically during npm install. Delegates to a JS-only helper
+ * because postinstall runs before the TypeScript sources are built
+ * into dist/.
  */
 
-const { registerClaudeHooks } = require('./main/hookRegistration.install');
+const { unregisterClaudeHooks } = require('./main/hookRegistration.install');
 
-/**
- * Main entry point
- */
 function main() {
   console.log('=================================');
   console.log('Agent-Office - Install Script');
   console.log('=================================\n');
 
   const debugLog = (msg) => console.log(msg);
-  const success = registerClaudeHooks(debugLog);
+  const removed = unregisterClaudeHooks(debugLog);
 
-  if (success) {
-    console.log('\n=================================');
-    console.log('Installation complete!');
-    console.log('=================================\n');
-    console.log('Run the app with:');
-    console.log('  npm start\n');
+  if (removed) {
+    console.log('\nMigration: removed Agent-Office hook entries from ~/.claude/settings.json');
+    console.log('Agent characters now react only to tasks launched from Agent-Office.\n');
   } else {
-    console.log('\n⚠️  Hook registration failed.');
-    console.log('Please manually edit ~/.claude/settings.json.');
-    process.exit(1);
+    console.log('\nNo Agent-Office hook entries found in ~/.claude/settings.json — nothing to migrate.\n');
   }
+
+  console.log('=================================');
+  console.log('Installation complete!');
+  console.log('=================================\n');
+  console.log('Run the app with:');
+  console.log('  npm start\n');
 }
 
-// Run
 main();

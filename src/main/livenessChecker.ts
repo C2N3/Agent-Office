@@ -8,6 +8,7 @@ const os = require('os');
 const fs = require('fs');
 const { hasActiveOrchestratorTask, removeOrOffline } = require('./liveness/agents');
 const { getProviderDefinition, normalizeProvider } = require('./providers/registry');
+const { sharedSessionAllowlist } = require('./orchestrator/sessionAllowlist');
 
 const sessionPids = new Map(); // sessionId → actual CLI process PID
 
@@ -71,6 +72,18 @@ function detectProviderPidsFallback(provider, callback) {
   const { execFile } = require('child_process');
   const definition = getProviderDefinition(provider);
   const providerPattern = definition.processPattern;
+
+  // Task-only gate: when the orchestrator has registered any task session,
+  // only return PIDs that belong to those tasks. This keeps Gemini (and any
+  // other provider lacking a session-file or hook channel) from attaching
+  // to an unrelated process the user happened to be running.
+  const filterPids = (pids) => {
+    if (!Array.isArray(pids) || pids.length === 0) return null;
+    if (sharedSessionAllowlist.size() === 0) return pids;
+    const filtered = pids.filter((p) => sharedSessionAllowlist.hasPid(p));
+    return filtered.length > 0 ? filtered : null;
+  };
+
   if (process.platform === 'win32') {
     const psCmd = definition.windowsNodeProcessOnly
       ? `Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.Name -eq 'node.exe' -and $_.CommandLine -like '*${providerPattern}*' } | Select-Object -ExpandProperty ProcessId`
@@ -78,14 +91,14 @@ function detectProviderPidsFallback(provider, callback) {
     execFile('powershell.exe', ['-NoProfile', '-Command', psCmd], { timeout: 6000 }, (err, stdout) => {
       if (err || !stdout) return callback(null);
       const pids = stdout.trim().split('\n').map(p => parseInt(p.trim(), 10)).filter(p => !isNaN(p) && p > 0);
-      callback(pids.length > 0 ? pids : null);
+      callback(filterPids(pids));
     });
   } else {
     const pattern = definition.unixProcessPattern;
     execFile('pgrep', ['-f', pattern], { timeout: 3000 }, (err, stdout) => {
       if (err || !stdout) return callback(null);
       const pids = stdout.trim().split('\n').map(p => parseInt(p.trim(), 10)).filter(p => !isNaN(p) && p > 0);
-      callback(pids.length > 0 ? pids : null);
+      callback(filterPids(pids));
     });
   }
 }

@@ -1,14 +1,18 @@
 
-const { HOOK_SERVER_PORT, registerClaudeHooks } = require('../hookRegistration');
+const { HOOK_SERVER_PORT, unregisterClaudeHooks } = require('../hookRegistration');
 const { startHookServer } = require('../hookServer');
 const { CODEX_EVENT_SERVER_PORT, startCodexEventServer } = require('../providers/codex/eventServer');
 const { createHookProcessor } = require('../hookProcessor');
 const { createCodexProcessor } = require('../providers/codex/processor');
 const { createCodexSessionMonitor } = require('../providers/codex/sessionMonitor');
+const { sharedSessionAllowlist } = require('../orchestrator/sessionAllowlist');
 
 function autoRegisterProviders({ enabledProviders, debugLog }) {
+  // Agent-Office no longer registers a global Claude hook. Migrate any
+  // previously-installed entries out of ~/.claude/settings.json so upgrades
+  // leave the user's config clean and stray hook events stop firing.
   if (enabledProviders.includes('claude')) {
-    registerClaudeHooks(debugLog);
+    unregisterClaudeHooks(debugLog);
   }
 }
 
@@ -47,6 +51,8 @@ function createProviderProcessors({
       codexProcessor,
       agentManager,
       debugLog,
+      sessionAllowlist: sharedSessionAllowlist,
+      detectPidByTranscript: (jsonlPath, callback) => detectProviderPidBySessionFile('codex', jsonlPath, callback),
     });
   }
 
@@ -63,6 +69,7 @@ function startProviderServices({ hookProcessor, codexProcessor, codexSessionMoni
       debugLog,
       HOOK_SERVER_PORT,
       errorHandler,
+      sessionAllowlist: sharedSessionAllowlist,
     });
   }
 
@@ -72,6 +79,7 @@ function startProviderServices({ hookProcessor, codexProcessor, codexSessionMoni
       debugLog,
       errorHandler,
       port: CODEX_EVENT_SERVER_PORT,
+      sessionAllowlist: sharedSessionAllowlist,
     });
   }
 

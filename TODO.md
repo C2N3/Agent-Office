@@ -22,6 +22,7 @@ This file tracks client-side work that is planned, discovered, blocked, or compl
 
 ## Done
 
+- [x] Restrict agent characters to orchestrator-launched task sessions: remove the global `~/.claude/settings.json` hook registration (with install-time migration), gate the hook server / Codex session monitor / Codex event server / liveness fallback on an `OrchestratorSessionAllowlist`, and add an `AgentManager.updateAgent` defense-in-depth gate that rejects new provider-sourced agents without orchestrator context.
 - [x] Surface dashboard server bind failures and central proxy timeouts instead of leaving `client` remote `/api/server/*` requests pending.
 - [x] Execute the Remote invite UX plan in `docs/plans/remote-invite-ux-plan.md`.
 - [x] Narrow the remaining overlay grid layout mutation in `src/renderer/agentGrid/layout.ts` behind a layout-focused boundary while keeping animation scheduling and resize calculations imperative.

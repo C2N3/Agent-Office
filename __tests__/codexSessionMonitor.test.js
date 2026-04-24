@@ -145,4 +145,109 @@ describe('codexSessionMonitor', () => {
     expect(getCodexSessionRoots).toHaveBeenCalled();
     expect(codexProcessor.processSessionEntry).toHaveBeenCalled();
   });
+
+  describe('session allowlist gate', () => {
+    const sessionRoot = '/home/alice/.codex/sessions';
+
+    function mockSessionFile(sessionLog) {
+      fs.existsSync.mockReturnValue(true);
+      fs.readdirSync.mockImplementation((dir) => {
+        const normalized = dir.replace(/\\/g, '/');
+        if (normalized === sessionRoot) {
+          return [{ isDirectory: () => false, isFile: () => true, name: 'thread-1.jsonl' }];
+        }
+        return [];
+      });
+      fs.statSync.mockReturnValue({ size: Buffer.byteLength(sessionLog), mtimeMs: Date.now() });
+      fs.readFileSync.mockReturnValue(sessionLog);
+    }
+
+    test('drops all entries when no allowlist match (cwd absent or unknown)', () => {
+      const sessionLog = [
+        JSON.stringify({ type: 'session_meta', payload: { id: 'thread-1', cwd: '/not/allowed' } }),
+        JSON.stringify({ type: 'event_msg', payload: { type: 'task_started' } }),
+        '',
+      ].join('\n');
+      mockSessionFile(sessionLog);
+
+      const codexProcessor = { processSessionEntry: jest.fn(), endSession: jest.fn() };
+      const sessionAllowlist = {
+        hasCwd: jest.fn(() => false),
+        hasPid: jest.fn(() => false),
+      };
+
+      const monitor = createCodexSessionMonitor({
+        codexProcessor,
+        agentManager: { getAgent: jest.fn(() => null) },
+        debugLog: jest.fn(),
+        sessionRoot,
+        activeWindowMs: 30 * 60 * 1000,
+        sessionAllowlist,
+        detectPidByTranscript: null,
+      });
+
+      monitor.scan();
+
+      expect(codexProcessor.processSessionEntry).not.toHaveBeenCalled();
+    });
+
+    test('forwards entries after cwd matches the allowlist', () => {
+      const sessionLog = [
+        JSON.stringify({ type: 'session_meta', payload: { id: 'thread-1', cwd: '/workspace/task' } }),
+        JSON.stringify({ type: 'event_msg', payload: { type: 'task_started' } }),
+        '',
+      ].join('\n');
+      mockSessionFile(sessionLog);
+
+      const codexProcessor = { processSessionEntry: jest.fn(() => ({ sessionId: 'thread-1' })), endSession: jest.fn() };
+      const sessionAllowlist = {
+        hasCwd: jest.fn((cwd) => cwd === '/workspace/task'),
+        hasPid: jest.fn(() => false),
+      };
+
+      const monitor = createCodexSessionMonitor({
+        codexProcessor,
+        agentManager: { getAgent: jest.fn(() => null) },
+        debugLog: jest.fn(),
+        sessionRoot,
+        activeWindowMs: 30 * 60 * 1000,
+        sessionAllowlist,
+      });
+
+      monitor.scan();
+
+      expect(codexProcessor.processSessionEntry).toHaveBeenCalled();
+    });
+
+    test('allows session when PID resolver reports an allowlisted pid before session_meta', () => {
+      const sessionLog = [
+        // No session_meta on first flush — only event_msg
+        JSON.stringify({ type: 'event_msg', payload: { type: 'task_started' } }),
+        '',
+      ].join('\n');
+      mockSessionFile(sessionLog);
+
+      const codexProcessor = { processSessionEntry: jest.fn(() => ({ sessionId: 'thread-1' })), endSession: jest.fn() };
+      const sessionAllowlist = {
+        hasCwd: jest.fn(() => false),
+        hasPid: jest.fn((pid) => pid === 4242),
+      };
+      const detectPidByTranscript = jest.fn((_path, cb) => cb(4242));
+
+      const monitor = createCodexSessionMonitor({
+        codexProcessor,
+        agentManager: { getAgent: jest.fn(() => null) },
+        debugLog: jest.fn(),
+        sessionRoot,
+        activeWindowMs: 30 * 60 * 1000,
+        sessionAllowlist,
+        detectPidByTranscript,
+      });
+
+      monitor.scan();
+
+      expect(detectPidByTranscript).toHaveBeenCalled();
+      expect(codexProcessor.processSessionEntry).toHaveBeenCalled();
+    });
+  });
 });

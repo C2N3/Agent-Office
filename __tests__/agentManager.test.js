@@ -33,6 +33,59 @@ describe('AgentManager', () => {
     });
   });
 
+  describe('task-only intake gate', () => {
+    test('rejects new ephemeral agents from hook source without registryId/parentId/teamId', () => {
+      const result = manager.updateAgent({ sessionId: 'ephemeral-1', state: 'Working' }, 'hook');
+      expect(result).toBeNull();
+      expect(manager.getAgentCount()).toBe(0);
+    });
+
+    test('rejects new ephemeral agents from codex source without orchestrator context', () => {
+      const result = manager.updateAgent({ sessionId: 'ephemeral-2', state: 'Working' }, 'codex');
+      expect(result).toBeNull();
+      expect(manager.getAgentCount()).toBe(0);
+    });
+
+    test('accepts new agent from hook source when registryId is set', () => {
+      const result = manager.updateAgent({
+        sessionId: 'sess-1',
+        registryId: 'reg-1',
+        state: 'Working',
+      }, 'hook');
+      expect(result).not.toBeNull();
+      expect(manager.getAgentCount()).toBe(1);
+    });
+
+    test('accepts new subagent from hook source when parentId is set', () => {
+      // Parent must exist first
+      manager.updateAgent({ sessionId: 'parent-1', registryId: 'reg-1', state: 'Working' }, 'orchestrator');
+      const result = manager.updateAgent({
+        sessionId: 'child-1',
+        parentId: 'parent-1',
+        isSubagent: true,
+        state: 'Working',
+      }, 'hook');
+      expect(result).not.toBeNull();
+      expect(manager.getAgentCount()).toBe(2);
+    });
+
+    test('accepts updates to existing agents even from hook source', () => {
+      // Agent keyed by sessionId alone (no registryId) — orchestrator path
+      manager.updateAgent({ sessionId: 'sess-1', state: 'Working' }, 'orchestrator');
+      const result = manager.updateAgent({ sessionId: 'sess-1', state: 'Done' }, 'hook');
+      expect(result).not.toBeNull();
+      expect(manager.getAgent('sess-1').state).toBe('Done');
+    });
+
+    test('does not gate internal sources (orchestrator, registry, live, test)', () => {
+      expect(manager.updateAgent({ sessionId: 'o-1', state: 'Working' }, 'orchestrator')).not.toBeNull();
+      expect(manager.updateAgent({ sessionId: 'r-1', state: 'Waiting' }, 'registry')).not.toBeNull();
+      expect(manager.updateAgent({ sessionId: 'l-1', state: 'Working' }, 'live')).not.toBeNull();
+      expect(manager.updateAgent({ sessionId: 't-1', state: 'Working' }, 'test')).not.toBeNull();
+      expect(manager.getAgentCount()).toBe(4);
+    });
+  });
+
   describe('updateAgent', () => {
     test('adds new agent', () => {
       const entry = {

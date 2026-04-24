@@ -61,10 +61,26 @@ function createCodexSessionMonitor({
   agentManager,
   debugLog,
   sessionRoot,
-  activeWindowMs = ACTIVE_SESSION_WINDOW_MS
+  activeWindowMs = ACTIVE_SESSION_WINDOW_MS,
+  sessionAllowlist = null,
+  detectPidByTranscript = null,
 }) {
-  const trackedFiles = new Map(); // filePath -> { position, sessionId, lastMtimeMs }
+  const trackedFiles = new Map(); // filePath -> { position, sessionId, lastMtimeMs, allowed, pidResolved }
   let intervalId = null;
+
+  function extractSessionCwd(entry) {
+    if (!entry || entry.type !== 'session_meta') return '';
+    const payload = entry.payload || {};
+    return payload.cwd || payload.workspacePath || payload.workspace_path || '';
+  }
+
+  function updateAllowance(tracked, entry) {
+    if (!sessionAllowlist || tracked.allowed === true) return;
+    const cwd = extractSessionCwd(entry);
+    if (cwd && sessionAllowlist.hasCwd(cwd)) {
+      tracked.allowed = true;
+    }
+  }
 
   function getSessionRoots() {
     if (Array.isArray(sessionRoot)) return sessionRoot;
@@ -88,6 +104,13 @@ function createCodexSessionMonitor({
   }
 
   function ingestEntry(entry, tracked) {
+    updateAllowance(tracked, entry);
+    // Task-only gate: drop all entries from session files that are not
+    // tied to an orchestrator-spawned task session. Checked per-file via
+    // session_meta.cwd; the PID fallback is resolved lazily on first read.
+    if (sessionAllowlist && tracked.allowed !== true) {
+      return;
+    }
     const result = codexProcessor.processSessionEntry(entry, {
       sessionId: tracked.sessionId,
       transcriptPath: tracked.filePath,
@@ -106,7 +129,32 @@ function createCodexSessionMonitor({
       sessionId: null,
       lastMtimeMs: stat.mtimeMs,
       filePath,
+      // Undetermined until session_meta is seen or PID is resolved.
+      // When sessionAllowlist is null (e.g. in tests), default to allowed.
+      allowed: sessionAllowlist ? null : true,
+      pidResolved: false,
     };
+
+    // Best-effort async PID resolution: if the file is currently open by a
+    // process in our task allowlist, accept the session even before we see
+    // session_meta. This covers task CLIs that have not flushed meta yet.
+    if (sessionAllowlist && typeof detectPidByTranscript === 'function' && !tracked.pidResolved) {
+      tracked.pidResolved = true;
+      try {
+        detectPidByTranscript(filePath, (pid) => {
+          if (!pid) return;
+          const pids = Array.isArray(pid) ? pid : [pid];
+          for (const p of pids) {
+            if (sessionAllowlist.hasPid(p)) {
+              tracked.allowed = true;
+              return;
+            }
+          }
+        });
+      } catch {
+        // Ignore PID resolution errors; we'll fall back to session_meta cwd.
+      }
+    }
 
     try {
       const content = fs.readFileSync(filePath, 'utf-8');

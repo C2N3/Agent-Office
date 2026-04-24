@@ -1,8 +1,14 @@
 /**
- * Claude CLI Hook Registration
+ * Claude CLI Hook Unregistration (install-time)
  *
- * This JS copy exists specifically for src/install.js, which runs during
- * postinstall before the TypeScript build has produced dist/ output.
+ * Agent-Office no longer registers a global Claude hook. Task-launched
+ * CLI sessions are detected directly via orchestrator stream-json output
+ * and a session allowlist. This script exists to migrate installs that
+ * previously registered the global hook by stripping the Agent-Office
+ * hook entries from ~/.claude/settings.json.
+ *
+ * This JS copy is used by src/install.js during postinstall (before
+ * TypeScript sources are built into dist/).
  */
 
 const path = require('path');
@@ -25,7 +31,7 @@ function readClaudeConfig(debugLog) {
   } catch (error) {
     debugLog(`[Hook] Failed to read Claude config: ${error.message}`);
   }
-  return {};
+  return null;
 }
 
 function writeClaudeConfig(config, debugLog) {
@@ -36,7 +42,6 @@ function writeClaudeConfig(config, debugLog) {
       fs.mkdirSync(dir, { recursive: true });
     }
     fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
-    debugLog('[Hook] Claude config file updated');
     return true;
   } catch (error) {
     debugLog(`[Hook] Failed to write Claude config: ${error.message}`);
@@ -44,68 +49,61 @@ function writeClaudeConfig(config, debugLog) {
   }
 }
 
-const HOOK_EVENTS = [
-  'SessionStart', 'SessionEnd', 'UserPromptSubmit',
-  'PreToolUse', 'PostToolUse', 'PostToolUseFailure',
-  'Stop', 'TaskCompleted', 'PermissionRequest', 'Notification',
-  'SubagentStart', 'SubagentStop', 'TeammateIdle',
-  'ConfigChange', 'WorktreeCreate', 'WorktreeRemove',
-  'PreCompact',
-];
-
-function hasOurHookInEntry(entry, hookUrl) {
-  return entry.hooks && entry.hooks.some(h => h.type === 'http' && h.url === hookUrl);
+function isOurHookUrl(url) {
+  if (typeof url !== 'string') return false;
+  return url.includes(`127.0.0.1:${HOOK_SERVER_PORT}/hook`)
+    || url.includes(`localhost:${HOOK_SERVER_PORT}/hook`);
 }
 
-function isHookRegistered(debugLog) {
+/**
+ * Strip Agent-Office hook entries from ~/.claude/settings.json.
+ * Returns true if any changes were made.
+ */
+function unregisterClaudeHooks(debugLog) {
   const config = readClaudeConfig(debugLog);
-  const hookUrl = `http://localhost:${HOOK_SERVER_PORT}/hook`;
+  if (!config || !config.hooks || typeof config.hooks !== 'object') return false;
 
-  if (!config.hooks) {
-    return false;
-  }
+  let changed = false;
+  for (const eventName of Object.keys(config.hooks)) {
+    const entries = config.hooks[eventName];
+    if (!Array.isArray(entries)) continue;
 
-  return HOOK_EVENTS.every(event =>
-    Array.isArray(config.hooks[event]) &&
-    config.hooks[event].some(entry => hasOurHookInEntry(entry, hookUrl))
-  );
-}
+    const filteredEntries = [];
+    for (const entry of entries) {
+      if (!entry || !Array.isArray(entry.hooks)) {
+        filteredEntries.push(entry);
+        continue;
+      }
+      const remainingHooks = entry.hooks.filter((h) => !(h && h.type === 'http' && isOurHookUrl(h.url)));
+      if (remainingHooks.length === entry.hooks.length) {
+        filteredEntries.push(entry);
+        continue;
+      }
+      changed = true;
+      if (remainingHooks.length > 0) {
+        filteredEntries.push({ ...entry, hooks: remainingHooks });
+      }
+      // else: drop the entry entirely if it held only our hook
+    }
 
-function registerClaudeHooks(debugLog) {
-  debugLog('[Hook] Checking Claude CLI hook registration status...');
-
-  if (isHookRegistered(debugLog)) {
-    debugLog('[Hook] Hooks are already registered.');
-    return true;
-  }
-
-  debugLog('[Hook] Starting hook registration...');
-
-  const config = readClaudeConfig(debugLog);
-
-  config.hooks = config.hooks || {};
-
-  const hookUrl = `http://localhost:${HOOK_SERVER_PORT}/hook`;
-  const ourEntry = {
-    matcher: '*',
-    hooks: [{ type: 'http', url: hookUrl }],
-  };
-
-  for (const event of HOOK_EVENTS) {
-    if (!Array.isArray(config.hooks[event])) {
-      config.hooks[event] = [ourEntry];
-    } else if (!config.hooks[event].some(entry => hasOurHookInEntry(entry, hookUrl))) {
-      config.hooks[event].push(ourEntry);
+    if (filteredEntries.length === 0) {
+      delete config.hooks[eventName];
+    } else {
+      config.hooks[eventName] = filteredEntries;
     }
   }
 
-  if (writeClaudeConfig(config, debugLog)) {
-    debugLog('[Hook] Claude CLI hook registration complete');
-    return true;
+  if (!changed) return false;
+
+  if (Object.keys(config.hooks).length === 0) {
+    delete config.hooks;
   }
 
-  debugLog('[Hook] Hook registration failed');
+  if (writeClaudeConfig(config, debugLog)) {
+    debugLog('[Hook] Removed Agent-Office hook entries from Claude config');
+    return true;
+  }
   return false;
 }
 
-module.exports = { HOOK_SERVER_PORT, registerClaudeHooks };
+module.exports = { HOOK_SERVER_PORT, unregisterClaudeHooks };
