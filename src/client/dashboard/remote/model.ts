@@ -1,4 +1,5 @@
 import { buildGuestInviteLink } from '../remoteMode.js';
+import { ownerAccessRequiredMessage, isOwnerAccessErrorMessage } from './messages.js';
 import type { RemoteViewModel, RemoteViewState } from './types.js';
 
 function createEmptySnapshot() {
@@ -17,6 +18,9 @@ export function deriveRemoteViewModel(state: RemoteViewState): RemoteViewModel {
   const mode = state.selectedRemoteMode || persistedMode;
   const currentBaseUrl = state.config?.baseUrl || snapshot.config?.baseUrl || '';
   const inviteSecret = state.lastIssuedGuestSecret || state.roomAccess?.guestSecret || '';
+  const hostOwnerAccessRequired = persistedMode === 'host'
+    && !state.config?.roomSecretConfigured
+    && (state.roomAccess?.ownerSecretSet || isOwnerAccessErrorMessage(state.remoteActionError));
   const inviteLink = currentBaseUrl && inviteSecret
     ? buildGuestInviteLink(globalThis.window?.location?.origin || currentBaseUrl, currentBaseUrl, inviteSecret)
     : '';
@@ -34,6 +38,8 @@ export function deriveRemoteViewModel(state: RemoteViewState): RemoteViewModel {
     copiedInvite: state.copiedInvite,
     currentBaseUrl,
     guestInviteValue: state.guestInviteDraft,
+    hostOwnerAccessMessage: hostOwnerAccessRequired ? ownerAccessRequiredMessage() : '',
+    hostOwnerAccessRequired,
     inviteLink,
     mode,
     persistedMode,

@@ -248,6 +248,7 @@ export function handleCentralServerRoute(req: RequestLike, res: ResponseLike, ur
   if (url.pathname === '/api/server/room-access'
     || url.pathname === '/api/server/room-access/bootstrap'
     || url.pathname === '/api/server/room-access/enable'
+    || url.pathname === '/api/server/room-access/invite'
     || url.pathname === '/api/server/room-access/guest-secret/rotate'
     || url.pathname === '/api/server/room-access/disable') {
     const centralPath = url.pathname.replace('/api/server', '/api');

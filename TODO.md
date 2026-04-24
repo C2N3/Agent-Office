@@ -22,6 +22,7 @@ This file tracks client-side work that is planned, discovered, blocked, or compl
 
 ## Done
 
+- [x] Execute the Remote invite UX plan in `docs/plans/remote-invite-ux-plan.md`.
 - [x] Narrow the remaining overlay grid layout mutation in `src/renderer/agentGrid/layout.ts` behind a layout-focused boundary while keeping animation scheduling and resize calculations imperative.
 - [x] Execute the current client UI runtime boundary direction in `docs/plans/client-ui-runtime-boundary.md` by keeping Vite limited to browser entries, moving React-rendered control events into React ownership, and keeping office canvas/runtime code imperative TypeScript.
 - [x] Finish overlay shell migration by narrowing the remaining `src/renderer/agentGrid.ts` card-list append/reorder/remove ownership while keeping animation and resize runtime code imperative.
@@ -59,7 +60,9 @@ This file tracks client-side work that is planned, discovered, blocked, or compl
 - [x] Make the sidebar `Cloudflare` tab available in production builds instead of hiding it behind the dashboard dev-mode gate.
 - [x] Make Host worker connections prefer the stored owner room secret over any legacy worker token so public Host mode connects after `Start Host` without exposing token UI.
 - [x] Make Host start from just the server URL by auto-enabling the public room and storing the owner secret, and add localhost invite deep-links that auto-join Guest mode from the URL fragment.
-- [x] Rework the Remote tab so mode pills are draft-only, each mode is confirmed through a clear primary action (`Use Local Only`, `Start Host`, `Join as Guest`), and the worker token field explains when host authentication is actually required.
+- [x] Simplify the Remote Host UX so server setup, invite creation, invite rotation, and stopping guest access use user-facing labels and are documented in `README.md`/`README.ko.md`.
+- [x] Fix Host invite creation so reopening an existing room rotates a fresh guest link and host mode without credentials does not loop in worker reconnects.
+- [x] Rework the Remote tab so mode pills are draft-only, each mode is confirmed through a clear primary action (`Switch to Local Only`, `Start Hosting`, `Join Host`), and the worker token field explains when host authentication is actually required.
 - [x] Add an explicit server mode selector for agent character visibility and sharing: Local Only shows only this client's agent characters, Host shares this client's server for others, and Guest connects to an existing host.
 - [x] In Host mode, generate and store an owner-only secret plus a guest invite secret, expose a copyable invite link that includes the guest secret, support guest secret rotation, and treat tunnel URL refresh as a connectivity update rather than authentication.
 - [x] Keep local-only agent character creation/update working through the Electron IPC and `~/.agent-office/agent-registry.json` path when no central server sync is enabled.

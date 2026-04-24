@@ -368,6 +368,31 @@ describe('dashboard-server', () => {
       );
     });
 
+    test('POST /api/server/room-access/invite forwards to the central invite endpoint', async () => {
+      global.fetch = jest.fn(async () => ({
+        ok: true,
+        status: 200,
+        headers: { get: () => 'application/json' },
+        text: async () => JSON.stringify({ guestSecret: 'guest-secret' }),
+      }));
+
+      const { req, res } = createMockReqRes('POST', '/api/server/room-access/invite');
+      handler(req, res);
+      req.emit('data', JSON.stringify({}));
+      req.emit('end');
+      await new Promise(setImmediate);
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/room-access/invite'),
+        expect.objectContaining({
+          method: 'POST',
+        })
+      );
+      expect(res.writeHead).toHaveBeenCalledWith(200, expect.objectContaining({
+        'Content-Type': 'application/json',
+      }));
+    });
+
     test('GET /api/heatmap returns 503 when no heatmap scanner', () => {
       const { req, res } = createMockReqRes('GET', '/api/heatmap');
       handler(req, res);

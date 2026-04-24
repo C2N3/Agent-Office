@@ -108,7 +108,7 @@ describe('remote view react boundary', () => {
           json: async () => createRoomAccess(),
         };
       }
-      if (path === '/api/server/room-access/enable') {
+      if (path === '/api/server/room-access/invite') {
         return {
           ok: true,
           json: async () => createRoomAccess({
@@ -155,8 +155,8 @@ describe('remote view react boundary', () => {
 
     expect(markup).toContain('type="radio"');
     expect(markup).toContain('name="remoteMode"');
-    expect(markup).toContain('Using Local Only');
-    expect(markup).not.toContain('Server URL');
+    expect(markup).toContain('Local Only is active');
+    expect(markup).not.toContain('Host server');
     expect(markup).not.toContain('Status');
   });
 
@@ -176,13 +176,39 @@ describe('remote view react boundary', () => {
 
     const markup = renderRemotePanelMarkup();
 
-    expect(markup).toContain('Host room owner');
-    expect(markup).toContain('Save Address');
-    expect(markup).toContain('Open Public Room');
+    expect(markup).toContain('Share this office');
+    expect(markup).toContain('Update Server');
+    expect(markup).toContain('Create Invite Link');
     expect(markup).toContain('Status');
     expect(markup).toContain('Connected devices');
     expect(markup).toContain('https://central.example.test');
-    expect(markup).not.toContain('Join by invite link');
+    expect(markup).not.toContain('Join a host');
+  });
+
+  test('renders an owner-access recovery state instead of a blank host invite state', () => {
+    const { updateRemoteViewState } = loadRemoteModules();
+
+    updateRemoteViewState({
+      config: {
+        remoteMode: 'host',
+        roomSecretConfigured: false,
+        baseUrl: 'https://central.example.test',
+      },
+      roomAccess: createRoomAccess({
+        publicMode: false,
+        ownerSecretSet: true,
+        ownerSecretState: 'set',
+      }),
+      serverUrlDraft: 'https://central.example.test',
+      snapshot: createRemoteSnapshot(),
+    });
+
+    const markup = renderRemotePanelMarkup();
+
+    expect(markup).toContain('Owner access required');
+    expect(markup).toContain('another owner credential');
+    expect(markup).not.toContain('No one can join until you create an invite link.');
+    expect(markup).not.toContain('Create Invite Link');
   });
 
   test('renders only the guest controls when persisted mode is guest', () => {
@@ -200,9 +226,9 @@ describe('remote view react boundary', () => {
 
     const markup = renderRemotePanelMarkup();
 
-    expect(markup).toContain('Join by invite link');
-    expect(markup).toContain('Use New Invite');
-    expect(markup).not.toContain('Host room owner');
+    expect(markup).toContain('Join a host');
+    expect(markup).toContain('Switch Invite');
+    expect(markup).not.toContain('Share this office');
   });
 
   test('draft mode selection does not persist until the host action runs', async () => {
@@ -235,6 +261,195 @@ describe('remote view react boundary', () => {
       remoteMode: 'host',
       roomSecret: 'owner-secret',
     });
+  });
+
+  test('creating an invite uses the dedicated invite endpoint on supported servers', async () => {
+    const { createRemoteViewActions, getRemoteViewState, updateRemoteViewState } = loadRemoteModules();
+
+    updateRemoteViewState({
+      config: {
+        remoteMode: 'host',
+        roomSecretConfigured: true,
+        baseUrl: 'https://central.example.test',
+      },
+      roomAccess: createRoomAccess({ publicMode: false, ownerSecretSet: true, guestSecretSet: false }),
+      serverUrlDraft: 'https://central.example.test',
+      snapshot: createRemoteSnapshot(),
+    });
+
+    const actions = createRemoteViewActions();
+    await actions.onHostEnable();
+
+    expect(global.fetch).toHaveBeenCalledWith('/api/server/room-access/invite', expect.objectContaining({
+      method: 'POST',
+    }));
+    expect(getRemoteViewState().lastIssuedGuestSecret).toBe('guest-secret');
+    expect(getRemoteViewState().remoteActionError).toBe('');
+  });
+
+  test('creating an invite falls back to enable and rotate only when invite returns 404', async () => {
+    global.fetch = jest.fn(async (path) => {
+      if (path === '/api/server/room-access') {
+        return {
+          ok: true,
+          json: async () => createRoomAccess({
+            publicMode: true,
+            guestSecretSet: true,
+            ownerSecretSet: true,
+          }),
+        };
+      }
+      if (path === '/api/server/room-access/invite') {
+        return {
+          ok: false,
+          status: 404,
+          json: async () => ({ error: { message: 'route not found' } }),
+        };
+      }
+      if (path === '/api/server/room-access/enable') {
+        return {
+          ok: true,
+          json: async () => createRoomAccess({
+            publicMode: true,
+            guestSecretSet: false,
+            ownerSecretSet: true,
+          }),
+        };
+      }
+      if (path === '/api/server/room-access/guest-secret/rotate') {
+        return {
+          ok: true,
+          json: async () => createRoomAccess({
+            publicMode: true,
+            guestSecret: 'rotated-guest-secret',
+            guestSecretSet: true,
+            ownerSecretSet: true,
+          }),
+        };
+      }
+      throw new Error(`Unexpected fetch: ${path}`);
+    });
+
+    const { createRemoteViewActions, getRemoteViewState, updateRemoteViewState } = loadRemoteModules();
+
+    updateRemoteViewState({
+      config: {
+        remoteMode: 'host',
+        roomSecretConfigured: true,
+        baseUrl: 'https://central.example.test',
+      },
+      roomAccess: createRoomAccess({ publicMode: false, ownerSecretSet: true, guestSecretSet: true }),
+      serverUrlDraft: 'https://central.example.test',
+      snapshot: createRemoteSnapshot(),
+    });
+
+    const actions = createRemoteViewActions();
+    await actions.onHostEnable();
+
+    expect(global.fetch).toHaveBeenCalledWith('/api/server/room-access/invite', expect.objectContaining({
+      method: 'POST',
+    }));
+    expect(global.fetch).toHaveBeenCalledWith('/api/server/room-access/enable', expect.objectContaining({
+      method: 'POST',
+    }));
+    expect(global.fetch).toHaveBeenCalledWith('/api/server/room-access/guest-secret/rotate', expect.objectContaining({
+      method: 'POST',
+    }));
+    expect(getRemoteViewState().lastIssuedGuestSecret).toBe('rotated-guest-secret');
+    expect(getRemoteViewState().remoteActionError).toBe('');
+  });
+
+  test('invite creation reports a server contract error when guestSecret is missing', async () => {
+    global.fetch = jest.fn(async (path) => {
+      if (path === '/api/server/room-access') {
+        return {
+          ok: true,
+          json: async () => createRoomAccess(),
+        };
+      }
+      if (path === '/api/server/room-access/invite') {
+        return {
+          ok: true,
+          json: async () => createRoomAccess({
+            publicMode: true,
+            ownerSecret: 'owner-secret',
+            ownerSecretSet: true,
+            guestSecretSet: true,
+          }),
+        };
+      }
+      throw new Error(`Unexpected fetch: ${path}`);
+    });
+
+    const { createRemoteViewActions, getRemoteViewState, updateRemoteViewState } = loadRemoteModules();
+
+    updateRemoteViewState({
+      config: {
+        remoteMode: 'host',
+        roomSecretConfigured: false,
+        baseUrl: 'https://central.example.test',
+      },
+      roomAccess: createRoomAccess(),
+      serverUrlDraft: 'https://central.example.test',
+      snapshot: createRemoteSnapshot(),
+    });
+
+    const actions = createRemoteViewActions();
+    await actions.onHostEnable();
+
+    expect(serverConnection.saveCentralServerConfig).toHaveBeenCalledWith({
+      remoteMode: 'host',
+      roomSecret: 'owner-secret',
+    });
+    expect(getRemoteViewState().lastIssuedGuestSecret).toBe('');
+    expect(getRemoteViewState().remoteActionError).toBe('Server contract error: invite response is missing guestSecret');
+  });
+
+  test('invite creation does not fall back on owner-access failures', async () => {
+    serverConnection.fetchCentralServerConfig.mockResolvedValue({
+      remoteMode: 'host',
+      roomSecretConfigured: false,
+      baseUrl: 'https://central.example.test',
+    });
+    global.fetch = jest.fn(async (path) => {
+      if (path === '/api/server/room-access') {
+        return {
+          ok: false,
+          json: async () => ({ error: { message: 'authentication required' } }),
+        };
+      }
+      if (path === '/api/server/room-access/invite') {
+        return {
+          ok: false,
+          status: 403,
+          json: async () => ({ error: { message: 'forbidden' } }),
+        };
+      }
+      throw new Error(`Unexpected fetch: ${path}`);
+    });
+
+    const { createRemoteViewActions, getRemoteViewState, updateRemoteViewState } = loadRemoteModules();
+
+    updateRemoteViewState({
+      config: {
+        remoteMode: 'host',
+        roomSecretConfigured: false,
+        baseUrl: 'https://central.example.test',
+      },
+      roomAccess: createRoomAccess(),
+      serverUrlDraft: 'https://central.example.test',
+      snapshot: createRemoteSnapshot(),
+    });
+
+    const actions = createRemoteViewActions();
+    await actions.onHostEnable();
+
+    expect(global.fetch).toHaveBeenCalledWith('/api/server/room-access/invite', expect.objectContaining({
+      method: 'POST',
+    }));
+    expect(global.fetch).not.toHaveBeenCalledWith('/api/server/room-access/enable', expect.anything());
+    expect(global.fetch).not.toHaveBeenCalledWith('/api/server/room-access/guest-secret/rotate', expect.anything());
+    expect(getRemoteViewState().remoteActionError).toContain('another owner credential');
   });
 
   test('auto-joins guest mode from invite hash without manual paste', async () => {
@@ -281,7 +496,7 @@ describe('remote view react boundary', () => {
       baseUrl: 'https://other.example.test',
       remoteMode: 'host',
     });
-    expect(getRemoteViewState().remoteActionError).toContain('does not accept the current host access');
+    expect(getRemoteViewState().remoteActionError).toContain('does not have host access');
   });
 
   test('saving a host address ignores transient room-access failures', async () => {
@@ -325,5 +540,29 @@ describe('remote view react boundary', () => {
     expect(getRemoteViewState().snapshot).toEqual(expect.objectContaining({
       config: expect.objectContaining({ baseUrl: 'https://central.example.test' }),
     }));
+    });
   });
-});
+
+  test('refreshing host mode surfaces owner-access recovery guidance when room access is unauthorized', async () => {
+    serverConnection.fetchCentralServerConfig.mockResolvedValue({
+      remoteMode: 'host',
+      roomSecretConfigured: false,
+      baseUrl: 'https://central.example.test',
+    });
+    global.fetch = jest.fn(async (path) => {
+      if (path === '/api/server/room-access') {
+        return {
+          ok: false,
+          json: async () => ({ error: { message: 'authentication required' } }),
+        };
+      }
+      throw new Error(`Unexpected fetch: ${path}`);
+    });
+
+    const { refreshRemoteViewData, getRemoteViewState } = loadRemoteModules();
+    await refreshRemoteViewData();
+
+    expect(getRemoteViewState().roomAccess).toBeNull();
+    expect(getRemoteViewState().remoteActionError).toContain('another owner credential');
+    expect(getRemoteViewState().remoteActionError).toContain('restore the owner secret');
+  });

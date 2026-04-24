@@ -36,6 +36,8 @@ export type RemoteViewModel = {
   copiedInvite: boolean;
   currentBaseUrl: string;
   guestInviteValue: string;
+  hostOwnerAccessMessage: string;
+  hostOwnerAccessRequired: boolean;
   inviteLink: string;
   mode: RemoteMode;
   persistedMode: RemoteMode;
