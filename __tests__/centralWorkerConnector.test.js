@@ -153,8 +153,8 @@ describe('central worker WebSocket URL helper', () => {
   });
 
   test('uses roomSecret in guest mode worker URLs', () => {
-    expect(buildWorkerWebSocketUrl('https://central.example.test', '', 'guest-secret'))
-      .toBe('wss://central.example.test/api/workers/connect?roomSecret=guest-secret');
+    expect(buildWorkerWebSocketUrl('https://central.example.test', '', 'guest-secret', 'guest-a'))
+      .toBe('wss://central.example.test/api/workers/connect?roomSecret=guest-secret&participantId=guest-a');
   });
 });
 
@@ -310,7 +310,7 @@ describe('CentralWorkerConnector', () => {
     });
     connector.start();
     const socket = FakeWebSocket.instances[0];
-    expect(socket.url).toBe('ws://central.example.test/api/workers/connect?roomSecret=guest-secret');
+    expect(socket.url).toBe('ws://central.example.test/api/workers/connect?roomSecret=guest-secret&participantId=worker-pc-a');
     connector.stop();
   });
 

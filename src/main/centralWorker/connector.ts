@@ -157,7 +157,8 @@ export class CentralWorkerConnector {
       this.setStatus('error');
       return;
     }
-    const url = centralHttpUrlToWorkerWebSocketUrl(baseUrl, auth.token, auth.roomSecret);
+    const participantId = remoteMode === 'guest' ? this.workerId : '';
+    const url = centralHttpUrlToWorkerWebSocketUrl(baseUrl, auth.token, auth.roomSecret, participantId);
     this.intentionalClose = false;
     this.setStatus(reconnecting ? 'reconnecting' : 'connecting');
 

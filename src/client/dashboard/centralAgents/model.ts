@@ -33,6 +33,12 @@ export type CentralAgentBulkResponse = { agents?: CentralAgent[]; error?: { mess
 
 type SyncableAgentRecord = DashboardAgentRecord | DashboardAgent;
 
+export function isCentralAgentArchived(agent: CentralAgent): boolean {
+  const archivedAt = String(agent.archivedAt || '').trim();
+  if (!archivedAt) return false;
+  return !archivedAt.startsWith('0001-01-01T00:00:00');
+}
+
 function basename(value?: string | null): string {
   const normalized = String(value || '').replace(/\\/g, '/').replace(/\/+$/, '');
   return normalized.split('/').filter(Boolean).pop() || '';

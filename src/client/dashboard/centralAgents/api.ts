@@ -7,6 +7,7 @@ import {
   centralPayloadFromRecord,
   centralWorkspaceFromRecord,
   mergeCentralAgent,
+  isCentralAgentArchived,
   shouldSyncLocalAgent,
 } from './model.js';
 
@@ -56,7 +57,7 @@ export async function fetchCentralDashboardAgents(): Promise<DashboardAgent[]> {
   if (!await isCentralAgentSyncEnabled()) return [];
   const response = await fetchJSON<CentralAgentsResponse>('/api/server/agents');
   return (response.agents || [])
-    .filter((agent) => !agent.archivedAt)
+    .filter((agent) => !isCentralAgentArchived(agent))
     .map(mergeCentralAgent);
 }
 

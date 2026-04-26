@@ -83,6 +83,43 @@ describe('centralAgents', () => {
     expect(global.fetch.mock.calls.every(([url]) => String(url) === '/api/server/config')).toBe(true);
   });
 
+  test('fetchCentralDashboardAgents keeps Go zero-time archivedAt agents and drops archived records', async () => {
+    global.fetch = jest.fn(async (url) => {
+      if (String(url) === '/api/server/config') {
+        return makeJsonResponse({ agentSyncEnabled: true, workerEnabled: true, remoteMode: 'guest' });
+      }
+      if (String(url) === '/api/server/agents') {
+        return makeJsonResponse({
+          agents: [
+            {
+              id: 'visible-1',
+              name: 'Visible',
+              projectId: 'project_agent-office',
+              archivedAt: '0001-01-01T00:00:00Z',
+            },
+            {
+              id: 'archived-1',
+              name: 'Archived',
+              projectId: 'project_agent-office',
+              archivedAt: '2026-04-26T00:00:00Z',
+            },
+          ],
+        });
+      }
+      throw new Error(`Unexpected fetch: ${url}`);
+    });
+
+    const api = require('../src/client/dashboard/centralAgents/api.ts');
+
+    await expect(api.fetchCentralDashboardAgents()).resolves.toEqual([
+      expect.objectContaining({
+        id: 'visible-1',
+        name: 'Visible',
+        metadata: expect.objectContaining({ source: 'central' }),
+      }),
+    ]);
+  });
+
   test('browser-local sync uploads only local registered agents', async () => {
     global.fetch = jest.fn(async (url, options) => {
       if (String(url) === '/api/server/config') {
