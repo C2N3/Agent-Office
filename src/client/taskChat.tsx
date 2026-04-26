@@ -224,12 +224,23 @@ function TaskChatApp(): ReactElement {
       } catch {}
     };
 
+    const onAgentUpdate = (event: MessageEvent) => {
+      try {
+        const data = JSON.parse(event.data) as { data?: AgentInfo };
+        const agent = data.data;
+        if (!agent || agent.id !== agentRegistryId) return;
+        setAgentInfo(agent);
+      } catch {}
+    };
+
     eventSource.addEventListener('connected', () => setDisconnected(false));
     eventSource.addEventListener('task.running', onTaskRunning);
     eventSource.addEventListener('task.output', onTaskOutput);
     eventSource.addEventListener('task.succeeded', onTaskTerminal('completed'));
     eventSource.addEventListener('task.failed', onTaskTerminal('failed'));
     eventSource.addEventListener('task.cancelled', onTaskTerminal('cancelled'));
+    eventSource.addEventListener('agent.created', onAgentUpdate);
+    eventSource.addEventListener('agent.updated', onAgentUpdate);
     eventSource.onerror = () => {
       setDisconnected(true);
       eventSource.close();
@@ -378,7 +389,8 @@ function TaskChatApp(): ReactElement {
   }, [agentInfo, agentRegistryId, hasActiveTasks, refreshAgentInfo, saveMessage, workspaceBusy]);
 
   const workspace = agentInfo?.metadata?.workspace || null;
-  const showWorkspaceBar = !!workspace && workspace.type === 'git-worktree' && !!workspace.branch;
+  const hasWorktree = !!workspace && (workspace.type === 'git-worktree' || !!workspace.worktreePath);
+  const showWorkspaceBar = hasWorktree && !!(workspace?.branch || workspace?.worktreePath);
   const workspaceLocked = hasActiveTasks || !!workspaceBusy;
 
   const resolvedAvatar = avatarFile ? `/assets/characters/${avatarFile}` : '';
@@ -412,7 +424,7 @@ function TaskChatApp(): ReactElement {
               <path d="M6 8v4c0 2 2 4 4 4h2" />
               <path d="M18 8v4c0 2-2 4-4 4h-2" />
             </svg>
-            <span className="tc-workspace-branch">{workspace.branch}</span>
+            <span className="tc-workspace-branch">{workspace.branch || '(no branch)'}</span>
             {workspace.repositoryName ? <span className="tc-workspace-repo">{workspace.repositoryName}</span> : null}
           </div>
           <div className="tc-workspace-actions">
