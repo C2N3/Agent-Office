@@ -10,14 +10,9 @@ export function AgentPanel({
   agents,
   focusedAgentId,
   historyByAgent,
-  onAssignTask,
   onChangeAvatar,
   onDelete,
   onFocus,
-  onFormTeam,
-  onMergeWorkspace,
-  onOpenHistory,
-  onRemoveWorkspace,
   onRename,
   onTerminate,
   onUnregister,
@@ -25,14 +20,9 @@ export function AgentPanel({
   agents: DashboardAgent[];
   focusedAgentId: string | null;
   historyByAgent: Map<string, DashboardAgentHistoryEntry[]>;
-  onAssignTask: (agentId: string) => void;
   onChangeAvatar: (agentId: string, registryId: string) => void;
   onDelete: (registryId: string) => void;
   onFocus: (agentId: string | null) => void;
-  onFormTeam: (agentId: string, registryId: string) => void;
-  onMergeWorkspace: (registryId: string, branch: string) => void;
-  onOpenHistory: (registryId: string, agentName: string) => void;
-  onRemoveWorkspace: (registryId: string, branch: string) => void;
   onRename: (agentId: string, nickname: string) => boolean | Promise<boolean>;
   onTerminate: (agentId: string) => void;
   onUnregister: (registryId: string) => void;
@@ -58,14 +48,9 @@ export function AgentPanel({
           agent={agent}
           focused={focusedAgentId === agent.id}
           history={historyByAgent.get(agent.id) || []}
-          onAssignTask={onAssignTask}
           onChangeAvatar={onChangeAvatar}
           onDelete={onDelete}
           onFocus={onFocus}
-          onFormTeam={onFormTeam}
-          onMergeWorkspace={onMergeWorkspace}
-          onOpenHistory={onOpenHistory}
-          onRemoveWorkspace={onRemoveWorkspace}
           onRename={onRename}
           onTerminate={onTerminate}
           onUnregister={onUnregister}

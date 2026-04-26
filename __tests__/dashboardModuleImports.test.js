@@ -19,15 +19,9 @@ describe('dashboard module imports', () => {
     expect(typeof AvatarPickerModal).toBe('function');
   });
 
-  test('assign task modal resolves the dashboard modal registry module', () => {
-    const { AssignTaskModal } = require('../src/client/dashboard/react/assignTaskModal/index.tsx');
+  test('create agent modal resolves', () => {
+    const { CreateAgentModal } = require('../src/client/dashboard/react/createAgentModal/index.tsx');
 
-    expect(typeof AssignTaskModal).toBe('function');
-  });
-
-  test('team formation modal resolves the shared dashboard module', () => {
-    const { TeamFormationModal } = require('../src/client/dashboard/react/teamFormationModal.tsx');
-
-    expect(typeof TeamFormationModal).toBe('function');
+    expect(typeof CreateAgentModal).toBe('function');
   });
 });

@@ -5,51 +5,8 @@ import { syncCentralAgentRemoval } from './centralAgents/index.js';
 import { notifyDashboardStore } from './state/store.js';
 import { dashboardModalRegistry } from './modals/registry.js';
 
-export function openAgentHistory(historyId: string, agentName: string): void {
-  dashboardModalRegistry.openSessionHistory?.(historyId, agentName || 'Agent');
-}
-
 export function openCreateAgentModal(): void {
   dashboardModalRegistry.openCreateAgentModal?.();
-}
-
-export function assignTaskToAgent(agentId: string): void {
-  const agent = state.agents.get(agentId);
-  if (agent) {
-    dashboardModalRegistry.openAssignTaskModal?.(agent);
-  }
-}
-
-export function formTeamForAgent(agentId: string, registryId: string): void {
-  dashboardModalRegistry.openTeamFormationModal?.(agentId, registryId);
-}
-
-export async function mergeWorkspaceAgent(registryId: string, branch: string): Promise<void> {
-  if (!confirm(`Merge branch "${branch || ''}" and archive this workspace agent?`)) return;
-  const dashboardAPI = getDashboardAPI();
-  const result = await dashboardAPI?.mergeWorkspaceAgent?.(registryId);
-  if (!result?.success) {
-    alert(result?.error || 'Workspace merge failed.');
-    return;
-  }
-  archiveState.items = null;
-  if (state.currentView === 'archive') {
-    await renderArchiveView(true);
-  }
-}
-
-export async function removeWorkspaceAgent(registryId: string, branch: string): Promise<void> {
-  if (!confirm(`Remove workspace branch "${branch || ''}" without merge and archive this agent?`)) return;
-  const dashboardAPI = getDashboardAPI();
-  const result = await dashboardAPI?.removeWorkspaceAgent?.(registryId);
-  if (!result?.success) {
-    alert(result?.error || 'Workspace removal failed.');
-    return;
-  }
-  archiveState.items = null;
-  if (state.currentView === 'archive') {
-    await renderArchiveView(true);
-  }
 }
 
 export async function terminateAgent(agentId: string): Promise<void> {

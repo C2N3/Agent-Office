@@ -32,7 +32,6 @@ declare global {
     dashboardAPI?: DashboardAPI;
     dashboardResumeUtils?: DashboardResumeUtils;
     electronAPI?: ElectronAPI;
-    openSessionHistory?: (registryId: string, agentName?: string) => void;
     openTerminalForAgent?: (agentId: string, openOptions?: DashboardOpenOptions) => Promise<void> | void;
     initOffice?: () => void;
     officeOnAgentCreated?: (agent: DashboardAgent) => void;
@@ -53,7 +52,6 @@ declare global {
   var dashboardAPI: DashboardAPI | undefined;
   var dashboardResumeUtils: DashboardResumeUtils | undefined;
   var electronAPI: ElectronAPI | undefined;
-  var openSessionHistory: Window['openSessionHistory'];
   var openTerminalForAgent: Window['openTerminalForAgent'];
   var initOffice: Window['initOffice'];
   var officeOnAgentCreated: Window['officeOnAgentCreated'];

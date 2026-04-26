@@ -11,7 +11,6 @@ import {
   getArchiveRefreshToken,
   getHeatmapRefreshToken,
   hideTooltip,
-  openArchivedAgentHistory,
   registerHeatmapTooltipHost,
   renderArchiveView,
   renderHeatmapView,
@@ -283,7 +282,6 @@ export function ArchiveView({ currentView }: { currentView: DashboardView }): Re
                   <div><span>Last End</span><strong>{formatDateTime(card.lastSession?.endedAt)}</strong></div>
                 </div>
                 <div className="archive-card-actions">
-                  <button className="agent-history-btn" type="button" onClick={() => openArchivedAgentHistory(card.item.id, card.item.name || 'Workspace')}>History</button>
                   <button className="agent-delete-btn archive-delete-btn" title="Delete archived record" type="button" onClick={() => { void deleteArchivedAgentRecord(card.item.id); }}>Delete</button>
                 </div>
               </article>

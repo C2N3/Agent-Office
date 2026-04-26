@@ -32,15 +32,11 @@ function handleTaskSuccess(orchestrator, taskId) {
     const originalPath = regAgent?.workspace?.repositoryPath || task.repositoryPath;
     orchestrator.agentRegistry.updateAgent(task.agentRegistryId, { projectPath: originalPath });
 
-    // Regular task: show done + report bubble (team tasks are handled by TeamCoordinator directly)
-    {
-      orchestrator.agentManager.updateAgent({
-        registryId: task.agentRegistryId,
-        state: 'done',
-        projectPath: originalPath,
-        reportTaskId: task.id,
-      }, 'orchestrator');
-    }
+    orchestrator.agentManager.updateAgent({
+      registryId: task.agentRegistryId,
+      state: 'done',
+      projectPath: originalPath,
+    }, 'orchestrator');
   }
 
   for (const candidate of orchestrator.taskStore.getAllTasks()) {

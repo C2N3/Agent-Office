@@ -1,14 +1,9 @@
 import React, { type MouseEvent, type ReactElement, useCallback, useRef } from 'react';
 import {
-  assignTaskToAgent,
   changeAgentAvatar,
   deleteAgentRecord,
   focusAgentCard,
-  formTeamForAgent,
-  mergeWorkspaceAgent,
-  openAgentHistory,
   openCreateAgentModal,
-  removeWorkspaceAgent,
   renameAgentNickname,
   terminateAgent,
   unregisterAgent,
@@ -207,14 +202,9 @@ export function OfficeView({
                 agents={visibleAgents}
                 focusedAgentId={focusedAgentId}
                 historyByAgent={agentHistory}
-                onAssignTask={assignTaskToAgent}
                 onChangeAvatar={changeAgentAvatar}
                 onDelete={deleteAgentRecord}
                 onFocus={focusAgentCard}
-                onFormTeam={formTeamForAgent}
-                onMergeWorkspace={mergeWorkspaceAgent}
-                onOpenHistory={openAgentHistory}
-                onRemoveWorkspace={removeWorkspaceAgent}
                 onRename={renameAgentNickname}
                 onTerminate={terminateAgent}
                 onUnregister={unregisterAgent}

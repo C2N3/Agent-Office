@@ -21,12 +21,10 @@ import {
   unpinCharacter,
 } from './drag.js';
 import {
-  clearReportBubble,
   findNearDeskIdleSpot,
   humanizeToolName,
   mapStatus,
   setBubble,
-  setReportBubble,
 } from './presentation.js';
 
 export const officeCharacters: any = {
@@ -49,7 +47,5 @@ export const officeCharacters: any = {
   _humanizeToolName: humanizeToolName,
   _mapStatus: mapStatus,
   _setBubble: setBubble,
-  setReportBubble,
-  clearReportBubble,
   _findNearDeskIdleSpot: findNearDeskIdleSpot,
 };

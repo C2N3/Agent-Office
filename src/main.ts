@@ -31,8 +31,6 @@ const { CentralWorkerConnector } = require('./main/centralWorker/connector');
 const { WorkspaceManager } = require('./main/workspace');
 const { TaskStore } = require('./main/orchestrator/taskStore');
 const { Orchestrator } = require('./main/orchestrator/index');
-const { TeamStore } = require('./main/orchestrator/teamStore');
-const { TeamCoordinator } = require('./main/orchestrator/teamCoordinator');
 const { configureApplicationMenu, configureRuntime, installStartupLogging } = require('./main/bootstrap/runtime');
 const {
   autoRegisterProviders,
@@ -213,18 +211,6 @@ app.whenReady().then(async () => {
     maxConcurrentTasks: 5,
   });
 
-  const teamStore = new TeamStore(debugLog);
-  const teamCoordinator = new TeamCoordinator({
-    teamStore,
-    terminalManager,
-    processManager,
-    agentRegistry,
-    agentManager,
-    workspaceManager,
-    debugLog,
-  });
-  orchestrator.teamCoordinator = teamCoordinator;
-
   // Route provider completion events (Claude Stop hook, Codex task_complete,
   // session.end) into the orchestrator so it can end tasks based on the CLI's
   // own signal instead of guessing from TUI output.
@@ -271,7 +257,6 @@ app.whenReady().then(async () => {
     workspaceManager,
     terminalManager,
     sessionPids,
-    teamCoordinator,
     debugLog,
     isDev,
   });

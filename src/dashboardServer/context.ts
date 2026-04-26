@@ -7,7 +7,6 @@ export interface DashboardRefs {
   workspaceManager: any;
   terminalManager: any;
   sessionPids: Map<string, number> | null;
-  teamCoordinator: any;
   missionControlWindow: any;
   appMeta: {
     isDev: boolean;
@@ -28,7 +27,6 @@ export const refs: DashboardRefs = {
   workspaceManager: null,
   terminalManager: null,
   sessionPids: null,
-  teamCoordinator: null,
   missionControlWindow: null,
   appMeta: {
     isDev: false,
@@ -70,10 +68,6 @@ export function setTerminalManager(tm: any): void {
 
 export function setSessionPids(sessionPids: Map<string, number>): void {
   refs.sessionPids = sessionPids;
-}
-
-export function setTeamCoordinator(tc: any): void {
-  refs.teamCoordinator = tc;
 }
 
 export function setDashboardWindow(window: any): void {

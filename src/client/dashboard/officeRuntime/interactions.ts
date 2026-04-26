@@ -5,7 +5,6 @@ import {
   getDashboardAPI,
   state,
 } from '../shared.js';
-import { dashboardModalRegistry } from '../modals/registry.js';
 import { getOfficeCanvasHost, OFFICE, officeCharacters, officeRenderer } from '../../office/index.js';
 import { getOfficePopoverHost, hideOfficePopover } from './popover.js';
 
@@ -150,16 +149,6 @@ function bindOfficeInteractionRuntime(
     if (!character) {
       hideOfficePopover();
       return;
-    }
-    if (character.bubble && character.bubble.isReport) {
-      if (character.bubble.taskId && dashboardModalRegistry.openTaskReportModal) {
-        dashboardModalRegistry.openTaskReportModal(character.bubble.taskId);
-        return;
-      }
-      if (character.bubble.teamId && dashboardModalRegistry.openTeamReportModal) {
-        dashboardModalRegistry.openTeamReportModal(character.bubble.teamId);
-        return;
-      }
     }
 
     const agent = state.agents.get(character.id);

@@ -1,10 +1,3 @@
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
-const { cleanTerminalOutput } = require('./cleanOutput');
-
-const TASK_OUTPUT_DIR = path.join(os.homedir(), '.agent-office', 'task-output');
-
 function autoCommitTaskChanges(orchestrator, task) {
   if (!task || !task.workspacePath || !orchestrator.workspaceManager) return;
   try {
@@ -22,23 +15,4 @@ function autoCommitTaskChanges(orchestrator, task) {
   }
 }
 
-function saveTaskOutput(orchestrator, taskId) {
-  const parser = orchestrator.outputParsers.get(taskId);
-  if (!parser) return;
-
-  try {
-    const fullOutput = parser.getFullOutput();
-    if (!fullOutput) return;
-    const clean = cleanTerminalOutput(fullOutput);
-    if (!clean) return;
-    fs.mkdirSync(TASK_OUTPUT_DIR, { recursive: true });
-    const outputPath = path.join(TASK_OUTPUT_DIR, `${taskId}.txt`);
-    fs.writeFileSync(outputPath, clean, 'utf-8');
-    orchestrator.taskStore.updateTask(taskId, { outputPath });
-    orchestrator.debugLog(`[Orchestrator] Saved task output: ${outputPath}`);
-  } catch (e) {
-    orchestrator.debugLog(`[Orchestrator] Failed to save task output: ${e.message}`);
-  }
-}
-
-module.exports = { autoCommitTaskChanges, saveTaskOutput };
+module.exports = { autoCommitTaskChanges };

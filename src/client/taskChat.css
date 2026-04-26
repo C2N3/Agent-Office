@@ -109,6 +109,83 @@ html, body {
   cursor: not-allowed;
 }
 
+/* ── Workspace bar ── */
+.tc-workspace-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 12px;
+  background: rgba(47, 129, 247, 0.06);
+  border-bottom: 1px solid var(--tc-border);
+  flex-shrink: 0;
+  font-size: 0.72rem;
+}
+
+.tc-workspace-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--tc-text-muted);
+}
+
+.tc-workspace-icon {
+  flex-shrink: 0;
+  color: var(--tc-primary);
+}
+
+.tc-workspace-branch {
+  color: var(--tc-text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tc-workspace-repo {
+  color: var(--tc-text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tc-workspace-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.tc-workspace-btn {
+  padding: 3px 10px;
+  border: 1px solid var(--tc-border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--tc-text-muted);
+  font-family: inherit;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tc-workspace-btn.apply:hover:not(:disabled) {
+  background: rgba(35, 134, 54, 0.18);
+  border-color: var(--tc-success);
+  color: var(--tc-text);
+}
+
+.tc-workspace-btn.remove:hover:not(:disabled) {
+  background: rgba(248, 81, 73, 0.14);
+  border-color: var(--tc-error);
+  color: var(--tc-text);
+}
+
+.tc-workspace-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 /* ── Body ── */
 .tc-body {
   flex: 1;

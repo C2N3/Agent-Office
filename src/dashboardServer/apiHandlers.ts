@@ -13,15 +13,6 @@ import { getClients, getRefs } from './context.js';
 import { calculateStats } from './stats.js';
 import { handleAgentApiRoute } from './agentHandlers.js';
 import { handleCreateTask, handleListTasks, handleTaskApiRoute } from './taskHandlers.js';
-import {
-  handleCreateTeam,
-  handleListTeams,
-  handleGetTeam,
-  handleTeamReport,
-  handleTeamMerge,
-  handleTeamReject,
-  handleTeamCancel,
-} from './teamHandlers.js';
 
 export { handleAgentApiRoute, handleTaskApiRoute };
 
@@ -184,49 +175,6 @@ export function handleGetOfficeLayoutAsset(_req: RequestLike, res: ResponseLike,
     res.writeHead(200, { 'Content-Type': mime, 'Cache-Control': 'no-cache' });
     res.end(data);
   });
-}
-
-export function handleTeamApiRoute(req: RequestLike, res: ResponseLike, url: URL): boolean {
-  if (!url.pathname.startsWith('/api/teams')) return false;
-
-  if (url.pathname === '/api/teams' || url.pathname === '/api/teams/') {
-    if (req.method === 'GET') {
-      handleListTeams(req as any, res as any);
-      return true;
-    }
-    if (req.method === 'POST') {
-      handleCreateTeam(req as any, res as any);
-      return true;
-    }
-    return false;
-  }
-
-  const parts = url.pathname.replace('/api/teams/', '').split('/').filter(Boolean);
-  const teamId = parts[0];
-  const action = parts[1];
-
-  if (req.method === 'GET' && !action) {
-    handleGetTeam(req as any, res as any, teamId);
-    return true;
-  }
-  if (req.method === 'GET' && action === 'report') {
-    handleTeamReport(req as any, res as any, teamId);
-    return true;
-  }
-  if (req.method === 'POST' && action === 'merge') {
-    handleTeamMerge(req as any, res as any, teamId);
-    return true;
-  }
-  if (req.method === 'POST' && action === 'reject') {
-    handleTeamReject(req as any, res as any, teamId);
-    return true;
-  }
-  if (req.method === 'POST' && action === 'cancel') {
-    handleTeamCancel(req as any, res as any, teamId);
-    return true;
-  }
-
-  return false;
 }
 
 export const apiRoutes = {

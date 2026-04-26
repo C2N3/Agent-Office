@@ -3,7 +3,6 @@ import { PORT } from './constants.js';
 import {
   attachAgentManagerBroadcasts,
   attachOrchestratorBroadcasts,
-  attachTeamCoordinatorBroadcasts,
   broadcastSSE,
   broadcastUpdate,
 } from './broadcast.js';
@@ -15,7 +14,6 @@ import {
   setWorkspaceManager as setWorkspaceManagerRef,
   setTerminalManager as setTerminalManagerRef,
   setSessionPids as setSessionPidsRef,
-  setTeamCoordinator as setTeamCoordinatorRef,
   setDashboardWindow as setDashboardWindowRef,
   setHeatmapScanner as setHeatmapScannerRef,
   setSessionScanner as setSessionScannerRef,
@@ -71,11 +69,6 @@ export function setTerminalManager(tm: any): void {
 
 export function setSessionPids(sessionPids: Map<string, number>): void {
   setSessionPidsRef(sessionPids);
-}
-
-export function setTeamCoordinator(tc: any): void {
-  setTeamCoordinatorRef(tc);
-  attachTeamCoordinatorBroadcasts(tc);
 }
 
 export function setDashboardWindow(window: any): void {

@@ -29,13 +29,24 @@ type TaskChatBridge = {
     message: Omit<ChatMessage, 'id'> & { id?: string },
   ) => Promise<{ success?: boolean; message?: ChatMessage }>;
   clearHistory?: (agentRegistryId: string) => Promise<{ success?: boolean }>;
+  mergeWorkspace?: (registryId: string) => Promise<{ success?: boolean; error?: string | null }>;
+  removeWorkspace?: (registryId: string) => Promise<{ success?: boolean; error?: string | null }>;
+};
+
+type AgentWorkspace = {
+  type?: string | null;
+  branch?: string | null;
+  repositoryName?: string | null;
+  repositoryPath?: string | null;
+  worktreePath?: string | null;
 };
 
 type AgentInfo = {
   id: string;
+  registryId?: string | null;
   provider?: string | null;
   project?: string | null;
-  metadata?: { projectPath?: string | null; workspace?: { repositoryPath?: string | null; worktreePath?: string | null } | null } | null;
+  metadata?: { projectPath?: string | null; workspace?: AgentWorkspace | null } | null;
 };
 
 type TaskOutputPayload = {
@@ -116,6 +127,7 @@ function TaskChatApp(): ReactElement {
   const [activeTaskIds, setActiveTaskIds] = useState<Set<string>>(() => new Set());
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [disconnected, setDisconnected] = useState(false);
+  const [workspaceBusy, setWorkspaceBusy] = useState<'merge' | 'remove' | null>(null);
 
   const bodyRef = useRef<HTMLDivElement | null>(null);
   const textAreaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -320,6 +332,55 @@ function TaskChatApp(): ReactElement {
     seenTaskIdsRef.current = new Set();
   }, [agentRegistryId, hasActiveTasks]);
 
+  const refreshAgentInfo = useCallback(async () => {
+    if (!agentRegistryId) return;
+    const info = await fetchAgentInfo(agentRegistryId);
+    setAgentInfo(info);
+  }, [agentRegistryId]);
+
+  const handleWorkspaceAction = useCallback(async (action: 'merge' | 'remove') => {
+    if (!agentRegistryId || hasActiveTasks || workspaceBusy) return;
+    const branch = agentInfo?.metadata?.workspace?.branch || '';
+    const message = action === 'merge'
+      ? `Apply branch "${branch}" — merge to base and clean up the workspace?`
+      : `Remove workspace branch "${branch}" without merging?`;
+    if (!window.confirm(message)) return;
+
+    const bridge = getBridge();
+    const fn = action === 'merge' ? bridge?.mergeWorkspace : bridge?.removeWorkspace;
+    if (!fn) {
+      setErrorMessage('Workspace controls are unavailable in this environment.');
+      return;
+    }
+
+    setWorkspaceBusy(action);
+    setErrorMessage(null);
+    try {
+      const result = await fn(agentRegistryId);
+      if (!result?.success) {
+        const errText = result?.error || `Workspace ${action} failed.`;
+        setErrorMessage(errText);
+        saveMessage({ id: makeMessageId(), kind: 'assistant-error', text: errText, timestamp: Date.now() });
+        return;
+      }
+      const statusText = action === 'merge'
+        ? `Workspace merged${branch ? ` (${branch})` : ''}`
+        : `Workspace removed${branch ? ` (${branch})` : ''}`;
+      saveMessage({ id: makeMessageId(), kind: 'status', text: statusText, timestamp: Date.now() });
+      await refreshAgentInfo();
+    } catch (error) {
+      const text = error instanceof Error ? error.message : String(error);
+      setErrorMessage(text);
+      saveMessage({ id: makeMessageId(), kind: 'assistant-error', text: `Workspace ${action} failed: ${text}`, timestamp: Date.now() });
+    } finally {
+      setWorkspaceBusy(null);
+    }
+  }, [agentInfo, agentRegistryId, hasActiveTasks, refreshAgentInfo, saveMessage, workspaceBusy]);
+
+  const workspace = agentInfo?.metadata?.workspace || null;
+  const showWorkspaceBar = !!workspace && workspace.type === 'git-worktree' && !!workspace.branch;
+  const workspaceLocked = hasActiveTasks || !!workspaceBusy;
+
   const resolvedAvatar = avatarFile ? `/assets/characters/${avatarFile}` : '';
   const now = Date.now();
 
@@ -340,6 +401,42 @@ function TaskChatApp(): ReactElement {
         </button>
         <button className="tc-icon-btn" title="Close" type="button" onClick={() => closeWindow(agentRegistryId)}>×</button>
       </header>
+      {showWorkspaceBar && workspace ? (
+        <div className="tc-workspace-bar">
+          <div className="tc-workspace-meta">
+            <svg className="tc-workspace-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="6" cy="6" r="2" />
+              <circle cx="18" cy="6" r="2" />
+              <circle cx="12" cy="18" r="2" />
+              <path d="M8 6h8" />
+              <path d="M6 8v4c0 2 2 4 4 4h2" />
+              <path d="M18 8v4c0 2-2 4-4 4h-2" />
+            </svg>
+            <span className="tc-workspace-branch">{workspace.branch}</span>
+            {workspace.repositoryName ? <span className="tc-workspace-repo">{workspace.repositoryName}</span> : null}
+          </div>
+          <div className="tc-workspace-actions">
+            <button
+              className="tc-workspace-btn apply"
+              disabled={workspaceLocked}
+              title="Merge branch and clean up workspace"
+              type="button"
+              onClick={() => { void handleWorkspaceAction('merge'); }}
+            >
+              {workspaceBusy === 'merge' ? '…' : 'Apply'}
+            </button>
+            <button
+              className="tc-workspace-btn remove"
+              disabled={workspaceLocked}
+              title="Remove workspace and delete branch without merge"
+              type="button"
+              onClick={() => { void handleWorkspaceAction('remove'); }}
+            >
+              {workspaceBusy === 'remove' ? '…' : 'Remove'}
+            </button>
+          </div>
+        </div>
+      ) : null}
       <div ref={bodyRef} className="tc-body">
         {messages.length === 0 ? (
           <div className="tc-empty">Send a message to start a task.</div>

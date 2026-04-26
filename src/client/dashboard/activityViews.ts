@@ -5,7 +5,6 @@ import {
   getDashboardAPI,
   historyState,
 } from './shared.js';
-import { dashboardModalRegistry } from './modals/registry.js';
 
 let heatmapTooltipHost: HTMLDivElement | null = null;
 
@@ -121,11 +120,6 @@ async function loadArchivedAgents(force = false): Promise<DashboardArchiveItem[]
 
 export async function fetchArchivedAgents(force = false): Promise<DashboardArchiveItem[]> {
   return loadArchivedAgents(force);
-}
-
-export function openArchivedAgentHistory(historyId: string, agentName = 'Workspace'): void {
-  const opener = dashboardModalRegistry.openSessionHistory || globalThis.openSessionHistory;
-  opener?.(historyId, agentName || 'Workspace');
 }
 
 export async function deleteArchivedAgentRecord(registryId: string): Promise<void> {

@@ -76,19 +76,6 @@ export function attachOrchestratorBroadcasts(orchestrator: any): void {
   orchestrator.broadcastTaskOutput = broadcastTaskOutput;
 }
 
-export function attachTeamCoordinatorBroadcasts(teamCoordinator: any): void {
-  if (!teamCoordinator) return;
-
-  const events = ['team:created', 'team:updated', 'team:working', 'team:completed', 'team:failed', 'team:cancelled'];
-  for (const event of events) {
-    const sseType = event.replace(':', '.');
-    teamCoordinator.on(event, (team: any) => {
-      broadcastSSE(sseType, team);
-      broadcastUpdate(event, team);
-    });
-  }
-}
-
 export function broadcastTaskOutput(taskId: string, text: string, stream: 'stdout' | 'stderr'): void {
   broadcastSSE('task.output', { taskId, text, stream });
   broadcastUpdate('task:output', { taskId, text, stream });

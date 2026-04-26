@@ -16,14 +16,9 @@ type AgentCardProps = {
   agent: DashboardAgent;
   focused: boolean;
   history: DashboardAgentHistoryEntry[];
-  onAssignTask: (agentId: string) => void;
   onChangeAvatar: (agentId: string, registryId: string) => void;
   onDelete: (registryId: string) => void;
   onFocus: (agentId: string) => void;
-  onFormTeam: (agentId: string, registryId: string) => void;
-  onMergeWorkspace: (registryId: string, branch: string) => void;
-  onOpenHistory: (registryId: string, agentName: string) => void;
-  onRemoveWorkspace: (registryId: string, branch: string) => void;
   onRename: (agentId: string, nickname: string) => boolean | Promise<boolean>;
   onTerminate: (agentId: string) => void;
   onUnregister: (registryId: string) => void;
@@ -69,14 +64,9 @@ export function AgentCard({
   agent,
   focused,
   history,
-  onAssignTask,
   onChangeAvatar,
   onDelete,
   onFocus,
-  onFormTeam,
-  onMergeWorkspace,
-  onOpenHistory,
-  onRemoveWorkspace,
   onRename,
   onTerminate,
   onUnregister,
@@ -143,52 +133,6 @@ export function AgentCard({
         </div>
       ) : null}
       <div className="mc-agent-actions">
-        {isLocalRegistered && agent.registryId ? (
-          <>
-            <button className="agent-history-btn" type="button" onClick={(event) => { event.stopPropagation(); onOpenHistory(agent.registryId!, displayName); }} {...tooltipProps('Session History')}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M12 8v4l3 3" />
-                <circle cx="12" cy="12" r="9" />
-              </svg>
-            </button>
-            <button className="agent-assign-task-btn" type="button" onClick={(event) => { event.stopPropagation(); onAssignTask(agent.id); }} {...tooltipProps('Assign Task')}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M12 5v14M5 12h14" />
-              </svg>
-            </button>
-            <button className="agent-form-team-btn" type="button" onClick={(event) => { event.stopPropagation(); onFormTeam(agent.id, agent.registryId!); }} {...tooltipProps('Form Team')}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-              </svg>
-            </button>
-          </>
-        ) : null}
-        {isLocalRegistered && agent.registryId && workspaceBranch && workspaceMeta?.type === 'git-worktree' ? (
-          <>
-            <button className="agent-workspace-btn merge" type="button" onClick={(event) => { event.stopPropagation(); onMergeWorkspace(agent.registryId!, workspaceBranch); }} {...tooltipProps('Merge branch and clean up workspace')}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="6" cy="6" r="2" />
-                <circle cx="18" cy="6" r="2" />
-                <circle cx="12" cy="18" r="2" />
-                <path d="M8 6h8" />
-                <path d="M6 8v4c0 2 2 4 4 4h2" />
-                <path d="M18 8v4c0 2-2 4-4 4h-2" />
-              </svg>
-            </button>
-            <button className="agent-workspace-btn remove" type="button" onClick={(event) => { event.stopPropagation(); onRemoveWorkspace(agent.registryId!, workspaceBranch); }} {...tooltipProps('Remove workspace and delete branch without merge')}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M3 6h18" />
-                <path d="M8 6V4h8v2" />
-                <path d="M19 6l-1 14H6L5 6" />
-                <path d="M10 11v6" />
-                <path d="M14 11v6" />
-              </svg>
-            </button>
-          </>
-        ) : null}
         {isLocalRegistered && agent.registryId ? (
           <button className="agent-avatar-btn" type="button" onClick={(event) => { event.stopPropagation(); onChangeAvatar(agent.id, agent.registryId!); }} {...tooltipProps('Change avatar')}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

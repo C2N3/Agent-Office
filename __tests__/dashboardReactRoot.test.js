@@ -86,25 +86,22 @@ describe('dashboard react-owned surfaces', () => {
           { state: 'waiting', ts: 100 },
           { state: 'working', ts: 200 },
         ],
-        onAssignTask: jest.fn(),
         onChangeAvatar: jest.fn(),
         onDelete: jest.fn(),
         onFocus: jest.fn(),
-        onFormTeam: jest.fn(),
-        onMergeWorkspace: jest.fn(),
-        onOpenHistory: jest.fn(),
-        onRemoveWorkspace: jest.fn(),
         onRename: jest.fn(),
         onTerminate: jest.fn(),
         onUnregister: jest.fn(),
       }),
     );
 
-    expect(markup).toContain('agent-assign-task-btn');
-    expect(markup).toContain('agent-form-team-btn');
-    expect(markup).toContain('agent-workspace-btn merge');
+    expect(markup).toContain('agent-avatar-btn');
+    expect(markup).toContain('agent-terminate-btn');
     expect(markup).toContain('mc-timeline');
     expect(markup).toContain('Builder');
+    expect(markup).not.toContain('agent-assign-task-btn');
+    expect(markup).not.toContain('agent-form-team-btn');
+    expect(markup).not.toContain('agent-workspace-btn');
   });
 
   test('TerminalTabs renders the active tab chrome in React', () => {
@@ -264,43 +261,4 @@ describe('dashboard react-owned surfaces', () => {
     expect(markup).not.toContain('data-provider=');
   });
 
-  test('React report helpers parse diffs and preserve follow-up task context', () => {
-    const { parseDiffToFiles } = require('../src/client/dashboard/react/reportDiff.tsx');
-    const { createFollowUpTaskPayload } = require('../src/client/dashboard/react/taskReportData.ts');
-
-    const files = parseDiffToFiles([
-      'diff --git a/src/app.ts b/src/app.ts',
-      'index 111..222 100644',
-      '--- a/src/app.ts',
-      '+++ b/src/app.ts',
-      '@@ -1 +1 @@',
-      '-old',
-      '+new',
-    ].join('\n'));
-
-    expect(files).toEqual([
-      expect.objectContaining({
-        additions: 1,
-        deletions: 1,
-        name: 'src/app.ts',
-      }),
-    ]);
-    expect(createFollowUpTaskPayload({
-      agentRegistryId: 'agent-1',
-      executionEnvironment: 'native',
-      model: 'gpt-5.4',
-      provider: 'codex',
-      repositoryPath: '/repo/app',
-      taskId: 'task-1',
-      title: 'Task Report',
-    }, 'Fix the remaining issue')).toMatchObject({
-      agentRegistryId: 'agent-1',
-      executionEnvironment: 'native',
-      model: 'gpt-5.4',
-      parentTaskId: 'task-1',
-      provider: 'codex',
-      repositoryPath: '/repo/app',
-      title: 'Follow-up: Fix the remaining issue',
-    });
-  });
 });

@@ -56,17 +56,6 @@ export function mapStatus(agentOrStatus) {
 }
 
 export function setBubble(char, agentData) {
-  if (agentData.reportTaskId) {
-    char.bubble = { text: '작업 완료! 보고드릴게요', icon: null, expiresAt: Infinity, isReport: true, taskId: agentData.reportTaskId };
-    return;
-  }
-  if (agentData.reportTeamId) {
-    char.bubble = { text: '팀 작업 완료! 보고드릴게요', icon: null, expiresAt: Infinity, isReport: true, teamId: agentData.reportTeamId };
-    return;
-  }
-
-  if (char.bubble && char.bubble.isReport) return;
-
   let text = null;
   let icon = null;
   const status = this._mapStatus(agentData);
@@ -88,19 +77,6 @@ export function setBubble(char, agentData) {
   if (text) {
     const isPersistent = status === 'working' || status === 'thinking' || status === 'help' || status === 'error';
     char.bubble = { text, icon, expiresAt: isPersistent ? Infinity : Date.now() + 8000 };
-  }
-}
-
-export function setReportBubble(agentId, taskId) {
-  const char = this.characters.get(agentId);
-  if (!char) return;
-  char.bubble = { text: '작업 완료! 보고드릴게요', icon: null, expiresAt: Infinity, isReport: true, taskId };
-}
-
-export function clearReportBubble(agentId) {
-  const char = this.characters.get(agentId);
-  if (char?.bubble?.isReport) {
-    char.bubble = null;
   }
 }
 

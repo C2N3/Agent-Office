@@ -14,4 +14,6 @@ contextBridge.exposeInMainWorld('taskChatAPI', {
     message: { id?: string; kind: string; text: string; timestamp?: number; taskId?: string | null },
   ) => ipcRenderer.invoke(dashboardIpcChannels.taskChatAppend, agentRegistryId, message),
   clearHistory: (agentRegistryId: string) => ipcRenderer.invoke(dashboardIpcChannels.taskChatClearHistory, agentRegistryId),
+  mergeWorkspace: (registryId: string) => ipcRenderer.invoke(dashboardIpcChannels.workspaceMergeCleanup, registryId),
+  removeWorkspace: (registryId: string) => ipcRenderer.invoke(dashboardIpcChannels.workspaceRemove, registryId),
 });

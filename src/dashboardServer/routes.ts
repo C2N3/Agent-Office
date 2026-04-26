@@ -7,7 +7,6 @@ import {
   handleAgentApiRoute,
   handleGetOfficeLayoutAsset,
   handleTaskApiRoute,
-  handleTeamApiRoute,
 } from './apiHandlers.js';
 import { handleCentralServerRoute } from './centralServerProxy.js';
 import { extractToken, isValidToken } from './remoteAuth.js';
@@ -166,7 +165,6 @@ function handleAPIRequest(req: RequestLike, res: ResponseLike, url: URL): void {
     return;
   }
   if (handleTaskApiRoute(req as any, res as any, url)) return;
-  if (handleTeamApiRoute(req as any, res as any, url)) return;
   if (handleAgentApiRoute(req as any, res as any, url)) return;
 
   if (url.pathname === '/api/tunnel' && req.method === 'GET') { handleGetTunnel(req, res); return; }

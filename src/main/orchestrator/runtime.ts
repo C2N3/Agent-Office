@@ -2,7 +2,6 @@ const { createCLIAdapter } = require('./cliAdapter');
 const { OutputParser } = require('./outputParser');
 const { isTerminalStatus } = require('./taskStateMachine');
 const { cleanupTaskRuntime, cleanupTaskWorktree, withRepoLock } = require('./cleanup');
-const { saveTaskOutput } = require('./output');
 const {
   handleContextExhaustion,
   handleRetry,
@@ -207,7 +206,6 @@ function handleTaskExit(orchestrator, taskId, exitCode) {
   const task = orchestrator.taskStore.getTask(taskId);
   if (!task || isTerminalStatus(task.status)) return;
 
-  saveTaskOutput(orchestrator, taskId);
   cleanupTaskRuntime(orchestrator, taskId);
   orchestrator.taskStore.updateTask(taskId, { exitCode });
 
@@ -235,6 +233,5 @@ module.exports = {
   handleTaskOutput,
   handleTaskSuccess,
   resetIdleTimer,
-  saveTaskOutput,
   withRepoLock,
 };

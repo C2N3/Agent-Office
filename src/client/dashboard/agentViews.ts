@@ -20,7 +20,6 @@ import {
 } from './agentFilters.js';
 import { fetchCentralDashboardAgents } from './centralAgents/index.js';
 import { notifyDashboardStore } from './state/store.js';
-import { officeCharacters } from '../office/index.js';
 
 export { getStateColor };
 export {
@@ -79,17 +78,6 @@ export function connectSSE() {
     const data = JSON.parse(event.data) as { data: { id: string } };
     removeAgent(data.data.id);
     officeOnAgentRemoved(data.data);
-  });
-  eventSource.addEventListener('task.succeeded', (event: MessageEvent) => {
-    try {
-      const data = JSON.parse(event.data) as { data: { id?: string; agentRegistryId?: string } };
-      const task = data.data;
-      if (task.agentRegistryId && task.id) {
-        if (officeCharacters?.setReportBubble) {
-          officeCharacters.setReportBubble(task.agentRegistryId, task.id);
-        }
-      }
-    } catch {}
   });
 }
 

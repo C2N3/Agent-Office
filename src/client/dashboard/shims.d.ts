@@ -18,7 +18,6 @@ declare global {
   var dashboardAPI: DashboardAPI | undefined;
   var dashboardResumeUtils: DashboardResumeUtils | undefined;
   var openTerminalForAgent: ((agentId: string, openOptions?: DashboardOpenOptions) => Promise<void> | void) | undefined;
-  var openSessionHistory: ((registryId: string, agentName?: string) => void) | undefined;
   var initOffice: (() => void) | undefined;
   var officeCharacters: OfficeCharacters | undefined;
   var officeRenderer: OfficeRenderer | undefined;
