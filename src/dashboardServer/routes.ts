@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { URL } from 'url';
-import { APP_ROOT, ASSET_ROOT, HTML_FILE, MIME_TYPES, OVERLAY_FILE, PIP_FILE, PROJECT_ROOT, TASK_CHAT_FILE } from './constants.js';
+import { APP_ROOT, ASSET_ROOT, HTML_FILE, MIME_TYPES, OVERLAY_FILE, PIP_FILE, REMOTE_FILE, TASK_CHAT_FILE } from './constants.js';
 import {
   apiRoutes,
   handleAgentApiRoute,
@@ -75,8 +75,7 @@ function handleRequest(req: RequestLike, res: ResponseLike): void {
     return;
   }
   if (pathname === '/remote') {
-    const remoteFile = path.join(PROJECT_ROOT, 'remote.html');
-    serveFile(res, remoteFile, 'text/html; charset=utf-8', undefined, 500);
+    serveFile(res, REMOTE_FILE, 'text/html; charset=utf-8', undefined, 500);
     return;
   }
   if (pathname === '/pip') {

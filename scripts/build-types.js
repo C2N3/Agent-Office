@@ -8,25 +8,19 @@ const { createRecursiveWatcher } = require('./watch-utils');
 const projectRoot = path.join(__dirname, '..');
 const distRoot = path.join(projectRoot, 'dist');
 const srcRoot = path.join(projectRoot, 'src');
+const browserRoot = path.join(srcRoot, 'browser');
 const assetsRoot = path.join(projectRoot, 'assets');
 const watchMode = process.argv.includes('--watch');
 const watchTargets = [
   srcRoot,
   assetsRoot,
-  path.join(projectRoot, 'dashboard.html'),
-  path.join(projectRoot, 'index.html'),
-  path.join(projectRoot, 'overlay.html'),
-  path.join(projectRoot, 'pip.html'),
-  path.join(projectRoot, 'remote.html'),
-  path.join(projectRoot, 'taskChat.html'),
-  path.join(projectRoot, 'styles.css'),
   path.join(projectRoot, 'tsconfig.json'),
   path.join(projectRoot, 'tsconfig.emit.json'),
   path.join(projectRoot, 'tsconfig.client.json'),
   path.join(projectRoot, 'vite.config.ts'),
 ];
 const runtimeFiles = [
-  'remote.html',
+  { source: path.join(browserRoot, 'remote.html'), destination: path.join(distRoot, 'remote.html') },
 ];
 
 let buildRunning = false;
@@ -60,6 +54,7 @@ function cleanBrowserOutputs() {
   const cleanupTargets = [
     path.join(distRoot, 'public'),
     path.join(distRoot, 'src', 'client'),
+    path.join(distRoot, 'src', 'browser'),
     path.join(distRoot, 'src', 'office'),
     path.join(distRoot, 'src', 'renderer'),
     path.join(distRoot, 'assets'),
@@ -95,11 +90,8 @@ function copyTargetsToDist() {
 }
 
 function copyRuntimeFilesToDist() {
-  for (const relativePath of runtimeFiles) {
-    copyFile(
-      path.join(projectRoot, relativePath),
-      path.join(distRoot, relativePath),
-    );
+  for (const { source, destination } of runtimeFiles) {
+    copyFile(source, destination);
   }
 }
 

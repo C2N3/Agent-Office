@@ -8,6 +8,7 @@ import { resolveBrowserEntryPath } from './scripts/vite-browser-routes.js';
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 const assetRoot = path.join(projectRoot, 'assets');
+const browserRoot = path.join(projectRoot, 'src', 'browser');
 
 const MIME_TYPES: Record<string, string> = {
   '.css': 'text/css; charset=utf-8',
@@ -81,6 +82,7 @@ function browserContractPlugin(): Plugin {
 }
 
 export default defineConfig(({ command }) => ({
+  root: browserRoot,
   appType: 'mpa',
   base: command === 'build' ? './' : '/',
   publicDir: false,
@@ -97,18 +99,21 @@ export default defineConfig(({ command }) => ({
   build: {
     assetsDir: 'assets/client',
     emptyOutDir: false,
-    outDir: 'dist',
+    outDir: path.join(projectRoot, 'dist'),
     rollupOptions: {
       input: {
-        dashboard: path.join(projectRoot, 'dashboard.html'),
-        index: path.join(projectRoot, 'index.html'),
-        overlay: path.join(projectRoot, 'overlay.html'),
-        pip: path.join(projectRoot, 'pip.html'),
-        taskChat: path.join(projectRoot, 'taskChat.html'),
+        dashboard: path.join(browserRoot, 'dashboard.html'),
+        index: path.join(browserRoot, 'index.html'),
+        overlay: path.join(browserRoot, 'overlay.html'),
+        pip: path.join(browserRoot, 'pip.html'),
+        taskChat: path.join(browserRoot, 'taskChat.html'),
       },
     },
   },
   server: {
+    fs: {
+      allow: [projectRoot],
+    },
     host: '127.0.0.1',
     port: Number(process.env.DASHBOARD_DEV_SERVER_PORT || 3001),
     strictPort: true,

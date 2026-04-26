@@ -45,10 +45,10 @@ Agent characters react only to CLI sessions launched from Agent-Office tasks. Ex
 
 - Production runtime output lives in `dist/`
 - `npm start` and `npm run dashboard` automatically run `npm run build:dist` first
-- `npm run dev` starts Vite for `index`/`dashboard`/`pip`/`overlay`, watches `src/`, `assets/`, HTML/CSS, and tsconfig files, rebuilds `dist/` for non-browser changes, and restarts Electron when needed
+- `npm run dev` starts Vite for `index`/`dashboard`/`pip`/`overlay`, watches `src/`, `assets/`, browser shell HTML/CSS, and tsconfig files, rebuilds `dist/` for non-browser changes, and restarts Electron when needed
 - If you run a `node dist/...` entrypoint directly, build once first with `npm run build:dist`
 - TypeScript uses the TypeScript 7 preview toolchain through `tsgo`, not plain `tsc`
-- `src/client/` and `src/renderer/` are the authored browser roots; Electron main-process code, the dashboard server, and preload code stay on the `dist/` + `tsgo` runtime path
+- `src/browser/` contains browser shell HTML/CSS, while `src/client/` and `src/renderer/` contain authored browser code; Electron main-process code, the dashboard server, and preload code stay on the `dist/` + `tsgo` runtime path
 
 ## Providers
 
@@ -97,7 +97,7 @@ Run these from the client project directory.
 | `npm run postinstall`       | `node src/install.js`                                                                                     | Register the Claude hook; runs automatically after `npm install`               |
 | `npm run rebuild`           | `electron-rebuild -f -w node-pty`                                                                         | Rebuild the native `node-pty` module for Electron                              |
 | `npm run build:dist`        | `node scripts/build-types.js`                                                                             | Build the TypeScript runtime into `dist/`                                      |
-| `npm run build:dist:watch`  | `node scripts/build-types.js --watch`                                                                     | Watch source, assets, HTML/CSS, and tsconfig files and rebuild `dist/`         |
+| `npm run build:dist:watch`  | `node scripts/build-types.js --watch`                                                                     | Watch source, assets, browser shell HTML/CSS, and tsconfig files and rebuild `dist/` |
 | `npm run build:types`       | `npm run build:dist`                                                                                      | Alias for the `dist/` TypeScript build                                         |
 | `npm run prestart`          | `npm run build:dist`                                                                                      | Build `dist/`; runs automatically before `npm start`                           |
 | `npm start`                 | `node scripts/run-electron.js`                                                                            | Launch the Electron app after `prestart` builds `dist/`                        |

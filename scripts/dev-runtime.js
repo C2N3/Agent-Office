@@ -7,18 +7,14 @@ const { startViteDevServer } = require('./vite-dev-server');
 const { createFileChangeClassifier } = require('./dev-runtime/file-change');
 
 const projectRoot = path.join(__dirname, '..');
+const browserRoot = path.join(projectRoot, 'src', 'browser');
 const buildScript = path.join(__dirname, 'build-types.js');
 const electronScript = path.join(__dirname, 'run-electron.js');
 
 const watchTargets = [
   path.join(projectRoot, 'src'),
   path.join(projectRoot, 'assets'),
-  path.join(projectRoot, 'dashboard.html'),
-  path.join(projectRoot, 'index.html'),
-  path.join(projectRoot, 'overlay.html'),
-  path.join(projectRoot, 'pip.html'),
-  path.join(projectRoot, 'remote.html'),
-  path.join(projectRoot, 'styles.css'),
+  browserRoot,
   path.join(projectRoot, 'tsconfig.json'),
   path.join(projectRoot, 'tsconfig.emit.json'),
   path.join(projectRoot, 'tsconfig.client.json'),

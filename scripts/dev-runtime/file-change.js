@@ -1,14 +1,14 @@
 const path = require('path');
 
 const VITE_HANDLED_FILES = new Set([
-  'dashboard.html',
-  'index.html',
-  'overlay.html',
-  'pip.html',
-  'styles.css',
+  'src/browser/dashboard.html',
+  'src/browser/index.html',
+  'src/browser/overlay.html',
+  'src/browser/pip.html',
+  'src/browser/styles.css',
 ]);
 const BUILD_REQUIRED_STATIC_FILES = new Set([
-  'remote.html',
+  'src/browser/remote.html',
 ]);
 const VITE_RESTART_FILES = new Set([
   'tsconfig.client.json',

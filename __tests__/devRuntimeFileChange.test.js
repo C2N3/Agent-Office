@@ -12,15 +12,15 @@ describe('dev-runtime file-change classifier', () => {
     expect(classifier.requiresBuild(path.join(projectRoot, 'src/renderer/init.ts'))).toBe(false);
     expect(classifier.isViteHandledChange(path.join(projectRoot, 'assets/shared/avatars.json'))).toBe(true);
     expect(classifier.requiresBuild(path.join(projectRoot, 'assets/shared/avatars.json'))).toBe(false);
-    expect(classifier.isViteHandledChange(path.join(projectRoot, 'index.html'))).toBe(true);
-    expect(classifier.requiresBuild(path.join(projectRoot, 'index.html'))).toBe(false);
-    expect(classifier.isViteHandledChange(path.join(projectRoot, 'dashboard.html'))).toBe(true);
-    expect(classifier.requiresBuild(path.join(projectRoot, 'dashboard.html'))).toBe(false);
+    expect(classifier.isViteHandledChange(path.join(projectRoot, 'src/browser/index.html'))).toBe(true);
+    expect(classifier.requiresBuild(path.join(projectRoot, 'src/browser/index.html'))).toBe(false);
+    expect(classifier.isViteHandledChange(path.join(projectRoot, 'src/browser/dashboard.html'))).toBe(true);
+    expect(classifier.requiresBuild(path.join(projectRoot, 'src/browser/dashboard.html'))).toBe(false);
   });
 
   test('keeps runtime-only entrypoints on the dist rebuild path', () => {
     expect(classifier.requiresBuild(path.join(projectRoot, 'src/main/windowing/core.ts'))).toBe(true);
-    expect(classifier.requiresBuild(path.join(projectRoot, 'remote.html'))).toBe(true);
+    expect(classifier.requiresBuild(path.join(projectRoot, 'src/browser/remote.html'))).toBe(true);
   });
 
   test('marks Vite config changes for a Vite restart without rebuilding dist', () => {

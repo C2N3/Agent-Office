@@ -41,9 +41,9 @@ npm start
 
 > Agent-Office에서 시작한 task의 CLI 세션에만 캐릭터가 반응합니다. 외부 터미널이나 앱 내장 터미널에서 직접 실행한 `claude`/`codex`/`gemini`는 오피스에 표시되지 않습니다. `npm install`은 예전 버전이 `~/.claude/settings.json`에 써 두었던 Agent-Office 훅 항목을 정리하고, 이후의 감지는 orchestrator가 직접 띄우는 세션만을 대상으로 합니다.
 >
-> 현재 프로덕션 런타임 산출물은 `dist/` 기준입니다. `npm start`와 `npm run dashboard`는 실행 전에 자동으로 `npm run build:dist`를 호출합니다. `npm run dev`는 `index`/`dashboard`/`pip`/`overlay`에는 Vite를 붙이고, `src/`, `assets/`, HTML/CSS, tsconfig 변경 중 브라우저 바깥 변경에 대해서만 `dist/`를 다시 빌드한 뒤 Electron을 자동 재시작합니다. `node dist/...` 경로를 직접 실행할 때는 먼저 `npm run build:dist`를 한 번 돌려 두세요.
+> 현재 프로덕션 런타임 산출물은 `dist/` 기준입니다. `npm start`와 `npm run dashboard`는 실행 전에 자동으로 `npm run build:dist`를 호출합니다. `npm run dev`는 `index`/`dashboard`/`pip`/`overlay`에는 Vite를 붙이고, `src/`, `assets/`, 브라우저 shell HTML/CSS, tsconfig 변경 중 브라우저 바깥 변경에 대해서만 `dist/`를 다시 빌드한 뒤 Electron을 자동 재시작합니다. `node dist/...` 경로를 직접 실행할 때는 먼저 `npm run build:dist`를 한 번 돌려 두세요.
 >
-> 브라우저 작성 코드는 `src/client/`와 `src/renderer/`에 두고, Electron main process, dashboard server, preload 코드는 기존처럼 `dist/` + `tsgo` 경로를 유지합니다.
+> 브라우저 shell HTML/CSS는 `src/browser/`에 두고, 브라우저 작성 코드는 `src/client/`와 `src/renderer/`에 둡니다. Electron main process, dashboard server, preload 코드는 기존처럼 `dist/` + `tsgo` 경로를 유지합니다.
 
 ## Providers
 
@@ -91,7 +91,7 @@ codex exec --json "summarize this repo" | node dist/src/codex-forward.js
 | `npm run postinstall`       | `node src/install.js`                                                                                     | Claude hook을 등록합니다. `npm install` 후 자동으로 실행됩니다               |
 | `npm run rebuild`           | `electron-rebuild -f -w node-pty`                                                                         | Electron용 native `node-pty` 모듈을 다시 빌드합니다                          |
 | `npm run build:dist`        | `node scripts/build-types.js`                                                                             | TypeScript 런타임을 `dist/`로 빌드합니다                                     |
-| `npm run build:dist:watch`  | `node scripts/build-types.js --watch`                                                                     | source, assets, HTML/CSS, tsconfig 변경을 감시하며 `dist/`를 다시 빌드합니다 |
+| `npm run build:dist:watch`  | `node scripts/build-types.js --watch`                                                                     | source, assets, 브라우저 shell HTML/CSS, tsconfig 변경을 감시하며 `dist/`를 다시 빌드합니다 |
 | `npm run build:types`       | `npm run build:dist`                                                                                      | `dist/` TypeScript 빌드의 alias입니다                                        |
 | `npm run prestart`          | `npm run build:dist`                                                                                      | `dist/`를 빌드합니다. `npm start` 전에 자동으로 실행됩니다                   |
 | `npm start`                 | `node scripts/run-electron.js`                                                                            | `prestart`가 `dist/`를 빌드한 뒤 Electron 앱을 실행합니다                    |
