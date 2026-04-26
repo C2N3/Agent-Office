@@ -104,6 +104,16 @@ export async function syncCentralAgentUpdate(
   });
 }
 
+export async function syncCentralAgentDisplayName(id?: string | null, name = ''): Promise<void> {
+  if (!id || !name.trim()) return;
+  const config = await fetchCentralAgentConfig();
+  if (!config?.agentSyncEnabled || config.remoteMode === 'guest') return;
+  await fetchJSON<CentralAgentResponse>(`/api/server/agents/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ name: name.trim() || 'Agent' }),
+  });
+}
+
 export async function syncCentralAgentRemoval(id?: string | null): Promise<void> {
   if (!id || !await isBrowserLocalAgentSyncEnabled()) return;
   await fetchJSON<CentralAgentResponse>(`/api/server/agents/${encodeURIComponent(id)}`, {

@@ -1,7 +1,7 @@
 import { archiveState, getDashboardAPI, state } from './shared.js';
 import { renderArchiveView } from './activityViews.js';
 import { officeOnAgentUpdated, officeRenderer } from '../office/index.js';
-import { syncCentralAgentRemoval } from './centralAgents/index.js';
+import { syncCentralAgentDisplayName, syncCentralAgentRemoval } from './centralAgents/index.js';
 import { notifyDashboardStore } from './state/store.js';
 import { dashboardModalRegistry } from './modals/registry.js';
 
@@ -96,6 +96,11 @@ export async function renameAgentNickname(agentId: string, nickname: string): Pr
     state.agents.set(agentId, nextAgent);
     officeOnAgentUpdated(nextAgent);
     notifyDashboardStore();
+    if (trimmed) {
+      syncCentralAgentDisplayName(agent.registryId || agent.id, savedNickname).catch((error) => {
+        console.warn('[Central Agents] rename sync failed', error);
+      });
+    }
   }
 
   return true;

@@ -55,6 +55,21 @@ describe('dashboard modal registry', () => {
       removeNickname: jest.fn(async () => ({ success: true })),
       setNickname: jest.fn(async () => ({ success: true, nickname: 'Ace' })),
     };
+    global.fetch = jest.fn(async (url, options) => {
+      if (String(url) === '/api/server/config') {
+        return {
+          ok: true,
+          json: async () => ({ agentSyncEnabled: true, workerEnabled: false, remoteMode: 'host' }),
+        };
+      }
+      if (String(url) === '/api/server/agents/agent-1') {
+        return {
+          ok: true,
+          json: async () => ({ agent: JSON.parse(options.body) }),
+        };
+      }
+      throw new Error(`Unexpected fetch: ${url}`);
+    });
 
     const { state } = require('../src/client/dashboard/shared.ts');
     const { subscribeDashboardStore } = require('../src/client/dashboard/state/store.ts');
@@ -65,8 +80,13 @@ describe('dashboard modal registry', () => {
     state.agents.set('agent-1', { id: 'agent-1', name: 'Agent One', nickname: null });
 
     await expect(renameAgentNickname('agent-1', '  Ace  ')).resolves.toBe(true);
+    await new Promise(setImmediate);
 
     expect(global.dashboardAPI.setNickname).toHaveBeenCalledWith('agent-1', 'Ace');
+    expect(global.fetch).toHaveBeenCalledWith('/api/server/agents/agent-1', expect.objectContaining({
+      method: 'PATCH',
+      body: JSON.stringify({ name: 'Ace' }),
+    }));
     expect(state.agents.get('agent-1').nickname).toBe('Ace');
     expect(listener).toHaveBeenCalled();
 

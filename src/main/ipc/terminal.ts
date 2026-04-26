@@ -3,6 +3,7 @@ const { dashboardIpcChannels } = require('../../shared/contracts/ipc');
 
 function registerTerminalHandlers({
   agentManager,
+  agentRegistry,
   terminalManager,
   terminalProfileService,
   nicknameStore,
@@ -12,6 +13,10 @@ function registerTerminalHandlers({
     ipcMain.handle(dashboardIpcChannels.nicknameSet, async (_event, agentId, nickname) => {
       const result = nicknameStore.setNickname(agentId, nickname);
       const agent = agentManager?.getAgent(agentId);
+      const registryId = agent?.registryId || (agent?.isRegistered ? agent.id : null);
+      if (registryId && agentRegistry?.updateAgent) {
+        agentRegistry.updateAgent(registryId, { name: result });
+      }
       if (agent) {
         agentManager.updateAgent({ sessionId: agentId, state: agent.state }, 'nickname');
       }

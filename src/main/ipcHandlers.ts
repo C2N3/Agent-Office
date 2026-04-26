@@ -35,6 +35,7 @@ function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowM
 
   registerTerminalHandlers({
     agentManager,
+    agentRegistry,
     terminalManager,
     terminalProfileService,
     nicknameStore,

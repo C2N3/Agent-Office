@@ -12,6 +12,7 @@ export {
   fetchCentralAgentConfig,
   fetchCentralDashboardAgents,
   isCentralAgentSyncEnabled,
+  syncCentralAgentDisplayName,
   syncCentralAgentRecord,
   syncCentralAgentRemoval,
   syncCentralAgentUpdate,
