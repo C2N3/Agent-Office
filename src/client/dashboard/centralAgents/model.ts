@@ -24,6 +24,8 @@ export type CentralAgent = {
   model?: string;
   avatar?: { assetId?: string; url?: string; initials?: string; color?: string; };
   workspace?: CentralAgentWorkspace;
+  createdByParticipantId?: string;
+  updatedByParticipantId?: string;
   archivedAt?: string | null;
 };
 
@@ -32,6 +34,11 @@ export type CentralAgentResponse = { agent?: CentralAgent; error?: { message?: s
 export type CentralAgentBulkResponse = { agents?: CentralAgent[]; error?: { message?: string } | string; };
 
 type SyncableAgentRecord = DashboardAgentRecord | DashboardAgent;
+
+type CentralAgentMergeOptions = {
+  canManageCentralAgents?: boolean;
+  currentParticipantId?: string;
+};
 
 export function isCentralAgentArchived(agent: CentralAgent): boolean {
   const archivedAt = String(agent.archivedAt || '').trim();
@@ -102,6 +109,13 @@ function workspaceFromCentral(workspace?: CentralAgentWorkspace): DashboardWorks
   };
 }
 
+function canRenameCentralAgent(agent: CentralAgent, options: CentralAgentMergeOptions = {}): boolean {
+  if (options.canManageCentralAgents) return true;
+  const createdByParticipantId = String(agent.createdByParticipantId || '').trim();
+  const currentParticipantId = String(options.currentParticipantId || '').trim();
+  return !!createdByParticipantId && createdByParticipantId === currentParticipantId;
+}
+
 function localRefFromWorkspace(workspace?: DashboardWorkspace | null, projectPath?: string | null): string {
   return workspace?.worktreePath || workspace?.repositoryPath || projectPath || '';
 }
@@ -134,7 +148,7 @@ export function shouldSyncLocalAgent(agent: DashboardAgent): boolean {
   return !!agent.id && !!agent.isRegistered && agent.metadata?.source !== 'central';
 }
 
-function dashboardAgentFromCentral(agent: CentralAgent): DashboardAgent {
+function dashboardAgentFromCentral(agent: CentralAgent, options: CentralAgentMergeOptions = {}): DashboardAgent {
   const workspace = workspaceFromCentral(agent.workspace);
   return {
     id: agent.id,
@@ -148,6 +162,9 @@ function dashboardAgentFromCentral(agent: CentralAgent): DashboardAgent {
     provider: agent.provider || null,
     model: agent.model || null,
     metadata: {
+      canRename: canRenameCentralAgent(agent, options),
+      centralCreatedByParticipantId: agent.createdByParticipantId || null,
+      centralUpdatedByParticipantId: agent.updatedByParticipantId || null,
       source: 'central',
       projectSlug: agent.projectId || null,
       provider: agent.provider || null,
@@ -156,8 +173,8 @@ function dashboardAgentFromCentral(agent: CentralAgent): DashboardAgent {
   };
 }
 
-export function mergeCentralAgent(agent: CentralAgent): DashboardAgent {
-  const incoming = dashboardAgentFromCentral(agent);
+export function mergeCentralAgent(agent: CentralAgent, options: CentralAgentMergeOptions = {}): DashboardAgent {
+  const incoming = dashboardAgentFromCentral(agent, options);
   const existing = state.agents.get(agent.id);
   if (!existing || existing.metadata?.source === 'central') return incoming;
   return {

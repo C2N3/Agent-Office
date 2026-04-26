@@ -1,5 +1,6 @@
 import { parseGuestInviteLink, type RemoteMode } from '../remoteMode.js';
 import { fetchWithTimeout } from '../fetchWithTimeout.js';
+import { clearStoredHostInviteLink, persistHostInviteLink } from './invitePersistence.js';
 import { createRoomAccessSecret, isLoopbackCentralServer } from './recovery.js';
 import { checkHostAccess, fetchRoomAccessStatus } from './roomAccess.js';
 import type { RoomAccessStatus } from './types.js';
@@ -58,6 +59,17 @@ async function persistOwnerSecret(response: RoomAccessStatus): Promise<void> {
 function requireGuestSecret(response: RoomAccessStatus): RoomAccessStatus {
   if ((response.guestSecret || '').trim()) return response;
   throw new Error('Server contract error: invite response is missing guestSecret');
+}
+
+function recordIssuedHostInvite(baseUrl: string, guestSecret: string): { inviteLink: string; guestSecret: string } {
+  const normalizedGuestSecret = guestSecret.trim();
+  const inviteLink = persistHostInviteLink(baseUrl, normalizedGuestSecret);
+  return { inviteLink, guestSecret: normalizedGuestSecret };
+}
+
+function currentHostInviteBaseUrl(): string {
+  const state = getRemoteViewState();
+  return state.config?.baseUrl || state.serverUrlDraft || state.snapshot?.config?.baseUrl || '';
 }
 
 async function createLegacyHostInvite(): Promise<RoomAccessStatus> {
@@ -120,6 +132,12 @@ export async function refreshRemoteViewData(): Promise<void> {
     : await fetchRoomAccessStatus();
 
   const currentBaseUrl = config?.baseUrl || snapshot.config?.baseUrl || '';
+  const refreshedGuestSecret = persistedMode === 'host'
+    ? roomAccessResult.roomAccess?.guestSecret?.trim() || ''
+    : '';
+  const refreshedInviteLink = refreshedGuestSecret
+    ? persistHostInviteLink(currentBaseUrl, refreshedGuestSecret)
+    : '';
   const ownerAccessError = config?.remoteMode === 'host'
     && !config.roomSecretConfigured
     && !config.workerTokenConfigured
@@ -136,6 +154,8 @@ export async function refreshRemoteViewData(): Promise<void> {
           : ownerAccessError)
       : (isOwnerAccessErrorMessage(current.remoteActionError) ? '' : current.remoteActionError),
     hostRecoveryExpanded: ownerAccessError ? current.hostRecoveryExpanded : false,
+    lastIssuedGuestInviteLink: refreshedInviteLink || current.lastIssuedGuestInviteLink,
+    lastIssuedGuestSecret: refreshedGuestSecret || current.lastIssuedGuestSecret,
     serverUrlDraft: globalThis.document?.activeElement?.id === 'centralServerUrlInput'
       ? current.serverUrlDraft
       : currentBaseUrl,
@@ -183,6 +203,7 @@ export async function handleHostStart(): Promise<void> {
     resetCopiedInvite();
     updateRemoteViewState({
       hostRecoveryExpanded: false,
+      lastIssuedGuestInviteLink: '',
       lastIssuedGuestSecret: '',
       remoteActionError: await checkHostAccess() === 'auth' ? hostAddressMismatchMessage() : '',
       selectedRemoteMode: null,
@@ -192,9 +213,11 @@ export async function handleHostStart(): Promise<void> {
 
   try {
     const response = await createHostInvite();
+    const issued = recordIssuedHostInvite(serverUrl, response.guestSecret || '');
     updateRemoteViewState({
       hostRecoveryExpanded: false,
-      lastIssuedGuestSecret: response.guestSecret || '',
+      lastIssuedGuestInviteLink: issued.inviteLink,
+      lastIssuedGuestSecret: issued.guestSecret,
       remoteActionError: '',
       selectedRemoteMode: null,
     });
@@ -202,6 +225,7 @@ export async function handleHostStart(): Promise<void> {
   } catch (error) {
     updateRemoteViewState({
       hostRecoveryExpanded: false,
+      lastIssuedGuestInviteLink: '',
       lastIssuedGuestSecret: '',
       remoteActionError: formatHostRotateError(errorMessage(error, 'Failed to create invite link')),
       selectedRemoteMode: null,
@@ -213,8 +237,10 @@ export async function handleHostEnable(): Promise<void> {
   updateRemoteViewState({ remoteActionError: '', hostRecoveryExpanded: false });
   try {
     const response = await createHostInvite();
+    const issued = recordIssuedHostInvite(currentHostInviteBaseUrl(), response.guestSecret || '');
     updateRemoteViewState({
-      lastIssuedGuestSecret: response.guestSecret || '',
+      lastIssuedGuestInviteLink: issued.inviteLink,
+      lastIssuedGuestSecret: issued.guestSecret,
       selectedRemoteMode: null,
     });
     resetCopiedInvite();
@@ -242,8 +268,10 @@ export async function handleHostRotate(): Promise<void> {
   updateRemoteViewState({ remoteActionError: '', hostRecoveryExpanded: false });
   try {
     const response = await createHostInvite();
+    const issued = recordIssuedHostInvite(currentHostInviteBaseUrl(), response.guestSecret || '');
     updateRemoteViewState({
-      lastIssuedGuestSecret: response.guestSecret || '',
+      lastIssuedGuestInviteLink: issued.inviteLink,
+      lastIssuedGuestSecret: issued.guestSecret,
     });
     resetCopiedInvite();
   } catch (error) {
@@ -256,7 +284,8 @@ export async function handleHostDisable(): Promise<void> {
   updateRemoteViewState({ remoteActionError: '', hostRecoveryExpanded: false });
   try {
     await roomAccessAction('/api/server/room-access/disable');
-    updateRemoteViewState({ lastIssuedGuestSecret: '' });
+    clearStoredHostInviteLink();
+    updateRemoteViewState({ lastIssuedGuestInviteLink: '', lastIssuedGuestSecret: '' });
     resetCopiedInvite();
   } catch (error) {
     updateRemoteViewState({
@@ -332,9 +361,11 @@ export async function handleHostResetAccess(): Promise<void> {
       remoteMode: 'host',
       roomSecret: ownerSecret,
     });
+    const issued = recordIssuedHostInvite(baseUrl, guestSecret);
     updateRemoteViewState({
       hostRecoveryExpanded: false,
-      lastIssuedGuestSecret: guestSecret,
+      lastIssuedGuestInviteLink: issued.inviteLink,
+      lastIssuedGuestSecret: issued.guestSecret,
       remoteActionError: '',
       selectedRemoteMode: null,
     });

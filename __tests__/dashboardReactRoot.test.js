@@ -96,12 +96,44 @@ describe('dashboard react-owned surfaces', () => {
     );
 
     expect(markup).toContain('agent-avatar-btn');
+    expect(markup).toContain('Double-click to rename');
     expect(markup).toContain('agent-terminate-btn');
     expect(markup).toContain('mc-timeline');
     expect(markup).toContain('Builder');
     expect(markup).not.toContain('agent-assign-task-btn');
     expect(markup).not.toContain('agent-form-team-btn');
     expect(markup).not.toContain('agent-workspace-btn');
+  });
+
+  test('AgentCard disables rename affordance for non-owned central agents', () => {
+    const { AgentCard } = require('../src/client/dashboard/agentCard/view.tsx');
+
+    const markup = renderToStaticMarkup(
+      React.createElement(AgentCard, {
+        agent: {
+          id: 'central-1',
+          name: 'Remote Agent',
+          status: 'offline',
+          isRegistered: true,
+          metadata: {
+            canRename: false,
+            source: 'central',
+          },
+        },
+        focused: false,
+        history: [],
+        onChangeAvatar: jest.fn(),
+        onDelete: jest.fn(),
+        onFocus: jest.fn(),
+        onRename: jest.fn(),
+        onTerminate: jest.fn(),
+        onUnregister: jest.fn(),
+      }),
+    );
+
+    expect(markup).toContain('Remote Agent');
+    expect(markup).not.toContain('Double-click to rename');
+    expect(markup).not.toContain('nickname-input');
   });
 
   test('TerminalTabs renders the active tab chrome in React', () => {

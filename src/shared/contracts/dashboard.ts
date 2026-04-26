@@ -42,6 +42,9 @@ export type DashboardAgentMetadata = {
   runtimeSessionId?: string | null;
   resumeSessionId?: string | null;
   source?: string | null;
+  canRename?: boolean;
+  centralCreatedByParticipantId?: string | null;
+  centralUpdatedByParticipantId?: string | null;
 };
 
 export type DashboardAgent = {

@@ -73,6 +73,7 @@ describe('remote view react boundary', () => {
 
     global.localStorage = {
       getItem: jest.fn(() => null),
+      removeItem: jest.fn(),
       setItem: jest.fn(),
     };
     global.document = {
@@ -359,7 +360,43 @@ describe('remote view react boundary', () => {
       method: 'POST',
     }));
     expect(getRemoteViewState().lastIssuedGuestSecret).toBe('guest-secret');
+    expect(global.localStorage.setItem).toHaveBeenCalledWith(
+      'ao-host-invite-link',
+      'http://localhost:3000/#aoGuestSecret=guest-secret&aoBaseUrl=https%3A%2F%2Fcentral.example.test',
+    );
     expect(getRemoteViewState().remoteActionError).toBe('');
+  });
+
+  test('renders and copies the stored host invite link after the remote view reloads', () => {
+    const inviteLink = 'http://localhost:3000/#aoGuestSecret=stored-guest-secret&aoBaseUrl=https%3A%2F%2Fcentral.example.test';
+    global.localStorage.getItem.mockImplementation((key) => (
+      key === 'ao-host-invite-link' ? inviteLink : null
+    ));
+
+    const { createRemoteViewActions, resetRemoteViewState, updateRemoteViewState } = loadRemoteModules();
+    resetRemoteViewState();
+    updateRemoteViewState({
+      config: {
+        remoteMode: 'host',
+        roomSecretConfigured: true,
+        workerTokenConfigured: false,
+        baseUrl: 'https://central.example.test',
+      },
+      roomAccess: createRoomAccess({
+        publicMode: true,
+        guestSecretSet: true,
+        ownerSecretSet: true,
+      }),
+      serverUrlDraft: 'https://central.example.test',
+      snapshot: createRemoteSnapshot(),
+    });
+
+    const markup = renderRemotePanelMarkup();
+    expect(markup).toContain(inviteLink.replace(/&/g, '&amp;'));
+    expect(markup).not.toContain('does not have a current invite link');
+
+    createRemoteViewActions().onCopyInvite();
+    expect(global.navigator.clipboard.writeText).toHaveBeenCalledWith(inviteLink);
   });
 
   test('creating an invite falls back to enable and rotate only when invite returns 404', async () => {

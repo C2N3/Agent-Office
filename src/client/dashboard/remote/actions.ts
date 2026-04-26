@@ -1,21 +1,14 @@
 import { type RemoteMode } from '../remoteMode.js';
 import { refreshRemoteViewData } from './controller.js';
 import { copyInviteText, handleGuestJoin, handleHostDisable, handleHostEnable, handleHostResetAccess, handleHostRotate, handleHostStart, handleLocalApply } from './controller.js';
+import { deriveRemoteViewModel } from './model.js';
 import { getRemoteViewState, setSelectedRemoteMode, updateRemoteViewState } from './store.js';
 import type { RemoteViewActions } from './types.js';
 
 export function createRemoteViewActions(): RemoteViewActions {
   return {
     onCopyInvite: () => {
-      const state = getRemoteViewState();
-      const inviteLink = state.config?.baseUrl
-        && (state.lastIssuedGuestSecret || state.roomAccess?.guestSecret)
-        ? `${globalThis.window?.location?.origin || state.config.baseUrl}/#${new URLSearchParams({
-            aoGuestSecret: state.lastIssuedGuestSecret || state.roomAccess?.guestSecret || '',
-            aoBaseUrl: state.config.baseUrl,
-          }).toString()}`
-        : '';
-      copyInviteText(inviteLink);
+      copyInviteText(deriveRemoteViewModel(getRemoteViewState()).inviteLink);
     },
     onGuestInviteChange: (value: string) => {
       updateRemoteViewState({ guestInviteDraft: value });

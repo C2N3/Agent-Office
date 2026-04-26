@@ -86,7 +86,12 @@ describe('centralAgents', () => {
   test('fetchCentralDashboardAgents keeps Go zero-time archivedAt agents and drops archived records', async () => {
     global.fetch = jest.fn(async (url) => {
       if (String(url) === '/api/server/config') {
-        return makeJsonResponse({ agentSyncEnabled: true, workerEnabled: true, remoteMode: 'guest' });
+        return makeJsonResponse({
+          agentSyncEnabled: true,
+          remoteMode: 'guest',
+          workerEnabled: true,
+          workerId: 'worker-local',
+        });
       }
       if (String(url) === '/api/server/agents') {
         return makeJsonResponse({
@@ -95,6 +100,7 @@ describe('centralAgents', () => {
               id: 'visible-1',
               name: 'Visible',
               projectId: 'project_agent-office',
+              createdByParticipantId: 'worker-local',
               archivedAt: '0001-01-01T00:00:00Z',
             },
             {
@@ -118,6 +124,34 @@ describe('centralAgents', () => {
         metadata: expect.objectContaining({ source: 'central' }),
       }),
     ]);
+  });
+
+  test('fetchCentralDashboardAgents marks guest-owned central agents renameable only for the current participant', async () => {
+    global.fetch = jest.fn(async (url) => {
+      if (String(url) === '/api/server/config') {
+        return makeJsonResponse({
+          agentSyncEnabled: true,
+          remoteMode: 'guest',
+          workerEnabled: true,
+          workerId: 'worker-local',
+        });
+      }
+      if (String(url) === '/api/server/agents') {
+        return makeJsonResponse({
+          agents: [
+            { id: 'own-1', name: 'Own', createdByParticipantId: 'worker-local' },
+            { id: 'other-1', name: 'Other', createdByParticipantId: 'worker-other' },
+          ],
+        });
+      }
+      throw new Error(`Unexpected fetch: ${url}`);
+    });
+
+    const api = require('../src/client/dashboard/centralAgents/api.ts');
+    const agents = await api.fetchCentralDashboardAgents();
+
+    expect(agents.find((agent) => agent.id === 'own-1')?.metadata?.canRename).toBe(true);
+    expect(agents.find((agent) => agent.id === 'other-1')?.metadata?.canRename).toBe(false);
   });
 
   test('browser-local sync uploads only local registered agents', async () => {

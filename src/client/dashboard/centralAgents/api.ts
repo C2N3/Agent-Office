@@ -15,6 +15,7 @@ export type CentralServerConfig = {
   agentSyncEnabled?: boolean;
   workerEnabled?: boolean;
   remoteMode?: 'local' | 'host' | 'guest';
+  workerId?: string;
 };
 
 async function fetchJSON<T>(path: string, options?: RequestInit): Promise<T> {
@@ -54,11 +55,15 @@ export async function isBrowserLocalAgentSyncEnabled(): Promise<boolean> {
 }
 
 export async function fetchCentralDashboardAgents(): Promise<DashboardAgent[]> {
-  if (!await isCentralAgentSyncEnabled()) return [];
+  const config = await fetchCentralAgentConfig();
+  if (!config?.agentSyncEnabled) return [];
   const response = await fetchJSON<CentralAgentsResponse>('/api/server/agents');
   return (response.agents || [])
     .filter((agent) => !isCentralAgentArchived(agent))
-    .map(mergeCentralAgent);
+    .map((agent) => mergeCentralAgent(agent, {
+      canManageCentralAgents: config.remoteMode !== 'guest',
+      currentParticipantId: config.workerId,
+    }));
 }
 
 async function upsertCentralAgents(agents: Array<DashboardAgentRecord | DashboardAgent>): Promise<void> {

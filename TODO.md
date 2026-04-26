@@ -22,6 +22,8 @@ This file tracks client-side work that is planned, discovered, blocked, or compl
 
 ## Done
 
+- [x] Persist the latest host invitation link in localStorage and restore it in the Remote Access panel after tab switches or app restarts.
+- [x] Hide the dashboard rename UI for central agents this client cannot mutate, while keeping local and participant-owned central agents editable.
 - [x] Fix Guest remote agent visibility by treating central server Go zero-time `archivedAt` values as active records and adding guest participant IDs to room-secret worker connections.
 - [x] Sync dashboard agent display-name edits through the registered agent registry and central agent API so Host/Guest clients see renames from other machines.
 - [x] Restrict agent characters to orchestrator-launched task sessions: remove the global `~/.claude/settings.json` hook registration (with install-time migration), gate the hook server / Codex session monitor / Codex event server / liveness fallback on an `OrchestratorSessionAllowlist`, and add an `AgentManager.updateAgent` defense-in-depth gate that rejects new provider-sourced agents without orchestrator context.

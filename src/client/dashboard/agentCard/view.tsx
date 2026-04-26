@@ -88,6 +88,7 @@ export function AgentCard({
     ? <span className="mc-type-badge workspace" title={workspaceType}>{workspaceType}</span>
     : null;
   const isLocalRegistered = !!agent.isRegistered && agent.metadata?.source !== 'central';
+  const canRename = isLocalRegistered || agent.metadata?.canRename === true;
   const canTerminate = !['offline', 'done', 'completed'].includes(agent.status);
   const activityIcon = getActivityIcon(statusClass, agent.currentTool);
   const activityStateClass = isActive ? `mc-agent-activity active ${statusClass}` : `mc-agent-activity ${statusClass}`;
@@ -106,12 +107,16 @@ export function AgentCard({
           <div className="mc-agent-title-row">
             <div className="mc-agent-avatar" style={{ backgroundImage: `url('/assets/characters/${avatarFile}')` }} />
             <div className="mc-agent-name">
-              <AgentNameEditor
-                agentId={agent.id}
-                displayName={displayName}
-                hasNickname={!!agent.nickname}
-                onRename={onRename}
-              />
+              {canRename ? (
+                <AgentNameEditor
+                  agentId={agent.id}
+                  displayName={displayName}
+                  hasNickname={!!agent.nickname}
+                  onRename={onRename}
+                />
+              ) : (
+                <span className="agent-display-name" data-agent-id={agent.id}>{displayName}</span>
+              )}
             </div>
           </div>
           <div className="mc-agent-badges">

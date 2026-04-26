@@ -8,6 +8,7 @@ function createInitialState(): RemoteViewState {
     copiedInvite: false,
     guestInviteDraft: '',
     lastConsumedGuestInviteHref: '',
+    lastIssuedGuestInviteLink: '',
     lastIssuedGuestSecret: '',
     remoteActionError: '',
     roomAccess: null,

@@ -24,6 +24,7 @@ export type RemoteViewState = {
   copiedInvite: boolean;
   guestInviteDraft: string;
   lastConsumedGuestInviteHref: string;
+  lastIssuedGuestInviteLink: string;
   lastIssuedGuestSecret: string;
   remoteActionError: string;
   roomAccess: RoomAccessStatus | null;
