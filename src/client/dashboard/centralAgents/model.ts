@@ -116,6 +116,25 @@ function canRenameCentralAgent(agent: CentralAgent, options: CentralAgentMergeOp
   return !!createdByParticipantId && createdByParticipantId === currentParticipantId;
 }
 
+function shortParticipantId(participantId: string): string {
+  if (participantId.length <= 14) return participantId;
+  return `${participantId.slice(0, 10)}...`;
+}
+
+function centralAgentOwnership(agent: CentralAgent, options: CentralAgentMergeOptions = {}): {
+  label: string;
+  ownership: 'mine' | 'host' | 'guest' | 'unknown';
+} {
+  const createdByParticipantId = String(agent.createdByParticipantId || '').trim();
+  const currentParticipantId = String(options.currentParticipantId || '').trim();
+  if (!createdByParticipantId) return { label: 'Unknown', ownership: 'unknown' };
+  if (currentParticipantId && createdByParticipantId === currentParticipantId) {
+    return { label: 'Mine', ownership: 'mine' };
+  }
+  if (createdByParticipantId === 'owner') return { label: 'Host', ownership: 'host' };
+  return { label: `Guest ${shortParticipantId(createdByParticipantId)}`, ownership: 'guest' };
+}
+
 function localRefFromWorkspace(workspace?: DashboardWorkspace | null, projectPath?: string | null): string {
   return workspace?.worktreePath || workspace?.repositoryPath || projectPath || '';
 }
@@ -150,6 +169,7 @@ export function shouldSyncLocalAgent(agent: DashboardAgent): boolean {
 
 function dashboardAgentFromCentral(agent: CentralAgent, options: CentralAgentMergeOptions = {}): DashboardAgent {
   const workspace = workspaceFromCentral(agent.workspace);
+  const ownership = centralAgentOwnership(agent, options);
   return {
     id: agent.id,
     registryId: agent.id,
@@ -164,6 +184,8 @@ function dashboardAgentFromCentral(agent: CentralAgent, options: CentralAgentMer
     metadata: {
       canRename: canRenameCentralAgent(agent, options),
       centralCreatedByParticipantId: agent.createdByParticipantId || null,
+      centralOwnerLabel: ownership.label,
+      centralOwnership: ownership.ownership,
       centralUpdatedByParticipantId: agent.updatedByParticipantId || null,
       source: 'central',
       projectSlug: agent.projectId || null,

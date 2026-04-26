@@ -44,6 +44,8 @@ export type DashboardAgentMetadata = {
   source?: string | null;
   canRename?: boolean;
   centralCreatedByParticipantId?: string | null;
+  centralOwnerLabel?: string | null;
+  centralOwnership?: 'mine' | 'host' | 'guest' | 'unknown' | string | null;
   centralUpdatedByParticipantId?: string | null;
 };
 

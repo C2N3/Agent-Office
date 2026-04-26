@@ -10,6 +10,7 @@ import {
   getStateColor,
   humanizeToolName,
 } from '../agentViewHelpers.js';
+import { getAgentOwnershipBadge } from './ownership.js';
 
 export function buildAgentCardHtml(agent: DashboardAgent): string {
   const statusClass = ['working', 'thinking', 'error', 'done', 'completed', 'offline'].includes(agent.status)
@@ -37,6 +38,10 @@ export function buildAgentCardHtml(agent: DashboardAgent): string {
   const workspaceBadge = workspaceMeta
     ? `<span class="mc-type-badge workspace" title="${escapeText(workspaceType)}">${escapeText(workspaceType)}</span>`
     : '';
+  const ownershipBadge = getAgentOwnershipBadge(agent);
+  const ownershipBadgeHtml = ownershipBadge
+    ? `<span class="mc-type-badge ${escapeText(ownershipBadge.className)}" title="${escapeText(ownershipBadge.title)}">${escapeText(ownershipBadge.label)}</span>`
+    : '';
   const workspaceSummary = workspaceBranch
     ? `<div class="mc-agent-workspace" title="${escapeText(`${workspaceRepo || agent.project || 'workspace'} - ${workspaceBranch}`)}"><span class="mc-agent-workspace-repo">${escapeText(workspaceRepo || agent.project || 'workspace')}</span><span class="mc-agent-workspace-branch">${escapeText(workspaceBranch)}</span></div>`
     : '';
@@ -55,7 +60,7 @@ export function buildAgentCardHtml(agent: DashboardAgent): string {
             <span class="agent-display-name" data-agent-id="${agent.id}" title="Double-click to rename">${agent.nickname || agent.name || 'Agent'}</span>
           </div>
         </div>
-        <div class="mc-agent-badges">${typeHtml}${workspaceBadge}</div>
+        <div class="mc-agent-badges">${typeHtml}${workspaceBadge}${ownershipBadgeHtml}</div>
       </div>
       <div class="mc-agent-status ${statusClass}">${statusText}</div>
     </div>

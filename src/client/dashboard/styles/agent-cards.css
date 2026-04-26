@@ -106,6 +106,31 @@
   color: var(--color-warning);
 }
 
+.mc-type-badge.owner {
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.mc-type-badge.owner-mine {
+  background: rgba(45, 212, 191, 0.14);
+  color: #5eead4;
+}
+
+.mc-type-badge.owner-host {
+  background: rgba(96, 165, 250, 0.14);
+  color: #93c5fd;
+}
+
+.mc-type-badge.owner-guest {
+  background: rgba(168, 85, 247, 0.14);
+  color: #c4b5fd;
+}
+
+.mc-type-badge.owner-unknown {
+  background: rgba(148, 163, 184, 0.14);
+  color: var(--color-text-muted);
+}
+
 .mc-agent-status {
   font-size: 0.65rem;
   font-family: var(--font-mono);

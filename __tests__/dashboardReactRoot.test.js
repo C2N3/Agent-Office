@@ -117,6 +117,9 @@ describe('dashboard react-owned surfaces', () => {
           isRegistered: true,
           metadata: {
             canRename: false,
+            centralCreatedByParticipantId: 'worker-other',
+            centralOwnerLabel: 'Guest worker-other',
+            centralOwnership: 'guest',
             source: 'central',
           },
         },
@@ -132,6 +135,8 @@ describe('dashboard react-owned surfaces', () => {
     );
 
     expect(markup).toContain('Remote Agent');
+    expect(markup).toContain('Guest worker-other');
+    expect(markup).toContain('Owner participant: worker-other');
     expect(markup).not.toContain('Double-click to rename');
     expect(markup).not.toContain('nickname-input');
   });

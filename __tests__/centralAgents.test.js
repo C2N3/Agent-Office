@@ -151,7 +151,11 @@ describe('centralAgents', () => {
     const agents = await api.fetchCentralDashboardAgents();
 
     expect(agents.find((agent) => agent.id === 'own-1')?.metadata?.canRename).toBe(true);
+    expect(agents.find((agent) => agent.id === 'own-1')?.metadata?.centralOwnerLabel).toBe('Mine');
+    expect(agents.find((agent) => agent.id === 'own-1')?.metadata?.centralOwnership).toBe('mine');
     expect(agents.find((agent) => agent.id === 'other-1')?.metadata?.canRename).toBe(false);
+    expect(agents.find((agent) => agent.id === 'other-1')?.metadata?.centralOwnerLabel).toBe('Guest worker-other');
+    expect(agents.find((agent) => agent.id === 'other-1')?.metadata?.centralOwnership).toBe('guest');
   });
 
   test('browser-local sync uploads only local registered agents', async () => {

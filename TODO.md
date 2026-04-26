@@ -22,6 +22,7 @@ This file tracks client-side work that is planned, discovered, blocked, or compl
 
 ## Done
 
+- [x] Show central agent ownership in dashboard cards using the server participant provenance (`Mine`, `Host`, or guest participant ID).
 - [x] Persist the latest host invitation link in localStorage and restore it in the Remote Access panel after tab switches or app restarts.
 - [x] Hide the dashboard rename UI for central agents this client cannot mutate, while keeping local and participant-owned central agents editable.
 - [x] Fix Guest remote agent visibility by treating central server Go zero-time `archivedAt` values as active records and adding guest participant IDs to room-secret worker connections.

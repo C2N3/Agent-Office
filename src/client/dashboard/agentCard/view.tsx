@@ -11,6 +11,7 @@ import {
   humanizeToolName,
 } from '../agentViewHelpers.js';
 import { AgentNameEditor } from './nameEditor.js';
+import { getAgentOwnershipBadge } from './ownership.js';
 
 type AgentCardProps = {
   agent: DashboardAgent;
@@ -94,6 +95,7 @@ export function AgentCard({
   const activityStateClass = isActive ? `mc-agent-activity active ${statusClass}` : `mc-agent-activity ${statusClass}`;
   const toolName = agent.currentTool ? humanizeToolName(agent.currentTool) : '';
   const displayName = agent.nickname || agent.name || 'Agent';
+  const ownershipBadge = getAgentOwnershipBadge(agent);
 
   return (
     <div
@@ -126,6 +128,9 @@ export function AgentCard({
                 ? <span className="mc-type-badge" style={{ background: 'var(--color-info-dim)', color: 'var(--color-info)' }}>REG</span>
                 : <span className="mc-type-badge main">MAIN</span>}
             {workspaceBadge}
+            {ownershipBadge
+              ? <span className={`mc-type-badge ${ownershipBadge.className}`} title={ownershipBadge.title}>{ownershipBadge.label}</span>
+              : null}
           </div>
         </div>
         <div className={`mc-agent-status ${statusClass}`}>{statusText}</div>
