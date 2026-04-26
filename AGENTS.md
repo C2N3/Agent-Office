@@ -2,6 +2,15 @@
 
 Repository-wide instructions for agents working in this project.
 
+## Key documentation
+
+Skim these when the task needs product context, a tracked checklist, or stack-specific rules:
+
+- `docs/PROJECT_GOALS.md` — product goals: local-first agent office and optional central server sync for agent characters; success criteria.
+- `docs/TODO.md` — open and done client work; follow **TODO Tracking** below when adding or completing items.
+- `docs/architecture/client-ui-runtime-boundary.md` — Vite, React, and imperative canvas ownership; use when changing dashboard, overlay, or office runtime boundaries.
+- `docs/plans/sqlite-persistence-plan.md` — plan for moving structured local data into `~/.agent-office/app.db` (work is tracked in `docs/TODO.md` until Phases 1–5 are done).
+
 ## Execution Model
 
 - The real runtime output is `dist/`.

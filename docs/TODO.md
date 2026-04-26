@@ -29,13 +29,13 @@ This file tracks client-side work that is planned, discovered, blocked, or compl
 - [x] Sync dashboard agent display-name edits through the registered agent registry and central agent API so Host/Guest clients see renames from other machines.
 - [x] Restrict agent characters to orchestrator-launched task sessions: remove the global `~/.claude/settings.json` hook registration (with install-time migration), gate the hook server / Codex session monitor / Codex event server / liveness fallback on an `OrchestratorSessionAllowlist`, and add an `AgentManager.updateAgent` defense-in-depth gate that rejects new provider-sourced agents without orchestrator context.
 - [x] Surface dashboard server bind failures and central proxy timeouts instead of leaving `client` remote `/api/server/*` requests pending.
-- [x] Execute the Remote invite UX plan in `docs/plans/remote-invite-ux-plan.md`.
+- [x] Execute the Remote invite UX plan (dedicated invite endpoint, legacy fallback, owner-access errors, README updates).
 - [x] Narrow the remaining overlay grid layout mutation in `src/renderer/agentGrid/layout.ts` behind a layout-focused boundary while keeping animation scheduling and resize calculations imperative.
-- [x] Execute the current client UI runtime boundary direction in `docs/plans/client-ui-runtime-boundary.md` by keeping Vite limited to browser entries, moving React-rendered control events into React ownership, and keeping office canvas/runtime code imperative TypeScript.
+- [x] Execute the current client UI runtime boundary direction in `docs/architecture/client-ui-runtime-boundary.md` by keeping Vite limited to browser entries, moving React-rendered control events into React ownership, and keeping office canvas/runtime code imperative TypeScript.
 - [x] Finish overlay shell migration by narrowing the remaining `src/renderer/agentGrid.ts` card-list append/reorder/remove ownership while keeping animation and resize runtime code imperative.
 - [x] Move the Cloudflare and central-server connection panels out of `innerHTML` rendering into React-owned dashboard views.
 - [x] Rebuild the dashboard as a single React app root, move React-owned UI toward hooks/components, and add SCSS module support for React surfaces.
-- [x] Land the initial React UI boundary milestones in `docs/plans/react-ui-boundary-plan.md`: single dashboard React root, React-owned remote/heatmap/archive/agent-card surfaces, and imperative office renderer preservation.
+- [x] Land the initial React UI boundary milestones: single dashboard React root, React-owned remote/heatmap/archive/agent-card surfaces, and imperative office renderer preservation.
 - [x] Move Remote view polling active-state ownership from `document.getElementById('remoteView')` guards to the React `RemoteViewRoot` `active` prop while preserving the central-server polling adapter.
 - [x] Move the terminal profile menu outside-click trigger from `document.getElementById('terminalNewBtn')` to a React-owned button ref while preserving terminal profile actions and xterm runtime ownership.
 - [x] Move xterm/task-log terminal host lookup from `document.getElementById('terminalContainer'/'terminalEmptyState')` to React-owned `TerminalPanel` ref registration while preserving imperative xterm and task-log creation.

@@ -4,7 +4,9 @@
 
 Record the improvement direction for the current Electron, Vite, React, and canvas split.
 
-This document complements `docs/plans/react-ui-boundary-plan.md`. The React boundary plan explains the migration history. This document states the target ownership model for future client-side work.
+It states the target ownership model for future client-side work after the earlier dashboard React shell and boundary migrations landed.
+
+This file is **ongoing architecture guidance** for the client UI stack, not a phased deliverable. Executable migration plans (for example SQLite) live under `docs/plans/`.
 
 ## Current Assessment
 
