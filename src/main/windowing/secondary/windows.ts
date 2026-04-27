@@ -65,7 +65,7 @@ function createSecondaryWindowControls(options) {
         nodeIntegration: false,
         contextIsolation: true,
         sandbox: false,
-        preload: resolveFromModule(moduleUrl, '..', '..', '..', 'overlayPreload.js'),
+        preload: resolveFromModule(moduleUrl, '..', '..', '..', 'overlayPreload.mjs'),
       },
     });
 

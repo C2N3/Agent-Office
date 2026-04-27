@@ -4,7 +4,7 @@
  */
 
 import { contextBridge, ipcRenderer } from 'electron';
-import { dashboardIpcChannels } from './shared/contracts/ipc';
+import { dashboardIpcChannels } from './shared/contracts/ipc.js';
 
 contextBridge.exposeInMainWorld('overlayAPI', {
   close: () => ipcRenderer.send(dashboardIpcChannels.overlayClose),
