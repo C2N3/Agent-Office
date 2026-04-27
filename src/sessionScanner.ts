@@ -226,3 +226,4 @@ class SessionScanner {
 
 export { SessionScanner };
 module.exports = SessionScanner;
+module.exports.SessionScanner = SessionScanner;
