@@ -1,5 +1,5 @@
 
-function registerAppLifecycle({
+export function registerAppLifecycle({
   app,
   BrowserWindow,
   getAgentManager,
@@ -116,9 +116,3 @@ function registerAppLifecycle({
     debugLog('[Main] All resources cleaned up');
   });
 }
-
-export { registerAppLifecycle };
-
-module.exports = {
-  registerAppLifecycle,
-};

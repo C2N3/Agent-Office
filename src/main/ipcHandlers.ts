@@ -8,7 +8,7 @@ const { registerRecoveryHandlers } = require('./ipc/recovery');
 const { registerWindowHandlers } = require('./ipc/window');
 const { registerTerminalHandlers } = require('./ipc/terminal');
 const { registerWorkspaceHandlers } = require('./ipc/workspace');
-const { registerRegistryHandlers } = require('./ipc/registry');
+import { registerRegistryHandlers } from './ipc/registry';
 const { registerOrchestratorHandlers } = require('./ipc/orchestrator');
 const { registerAgentSessionHandlers } = require('./ipc/agentSession');
 
@@ -75,4 +75,3 @@ function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowM
 }
 
 export { registerIpcHandlers };
-module.exports = { registerIpcHandlers };

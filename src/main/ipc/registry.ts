@@ -1,12 +1,12 @@
-const fs = require('fs');
-const { ipcMain } = require('electron');
-const { parseConversation, getConversationSummary } = require('../conversationParser');
-const { resolveResumeSessionId } = require('../sessionIdResolver');
-const { resolveProjectPathForPlatform } = require('../../utils');
-const { dashboardIpcChannels } = require('../../shared/contracts/ipc');
-const { buildProviderResumeCommand } = require('../providers/registry');
+import fs from 'fs';
+import { ipcMain } from 'electron';
+import { parseConversation, getConversationSummary } from '../conversationParser';
+import { resolveResumeSessionId } from '../sessionIdResolver';
+import { resolveProjectPathForPlatform } from '../../utils';
+import { dashboardIpcChannels } from '../../shared/contracts/ipc';
+import { buildProviderResumeCommand } from '../providers/registry';
 
-function registerRegistryHandlers({
+export function registerRegistryHandlers({
   agentManager,
   agentRegistry,
   terminalManager,
@@ -167,6 +167,7 @@ function registerRegistryHandlers({
       provider: agent.provider,
       requestedSessionId: requestedResumeSessionId,
       transcriptPath,
+      sessionRoots: undefined,
       cwd,
     });
 
@@ -206,7 +207,3 @@ function registerRegistryHandlers({
     return { ...result, terminalId: registryId, sessionId: resolvedSessionId };
   });
 }
-
-module.exports = {
-  registerRegistryHandlers,
-};
