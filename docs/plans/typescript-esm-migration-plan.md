@@ -492,7 +492,7 @@ Packaged verification checklist:
 
 ##### Ordered Migration Slices For The Next Implementation Phase
 
-Current next slice after the dashboard/Electron interop loader bridge: decide the native ESM compatibility strategy for `agentManager.ts` and `sessionScanner.ts`, or move to preload/window ESM evaluation if default CommonJS constructor compatibility is intentionally deferred. Earlier helper, bridge, path-contract, late-builtin-loader, compatibility, Electron main wrapper, dashboard direct-entry wrapper, and dashboard/Electron interop slices are already recorded as completed in the notes below.
+Current next slice after the `agentManager.ts` / `sessionScanner.ts` CommonJS compatibility bridge is preload/window ESM evaluation. Earlier helper, bridge, path-contract, late-builtin-loader, compatibility, Electron main wrapper, dashboard direct-entry wrapper, dashboard/Electron interop, and manager/scanner compatibility bridge slices are already recorded as completed in the notes below.
 
 1. Path helper and entrypoint guard design slice.
    - Add ESM-safe helpers only where they can be tested without changing runtime module loading.
@@ -500,8 +500,8 @@ Current next slice after the dashboard/Electron interop loader bridge: decide th
    - Stop if helper use requires immediate package or Electron entrypoint changes.
 
 2. Compatibility bridge slice for `agentManager.ts` and `sessionScanner.ts`.
-   - Preserve default CommonJS constructor behavior while preparing ESM implementation exports.
-   - Validation: `npm run build:dist`, emitted compatibility checks, focused Jest tests, `npm run typecheck`.
+   - Completed target: converted the implementation modules to plain class exports and added `.cts` bridge sources that emit `dist/src/agentManager.cjs` and `dist/src/sessionScanner.cjs`.
+   - Validation: `npm run build:dist`, emitted compatibility checks, focused Jest tests, `npm run typecheck`, full Jest, startup smoke because `.cts` build include config changed, final source CommonJS scan, `git diff --check`.
    - Stop if default constructor and named property access cannot both be preserved.
 
 3. Optional/native dependency bridge slice.
@@ -667,7 +667,7 @@ Remaining intentional runtime compatibility boundaries are no longer represented
 
 - `src/main/dashboardRuntimeLoader.ts` and `src/dashboardServer/tunnelManagerLookup.ts`: explicit late loader bridges that accept the caller's module loader today and can accept `createRequire(import.meta.url)` from future native ESM callers.
 - `src/main/terminalManager.ts`, `src/main/tunnelManager.ts`, `src/main/sessionTermination.ts`, `src/main/livenessChecker.ts`, and `src/main/bootstrap/runtime.ts`: lazy or platform-specific loader calls preserved behind reviewed bridge functions for `node-pty`, `cloudflared`, `tree-kill`, `child_process`, or Windows path lookup behavior.
-- `src/agentManager.ts` and `src/sessionScanner.ts`: default CommonJS constructor compatibility remains intentional until the dedicated native ESM compatibility slice preserves or retires that API.
+- `src/agentManager.cts` and `src/sessionScanner.cts`: intentional CommonJS compatibility bridges for default constructor access. The implementation modules `src/agentManager.ts` and `src/sessionScanner.ts` now use plain named class exports.
 - Electron preload/window ESM behavior remains a dedicated later evaluation slice even though path contracts have already moved to the reviewed runtime module helpers.
 
 ### Compatibility Slice Notes
@@ -772,11 +772,14 @@ Remaining intentional runtime compatibility boundaries are no longer represented
 
 #### `agentManager.ts` / `sessionScanner.ts` Default CommonJS API
 
-- Current CommonJS/export shape: tests and compatibility callers can use `const AgentManager = require('../src/agentManager')` and `const SessionScanner = require('../src/sessionScanner')`; both modules also expose `.AgentManager` / `.SessionScanner` on the required constructor.
-- Emitted `dist` shape to preserve: `require('./dist/src/agentManager.js')` and `require('./dist/src/sessionScanner.js')` must return constructable classes, and the corresponding named property must point at the same class object.
-- Runtime/startup/path risk: this slice does not change startup order, Electron paths, optional/native loading, or `__dirname` path contracts. `src/main.ts` keeps static named imports. The boundary files use a narrow `module['exports']` compatibility assignment because direct TypeScript `export =` preserves the emitted shape but is not supported by the current Jest transform; broad Jest transform changes stay out of scope for this phase.
-- Validation commands: `npm run build:dist`; emitted shape checks for both modules; `npm run typecheck`; focused Jest tests for `agentManager` and `sessionScanner`.
-- Completed in `ecb5634`. The remaining compatibility assignment is intentional default CommonJS API preservation until the native runtime ESM compatibility-bridge phase.
+- Implemented native-ESM-compatible implementation exports for `src/agentManager.ts` and `src/sessionScanner.ts`: both files now export their classes as plain named exports and no longer assign to `module['exports']`.
+- Added compatibility bridges `src/agentManager.cts` and `src/sessionScanner.cts`. They emit to `dist/src/agentManager.cjs` and `dist/src/sessionScanner.cjs`, preserving default CommonJS constructor access and named property access for compatibility callers.
+- Emitted `dist` shape: `dist/src/agentManager.js` and `dist/src/sessionScanner.js` remain CommonJS-emitted implementation modules with named exports; `dist/src/agentManager.cjs` and `dist/src/sessionScanner.cjs` are bridge modules where `require(...)` returns the constructable class and `.AgentManager` / `.SessionScanner` points at the same class object.
+- Runtime/startup/path/native risk: this slice does not change startup order, Electron paths, preload behavior, BrowserWindow ownership, dashboard singleton state, port binding, optional/native loading, or path contracts. TypeScript include globs now include `src/**/*.cts` so the existing `dist/` build emits the compatibility bridges.
+- Validation commands: `npm run build:dist`; emitted shape checks for both `.cjs` bridge modules; focused Jest tests for `agentManager` and `sessionScanner`; `npm run typecheck`; `npm test -- --runInBand`; final CommonJS syntax scan over `src/**/*.ts`, `src/**/*.tsx`, and `src/**/*.mts`; `git diff --check`; `timeout 25s npm start` because the slice touched TypeScript build include config.
+- Validation results: build passed; emitted `.cjs` bridge checks passed for default constructor and named property access; focused Jest tests passed (`2` suites / `57` tests); typecheck passed; full Jest passed (`79` suites / `600` tests); final source CommonJS syntax scan returned no matches; `git diff --check` passed; `timeout 25s npm start` reached successful Electron/dashboard startup logs and exited by timeout as expected.
+- Remaining CommonJS scan results: the requested scan over `src/**/*.ts`, `src/**/*.tsx`, and `src/**/*.mts` returns no matches. The `.cts` bridge files are intentional CommonJS compatibility boundaries outside that scan.
+- Completed in the eleventh Phase 5 implementation slice. The next runtime ESM slice should evaluate Electron preload/window ESM behavior one window/preload path at a time without changing Jest config, build scripts, packaging config, dashboard singleton state, or native dependency loading.
 
 ## Suggested Follow-Up Prompt
 
@@ -805,10 +808,9 @@ Current state:
 - Do not make broad Jest, packaging, bootstrap, or build-config changes.
 
 Start with the first reviewed slice that is still valid after the rescan:
-1. Native ESM compatibility bridge slice for `agentManager.ts` and `sessionScanner.ts`, only when default CommonJS constructor compatibility can be preserved or intentionally retired.
-2. Preload/window ESM evaluation slice.
-3. Tooling and Jest ESM slice.
-4. Packaging proof slice.
+1. Preload/window ESM evaluation slice.
+2. Tooling and Jest ESM slice.
+3. Packaging proof slice.
 
 For the chosen slice, write a short risk note before editing:
 - files owned by the slice
@@ -826,6 +828,7 @@ Keep these as dedicated compatibility/runtime boundaries; do not fold them into 
 - Electron preload/window ESM behavior
 - already-converted asset/html/script path contracts
 - dashboard/window/bootstrap late runtime `require(...)` that may preserve startup order or avoid cycles
+- `src/agentManager.cts` and `src/sessionScanner.cts` default CommonJS constructor bridges
 
 Validation requirements:
 - Documentation-only or plan updates:

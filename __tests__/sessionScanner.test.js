@@ -21,7 +21,7 @@ jest.mock('../src/main/providers/codex/paths', () => ({
   getCodexSessionRoots: jest.fn(() => []),
 }));
 
-const SessionScanner = require('../src/sessionScanner');
+const { SessionScanner } = require('../src/sessionScanner');
 const { getCodexSessionRoots } = require('../src/main/providers/codex/paths');
 
 // Helper: build JSONL content from entries
@@ -43,6 +43,14 @@ describe('SessionScanner', () => {
     };
     debugLog = jest.fn();
     scanner = new SessionScanner(mockAgentManager, debugLog);
+  });
+
+  describe('export shape', () => {
+    test('exposes named constructor access for source tests and compatibility bridges', () => {
+      expect(typeof SessionScanner).toBe('function');
+      expect(SessionScanner.SessionScanner).toBe(SessionScanner);
+      expect(new SessionScanner(mockAgentManager, debugLog)).toBeInstanceOf(SessionScanner);
+    });
   });
 
   // ── parseSessionFile ──

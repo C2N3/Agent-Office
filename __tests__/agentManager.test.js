@@ -3,7 +3,7 @@
  * AgentManager core logic tests
  */
 
-const AgentManager = require('../src/agentManager');
+const { AgentManager } = require('../src/agentManager');
 const EventEmitter = require('events');
 
 describe('AgentManager', () => {
@@ -16,6 +16,14 @@ describe('AgentManager', () => {
 
   afterEach(() => {
     manager.stop();
+  });
+
+  describe('export shape', () => {
+    test('exposes named constructor access for source tests and compatibility bridges', () => {
+      expect(typeof AgentManager).toBe('function');
+      expect(AgentManager.AgentManager).toBe(AgentManager);
+      expect(new AgentManager()).toBeInstanceOf(EventEmitter);
+    });
   });
 
   describe('start and stop', () => {

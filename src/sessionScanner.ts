@@ -34,7 +34,7 @@ type SessionStats = {
     lastActivity: string | null;
 };
 
-class SessionScanner {
+export class SessionScanner {
     static SessionScanner = SessionScanner;
 
     declare agentManager: any;
@@ -224,7 +224,3 @@ class SessionScanner {
  * @property {string|null} lastMessageAt
  * @property {string|null} lastActivity
  */
-
-export { SessionScanner };
-(module as any)['exports'] = SessionScanner;
-(module as any)['exports'].SessionScanner = SessionScanner;

@@ -28,7 +28,7 @@ function mergeField(entry, existing, key, defaultVal = null) {
   return existing ? existing[key] : defaultVal;
 }
 
-class AgentManager extends EventEmitter {
+export class AgentManager extends EventEmitter {
   static AgentManager = AgentManager;
 
   declare agents: Map<string, any>;
@@ -313,7 +313,3 @@ class AgentManager extends EventEmitter {
     return getStats(this.getAllAgents());
   }
 }
-
-export { AgentManager };
-(module as any)['exports'] = AgentManager;
-(module as any)['exports'].AgentManager = AgentManager;
