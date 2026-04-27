@@ -1,7 +1,6 @@
-
-const { BrowserWindow, screen, shell } = require('electron');
-const path = require('path');
-const { saveUiState } = require('../../uiState');
+import { BrowserWindow, screen, shell } from 'electron';
+import path from 'path';
+import { saveUiState } from '../../uiState';
 
 function createSecondaryWindowControls(options) {
   const {
@@ -330,4 +329,4 @@ function createSecondaryWindowControls(options) {
   };
 }
 
-module.exports = { createSecondaryWindowControls };
+export { createSecondaryWindowControls };

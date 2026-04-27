@@ -390,7 +390,8 @@ As of the latest source-only scan, the remaining TypeScript CommonJS syntax is n
 - `src/officeLayout.ts`: top-level imports and named exports are converted; the remaining `__dirname` asset-layout default folder is a runtime path contract for a later native ESM path helper slice.
 - `src/main/bootstrap/runtime.ts`: top-level imports and named exports are converted; remaining CommonJS syntax is intentional lazy Windows `child_process` loading around the existing startup log `__dirname` contract.
 - `src/main/livenessChecker.ts`: top-level imports and named exports are converted; remaining CommonJS syntax is intentional late `child_process` loading around the existing `__dirname` script-path contract.
-- `src/main/windowing/core.ts`, `src/main/windowing/secondary/windows.ts`, and `src/main/bootstrap/windows.ts`: Electron window/bootstrap/preload path contracts and late runtime loading.
+- `src/main/windowing/core.ts` and `src/main/windowing/secondary/windows.ts`: top-level imports and named exports are converted; preload/html `__dirname` paths and dashboard server late loading remain runtime contracts.
+- `src/main/bootstrap/windows.ts`: Electron window/bootstrap late runtime loading.
 - `src/main/terminalManager.ts`: top-level imports and named export are converted; remaining CommonJS syntax is intentional lazy/platform-specific loading for `node-pty`, `child_process`, and the Windows `.cmd` shim `path` helper.
 - `src/main/tunnelManager.ts`, `src/main/sessionTermination.ts`, and `src/dashboardServer/tunnelHandlers.ts`: optional/native or platform-specific dependency loading (`cloudflared`, `tree-kill`).
 - `src/dashboardServer/apiHandlers.ts`: office layout helpers now use static imports; remaining dashboard API path behavior depends on the `officeLayout` runtime path contract.

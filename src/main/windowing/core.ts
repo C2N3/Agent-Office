@@ -1,6 +1,6 @@
-const { BrowserWindow, screen } = require('electron');
-const path = require('path');
-const { createSecondaryWindowControls } = require('./secondary/windows');
+import { BrowserWindow, screen } from 'electron';
+import path from 'path';
+import { createSecondaryWindowControls } from './secondary/windows';
 
 export function createWindowManagerCore(context) {
   const {
