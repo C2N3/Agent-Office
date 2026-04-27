@@ -3,10 +3,10 @@
  * Detects available shell profiles and persists the user's default profile.
  */
 
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
-const { execFileSync } = require('child_process');
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import { execFileSync } from 'child_process';
 
 const PERSIST_DIR = path.join(os.homedir(), '.agent-office');
 const PERSIST_FILE = path.join(PERSIST_DIR, 'terminal-preferences.json');
@@ -18,7 +18,7 @@ type TerminalProfile = {
   args: string[];
 };
 
-class TerminalProfileService {
+export class TerminalProfileService {
   declare debugLog: (message: string) => void;
   declare preferences: { defaultProfileId: string | null };
   declare profileCache: TerminalProfile[] | null;
@@ -259,6 +259,3 @@ class TerminalProfileService {
     return this.getProfilesWithDefault();
   }
 }
-
-export { TerminalProfileService };
-module.exports = { TerminalProfileService };
