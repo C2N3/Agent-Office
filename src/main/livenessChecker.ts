@@ -10,6 +10,7 @@ import { pathToFileURL } from 'url';
 import { hasActiveOrchestratorTask, removeOrOffline } from './liveness/agents';
 import { sharedSessionAllowlist } from './orchestrator/sessionAllowlist';
 import { getProviderDefinition, normalizeProvider } from './providers/registry';
+import { loadChildProcess } from './runtimeLoaders';
 import { resolveFromModule } from '../runtime/module';
 
 const sessionPids = new Map(); // sessionId → actual CLI process PID
@@ -29,7 +30,7 @@ async function checkLivenessTier1(agentId, pid) {
  * Windows: Restart Manager API (find-file-owner.ps1)
  */
 function detectProviderPidBySessionFile(provider, jsonlPath, callback) {
-  const { execFile } = require('child_process');
+  const { execFile } = loadChildProcess(require);
   const resolvedProvider = normalizeProvider(provider, null);
   if (!resolvedProvider) {
     callback(null);
@@ -71,7 +72,7 @@ function detectProviderPidBySessionFile(provider, jsonlPath, callback) {
 }
 
 function detectProviderPidsFallback(provider, callback) {
-  const { execFile } = require('child_process');
+  const { execFile } = loadChildProcess(require);
   const definition = getProviderDefinition(provider);
   const providerPattern = definition.processPattern;
 
@@ -140,7 +141,7 @@ function retryPidDetection(sessionId, provider, agentManager, debugLog) {
  * Count running provider CLI processes.
  */
 function countProviderProcesses(provider, callback) {
-  const { execFile } = require('child_process');
+  const { execFile } = loadChildProcess(require);
   const definition = getProviderDefinition(provider);
   const providerPattern = definition.processPattern;
   if (process.platform === 'win32') {

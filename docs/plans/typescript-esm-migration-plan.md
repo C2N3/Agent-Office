@@ -709,6 +709,16 @@ As of the latest source-only scan after `ecb5634`, the remaining TypeScript Comm
 - Validation commands: focused `windowing-core` Jest tests; `npm run build:dist`; emitted preload/html existence check; `npm run typecheck`; `npm test -- --runInBand`; `timeout 25s npm start`; `git diff --check`.
 - Completed in the sixth Phase 5 implementation slice. Remaining CommonJS syntax is late runtime loading rather than `__dirname` path contracts.
 
+#### Late Builtin Runtime Loader Boundary
+
+- Added `src/main/runtimeLoaders.ts` as the bridge for late CommonJS loading of Node built-ins that should stay call-site lazy during the CommonJS runtime phase.
+- Bridge exports: `loadChildProcess(packageRequire)` and `loadPath(packageRequire)`.
+- Current CommonJS runtime callers pass their ambient `require` into the bridge, preserving existing Jest mocks and platform-branch timing. Future native ESM callers can pass `createRequire(import.meta.url)` without static startup loading.
+- Converted remaining late `child_process` loads in `src/main/livenessChecker.ts`, `src/main/bootstrap/runtime.ts`, and `src/main/terminalManager.ts`. Also converted the Windows `.cmd` shim's late `path` load in `src/main/terminalManager.ts`.
+- Runtime/startup risk: this slice does not touch dashboard/window/bootstrap late dashboard `require(...)`, Electron entrypoints, package metadata, BrowserWindow ownership, or build/Jest configuration. It preserves Windows-only command resolution branches and terminal startup behavior.
+- Validation commands: focused Jest tests for runtime loaders, liveness checker, and terminal manager; `npm run build:dist`; emitted bridge shape check; `npm run typecheck`; `npm test -- --runInBand`; `timeout 25s npm start`; `git diff --check`.
+- Completed in the seventh Phase 5 implementation slice. Remaining CommonJS syntax is dashboard/window/bootstrap late runtime loading and should be handled only in a dashboard server ESM entrypoint slice.
+
 #### `agentManager.ts` / `sessionScanner.ts` Default CommonJS API
 
 - Current CommonJS/export shape: tests and compatibility callers can use `const AgentManager = require('../src/agentManager')` and `const SessionScanner = require('../src/sessionScanner')`; both modules also expose `.AgentManager` / `.SessionScanner` on the required constructor.

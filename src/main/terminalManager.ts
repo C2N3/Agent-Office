@@ -8,6 +8,7 @@ import os from 'os';
 import type { BrowserWindow } from 'electron';
 import type { DashboardOpenOptions, DashboardTerminalProfile } from '../shared/contracts/index.js';
 import { loadNodePty } from './nativeDependencies';
+import { loadChildProcess, loadPath } from './runtimeLoaders';
 import { resolveProjectPathForPlatform } from '../utils';
 
 type DebugLog = (message: string) => void;
@@ -98,7 +99,7 @@ class TerminalManager {
     // Prefer .cmd/.exe over extensionless scripts to avoid ERROR_BAD_EXE_FORMAT (193).
     if (process.platform === 'win32' && options.command && !options.command.includes('\\') && !options.command.includes('/')) {
       try {
-        const { execFileSync } = require('child_process');
+        const { execFileSync } = loadChildProcess(require);
         const candidates = execFileSync('where', [options.command], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim().split(/\r?\n/);
         const preferred = candidates.find(c => /\.(cmd|exe|bat)$/i.test(c)) || candidates[0];
         if (preferred) command = preferred;
@@ -129,7 +130,7 @@ class TerminalManager {
           // or simpler: "%dp0%\node_modules\...\cli.js"
           const jsMatch = cmdContent.match(/"%dp0%\\([^"]+\.js)"/);
           if (jsMatch) {
-            const path = require('path');
+            const path = loadPath(require);
             const scriptPath = path.join(path.dirname(command), jsMatch[1]);
             if (fs.existsSync(scriptPath)) {
               const originalArgs = args;
@@ -141,7 +142,7 @@ class TerminalManager {
                 nodeBin = shimNodePath;
               } else {
                 try {
-                  const { execFileSync } = require('child_process');
+                  const { execFileSync } = loadChildProcess(require);
                   nodeBin = execFileSync('where', ['node'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim().split(/\r?\n/)[0];
                 } catch {}
               }

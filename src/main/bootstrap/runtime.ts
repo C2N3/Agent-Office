@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { pathToFileURL } from 'url';
+import { loadChildProcess } from '../runtimeLoaders';
 import { resolveFromModule } from '../../runtime/module';
 
 function installStartupLogging({ app, processRef = process, consoleRef = console }) {
@@ -57,7 +58,7 @@ function installStartupLogging({ app, processRef = process, consoleRef = console
 function configureRuntime({ app, processRef = process }) {
   if (processRef.platform === 'win32') {
     try {
-      const { execSync } = require('child_process');
+      const { execSync } = loadChildProcess(require);
       execSync('chcp 65001', { stdio: 'ignore' });
     } catch {}
   }
