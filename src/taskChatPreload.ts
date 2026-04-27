@@ -3,8 +3,8 @@
  * Provides secure IPC bridge for task chat popup windows.
  */
 
-const { contextBridge, ipcRenderer } = require('electron');
-const { dashboardIpcChannels } = require('./shared/contracts/ipc');
+import { contextBridge, ipcRenderer } from 'electron';
+import { dashboardIpcChannels } from './shared/contracts/ipc';
 
 contextBridge.exposeInMainWorld('taskChatAPI', {
   close: (agentRegistryId: string) => ipcRenderer.send(dashboardIpcChannels.taskChatClose, agentRegistryId),
