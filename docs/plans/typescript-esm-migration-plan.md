@@ -385,7 +385,8 @@ Those are not reasons to abandon the overall goal. They are boundaries where the
 As of the latest source-only scan, the remaining TypeScript CommonJS syntax is no longer a good fit for small leaf-module cleanup. The remaining entries are owned by dedicated compatibility or runtime-boundary slices:
 
 - `src/agentManager.ts` and `src/sessionScanner.ts`: default CommonJS public API compatibility.
-- `src/officeLayout.ts`, `src/sessionend_hook.ts`, `src/main/ipc/window.ts`, `src/main/livenessChecker.ts`, `src/dashboardServer/constants.ts`, `src/main/bootstrap/runtime.ts`, and `src/main/bootstrap/avatars.ts`: `__dirname` path contracts for assets, logs, scripts, or runtime roots.
+- `src/officeLayout.ts`, `src/sessionend_hook.ts`, `src/main/ipc/window.ts`, `src/dashboardServer/constants.ts`, `src/main/bootstrap/runtime.ts`, and `src/main/bootstrap/avatars.ts`: `__dirname` path contracts for assets, logs, scripts, or runtime roots.
+- `src/main/livenessChecker.ts`: top-level imports and named exports are converted; remaining CommonJS syntax is intentional late `child_process` loading around the existing `__dirname` script-path contract.
 - `src/main/windowing/core.ts`, `src/main/windowing/secondary/windows.ts`, and `src/main/bootstrap/windows.ts`: Electron window/bootstrap/preload path contracts and late runtime loading.
 - `src/main/terminalManager.ts`, `src/main/tunnelManager.ts`, `src/main/sessionTermination.ts`, and `src/dashboardServer/tunnelHandlers.ts`: optional/native or platform-specific dependency loading (`node-pty`, `cloudflared`, `tree-kill`).
 - `src/dashboardServer/index.ts` and `src/dashboardServer/apiHandlers.ts`: dashboard startup/runtime boundary or dependency on the `officeLayout` CommonJS path contract.

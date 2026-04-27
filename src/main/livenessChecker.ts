@@ -3,12 +3,12 @@
  * PID detection, session-file re-verification, 2-second interval process liveness check
  */
 
-const path = require('path');
-const os = require('os');
-const fs = require('fs');
-const { hasActiveOrchestratorTask, removeOrOffline } = require('./liveness/agents');
-const { getProviderDefinition, normalizeProvider } = require('./providers/registry');
-const { sharedSessionAllowlist } = require('./orchestrator/sessionAllowlist');
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import { hasActiveOrchestratorTask, removeOrOffline } from './liveness/agents';
+import { sharedSessionAllowlist } from './orchestrator/sessionAllowlist';
+import { getProviderDefinition, normalizeProvider } from './providers/registry';
 
 const sessionPids = new Map(); // sessionId → actual CLI process PID
 
@@ -319,13 +319,6 @@ function startLivenessChecker({ agentManager, agentRegistry, taskStore, terminal
 }
 
 export {
-  sessionPids,
-  startLivenessChecker,
-  detectClaudePidByTranscript,
-  detectProviderPidBySessionFile,
-};
-
-module.exports = {
   sessionPids,
   startLivenessChecker,
   detectClaudePidByTranscript,
