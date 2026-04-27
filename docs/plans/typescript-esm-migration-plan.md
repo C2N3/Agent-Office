@@ -492,7 +492,7 @@ Packaged verification checklist:
 
 ##### Ordered Migration Slices For The Next Implementation Phase
 
-Current next slice after the dashboard direct-entry wrapper: handle dashboard/Electron interop for the remaining late dashboard imports, but only if the rescan still shows the same isolated runtime boundaries. Earlier helper, bridge, path-contract, late-builtin-loader, compatibility, Electron main wrapper, and dashboard direct-entry wrapper slices are already recorded as completed in the notes below.
+Current next slice after the dashboard/Electron interop loader bridge: decide the native ESM compatibility strategy for `agentManager.ts` and `sessionScanner.ts`, or move to preload/window ESM evaluation if default CommonJS constructor compatibility is intentionally deferred. Earlier helper, bridge, path-contract, late-builtin-loader, compatibility, Electron main wrapper, dashboard direct-entry wrapper, and dashboard/Electron interop slices are already recorded as completed in the notes below.
 
 1. Path helper and entrypoint guard design slice.
    - Add ESM-safe helpers only where they can be tested without changing runtime module loading.
@@ -521,7 +521,7 @@ Current next slice after the dashboard direct-entry wrapper: handle dashboard/El
 
 6. Dashboard server ESM entrypoint slice.
    - Completed target: converted only dashboard direct execution by adding `src/dashboardServer/entrypoint.mts`, emitting `dist/src/dashboardServer/entrypoint.mjs`, and changing only `npm run dashboard` to run that `.mjs` entrypoint.
-   - Keep Electron late dashboard imports as CommonJS `require(...)` for this first dashboard slice.
+   - The follow-up dashboard/Electron interop slice moved the remaining late dashboard loads behind explicit loader helpers while preserving synchronous call timing.
    - Validation: `npm run build:dist`, `test -f dist/src/dashboardServer/entrypoint.mjs`, ESM entrypoint import smoke, `npm run typecheck`, `npm test -- --runInBand`, `npm run dashboard`, `timeout 25s npm start`, `git diff --check`.
    - Stop if server singleton state, startup order, port binding, Electron startup, Jest config, build scripts, or package-wide module type must change.
 
@@ -661,18 +661,14 @@ Those are not reasons to abandon the overall goal. They are boundaries where the
 
 ### Source-Only Cleanup Status
 
-As of the latest source-only scan after `ecb5634`, the remaining TypeScript CommonJS syntax and CommonJS-only path globals are no longer a good fit for small import/export cleanup. The remaining entries are owned by dedicated runtime-boundary slices:
+As of the latest scan after the dashboard/Electron interop loader bridge, the requested TypeScript runtime CommonJS syntax scan has no matches for `require(...)`, `module.exports`, `exports.*`, `__dirname`, or `__filename` in `src/**/*.ts`, `src/**/*.tsx`, and `src/**/*.mts`.
 
-- `src/main/ipc/window.ts`, `src/dashboardServer/constants.ts`, and `src/main/bootstrap/avatars.ts`: `__dirname` path contracts for assets, logs, scripts, or runtime roots.
-- `src/sessionend_hook.ts`: top-level imports are converted; the remaining `__dirname` hook log path is a runtime path contract for a later native ESM path helper slice.
-- `src/officeLayout.ts`: top-level imports and named exports are converted; the remaining `__dirname` asset-layout default folder is a runtime path contract for a later native ESM path helper slice.
-- `src/main/bootstrap/runtime.ts`: top-level imports and named exports are converted; remaining CommonJS syntax is intentional lazy Windows `child_process` loading around the existing startup log `__dirname` contract.
-- `src/main/livenessChecker.ts`: top-level imports and named exports are converted; remaining CommonJS syntax is intentional late `child_process` loading around the existing `__dirname` script-path contract.
-- `src/main/windowing/core.ts` and `src/main/windowing/secondary/windows.ts`: top-level imports and named exports are converted; preload/html `__dirname` paths and dashboard server late loading remain runtime contracts.
-- `src/main/bootstrap/windows.ts`: top-level window manager import is converted; remaining dashboard auth/server requires are intentional late runtime loading.
-- `src/main/terminalManager.ts`: top-level imports and named export are converted; remaining CommonJS syntax is intentional lazy/platform-specific loading for `node-pty`, `child_process`, and the Windows `.cmd` shim `path` helper.
-- `src/main/tunnelManager.ts`, `src/main/sessionTermination.ts`, and `src/dashboardServer/tunnelHandlers.ts`: optional/native or platform-specific dependency loading (`cloudflared`, `tree-kill`).
-- `src/dashboardServer/index.ts`: SIGINT client cleanup uses the static context import. The legacy `require.main === module` guard remains only for direct `node dist/src/dashboardServer/index.js` compatibility; `npm run dashboard` now uses the native ESM wrapper and the guard is not part of the current `require(...)` rescan results.
+Remaining intentional runtime compatibility boundaries are no longer represented by that scan:
+
+- `src/main/dashboardRuntimeLoader.ts` and `src/dashboardServer/tunnelManagerLookup.ts`: explicit late loader bridges that accept the caller's module loader today and can accept `createRequire(import.meta.url)` from future native ESM callers.
+- `src/main/terminalManager.ts`, `src/main/tunnelManager.ts`, `src/main/sessionTermination.ts`, `src/main/livenessChecker.ts`, and `src/main/bootstrap/runtime.ts`: lazy or platform-specific loader calls preserved behind reviewed bridge functions for `node-pty`, `cloudflared`, `tree-kill`, `child_process`, or Windows path lookup behavior.
+- `src/agentManager.ts` and `src/sessionScanner.ts`: default CommonJS constructor compatibility remains intentional until the dedicated native ESM compatibility slice preserves or retires that API.
+- Electron preload/window ESM behavior remains a dedicated later evaluation slice even though path contracts have already moved to the reviewed runtime module helpers.
 
 ### Compatibility Slice Notes
 
@@ -752,6 +748,18 @@ As of the latest source-only scan after `ecb5634`, the remaining TypeScript Comm
 - Remaining CommonJS scan results: `src/dashboardServer/tunnelHandlers.ts` keeps the lazy main-process tunnel-manager singleton lookup; `src/main/windowing/core.ts` keeps late dashboard server startup loading; `src/main/bootstrap/windows.ts` keeps late dashboard remote-auth loading and dashboard server wiring. These remain the next dashboard/Electron interop slice rather than part of direct dashboard CLI startup.
 - Completed in the ninth Phase 5 implementation slice. The next runtime ESM slice should address dashboard/Electron interop for late dashboard imports without changing Electron preload behavior, Jest config, build scripts, packaging config, or native dependency loading.
 
+#### Dashboard/Electron Interop Runtime Loaders
+
+- Added `src/main/dashboardRuntimeLoader.ts` to centralize late dashboard server and remote-auth module loading from Electron main/bootstrap call sites.
+- Added `src/dashboardServer/tunnelManagerLookup.ts` to centralize the dashboard server's lazy main-process tunnel-manager singleton lookup.
+- Updated `src/main/windowing/core.ts`, `src/main/bootstrap/windows.ts`, and `src/dashboardServer/tunnelHandlers.ts` to call those bridge helpers instead of direct `require(...)`.
+- Export shape: dashboard server, remote auth, tunnel manager, Electron window manager, package `main`, `dashboard` script, and dashboard CLI entrypoint exports are unchanged. The new helper exports are internal bridge functions.
+- Emitted `dist` runtime shape: `dist/src/main/dashboardRuntimeLoader.js` and `dist/src/dashboardServer/tunnelManagerLookup.js` are added; `dist/src/main.mjs`, `dist/src/main.js`, `dist/src/dashboardServer/entrypoint.mjs`, `dist/src/dashboardServer/index.js`, and supporting dashboard `.js` modules remain in place.
+- Runtime/startup/path/native risk: late loading remains synchronous at the existing call sites, and tunnel-manager lookup remains per-request lazy. This slice does not change Electron startup ownership, preload behavior, BrowserWindow options, dashboard singleton state, startup order, port binding, package-wide module type, Jest config, build scripts, packaging config, or native dependency loading.
+- Validation commands: focused Jest tests for `dashboardRuntimeLoader` and `windowing-core`; `npm run build:dist`; emitted helper shape checks; ESM dashboard entrypoint import smoke; `npm run typecheck`; `npm test -- --runInBand`; `npm run dashboard` HTTP smoke; `timeout 25s npm start`; final source CommonJS syntax scan; `git diff --check`.
+- Validation results: focused tests passed (`2` suites / `10` tests); build passed; emitted helper shape checks passed; ESM entrypoint smoke passed; typecheck passed; full Jest passed (`79` suites / `598` tests); dashboard HTTP smoke passed; `timeout 25s npm start` reached successful Electron/dashboard startup logs and exited by timeout as expected; final source CommonJS syntax scan returned no matches; `git diff --check` passed.
+- Completed in the tenth Phase 5 implementation slice. The next runtime ESM slice should address `agentManager.ts` / `sessionScanner.ts` default CommonJS constructor compatibility or move to preload/window ESM evaluation if that compatibility work is intentionally deferred.
+
 #### Late Builtin Runtime Loader Boundary
 
 - Added `src/main/runtimeLoaders.ts` as the bridge for late CommonJS loading of Node built-ins that should stay call-site lazy during the CommonJS runtime phase.
@@ -789,10 +797,7 @@ Operating rules:
 
 Current state:
 - Source-level import/export cleanup is effectively complete.
-- Current `src/**/*.ts`, `src/**/*.tsx`, and `src/**/*.mts` runtime scan results are only late dashboard/main runtime `require(...)` boundaries:
-  - `src/dashboardServer/tunnelHandlers.ts`: lazy main-process tunnel-manager singleton lookup
-  - `src/main/windowing/core.ts`: late dashboard server startup load
-  - `src/main/bootstrap/windows.ts`: late dashboard remote-auth load and late dashboard server wiring load
+- Current `src/**/*.ts`, `src/**/*.tsx`, and `src/**/*.mts` runtime scan results for `require(...)`, `module.exports`, `exports.*`, `__dirname`, and `__filename` return no matches.
 - `__dirname` and `__filename` path contracts have already moved to the reviewed runtime module helpers in completed Phase 5 slices.
 - Electron main already uses `src/main.mts` -> `dist/src/main.mjs`; preserve the existing package `main`.
 - Dashboard direct execution already uses `src/dashboardServer/entrypoint.mts` -> `dist/src/dashboardServer/entrypoint.mjs`; preserve the existing `dashboard` script unless the selected slice explicitly owns it.
@@ -800,16 +805,10 @@ Current state:
 - Do not make broad Jest, packaging, bootstrap, or build-config changes.
 
 Start with the first reviewed slice that is still valid after the rescan:
-1. Dashboard/Electron interop slice for late dashboard imports.
-   - Evaluate only the remaining late dashboard runtime boundaries:
-     `src/main/windowing/core.ts`, `src/main/bootstrap/windows.ts`, and `src/dashboardServer/tunnelHandlers.ts`.
-   - Preserve Electron startup, preload behavior, BrowserWindow ownership, sandbox/context isolation, Jest config, build scripts, packaging config, dashboard singleton state, startup order, and port binding behavior.
-   - Keep `src/dashboardServer/entrypoint.mts`, `dist/src/dashboardServer/entrypoint.mjs`, and the `dashboard` npm script unchanged unless the reviewed interop design explicitly requires a narrow adjustment.
-   - Stop and update this plan if dynamic `import()` or `createRequire(import.meta.url)` changes startup order, introduces cycles, or requires converting dashboard server internals broadly to native ESM.
-2. Native ESM compatibility bridge slice for `agentManager.ts` and `sessionScanner.ts`, only when default CommonJS constructor compatibility can be preserved or intentionally retired.
-3. Preload/window ESM evaluation slice.
-4. Tooling and Jest ESM slice.
-5. Packaging proof slice.
+1. Native ESM compatibility bridge slice for `agentManager.ts` and `sessionScanner.ts`, only when default CommonJS constructor compatibility can be preserved or intentionally retired.
+2. Preload/window ESM evaluation slice.
+3. Tooling and Jest ESM slice.
+4. Packaging proof slice.
 
 For the chosen slice, write a short risk note before editing:
 - files owned by the slice

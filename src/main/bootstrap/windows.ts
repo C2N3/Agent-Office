@@ -1,4 +1,8 @@
 import { savePersistedState } from '../sessionPersistence';
+import {
+  loadDashboardRemoteAuthModule,
+  loadDashboardServerModule,
+} from '../dashboardRuntimeLoader';
 import { createWindowManager } from '../windowing';
 
 export function createApplicationWindowManager({
@@ -36,7 +40,7 @@ export async function startDashboardRuntime({
 
   // Initialize remote access token and print info
   try {
-    const { loadOrCreateToken } = require('../../dashboardServer/remoteAuth.js');
+    const { loadOrCreateToken } = loadDashboardRemoteAuthModule(require);
     const token = loadOrCreateToken();
     const port = 3000;
     debugLog(`[Remote] Token: ${token}`);
@@ -57,7 +61,7 @@ export async function startDashboardRuntime({
   }
 
   try {
-    const serverModule = require('../../dashboardServer/index.js');
+    const serverModule = loadDashboardServerModule(require);
     serverModule.setAppMeta({ isDev: !!isDev });
     serverModule.setOrchestrator(orchestrator);
     if (workspaceManager) serverModule.setWorkspaceManager(workspaceManager);

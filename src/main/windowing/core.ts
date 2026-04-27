@@ -1,6 +1,7 @@
 import { BrowserWindow, screen } from 'electron';
 import { pathToFileURL } from 'url';
 import { resolveFromModule } from '../../runtime/module';
+import { loadDashboardServerModule } from '../dashboardRuntimeLoader';
 import { createSecondaryWindowControls } from './secondary/windows';
 
 const moduleUrl = pathToFileURL(module.filename);
@@ -191,7 +192,7 @@ export function createWindowManagerCore(context) {
 
     debugLog('[Dashboard] Starting server...');
     dashboardServerStartPromise = (async () => {
-      const serverModule = require('../../dashboardServer/index.js');
+      const serverModule = loadDashboardServerModule(require);
       if (agentManager) serverModule.setAgentManager(agentManager);
       if (sessionScanner) serverModule.setSessionScanner(sessionScanner);
       if (heatmapScanner) serverModule.setHeatmapScanner(heatmapScanner);
