@@ -5,9 +5,9 @@
  * consistent with the session state file location.
  */
 
-const path = require('path');
-const os = require('os');
-const fs = require('fs');
+import * as path from 'path';
+import * as os from 'os';
+import * as fs from 'fs';
 
 interface UiState {
   overlayOpen?: boolean;
@@ -42,4 +42,3 @@ function loadUiState(): UiState {
 }
 
 export { saveUiState, loadUiState };
-module.exports = { saveUiState, loadUiState };

@@ -4,9 +4,9 @@
  * Append-only; each entry carries a timestamp and optional taskId.
  */
 
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 
 const PERSIST_DIR = path.join(os.homedir(), '.agent-office', 'task-chats');
 const MAX_MESSAGES_PER_AGENT = 2000;
@@ -84,9 +84,3 @@ export function clearChatHistory(agentRegistryId: string): void {
     // best-effort
   }
 }
-
-module.exports = {
-  appendChatMessage,
-  clearChatHistory,
-  loadChatHistory,
-};
