@@ -382,7 +382,7 @@ Those are not reasons to abandon the overall goal. They are boundaries where the
 
 ### Source-Only Cleanup Status
 
-As of the latest source-only scan, the remaining TypeScript CommonJS syntax is no longer a good fit for small leaf-module cleanup. The remaining entries are owned by dedicated compatibility or runtime-boundary slices:
+As of the latest source-only scan after `0d49575`, the remaining TypeScript CommonJS syntax and CommonJS-only path globals are no longer a good fit for small import/export cleanup. The remaining entries are owned by dedicated compatibility or runtime-boundary slices:
 
 - `src/agentManager.ts` and `src/sessionScanner.ts`: default CommonJS public API compatibility.
 - `src/main/ipc/window.ts`, `src/dashboardServer/constants.ts`, and `src/main/bootstrap/avatars.ts`: `__dirname` path contracts for assets, logs, scripts, or runtime roots.
@@ -394,7 +394,6 @@ As of the latest source-only scan, the remaining TypeScript CommonJS syntax is n
 - `src/main/bootstrap/windows.ts`: top-level window manager import is converted; remaining dashboard auth/server requires are intentional late runtime loading.
 - `src/main/terminalManager.ts`: top-level imports and named export are converted; remaining CommonJS syntax is intentional lazy/platform-specific loading for `node-pty`, `child_process`, and the Windows `.cmd` shim `path` helper.
 - `src/main/tunnelManager.ts`, `src/main/sessionTermination.ts`, and `src/dashboardServer/tunnelHandlers.ts`: optional/native or platform-specific dependency loading (`cloudflared`, `tree-kill`).
-- `src/dashboardServer/apiHandlers.ts`: office layout helpers now use static imports; remaining dashboard API path behavior depends on the `officeLayout` runtime path contract.
 - `src/dashboardServer/index.ts`: dashboard startup/runtime boundary.
 
 ## Suggested Follow-Up Prompt
