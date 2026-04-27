@@ -35,8 +35,6 @@ type SessionStats = {
 };
 
 export class SessionScanner {
-    static SessionScanner = SessionScanner;
-
     declare agentManager: any;
     declare debugLog: (message: string) => void;
     declare scanInterval: NodeJS.Timeout | null;

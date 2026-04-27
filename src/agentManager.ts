@@ -29,8 +29,6 @@ function mergeField(entry, existing, key, defaultVal = null) {
 }
 
 export class AgentManager extends EventEmitter {
-  static AgentManager = AgentManager;
-
   declare agents: Map<string, any>;
   declare _pendingEmit: Map<string, { timer: NodeJS.Timeout; state: string }>;
   declare _usedAvatarIndices: Set<number>;

@@ -71,6 +71,17 @@ function cleanBrowserOutputs() {
   }
 }
 
+function cleanStaleApplicationBridgeOutputs() {
+  const cleanupTargets = [
+    path.join(distRoot, 'src', 'agentManager.cjs'),
+    path.join(distRoot, 'src', 'sessionScanner.cjs'),
+  ];
+
+  for (const targetPath of cleanupTargets) {
+    fs.rmSync(targetPath, { force: true });
+  }
+}
+
 function copyTargetsToDist() {
   const copyTargets = [
     'src/dashboardAdapter.js',
@@ -226,6 +237,7 @@ async function buildOnce() {
   }
 
   cleanBrowserOutputs();
+  cleanStaleApplicationBridgeOutputs();
   copyTargetsToDist();
   copyRuntimeFilesToDist();
   copyAssetsToDist();

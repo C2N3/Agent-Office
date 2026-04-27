@@ -38,8 +38,7 @@ module.exports = {
     '**/__tests__/**/*.test.js'
   ],
   transform: {
-    '^.+\\.js$': 'babel-jest',
-    '^.+\\.tsx?$': '<rootDir>/scripts/jest-ts-transform.cjs'
+    '^.+\\.[jt]sx?$': '<rootDir>/scripts/jest-ts-transform.cjs'
   },
   verbose: true
 };

@@ -233,6 +233,36 @@ function stripTypeSyntax(ast, sourcePath) {
   }
 }
 
+function isHoistableJestCall(statement) {
+  if (!t.isExpressionStatement(statement)) return false;
+  const { expression } = statement;
+  if (!t.isCallExpression(expression)) return false;
+  const { callee } = expression;
+  return (
+    t.isMemberExpression(callee) &&
+    t.isIdentifier(callee.object, { name: 'jest' }) &&
+    t.isIdentifier(callee.property) &&
+    ['mock', 'unmock', 'doMock', 'dontMock'].includes(callee.property.name)
+  );
+}
+
+function hoistTopLevelJestCalls(ast) {
+  const hoisted = [];
+  const body = [];
+
+  for (const statement of ast.program.body) {
+    if (isHoistableJestCall(statement)) {
+      hoisted.push(statement);
+    } else {
+      body.push(statement);
+    }
+  }
+
+  if (hoisted.length > 0) {
+    ast.program.body = [...hoisted, ...body];
+  }
+}
+
 module.exports = {
   process(sourceText, sourcePath) {
     const ast = parser.parse(sourceText, {
@@ -244,6 +274,7 @@ module.exports = {
       ],
     });
 
+    hoistTopLevelJestCalls(ast);
     stripTypeSyntax(ast, sourcePath);
     const transformed = transformSync(
       generate(ast, { sourceMaps: 'inline' }, sourceText).code,

@@ -3,9 +3,12 @@
  * JSONL parsing, token aggregation, cost calculation, scan lifecycle
  */
 
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+
+import { getCodexSessionRoots } from '../src/main/providers/codex/paths';
+import { SessionScanner } from '../src/sessionScanner';
 
 jest.mock('fs', () => ({
   readFileSync: jest.fn(),
@@ -20,9 +23,6 @@ jest.mock('fs', () => ({
 jest.mock('../src/main/providers/codex/paths', () => ({
   getCodexSessionRoots: jest.fn(() => []),
 }));
-
-const { SessionScanner } = require('../src/sessionScanner');
-const { getCodexSessionRoots } = require('../src/main/providers/codex/paths');
 
 // Helper: build JSONL content from entries
 function buildJsonl(entries) {
@@ -46,9 +46,8 @@ describe('SessionScanner', () => {
   });
 
   describe('export shape', () => {
-    test('exposes named constructor access for source tests and compatibility bridges', () => {
+    test('exposes the native named ESM constructor', () => {
       expect(typeof SessionScanner).toBe('function');
-      expect(SessionScanner.SessionScanner).toBe(SessionScanner);
       expect(new SessionScanner(mockAgentManager, debugLog)).toBeInstanceOf(SessionScanner);
     });
   });
