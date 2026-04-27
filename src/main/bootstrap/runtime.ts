@@ -1,6 +1,5 @@
-
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
 
 function installStartupLogging({ app, processRef = process, consoleRef = console }) {
   const logDir = app.isPackaged ? app.getPath('userData') : path.join(__dirname, '..', '..');
@@ -94,12 +93,6 @@ function configureApplicationMenu({ Menu, isDev }) {
 }
 
 export {
-  configureApplicationMenu,
-  configureRuntime,
-  installStartupLogging,
-};
-
-module.exports = {
   configureApplicationMenu,
   configureRuntime,
   installStartupLogging,
