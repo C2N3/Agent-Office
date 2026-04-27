@@ -43,9 +43,12 @@ Completed in this branch:
 - Kept Electron preload outputs as native ESM `.js`/`.mjs`; no preload `.cjs` exception is currently required.
 - Verified emitted native ESM imports for `dist/src/agentManager.js` and `dist/src/sessionScanner.js`.
 
-Known remaining package-validation issue:
+Package validation status:
 
-- `npm run dist:linux` reaches Linux packaging but fails the `.deb` target because electron-builder requires a package author email or Linux maintainer metadata. This appears unrelated to the ESM runtime cutover; do not invent maintainer identity just to make packaging pass.
+- Linux `.deb` metadata is now scoped through `build.linux.maintainer` instead of changing npm package authorship.
+- `npm run dist:linux` builds `release/Agent-Office-0.1.3.AppImage` and `release/agent-office_0.1.3_amd64.deb` on WSL2.
+- Windows and macOS packaging remain unverified until those platform toolchains are available.
+- Packaged UI smoke testing remains pending until a GUI-capable packaged-app run is available.
 
 ## Cutover Strategy
 
