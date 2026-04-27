@@ -673,6 +673,15 @@ As of the latest source-only scan after `ecb5634`, the remaining TypeScript Comm
 - Validation commands: focused Jest tests for the bridge, terminal creation, and agent session termination; `npm run typecheck`; `npm run build:dist`; emitted bridge shape check; package-specific `require(...)` scan; `git diff --check`.
 - Completed in the second Phase 5 implementation slice. Remaining package-adjacent validation is deferred to the packaging proof slice because this did not change packaged file inclusion.
 
+#### Dashboard Runtime Root Path Contract
+
+- Converted `src/dashboardServer/constants.ts` from direct `__dirname` use to the reviewed module path helper for the dashboard runtime root.
+- Current CommonJS runtime anchor: `pathToFileURL(module.filename)` feeds `moduleDirname(...)`; this preserves the current `dist/` output contract without requiring package-wide `"type": "module"` or a native `.mjs` dashboard entrypoint.
+- Path before/after emit: source Jest/runtime still resolves `PROJECT_ROOT` to the repo root; emitted `dist/src/dashboardServer/constants.js` still resolves `PROJECT_ROOT` to `dist`, `APP_ROOT` to the repo root, and `HTML_FILE` to `dist/dashboard.html`.
+- Runtime/startup risk: this slice changes only dashboard path derivation, not the dashboard server lifecycle, singleton state, port ownership, npm scripts, or Electron late-loading behavior.
+- Validation commands: focused dashboard constants tests; `npm run build:dist`; emitted constants path check; `npm run typecheck`; `npm test -- --runInBand`; `timeout 25s npm start`; dashboard HTTP smoke through `npm run dashboard`; `git diff --check`.
+- Completed in the third Phase 5 implementation slice. Remaining `__dirname` contracts should continue in small owner groups: assets, helper scripts/logs, then Electron preload/html paths.
+
 #### `agentManager.ts` / `sessionScanner.ts` Default CommonJS API
 
 - Current CommonJS/export shape: tests and compatibility callers can use `const AgentManager = require('../src/agentManager')` and `const SessionScanner = require('../src/sessionScanner')`; both modules also expose `.AgentManager` / `.SessionScanner` on the required constructor.
