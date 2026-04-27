@@ -1,7 +1,7 @@
 const { createWindowManager } = require('../windowing');
-const { savePersistedState } = require('../sessionPersistence');
+import { savePersistedState } from '../sessionPersistence';
 
-function createApplicationWindowManager({
+export function createApplicationWindowManager({
   agentManager,
   agentRegistry,
   sessionScanner,
@@ -23,7 +23,7 @@ function createApplicationWindowManager({
   });
 }
 
-async function startDashboardRuntime({
+export async function startDashboardRuntime({
   windowManager,
   orchestrator,
   workspaceManager,
@@ -68,7 +68,7 @@ async function startDashboardRuntime({
   }
 }
 
-function attachAgentBroadcasts({
+export function attachAgentBroadcasts({
   agentManager,
   windowManager,
   sessionPids,
@@ -109,15 +109,3 @@ function attachAgentBroadcasts({
 
   return agentListeners;
 }
-
-export {
-  attachAgentBroadcasts,
-  createApplicationWindowManager,
-  startDashboardRuntime,
-};
-
-module.exports = {
-  attachAgentBroadcasts,
-  createApplicationWindowManager,
-  startDashboardRuntime,
-};
