@@ -1,19 +1,19 @@
-const fs = require('fs');
-const { ipcMain } = require('electron');
-const { resolveResumeSessionId } = require('../sessionIdResolver');
-const { resolveProjectPathForPlatform } = require('../../utils');
-const { electronIpcChannels, dashboardIpcChannels } = require('../../shared/contracts/ipc');
-const {
+import fs from 'fs';
+import { ipcMain } from 'electron';
+import { resolveResumeSessionId } from '../sessionIdResolver';
+import { resolveProjectPathForPlatform } from '../../utils';
+import { electronIpcChannels, dashboardIpcChannels } from '../../shared/contracts/ipc';
+import {
   buildResumeCommand,
   findLatestResumableSessionEntry,
   focusTerminalByPid,
   isPidAlive,
-} = require('./recoveryHelpers');
-const { launchExternalResumeTerminal } = require('./recovery/launch');
+} from './recoveryHelpers';
+import { launchExternalResumeTerminal } from './recovery/launch';
 
 const STALE_FOCUS_REPAIR_MS = 10_000;
 
-function registerRecoveryHandlers({
+export function registerRecoveryHandlers({
   agentManager,
   agentRegistry,
   sessionPids,
@@ -152,6 +152,7 @@ function registerRecoveryHandlers({
       provider,
       requestedSessionId: requestedResumeSessionId,
       transcriptPath,
+      sessionRoots: null,
       cwd,
     });
     const resumeCommand = buildResumeCommand(provider, resolvedSessionId);
@@ -188,7 +189,8 @@ function registerRecoveryHandlers({
 
     try {
       const launchResult = await launchExternalResumeTerminal({
-        ...resumeTarget,
+        cwd: resumeTarget.cwd,
+        resumeCommand: resumeTarget.resumeCommand,
         terminalProfileService,
       });
       if (!launchResult.success) {
@@ -247,7 +249,3 @@ function registerRecoveryHandlers({
     focusAgentTerminal,
   };
 }
-
-module.exports = {
-  registerRecoveryHandlers,
-};
