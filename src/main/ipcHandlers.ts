@@ -5,7 +5,7 @@
 
 import { createWindowSenderHelpers } from './ipc/common';
 import { registerRecoveryHandlers } from './ipc/recovery';
-const { registerWindowHandlers } = require('./ipc/window');
+import { registerWindowHandlers } from './ipc/window';
 import { registerTerminalHandlers } from './ipc/terminal';
 import { registerWorkspaceHandlers } from './ipc/workspace';
 import { registerRegistryHandlers } from './ipc/registry';

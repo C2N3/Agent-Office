@@ -1,10 +1,10 @@
-const fs = require('fs');
-const path = require('path');
-const { ipcMain, screen } = require('electron');
-const { electronIpcChannels, dashboardIpcChannels } = require('../../shared/contracts/ipc');
-const { appendChatMessage, clearChatHistory, loadChatHistory } = require('../taskChatStore');
+import fs from 'fs';
+import path from 'path';
+import { ipcMain, screen } from 'electron';
+import { electronIpcChannels, dashboardIpcChannels } from '../../shared/contracts/ipc';
+import { appendChatMessage, clearChatHistory, loadChatHistory } from '../taskChatStore';
 
-function registerWindowHandlers({
+export function registerWindowHandlers({
   agentManager,
   windowManager,
   debugLog,
@@ -182,7 +182,3 @@ function registerWindowHandlers({
     return { success: true };
   });
 }
-
-module.exports = {
-  registerWindowHandlers,
-};
