@@ -1,5 +1,5 @@
-const { createWindowManager } = require('../windowing');
 import { savePersistedState } from '../sessionPersistence';
+import { createWindowManager } from '../windowing';
 
 export function createApplicationWindowManager({
   agentManager,
