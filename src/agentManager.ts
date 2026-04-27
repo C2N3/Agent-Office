@@ -4,15 +4,15 @@
  * - Display name improvement: use cwd basename when slug is absent
  */
 
-const EventEmitter = require('events');
-const {
+import EventEmitter from 'events';
+import {
   assignAvatarIndex,
   formatDisplayName,
   getAgentWithEffectiveState,
   getStats,
   releaseAvatarIndex,
-} = require('./agentManager/helpers');
-const { rekeyAgent, transitionAgentToOffline } = require('./agentManager/identity');
+} from './agentManager/helpers';
+import { rekeyAgent, transitionAgentToOffline } from './agentManager/identity';
 
 // Sources that represent a provider CLI event pipeline (external signal).
 // New agents arriving from these sources without orchestrator context
@@ -29,6 +29,17 @@ function mergeField(entry, existing, key, defaultVal = null) {
 }
 
 class AgentManager extends EventEmitter {
+  static AgentManager = AgentManager;
+
+  declare agents: Map<string, any>;
+  declare _pendingEmit: Map<string, { timer: NodeJS.Timeout; state: string }>;
+  declare _usedAvatarIndices: Set<number>;
+  declare _nicknameStore: any;
+  declare config: {
+    softLimitWarning: number;
+    stateDebounceMs: number;
+  };
+
   constructor() {
     super();
     this.agents = new Map();
@@ -254,11 +265,11 @@ class AgentManager extends EventEmitter {
     return transitionAgentToOffline(this, agentId);
   }
 
-  getAllAgents() {
+  getAllAgents(): any[] {
     return Array.from(this.agents.keys()).map(id => this.getAgentWithEffectiveState(id));
   }
 
-  getAgentWithEffectiveState(agentId) {
+  getAgentWithEffectiveState(agentId): any {
     return getAgentWithEffectiveState(this.agents, agentId);
   }
 
@@ -268,7 +279,7 @@ class AgentManager extends EventEmitter {
     // Force emit parent state update event so the renderer recognizes it as Working
     this.emit('agent-updated', this.getAgentWithEffectiveState(parentId));
   }
-  getAgent(agentId) { return this.agents.get(agentId) || null; }
+  getAgent(agentId): any { return this.agents.get(agentId) || null; }
   getAgentCount() { return this.agents.size; }
   getAgentsByActivity() {
     return this.getAllAgents().sort((a, b) => b.lastActivity - a.lastActivity);
@@ -304,5 +315,5 @@ class AgentManager extends EventEmitter {
 }
 
 export { AgentManager };
-module.exports = AgentManager;
-module.exports.AgentManager = AgentManager;
+(module as any)['exports'] = AgentManager;
+(module as any)['exports'].AgentManager = AgentManager;

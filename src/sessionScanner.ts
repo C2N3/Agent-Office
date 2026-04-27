@@ -4,12 +4,11 @@
  * supplements them into the agentManager.
  */
 
-'use strict';
+import * as fs from 'fs';
 
-const fs = require('fs');
-const { getCodexSessionRoots } = require('./main/providers/codex/paths');
-const { normalizeProvider, providerSupportsTranscriptStats } = require('./main/providers/registry');
-const {
+import { getCodexSessionRoots } from './main/providers/codex/paths';
+import { normalizeProvider, providerSupportsTranscriptStats } from './main/providers/registry';
+import {
     detectSessionFormat,
     getEntrySessionId,
     listJsonlFiles,
@@ -17,7 +16,7 @@ const {
     parseCodexEntries,
     parseJsonLines,
     resolveTranscriptPath,
-} = require('./sessionScanner/parser');
+} from './sessionScanner/parser';
 
 type SessionStats = {
     model: string | null;
@@ -36,6 +35,8 @@ type SessionStats = {
 };
 
 class SessionScanner {
+    static SessionScanner = SessionScanner;
+
     declare agentManager: any;
     declare debugLog: (message: string) => void;
     declare scanInterval: NodeJS.Timeout | null;
@@ -225,5 +226,5 @@ class SessionScanner {
  */
 
 export { SessionScanner };
-module.exports = SessionScanner;
-module.exports.SessionScanner = SessionScanner;
+(module as any)['exports'] = SessionScanner;
+(module as any)['exports'].SessionScanner = SessionScanner;

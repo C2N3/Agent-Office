@@ -639,9 +639,8 @@ Those are not reasons to abandon the overall goal. They are boundaries where the
 
 ### Source-Only Cleanup Status
 
-As of the latest source-only scan after `0d49575`, the remaining TypeScript CommonJS syntax and CommonJS-only path globals are no longer a good fit for small import/export cleanup. The remaining entries are owned by dedicated compatibility or runtime-boundary slices:
+As of the latest source-only scan after `ecb5634`, the remaining TypeScript CommonJS syntax and CommonJS-only path globals are no longer a good fit for small import/export cleanup. The remaining entries are owned by dedicated runtime-boundary slices:
 
-- `src/agentManager.ts` and `src/sessionScanner.ts`: default CommonJS public API compatibility.
 - `src/main/ipc/window.ts`, `src/dashboardServer/constants.ts`, and `src/main/bootstrap/avatars.ts`: `__dirname` path contracts for assets, logs, scripts, or runtime roots.
 - `src/sessionend_hook.ts`: top-level imports are converted; the remaining `__dirname` hook log path is a runtime path contract for a later native ESM path helper slice.
 - `src/officeLayout.ts`: top-level imports and named exports are converted; the remaining `__dirname` asset-layout default folder is a runtime path contract for a later native ESM path helper slice.
@@ -661,6 +660,7 @@ As of the latest source-only scan after `0d49575`, the remaining TypeScript Comm
 - Emitted `dist` shape to preserve: `require('./dist/src/agentManager.js')` and `require('./dist/src/sessionScanner.js')` must return constructable classes, and the corresponding named property must point at the same class object.
 - Runtime/startup/path risk: this slice does not change startup order, Electron paths, optional/native loading, or `__dirname` path contracts. `src/main.ts` keeps static named imports. The boundary files use a narrow `module['exports']` compatibility assignment because direct TypeScript `export =` preserves the emitted shape but is not supported by the current Jest transform; broad Jest transform changes stay out of scope for this phase.
 - Validation commands: `npm run build:dist`; emitted shape checks for both modules; `npm run typecheck`; focused Jest tests for `agentManager` and `sessionScanner`.
+- Completed in `ecb5634`. The remaining compatibility assignment is intentional default CommonJS API preservation until the native runtime ESM compatibility-bridge phase.
 
 ## Suggested Follow-Up Prompt
 
