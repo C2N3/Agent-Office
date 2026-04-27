@@ -5,19 +5,17 @@
  * Provides data for GitHub contribution graph-style heatmap.
  */
 
-'use strict';
-
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
-const {
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+import {
   getRoots,
   listJsonlFiles,
   loadPersisted,
   pruneOldDays,
   savePersisted,
   scanFile,
-} = require('./helpers');
+} from './helpers';
 import type { DashboardDayStats } from '../shared/contracts/index.js';
 
 type HeatmapDayStats = DashboardDayStats & {
@@ -25,7 +23,7 @@ type HeatmapDayStats = DashboardDayStats & {
   _projects?: Set<string>;
 };
 
-class HeatmapScanner {
+export class HeatmapScanner {
   declare debugLog: (message: string) => void;
   declare scanInterval: NodeJS.Timeout | null;
   declare persistDir: string;
@@ -137,6 +135,3 @@ class HeatmapScanner {
     loadPersisted(this);
   }
 }
-
-export { HeatmapScanner };
-module.exports = HeatmapScanner;
