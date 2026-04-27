@@ -332,9 +332,6 @@ export const officeRenderer: any = {
       const isSubType = agent.metadata && agent.metadata.type === 'sub';
       const baseScale = isSubType ? 0.85 : 1.0;
 
-      const isOffline = agent.agentState === 'offline';
-      if (isOffline) ctx.globalAlpha = 0.35;
-
       ctx.save();
       ctx.translate(agent.x, agent.y);
       ctx.scale(baseScale, baseScale);
@@ -343,9 +340,7 @@ export const officeRenderer: any = {
       ctx.restore();
 
       drawOfficeNameTag(ctx, agent);
-      if (!isOffline) drawOfficeBubble(ctx, agent);
-
-      if (isOffline) ctx.globalAlpha = 1.0;
+      drawOfficeBubble(ctx, agent);
     }
 
     // Pass 3: foregrounds + decor-after per room

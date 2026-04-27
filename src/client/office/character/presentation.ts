@@ -45,10 +45,10 @@ export function mapStatus(agentOrStatus) {
     done: 'done',
     help: 'help',
     error: 'error',
-    offline: 'offline',
+    offline: 'idle',
   };
 
-  if (provider === 'codex' && currentTool && !['error', 'offline', 'completed', 'done', 'help'].includes(dashboardStatus)) {
+  if (provider === 'codex' && currentTool && !['error', 'completed', 'done', 'help'].includes(dashboardStatus)) {
     return 'working';
   }
 
