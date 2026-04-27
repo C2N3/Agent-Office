@@ -1,15 +1,15 @@
 import fs from 'fs';
 import { ipcMain } from 'electron';
-import { resolveResumeSessionId } from '../sessionIdResolver';
-import { resolveProjectPathForPlatform } from '../../utils';
-import { electronIpcChannels, dashboardIpcChannels } from '../../shared/contracts/ipc';
+import { resolveResumeSessionId } from '../sessionIdResolver.js';
+import { resolveProjectPathForPlatform } from '../../utils.js';
+import { electronIpcChannels, dashboardIpcChannels } from '../../shared/contracts/ipc.js';
 import {
   buildResumeCommand,
   findLatestResumableSessionEntry,
   focusTerminalByPid,
   isPidAlive,
-} from './recoveryHelpers';
-import { launchExternalResumeTerminal } from './recovery/launch';
+} from './recoveryHelpers.js';
+import { launchExternalResumeTerminal } from './recovery/launch.js';
 
 const STALE_FOCUS_REPAIR_MS = 10_000;
 

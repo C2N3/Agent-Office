@@ -1,4 +1,4 @@
-import { buildAccumulatedTokenUsage, resetContextPercent } from './tokenUsage';
+import { buildAccumulatedTokenUsage, resetContextPercent } from './tokenUsage.js';
 
 export function createProcessEventHandler(options: any) {
   const {

@@ -4,7 +4,7 @@ import {
   getTotalInputTokens,
   normalizeTokenUsage,
   roundCost,
-} from '../../pricing';
+} from '../../pricing.js';
 
 export function buildAccumulatedTokenUsage(agent, event) {
   const usage = normalizeTokenUsage(event.tokenUsage);

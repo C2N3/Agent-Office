@@ -3,7 +3,7 @@
  * Main window, dashboard window, keep-alive, resize, dashboard server management
  */
 
-import { createWindowManagerCore } from './core';
+import { createWindowManagerCore } from './core.js';
 
 export function createWindowManager(options) {
   return createWindowManagerCore(options);

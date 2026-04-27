@@ -21,12 +21,31 @@ The migration should no longer preserve CommonJS compatibility bridges just to k
 
 ## Current Baseline
 
-- Source-level CommonJS cleanup is effectively complete for `src/**/*.ts`, `src/**/*.tsx`, and `src/**/*.mts`.
-- `package.json` currently points Electron at `dist/src/main.mjs`.
-- `npm run dashboard` currently runs `dist/src/dashboardServer/entrypoint.mjs`.
-- `src/agentManager.cts` and `src/sessionScanner.cts` are compatibility bridges and should be removed during the cutover.
-- Jest is still CommonJS-oriented through `jest.config.js` and the existing transform.
-- Several scripts/configs are still CommonJS and must be converted or renamed before package-wide `"type": "module"` is safe.
+- Package-wide `"type": "module"` is enabled, and `dist/**/*.js` is the native ESM production runtime output.
+- Source-level CommonJS cleanup is effectively complete for application runtime `src/**/*.ts` and `src/**/*.tsx`.
+- `package.json` currently points Electron at `dist/src/main.js`.
+- `npm run dashboard` currently runs `dist/src/dashboardServer/entrypoint.js`.
+- `src/agentManager.cts`, `src/sessionScanner.cts`, and the old `src/main.mts` wrapper have been removed.
+- CommonJS scripts/configs that run under Node are explicitly named `.cjs`.
+- Jest remains a CommonJS test runner through `jest.config.cjs`, but its TS transform now understands `import.meta.url`, dynamic `import(...)`, import attributes, and final `.js` ESM specifiers.
+- Native/CommonJS-sensitive dependencies (`node-pty`, `cloudflared`, `tree-kill`) are loaded only through `createRequire(import.meta.url)` boundaries.
+
+## Cutover Status
+
+Completed in this branch:
+
+- Added package-wide `"type": "module"`.
+- Migrated runtime TypeScript relative imports to emitted `.js`/`.mjs` specifiers.
+- Removed application compatibility bridges `src/agentManager.cts` and `src/sessionScanner.cts`.
+- Removed wrapper entrypoint `src/main.mts`; Electron now targets `dist/src/main.js`.
+- Renamed CommonJS tooling/config boundaries to `.cjs`, including build/dev/electron/Jest/ESLint scripts and install-time scripts.
+- Converted dashboard runtime and tunnel manager lookups away from CommonJS compatibility fallback loaders.
+- Kept Electron preload outputs as native ESM `.js`/`.mjs`; no preload `.cjs` exception is currently required.
+- Verified emitted native ESM imports for `dist/src/agentManager.js` and `dist/src/sessionScanner.js`.
+
+Known remaining package-validation issue:
+
+- `npm run dist:linux` reaches Linux packaging but fails the `.deb` target because electron-builder requires a package author email or Linux maintainer metadata. This appears unrelated to the ESM runtime cutover; do not invent maintainer identity just to make packaging pass.
 
 ## Cutover Strategy
 
@@ -46,22 +65,22 @@ Perform the next implementation as one coordinated cutover rather than a sequenc
 
 ### 2. Package And Build Model
 
-- Decide whether to add package-wide `"type": "module"`. Prefer doing so if it makes emitted `dist/**/*.js` files load as native ESM without a parallel `.mjs` tree.
-- Update `tsconfig.emit.json` and related build flow so application runtime output is native ESM.
+- Keep package-wide `"type": "module"` so emitted `dist/**/*.js` files load as native ESM without a parallel `.mjs` tree.
+- Maintain `tsconfig.emit.json` and related build flow so application runtime output remains native ESM.
 - Keep `dist/` as the production runtime output.
-- Remove `.cts` application bridge emission from the build once callers are migrated.
-- Rename CommonJS-only scripts/configs to `.cjs` or convert them to ESM before adding `"type": "module"`.
+- Keep `.cts` application bridge emission out of the build.
+- Keep CommonJS-only scripts/configs explicitly named `.cjs`.
 
 Files likely involved:
 
 - `package.json`
 - `tsconfig.json`
 - `tsconfig.emit.json`
-- `scripts/build-types.js` or its renamed/converted equivalent
-- `scripts/run-electron.js`
-- `scripts/dev-runtime.js`
-- `jest.config.js`
-- `eslint.config.js`
+- `scripts/build-types.cjs` or its renamed/converted equivalent
+- `scripts/run-electron.cjs`
+- `scripts/dev-runtime.cjs`
+- `jest.config.cjs`
+- `eslint.config.cjs`
 
 ### 3. Runtime Application Modules
 

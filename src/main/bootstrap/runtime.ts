@@ -1,13 +1,12 @@
 import fs from 'fs';
 import path from 'path';
-import { pathToFileURL } from 'url';
-import { loadChildProcess } from '../runtimeLoaders';
-import { resolveFromModule } from '../../runtime/module';
+import { loadChildProcess } from '../runtimeLoaders.js';
+import { resolveFromModule } from '../../runtime/module.js';
 
 function installStartupLogging({ app, processRef = process, consoleRef = console }) {
   const logDir = app.isPackaged
     ? app.getPath('userData')
-    : resolveFromModule(pathToFileURL(module.filename), '..', '..');
+    : resolveFromModule(import.meta.url, '..', '..');
   const errorLogPath = path.join(logDir, 'startup-error.log');
   const originalConsoleError = consoleRef.error;
 
@@ -58,7 +57,7 @@ function installStartupLogging({ app, processRef = process, consoleRef = console
 function configureRuntime({ app, processRef = process }) {
   if (processRef.platform === 'win32') {
     try {
-      const { execSync } = loadChildProcess(require);
+      const { execSync } = loadChildProcess();
       execSync('chcp 65001', { stdio: 'ignore' });
     } catch {}
   }

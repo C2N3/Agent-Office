@@ -1,4 +1,5 @@
 import http from 'http';
+import { isDirectEntrypoint } from '../runtime/module.js';
 import { PORT } from './constants.js';
 import {
   attachAgentManagerBroadcasts,
@@ -112,6 +113,6 @@ export function calculateStats() {
   return calculateStatsImpl(getRefs().agentManager);
 }
 
-if (require.main === module) {
+if (isDirectEntrypoint(import.meta.url)) {
   startServer();
 }

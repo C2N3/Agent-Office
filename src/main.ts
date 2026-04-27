@@ -5,47 +5,47 @@
 
 import { app, BrowserWindow, Menu } from 'electron';
 
-import { AgentManager } from './agentManager';
-import { SessionScanner } from './sessionScanner';
-import { HeatmapScanner } from './heatmap';
-import { adaptAgentToDashboard } from './dashboardAdapter';
-import errorHandler from './errorHandler';
-import { getWindowSizeForAgents } from './utils';
+import { AgentManager } from './agentManager.js';
+import { SessionScanner } from './sessionScanner.js';
+import { HeatmapScanner } from './heatmap/index.js';
+import { adaptAgentToDashboard } from './dashboardAdapter.js';
+import errorHandler from './errorHandler.js';
+import { getWindowSizeForAgents } from './utils.js';
 
-import { getEnabledProviders } from './main/providerConfig';
-import { providerSupportsLiveness } from './main/providers/registry';
+import { getEnabledProviders } from './main/providerConfig.js';
+import { providerSupportsLiveness } from './main/providers/registry.js';
 import {
   sessionPids,
   startLivenessChecker,
   detectClaudePidByTranscript,
   detectProviderPidBySessionFile,
-} from './main/livenessChecker';
-import { registerIpcHandlers } from './main/ipcHandlers';
-import { NicknameStore } from './main/nicknameStore';
-import { TerminalManager } from './main/terminalManager';
-import { TerminalProfileService } from './main/terminalProfileService';
-import { AgentRegistry } from './main/registry';
-import { CentralWorkerConnector } from './main/centralWorker/connector';
-import { WorkspaceManager } from './main/workspace';
-import { TaskStore } from './main/orchestrator/taskStore';
-import { Orchestrator } from './main/orchestrator/index';
-import { ProcessManager } from './main/orchestrator/processManager';
-import { configureApplicationMenu, configureRuntime, installStartupLogging } from './main/bootstrap/runtime';
+} from './main/livenessChecker.js';
+import { registerIpcHandlers } from './main/ipcHandlers.js';
+import { NicknameStore } from './main/nicknameStore.js';
+import { TerminalManager } from './main/terminalManager.js';
+import { TerminalProfileService } from './main/terminalProfileService.js';
+import { AgentRegistry } from './main/registry/index.js';
+import { CentralWorkerConnector } from './main/centralWorker/connector.js';
+import { WorkspaceManager } from './main/workspace/index.js';
+import { TaskStore } from './main/orchestrator/taskStore.js';
+import { Orchestrator } from './main/orchestrator/index.js';
+import { ProcessManager } from './main/orchestrator/processManager.js';
+import { configureApplicationMenu, configureRuntime, installStartupLogging } from './main/bootstrap/runtime.js';
 import {
   autoRegisterProviders,
   createProviderProcessors,
   startProviderServices,
-} from './main/bootstrap/providers';
+} from './main/bootstrap/providers.js';
 import {
   attachAgentBroadcasts,
   createApplicationWindowManager,
   startDashboardRuntime,
-} from './main/bootstrap/windows';
-import { recoverProviderSessions, restoreRegisteredAgents } from './main/bootstrap/recovery';
-import { registerAppLifecycle } from './main/bootstrap/shutdown';
-import { syncAvatarFiles } from './main/bootstrap/avatars';
-import { registerTestAgents } from './main/bootstrap/testAgents';
-import { loadUiState } from './main/uiState';
+} from './main/bootstrap/windows.js';
+import { recoverProviderSessions, restoreRegisteredAgents } from './main/bootstrap/recovery.js';
+import { registerAppLifecycle } from './main/bootstrap/shutdown.js';
+import { syncAvatarFiles } from './main/bootstrap/avatars.js';
+import { registerTestAgents } from './main/bootstrap/testAgents.js';
+import { loadUiState } from './main/uiState.js';
 
 const { debugLog } = installStartupLogging({ app });
 

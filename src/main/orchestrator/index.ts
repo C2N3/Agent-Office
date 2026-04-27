@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events';
-import { transitionTask } from './taskStateMachine';
+import { transitionTask } from './taskStateMachine.js';
 import {
   cleanupTaskRuntime,
   cleanupTaskWorktree,
@@ -12,7 +12,7 @@ import {
   handleTaskSuccess,
   resetIdleTimer,
   withRepoLock,
-} from './runtime';
+} from './runtime.js';
 
 const TICK_INTERVAL_MS = 2000;
 const MAX_CONCURRENT_TASKS = 5;

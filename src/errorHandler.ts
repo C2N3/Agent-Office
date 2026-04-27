@@ -7,8 +7,8 @@ import path from 'path';
 import fs from 'fs';
 import type { BrowserWindow } from 'electron';
 
-import { ErrorSeverity, ErrorCategory } from './errorConstants';
-import { getMessageByErrorCode } from './errorMessages';
+import { ErrorSeverity, ErrorCategory } from './errorConstants.js';
+import { getMessageByErrorCode } from './errorMessages.js';
 
 class ErrorHandler {
   declare mainWindow: BrowserWindow | null;

@@ -1,10 +1,9 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { pathToFileURL } from 'url';
 import { resolveFromModule } from './runtime/module.js';
 
-const LOG_FILE = resolveFromModule(pathToFileURL(module.filename), 'hook_debug.log');
+const LOG_FILE = resolveFromModule(import.meta.url, 'hook_debug.log');
 
 const chunks = [];
 process.stdin.on('data', d => chunks.push(d));

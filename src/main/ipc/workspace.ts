@@ -1,6 +1,6 @@
 import { dialog, ipcMain } from 'electron';
-import { dashboardIpcChannels } from '../../shared/contracts/ipc';
-import { createWorkspaceRegistrationService } from './workspace/registration';
+import { dashboardIpcChannels } from '../../shared/contracts/ipc.js';
+import { createWorkspaceRegistrationService } from './workspace/registration.js';
 import type { DashboardDirectoryPickerOptions } from '../../shared/contracts/index.js';
 
 export function registerWorkspaceHandlers({

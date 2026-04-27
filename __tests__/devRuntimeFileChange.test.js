@@ -1,5 +1,5 @@
 const path = require('path');
-const { createFileChangeClassifier } = require('../scripts/dev-runtime/file-change');
+const { createFileChangeClassifier } = require('../scripts/dev-runtime/file-change.cjs');
 
 describe('dev-runtime file-change classifier', () => {
   const projectRoot = path.join(__dirname, '..');

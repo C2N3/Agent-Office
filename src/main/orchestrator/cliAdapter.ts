@@ -1,7 +1,7 @@
-import { ClaudeAdapter } from './adapters/claudeAdapter';
-import { CodexAdapter } from './adapters/codexAdapter';
-import { GeminiAdapter } from './adapters/geminiAdapter';
-import { normalizeProvider } from '../providers/registry';
+import { ClaudeAdapter } from './adapters/claudeAdapter.js';
+import { CodexAdapter } from './adapters/codexAdapter.js';
+import { GeminiAdapter } from './adapters/geminiAdapter.js';
+import { normalizeProvider } from '../providers/registry.js';
 
 export function createCLIAdapter(provider) {
   const normalizedProvider = normalizeProvider(provider, String(provider || '').trim() ? null : undefined);

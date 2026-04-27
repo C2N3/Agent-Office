@@ -1,6 +1,9 @@
+import { createRequire } from 'node:module';
+
 type PackageRequire = (packageName: string) => unknown;
 type NodePtyModule = typeof import('node-pty');
 type TreeKill = (pid: number, signal: string, callback?: (err?: Error) => void) => void;
+const packageRequire = createRequire(import.meta.url);
 
 function fallbackTreeKill(pid: number, signal: string, callback?: (err?: Error) => void): void {
   try {
@@ -11,18 +14,18 @@ function fallbackTreeKill(pid: number, signal: string, callback?: (err?: Error) 
   }
 }
 
-export function loadNodePty(packageRequire: PackageRequire): NodePtyModule {
-  return packageRequire('node-pty') as NodePtyModule;
+export function loadNodePty(requirePackage: PackageRequire = packageRequire): NodePtyModule {
+  return requirePackage('node-pty') as NodePtyModule;
 }
 
-export function loadCloudflaredPackageBin(packageRequire: PackageRequire): string | null {
-  const cloudflaredPackage = packageRequire('cloudflared') as { bin?: unknown };
+export function loadCloudflaredPackageBin(requirePackage: PackageRequire = packageRequire): string | null {
+  const cloudflaredPackage = requirePackage('cloudflared') as { bin?: unknown };
   return typeof cloudflaredPackage.bin === 'string' ? cloudflaredPackage.bin : null;
 }
 
-export function loadTreeKill(packageRequire: PackageRequire): TreeKill {
+export function loadTreeKill(requirePackage: PackageRequire = packageRequire): TreeKill {
   try {
-    return packageRequire('tree-kill') as TreeKill;
+    return requirePackage('tree-kill') as TreeKill;
   } catch {
     return fallbackTreeKill;
   }

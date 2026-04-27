@@ -1,9 +1,8 @@
 import { BrowserWindow, screen, shell } from 'electron';
-import { pathToFileURL } from 'url';
-import { resolveFromModule } from '../../../runtime/module';
-import { saveUiState } from '../../uiState';
+import { resolveFromModule } from '../../../runtime/module.js';
+import { saveUiState } from '../../uiState.js';
 
-const moduleUrl = pathToFileURL(module.filename);
+const moduleUrl = import.meta.url;
 
 function createSecondaryWindowControls(options) {
   const {

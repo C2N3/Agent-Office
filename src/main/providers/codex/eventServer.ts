@@ -3,7 +3,9 @@
  */
 
 import http from 'http';
-import Ajv from 'ajv';
+import * as AjvModule from 'ajv';
+
+const Ajv = (AjvModule as any).default || AjvModule;
 
 const MAX_BODY_SIZE = 1024 * 1024;
 export const CODEX_EVENT_SERVER_PORT = Number(process.env.PIXEL_AGENT_CODEX_PORT || 47822);

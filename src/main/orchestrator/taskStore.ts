@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import crypto from 'crypto';
-import { normalizeProvider } from '../providers/registry';
+import { normalizeProvider } from '../providers/registry.js';
 import type { TaskDefinition } from './types.js';
 
 const PERSIST_DIR = path.join(os.homedir(), '.agent-office');

@@ -3,7 +3,7 @@
  * Maintains the existing hookProcessor API while delegating to the shared event processor.
  */
 
-import { createEventProcessor } from './eventProcessor';
+import { createEventProcessor } from './eventProcessor.js';
 
 export function normalizeHookEvent(data) {
   const sessionId = data.session_id || data.sessionId;

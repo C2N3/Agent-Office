@@ -15,7 +15,7 @@ import {
   pruneOldDays,
   savePersisted,
   scanFile,
-} from './helpers';
+} from './helpers.js';
 import type { DashboardDayStats } from '../shared/contracts/index.js';
 
 type HeatmapDayStats = DashboardDayStats & {

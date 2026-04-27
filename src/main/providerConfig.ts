@@ -2,8 +2,8 @@
  * Runtime provider selection.
  */
 
-import { getCodexSessionRoots } from './providers/codex/paths';
-import { DEFAULT_PROVIDER, KNOWN_PROVIDERS } from './providers/registry';
+import { getCodexSessionRoots } from './providers/codex/paths.js';
+import { DEFAULT_PROVIDER, KNOWN_PROVIDERS } from './providers/registry.js';
 
 function getDefaultEnabledProviders(env = process.env) {
   const providers = [DEFAULT_PROVIDER];

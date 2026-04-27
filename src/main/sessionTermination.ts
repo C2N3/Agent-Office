@@ -1,6 +1,6 @@
-import { loadTreeKill } from './nativeDependencies';
+import { loadTreeKill } from './nativeDependencies.js';
 
-const treeKill = loadTreeKill(require);
+const treeKill = loadTreeKill();
 
 const ACTIVE_TASK_STATUSES = new Set(['running', 'provisioning', 'retrying']);
 const noopDebugLog = (_message: string) => {};

@@ -6,7 +6,7 @@
 import type { DashboardAgent } from './shared/contracts/index.js';
 
 import path from 'path';
-import { sanitizeProjectPath } from './utils';
+import { sanitizeProjectPath } from './utils.js';
 
 type TokenUsage = {
   inputTokens?: number;

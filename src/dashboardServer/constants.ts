@@ -1,10 +1,9 @@
 import path from 'path';
-import { pathToFileURL } from 'url';
 import { moduleDirname } from '../runtime/module.js';
 
 export const PORT = 3000;
 
-const runtimeRoot = path.resolve(moduleDirname(pathToFileURL(module.filename)), '..', '..');
+const runtimeRoot = path.resolve(moduleDirname(import.meta.url), '..', '..');
 
 export const APP_ROOT = path.basename(runtimeRoot) === 'dist'
   ? path.resolve(runtimeRoot, '..')

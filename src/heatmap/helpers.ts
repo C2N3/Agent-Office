@@ -1,9 +1,9 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { getCodexSessionRoots } from '../main/providers/codex/paths';
-import { loadPersisted, pruneOldDays, savePersisted } from './persistence';
-import { scanFile } from './scan/file';
+import { getCodexSessionRoots } from '../main/providers/codex/paths.js';
+import { loadPersisted, pruneOldDays, savePersisted } from './persistence.js';
+import { scanFile } from './scan/file.js';
 
 export function listJsonlFiles(dir) {
   if (!dir || !fs.existsSync(dir)) return [];

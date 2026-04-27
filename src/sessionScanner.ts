@@ -6,8 +6,8 @@
 
 import * as fs from 'fs';
 
-import { getCodexSessionRoots } from './main/providers/codex/paths';
-import { normalizeProvider, providerSupportsTranscriptStats } from './main/providers/registry';
+import { getCodexSessionRoots } from './main/providers/codex/paths.js';
+import { normalizeProvider, providerSupportsTranscriptStats } from './main/providers/registry.js';
 import {
     detectSessionFormat,
     getEntrySessionId,
@@ -16,7 +16,7 @@ import {
     parseCodexEntries,
     parseJsonLines,
     resolveTranscriptPath,
-} from './sessionScanner/parser';
+} from './sessionScanner/parser.js';
 
 type SessionStats = {
     model: string | null;
@@ -43,7 +43,7 @@ export class SessionScanner {
     declare lastScanResults: Map<string, SessionStats>;
 
     /**
-     * @param {import('./agentManager')} agentManager
+     * @param {import('./agentManager.js')} agentManager
      * @param {(msg: string) => void} [debugLog]
      */
     constructor(agentManager, debugLog: (message: string) => void = () => { }) {

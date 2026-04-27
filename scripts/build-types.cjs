@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
-const { createRecursiveWatcher } = require('./watch-utils');
+const { createRecursiveWatcher } = require('./watch-utils.cjs');
 
 const projectRoot = path.join(__dirname, '..');
 const distRoot = path.join(projectRoot, 'dist');

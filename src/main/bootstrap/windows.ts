@@ -1,9 +1,9 @@
-import { savePersistedState } from '../sessionPersistence';
+import { savePersistedState } from '../sessionPersistence.js';
 import {
   loadDashboardRemoteAuthModule,
   loadDashboardServerModule,
-} from '../dashboardRuntimeLoader';
-import { createWindowManager } from '../windowing';
+} from '../dashboardRuntimeLoader.js';
+import { createWindowManager } from '../windowing/index.js';
 
 export function createApplicationWindowManager({
   agentManager,
@@ -40,7 +40,7 @@ export async function startDashboardRuntime({
 
   // Initialize remote access token and print info
   try {
-    const { loadOrCreateToken } = loadDashboardRemoteAuthModule(require);
+    const { loadOrCreateToken } = await loadDashboardRemoteAuthModule();
     const token = loadOrCreateToken();
     const port = 3000;
     debugLog(`[Remote] Token: ${token}`);
@@ -61,7 +61,7 @@ export async function startDashboardRuntime({
   }
 
   try {
-    const serverModule = loadDashboardServerModule(require);
+    const serverModule = await loadDashboardServerModule();
     serverModule.setAppMeta({ isDev: !!isDev });
     serverModule.setOrchestrator(orchestrator);
     if (workspaceManager) serverModule.setWorkspaceManager(workspaceManager);

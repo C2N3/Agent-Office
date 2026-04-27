@@ -3,12 +3,13 @@ const { transformSync } = require('@babel/core');
 const traverse = require('@babel/traverse').default;
 const t = require('@babel/types');
 const generate = require('@babel/generator').default;
+const { pathToFileURL } = require('url');
 const {
   collectBindingNames,
   createExportAssignments,
   createRequireStatements,
   resolveImportSource,
-} = require('./jest-ts-transform/helpers');
+} = require('./jest-ts-transform/helpers.cjs');
 
 function stripTypeSyntax(ast, sourcePath) {
   const state = {
@@ -66,11 +67,43 @@ function stripTypeSyntax(ast, sourcePath) {
     },
     CallExpression(path) {
       const [firstArgument] = path.node.arguments;
+      if (t.isImport(path.node.callee) && t.isStringLiteral(firstArgument)) {
+        path.replaceWith(
+          t.callExpression(
+            t.memberExpression(
+              t.callExpression(
+                t.memberExpression(t.identifier('Promise'), t.identifier('resolve')),
+                [],
+              ),
+              t.identifier('then'),
+            ),
+            [
+              t.arrowFunctionExpression(
+                [],
+                t.callExpression(t.identifier('require'), [
+                  t.stringLiteral(resolveImportSource(firstArgument.value, sourcePath)),
+                ]),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
       if (
         t.isIdentifier(path.node.callee, { name: 'require' }) &&
         t.isStringLiteral(firstArgument)
       ) {
         firstArgument.value = resolveImportSource(firstArgument.value, sourcePath);
+      }
+    },
+    MemberExpression(path) {
+      if (
+        t.isMetaProperty(path.node.object) &&
+        path.node.object.meta.name === 'import' &&
+        path.node.object.property.name === 'meta' &&
+        t.isIdentifier(path.node.property, { name: 'url' })
+      ) {
+        path.replaceWith(t.stringLiteral(pathToFileURL(sourcePath).href));
       }
     },
     ImportDeclaration(path) {

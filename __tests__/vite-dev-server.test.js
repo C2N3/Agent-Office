@@ -1,5 +1,5 @@
 const path = require('path');
-const { startViteDevServer } = require('../scripts/vite-dev-server');
+const { startViteDevServer } = require('../scripts/vite-dev-server.cjs');
 
 describe('vite-dev-server', () => {
   test('starts the Vite server with the repo config and exposes the resolved URL', async () => {

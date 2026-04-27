@@ -7,7 +7,7 @@
  * previously registered the global hook by stripping the Agent-Office
  * hook entries from ~/.claude/settings.json.
  *
- * This JS copy is used by src/install.js during postinstall (before
+ * This JS copy is used by src/install.cjs during postinstall (before
  * TypeScript sources are built into dist/).
  */
 

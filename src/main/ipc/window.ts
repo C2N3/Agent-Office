@@ -1,10 +1,9 @@
 import fs from 'fs';
 import path from 'path';
-import { pathToFileURL } from 'url';
 import { ipcMain, screen } from 'electron';
-import { electronIpcChannels, dashboardIpcChannels } from '../../shared/contracts/ipc';
-import { appendChatMessage, clearChatHistory, loadChatHistory } from '../taskChatStore';
-import { resolveFromModule } from '../../runtime/module';
+import { electronIpcChannels, dashboardIpcChannels } from '../../shared/contracts/ipc.js';
+import { appendChatMessage, clearChatHistory, loadChatHistory } from '../taskChatStore.js';
+import { resolveFromModule } from '../../runtime/module.js';
 
 export function registerWindowHandlers({
   agentManager,
@@ -33,7 +32,7 @@ export function registerWindowHandlers({
   ipcMain.on(electronIpcChannels.getAvatars, (event) => {
     try {
       const avatarCatalogPath = resolveFromModule(
-        pathToFileURL(module.filename),
+        import.meta.url,
         '..',
         '..',
         '..',

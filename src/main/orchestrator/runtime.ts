@@ -1,14 +1,14 @@
-import { createCLIAdapter } from './cliAdapter';
-import { OutputParser } from './outputParser';
-import { isTerminalStatus } from './taskStateMachine';
-import { cleanupTaskRuntime, cleanupTaskWorktree, withRepoLock } from './cleanup';
+import { createCLIAdapter } from './cliAdapter.js';
+import { OutputParser } from './outputParser.js';
+import { isTerminalStatus } from './taskStateMachine.js';
+import { cleanupTaskRuntime, cleanupTaskWorktree, withRepoLock } from './cleanup.js';
 import {
   handleContextExhaustion,
   handleRetry,
   handleTaskFailure,
   handleTaskSuccess,
-} from './completion';
-import { sharedSessionAllowlist } from './sessionAllowlist';
+} from './completion.js';
+import { sharedSessionAllowlist } from './sessionAllowlist.js';
 
 export async function dispatchTask(orchestrator, task) {
   orchestrator.taskStore.updateTask(task.id, { status: 'provisioning', updatedAt: Date.now() });

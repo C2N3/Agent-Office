@@ -6,7 +6,9 @@
  * Modeled after CLITrigger's ClaudeManager.startWithSpawn() pattern.
  */
 import { spawn } from 'child_process';
-import treeKill from 'tree-kill';
+import { loadTreeKill } from '../nativeDependencies.js';
+
+const treeKill = loadTreeKill();
 
 type DebugLog = (message: string) => void;
 type TaskExecutionEnvironment = 'auto' | 'native' | 'wsl';

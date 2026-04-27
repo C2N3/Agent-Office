@@ -4,7 +4,7 @@ import { loadMainTunnelManager } from './tunnelManagerLookup.js';
 // tunnelManager is a singleton in the main process
 function getTunnelManager(): any {
   try {
-    return loadMainTunnelManager(require);
+    return loadMainTunnelManager();
   } catch {
     return null;
   }

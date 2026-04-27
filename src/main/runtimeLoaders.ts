@@ -1,9 +1,12 @@
-type PackageRequire = (packageName: string) => unknown;
+import { createRequire } from 'node:module';
 
-export function loadChildProcess(packageRequire: PackageRequire): typeof import('child_process') {
-  return packageRequire('child_process') as typeof import('child_process');
+type PackageRequire = (packageName: string) => unknown;
+const packageRequire = createRequire(import.meta.url);
+
+export function loadChildProcess(requirePackage: PackageRequire = packageRequire): typeof import('child_process') {
+  return requirePackage('child_process') as typeof import('child_process');
 }
 
-export function loadPath(packageRequire: PackageRequire): typeof import('path') {
-  return packageRequire('path') as typeof import('path');
+export function loadPath(requirePackage: PackageRequire = packageRequire): typeof import('path') {
+  return requirePackage('path') as typeof import('path');
 }

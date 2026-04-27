@@ -39,7 +39,7 @@ module.exports = {
   ],
   transform: {
     '^.+\\.js$': 'babel-jest',
-    '^.+\\.tsx?$': '<rootDir>/scripts/jest-ts-transform.js'
+    '^.+\\.tsx?$': '<rootDir>/scripts/jest-ts-transform.cjs'
   },
   verbose: true
 };

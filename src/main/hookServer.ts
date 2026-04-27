@@ -4,7 +4,9 @@
  */
 
 import http from 'http';
-import Ajv from 'ajv';
+import * as AjvModule from 'ajv';
+
+const Ajv = (AjvModule as any).default || AjvModule;
 
 const MAX_BODY_SIZE = 1024 * 1024; // 1MB
 
