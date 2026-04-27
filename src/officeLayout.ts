@@ -1,5 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { resolveFromModule } from './runtime/module.js';
 
 const DEFAULT_MAP_SCALE = 2.1875;
 const DEFAULT_TILE_SIZE = 70;
@@ -95,7 +97,7 @@ const VALID_IDLE_VALUES = new Set(['up', 'down', 'left', 'right', 'dance']);
 const VALID_DECOR_LAYERS = new Set(['bg', 'fg']);
 
 type PlainObject = Record<string, any>;
-const DEFAULT_LAYOUT_FOLDER = path.resolve(__dirname, '..', 'office-layout');
+const DEFAULT_LAYOUT_FOLDER = resolveFromModule(pathToFileURL(module.filename), '..', 'office-layout');
 
 function cloneDefaultLayout() {
   return JSON.parse(JSON.stringify(DEFAULT_LAYOUT));

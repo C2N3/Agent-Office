@@ -1,11 +1,14 @@
 import fs from 'fs';
 import path from 'path';
+import { pathToFileURL } from 'url';
+import { resolveFromModule } from '../../runtime/module';
 
 // Scan assets/characters/ subfolders and update avatars.json.
 // Preserves the existing file order so assigned avatarIndex values remain valid.
 export function syncAvatarFiles({ debugLog }) {
-  const charDir = path.join(__dirname, '..', '..', '..', 'assets', 'characters');
-  const jsonPath = path.join(__dirname, '..', '..', '..', 'assets', 'shared', 'avatars.json');
+  const moduleUrl = pathToFileURL(module.filename);
+  const charDir = resolveFromModule(moduleUrl, '..', '..', '..', 'assets', 'characters');
+  const jsonPath = resolveFromModule(moduleUrl, '..', '..', '..', 'assets', 'shared', 'avatars.json');
   const imgRegex = /\.(webp|png|jpg|jpeg|gif)$/i;
 
   try {

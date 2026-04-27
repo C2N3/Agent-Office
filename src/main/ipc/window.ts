@@ -1,8 +1,10 @@
 import fs from 'fs';
 import path from 'path';
+import { pathToFileURL } from 'url';
 import { ipcMain, screen } from 'electron';
 import { electronIpcChannels, dashboardIpcChannels } from '../../shared/contracts/ipc';
 import { appendChatMessage, clearChatHistory, loadChatHistory } from '../taskChatStore';
+import { resolveFromModule } from '../../runtime/module';
 
 export function registerWindowHandlers({
   agentManager,
@@ -30,7 +32,15 @@ export function registerWindowHandlers({
 
   ipcMain.on(electronIpcChannels.getAvatars, (event) => {
     try {
-      const avatarCatalogPath = path.join(__dirname, '..', '..', '..', 'assets', 'shared', 'avatars.json');
+      const avatarCatalogPath = resolveFromModule(
+        pathToFileURL(module.filename),
+        '..',
+        '..',
+        '..',
+        'assets',
+        'shared',
+        'avatars.json',
+      );
       const catalog = JSON.parse(fs.readFileSync(avatarCatalogPath, 'utf8'));
       const allFiles = Array.isArray(catalog) ? catalog : (catalog?.allFiles || []);
       event.reply(electronIpcChannels.avatarsResponse, allFiles);
