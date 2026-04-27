@@ -1,6 +1,6 @@
-export function createProcessEventHandler(options: any) {
-  const { buildAccumulatedTokenUsage, resetContextPercent } = require('./tokenUsage');
+import { buildAccumulatedTokenUsage, resetContextPercent } from './tokenUsage';
 
+export function createProcessEventHandler(options: any) {
   const {
     agentManager,
     agentRegistry,

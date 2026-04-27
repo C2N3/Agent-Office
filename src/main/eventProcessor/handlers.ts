@@ -1,10 +1,10 @@
 import type {
-  AgentLike,
   AgentManagerLike,
   AgentRegistryLike,
   SessionPidsMap,
-  SessionStateOptions,
 } from './sessionState.js';
+import { createProcessEventHandler } from './process.js';
+import { createSessionLifecycleHandlers } from './sessions.js';
 
 type SessionState = ReturnType<typeof import('./sessionState.js').createSessionState>;
 
@@ -33,18 +33,6 @@ export function createEventHandlers({
   state,
   getTaskCompletionHandler,
 }: EventHandlerOptions) {
-  const { createProcessEventHandler } = require('./process.js') as {
-    createProcessEventHandler: (options: any) => (event: any) => void;
-  };
-  const { createSessionLifecycleHandlers } = require('./sessions.js') as {
-    createSessionLifecycleHandlers: (options: any) => {
-      handlePidReconnect: (event: any) => void;
-      handleSessionStart: (sessionId: string, cwd: string, pid?: number, options?: Partial<SessionStateOptions>) => void;
-      handleSessionEnd: (sessionId: string) => void;
-      attachRegisteredAgent: (registryAgent: AgentLike | null | undefined) => string | null;
-    };
-  };
-
   const lifecycle = createSessionLifecycleHandlers({
     agentManager,
     agentRegistry,
