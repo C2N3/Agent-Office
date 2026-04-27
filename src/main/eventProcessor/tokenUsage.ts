@@ -1,13 +1,12 @@
-
-const {
+import {
   calculateTokenCost,
   getContextWindowSize,
   getTotalInputTokens,
   normalizeTokenUsage,
   roundCost,
-} = require('../../pricing');
+} from '../../pricing';
 
-function buildAccumulatedTokenUsage(agent, event) {
+export function buildAccumulatedTokenUsage(agent, event) {
   const usage = normalizeTokenUsage(event.tokenUsage);
   if (!usage) return agent.tokenUsage || null;
 
@@ -30,11 +29,6 @@ function buildAccumulatedTokenUsage(agent, event) {
   };
 }
 
-function resetContextPercent(tokenUsage) {
+export function resetContextPercent(tokenUsage) {
   return tokenUsage ? { ...tokenUsage, contextPercent: 0 } : null;
 }
-
-module.exports = {
-  buildAccumulatedTokenUsage,
-  resetContextPercent,
-};
