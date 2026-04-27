@@ -4,7 +4,7 @@ import type {
   DashboardErrorContext,
   DashboardRecoveryActionResult,
   DashboardWindowActionResult,
-} from './dashboard.js';
+} from './dashboard';
 
 export type DashboardResizeRequest = {
   width: number;

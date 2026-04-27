@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
-import { sanitizeProjectPath } from '../../utils.js';
-import type { DashboardWorkspace } from '../../shared/contracts/index.js';
+import { sanitizeProjectPath } from '../../utils';
+import type { DashboardWorkspace } from '../../shared/contracts/index';
 
 export function mergeWorkspace(manager, workspace: DashboardWorkspace) {
   if (!workspace || typeof workspace !== 'object') {

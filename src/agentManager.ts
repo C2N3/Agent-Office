@@ -11,8 +11,8 @@ import {
   getAgentWithEffectiveState,
   getStats,
   releaseAvatarIndex,
-} from './agentManager/helpers.js';
-import { rekeyAgent, transitionAgentToOffline } from './agentManager/identity.js';
+} from './agentManager/helpers';
+import { rekeyAgent, transitionAgentToOffline } from './agentManager/identity';
 
 // Sources that represent a provider CLI event pipeline (external signal).
 // New agents arriving from these sources without orchestrator context

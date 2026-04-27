@@ -1,7 +1,7 @@
 import React, { createElement } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot, type Root } from 'react-dom/client';
-import { DashboardApp } from './dashboardApp.js';
+import { DashboardApp } from './dashboardApp';
 
 let root: Root | null = null;
 

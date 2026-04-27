@@ -1,7 +1,7 @@
 import { URL } from 'url';
-import { getConversationSummary, parseConversation } from '../main/conversationParser.js';
-import { terminateAgentSession } from '../main/sessionTermination.js';
-import { getRefs } from './context.js';
+import { getConversationSummary, parseConversation } from '../main/conversationParser';
+import { terminateAgentSession } from '../main/sessionTermination';
+import { getRefs } from './context';
 
 interface ResponseLike {
   writeHead(statusCode: number, headers?: Record<string, string>): void;

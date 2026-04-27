@@ -4,7 +4,7 @@
  */
 
 import { contextBridge, ipcRenderer } from 'electron';
-import { dashboardIpcChannels } from './shared/contracts/ipc.js';
+import { dashboardIpcChannels } from './shared/contracts/ipc';
 
 contextBridge.exposeInMainWorld('taskChatAPI', {
   close: (agentRegistryId: string) => ipcRenderer.send(dashboardIpcChannels.taskChatClose, agentRegistryId),

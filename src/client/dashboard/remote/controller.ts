@@ -1,18 +1,18 @@
-import { parseGuestInviteLink, type RemoteMode } from '../remoteMode.js';
-import { fetchWithTimeout } from '../fetchWithTimeout.js';
-import { clearStoredHostInviteLink, persistHostInviteLink } from './invitePersistence.js';
-import { createRoomAccessSecret, isLoopbackCentralServer } from './recovery.js';
-import { checkHostAccess, fetchRoomAccessStatus } from './roomAccess.js';
-import type { RoomAccessStatus } from './types.js';
-import { getRemoteViewState, updateRemoteViewState } from './store.js';
-import { fetchCentralServerConfig, fetchCentralServerSnapshot, saveCentralServerConfig, startCentralServerConnection, stopCentralServerConnection } from '../serverConnection.js';
+import { parseGuestInviteLink, type RemoteMode } from '../remoteMode';
+import { fetchWithTimeout } from '../fetchWithTimeout';
+import { clearStoredHostInviteLink, persistHostInviteLink } from './invitePersistence';
+import { createRoomAccessSecret, isLoopbackCentralServer } from './recovery';
+import { checkHostAccess, fetchRoomAccessStatus } from './roomAccess';
+import type { RoomAccessStatus } from './types';
+import { getRemoteViewState, updateRemoteViewState } from './store';
+import { fetchCentralServerConfig, fetchCentralServerSnapshot, saveCentralServerConfig, startCentralServerConnection, stopCentralServerConnection } from '../serverConnection';
 import {
   formatHostRotateError,
   hostAddressMismatchMessage,
   isOwnerAccessErrorMessage,
   localHostRecoveryOnlyMessage,
   ownerAccessRequiredMessage,
-} from './messages.js';
+} from './messages';
 
 let copyFeedbackTimer: ReturnType<typeof setTimeout> | null = null;
 

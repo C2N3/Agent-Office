@@ -1,10 +1,10 @@
-import { HOOK_SERVER_PORT, unregisterClaudeHooks } from '../hookRegistration.js';
-import { startHookServer } from '../hookServer.js';
-import { CODEX_EVENT_SERVER_PORT, startCodexEventServer } from '../providers/codex/eventServer.js';
-import { createHookProcessor } from '../hookProcessor.js';
-import { createCodexProcessor } from '../providers/codex/processor.js';
-import { createCodexSessionMonitor } from '../providers/codex/sessionMonitor.js';
-import { sharedSessionAllowlist } from '../orchestrator/sessionAllowlist.js';
+import { HOOK_SERVER_PORT, unregisterClaudeHooks } from '../hookRegistration';
+import { startHookServer } from '../hookServer';
+import { CODEX_EVENT_SERVER_PORT, startCodexEventServer } from '../providers/codex/eventServer';
+import { createHookProcessor } from '../hookProcessor';
+import { createCodexProcessor } from '../providers/codex/processor';
+import { createCodexSessionMonitor } from '../providers/codex/sessionMonitor';
+import { sharedSessionAllowlist } from '../orchestrator/sessionAllowlist';
 
 export function autoRegisterProviders({ enabledProviders, debugLog }) {
   // Agent-Office no longer registers a global Claude hook. Migrate any

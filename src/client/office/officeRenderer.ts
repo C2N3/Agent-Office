@@ -6,24 +6,24 @@
 
 /* eslint-disable no-unused-vars */
 
-import { OFFICE } from './officeConfig.js';
-import { officeCharacters } from './character/index.js';
+import { OFFICE } from './officeConfig';
+import { officeCharacters } from './character/index';
 import {
   officeCoordsByRoom,
   parseRoomMapCoordinates,
   parseRoomObjectCoordinates,
-} from './officeCoords.js';
+} from './officeCoords';
 import {
   buildOfficeLayers,
   officeLayers,
   officeRoomOrder,
   officeRooms,
-} from './officeLayers.js';
-import { officePathfinder } from './officePathfinder.js';
-import { drawOfficeSprite, loadAllOfficeSkins } from './officeSprite.js';
-import { drawOfficeBubble, drawOfficeNameTag } from './officeUi.js';
-import { screenToWorld, setupCameraControls } from './renderer/camera.js';
-import { rendererEffects } from './officeRendererEffects.js';
+} from './officeLayers';
+import { officePathfinder } from './officePathfinder';
+import { drawOfficeSprite, loadAllOfficeSkins } from './officeSprite';
+import { drawOfficeBubble, drawOfficeNameTag } from './officeUi';
+import { screenToWorld, setupCameraControls } from './renderer/camera';
+import { rendererEffects } from './officeRendererEffects';
 
 export const officeRenderer: any = {
   canvas: null,

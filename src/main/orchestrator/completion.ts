@@ -1,5 +1,5 @@
-import { cleanupTaskRuntime, cleanupTaskWorktree } from './cleanup.js';
-import { autoCommitTaskChanges } from './output.js';
+import { cleanupTaskRuntime, cleanupTaskWorktree } from './cleanup';
+import { autoCommitTaskChanges } from './output';
 
 export function handleTaskSuccess(orchestrator, taskId) {
   const task = orchestrator.taskStore.getTask(taskId);

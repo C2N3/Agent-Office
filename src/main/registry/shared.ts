@@ -1,6 +1,6 @@
 import path from 'path';
-import { sanitizeProjectPath } from '../../utils.js';
-import type { AgentRegistryLike, PersistentAgent, PersistentSessionHistoryEntry } from './types.js';
+import { sanitizeProjectPath } from '../../utils';
+import type { AgentRegistryLike, PersistentAgent, PersistentSessionHistoryEntry } from './types';
 
 function convertWslPathToWindowsDrivePath(rawPath) {
   if (typeof rawPath !== 'string' || !rawPath) return rawPath;

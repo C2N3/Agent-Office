@@ -106,4 +106,4 @@ export async function refreshSharedAvatarData(): Promise<AvatarData> {
 
   return setSharedAvatarData(catalog);
 }
-import { toHttpAssetPath } from '../../shared/assetPaths.js';
+import { toHttpAssetPath } from '../../shared/assetPaths';

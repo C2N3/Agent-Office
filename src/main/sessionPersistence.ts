@@ -11,7 +11,7 @@ import {
   getProviderDefinition,
   normalizeProvider,
   providerSupportsActiveSessionFileRecovery,
-} from './providers/registry.js';
+} from './providers/registry';
 
 const CODEX_ACTIVE_FILE_WINDOW_MS = 30 * 60 * 1000;
 

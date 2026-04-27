@@ -1,13 +1,13 @@
 import fs from 'fs';
 import path from 'path';
 import { URL } from 'url';
-import { adaptAgentToDashboard } from '../dashboardAdapter.js';
-import { loadOfficeLayoutManifest, resolveOfficeLayoutAssetPath } from '../officeLayout.js';
-import { ASSET_ROOT, MIME_TYPES } from './constants.js';
-import { getClients, getRefs } from './context.js';
-import { calculateStats } from './stats.js';
-import { handleAgentApiRoute } from './agentHandlers.js';
-import { handleCreateTask, handleListTasks, handleTaskApiRoute } from './taskHandlers.js';
+import { adaptAgentToDashboard } from '../dashboardAdapter';
+import { loadOfficeLayoutManifest, resolveOfficeLayoutAssetPath } from '../officeLayout';
+import { ASSET_ROOT, MIME_TYPES } from './constants';
+import { getClients, getRefs } from './context';
+import { calculateStats } from './stats';
+import { handleAgentApiRoute } from './agentHandlers';
+import { handleCreateTask, handleListTasks, handleTaskApiRoute } from './taskHandlers';
 
 export { handleAgentApiRoute, handleTaskApiRoute };
 

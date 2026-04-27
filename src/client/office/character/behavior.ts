@@ -7,12 +7,12 @@ import {
   STATE_ZONE_MAP,
   getSeatConfig,
   getIdleSeatEntry,
-} from '../officeConfig.js';
-import { officeCoordsByRoom } from '../officeCoords.js';
-import { officeLayers, officeRooms, officeRoomOrder, getRoomAtWorld, getNearestRoom } from '../officeLayers.js';
-import { officePathfinder } from '../officePathfinder.js';
-import { officeRenderer } from '../officeRenderer.js';
-import { animKeyFromDir, tickOfficeAnimation } from '../officeSprite.js';
+} from '../officeConfig';
+import { officeCoordsByRoom } from '../officeCoords';
+import { officeLayers, officeRooms, officeRoomOrder, getRoomAtWorld, getNearestRoom } from '../officeLayers';
+import { officePathfinder } from '../officePathfinder';
+import { officeRenderer } from '../officeRenderer';
+import { animKeyFromDir, tickOfficeAnimation } from '../officeSprite';
 
 function seatKey(roomId, deskIndex) {
   return roomId + ':' + deskIndex;

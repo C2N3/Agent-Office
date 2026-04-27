@@ -5,7 +5,7 @@ import {
   formatNum,
   historyState,
   type DashboardArchiveItem,
-} from '../shared.js';
+} from '../shared';
 import {
   deleteArchivedAgentRecord,
   getArchiveRefreshToken,
@@ -17,8 +17,8 @@ import {
   showTooltip,
   subscribeArchiveView,
   subscribeHeatmapView,
-} from '../activityViews.js';
-import { type DashboardView } from '../state/store.js';
+} from '../activityViews';
+import { type DashboardView } from '../state/store';
 
 type HeatmapCell = {
   dateString: string;

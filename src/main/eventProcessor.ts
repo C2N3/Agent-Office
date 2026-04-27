@@ -3,8 +3,8 @@
  * Normalizes Claude/Codex events into a shared session lifecycle model.
  */
 
-import { createSessionState } from './eventProcessor/sessionState.js';
-import { createEventHandlers } from './eventProcessor/handlers.js';
+import { createSessionState } from './eventProcessor/sessionState';
+import { createEventHandlers } from './eventProcessor/handlers';
 
 export function createEventProcessor({
   agentManager,

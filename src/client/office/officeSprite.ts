@@ -6,8 +6,8 @@
 
 /* eslint-disable no-unused-vars */
 
-import { AVATAR_FILES, IDLE_ANIM_KEYS, OFFICE, SPRITE_FRAMES } from './officeConfig.js';
-import { toHttpAssetPath } from '../../shared/assetPaths.js';
+import { AVATAR_FILES, IDLE_ANIM_KEYS, OFFICE, SPRITE_FRAMES } from './officeConfig';
+import { toHttpAssetPath } from '../../shared/assetPaths';
 
 export let officeSkinImages: Record<string, HTMLImageElement> = {}; // filename → Image
 

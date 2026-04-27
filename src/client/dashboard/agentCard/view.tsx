@@ -3,15 +3,15 @@ import {
   type DashboardAgent,
   type DashboardAgentHistoryEntry,
   SHARED_AVATAR_FILES,
-} from '../shared.js';
+} from '../shared';
 import {
   formatWorkspaceTypeLabel,
   getActivityIcon,
   getStateColor,
   humanizeToolName,
-} from '../agentViewHelpers.js';
-import { AgentNameEditor } from './nameEditor.js';
-import { getAgentOwnershipBadge } from './ownership.js';
+} from '../agentViewHelpers';
+import { AgentNameEditor } from './nameEditor';
+import { getAgentOwnershipBadge } from './ownership';
 
 type AgentCardProps = {
   key?: string;

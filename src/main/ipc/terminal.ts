@@ -1,6 +1,6 @@
 import { spawn } from 'child_process';
 import { ipcMain } from 'electron';
-import { dashboardIpcChannels } from '../../shared/contracts/ipc.js';
+import { dashboardIpcChannels } from '../../shared/contracts/ipc';
 
 export function registerTerminalHandlers({
   agentManager,

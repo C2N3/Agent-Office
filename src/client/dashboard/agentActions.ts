@@ -1,9 +1,9 @@
-import { archiveState, getDashboardAPI, state } from './shared.js';
-import { renderArchiveView } from './activityViews.js';
-import { officeOnAgentUpdated, officeRenderer } from '../office/index.js';
-import { syncCentralAgentDisplayName, syncCentralAgentRemoval } from './centralAgents/index.js';
-import { notifyDashboardStore } from './state/store.js';
-import { dashboardModalRegistry } from './modals/registry.js';
+import { archiveState, getDashboardAPI, state } from './shared';
+import { renderArchiveView } from './activityViews';
+import { officeOnAgentUpdated, officeRenderer } from '../office/index';
+import { syncCentralAgentDisplayName, syncCentralAgentRemoval } from './centralAgents/index';
+import { notifyDashboardStore } from './state/store';
+import { dashboardModalRegistry } from './modals/registry';
 
 export function openCreateAgentModal(): void {
   dashboardModalRegistry.openCreateAgentModal?.();

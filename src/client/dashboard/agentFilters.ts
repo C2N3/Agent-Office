@@ -1,5 +1,5 @@
-import { type DashboardAgent, state } from './shared.js';
-import { floorManager } from '../office/floorManager.js';
+import { type DashboardAgent, state } from './shared';
+import { floorManager } from '../office/floorManager';
 
 export function isRegisteredOnlyFilterEnabled() {
   return !!state.filters.registeredOnly;

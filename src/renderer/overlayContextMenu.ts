@@ -1,4 +1,4 @@
-import type { OverlayContextMenuState } from './overlayShellController.js';
+import type { OverlayContextMenuState } from './overlayShellController';
 
 export type OverlayContextMenuEvent = {
   target: EventTarget | null;

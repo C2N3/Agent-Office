@@ -1,9 +1,9 @@
-import { savePersistedState } from '../sessionPersistence.js';
+import { savePersistedState } from '../sessionPersistence';
 import {
   loadDashboardRemoteAuthModule,
   loadDashboardServerModule,
-} from '../dashboardRuntimeLoader.js';
-import { createWindowManager } from '../windowing/index.js';
+} from '../dashboardRuntimeLoader';
+import { createWindowManager } from '../windowing/index';
 
 export function createApplicationWindowManager({
   agentManager,

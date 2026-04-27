@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { sanitizeProjectPath } from '../../utils.js';
+import { sanitizeProjectPath } from '../../utils';
 
 export const GLOBAL_WORKTREE_DIR = path.join(os.homedir(), '.agent-office', 'worktrees');
 const DEPENDENCY_SYMLINK_CANDIDATES = ['node_modules'];

@@ -6,11 +6,11 @@
 
 /* eslint-disable no-unused-vars */
 
-import { loadAvatarFiles, loadOfficeLayout, loadSpriteFrames } from './officeConfig.js';
-import { officeCharacters } from './character/index.js';
-import { officeRenderer } from './officeRenderer.js';
-import { floorManager } from './floorManager.js';
-import { getOfficeCanvasHost } from './host.js';
+import { loadAvatarFiles, loadOfficeLayout, loadSpriteFrames } from './officeConfig';
+import { officeCharacters } from './character/index';
+import { officeRenderer } from './officeRenderer';
+import { floorManager } from './floorManager';
+import { getOfficeCanvasHost } from './host';
 
 let officeInitialized = false;
 

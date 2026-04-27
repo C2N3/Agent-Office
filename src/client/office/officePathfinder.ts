@@ -6,9 +6,9 @@
 
 /* eslint-disable no-unused-vars */
 
-import { OFFICE } from './officeConfig.js';
-import { loadOfficeImage, officeRooms, officeRoomOrder } from './officeLayers.js';
-import { toHttpAssetPath } from '../../shared/assetPaths.js';
+import { OFFICE } from './officeConfig';
+import { loadOfficeImage, officeRooms, officeRoomOrder } from './officeLayers';
+import { toHttpAssetPath } from '../../shared/assetPaths';
 
 interface RoomGrid {
   grid: boolean[][];

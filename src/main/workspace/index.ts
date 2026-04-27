@@ -1,11 +1,11 @@
 import fs from 'fs';
 import path from 'path';
 import { execFileSync } from 'child_process';
-import { sanitizeProjectPath } from '../../utils.js';
+import { sanitizeProjectPath } from '../../utils';
 import {
   mergeWorkspace as mergeWorkspaceLifecycle,
   removeWorkspace as removeWorkspaceLifecycle,
-} from './lifecycle.js';
+} from './lifecycle';
 import {
   GLOBAL_WORKTREE_DIR,
   buildSuggestedBranchName,
@@ -17,7 +17,7 @@ import {
   inspectWorkspacePath,
   copyIntoWorkspace,
   symlinkIntoWorkspace,
-} from './helpers.js';
+} from './helpers';
 
 type WorkspaceManagerOptions = {
   debugLog?: (message: string) => void;

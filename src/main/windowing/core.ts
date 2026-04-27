@@ -1,7 +1,7 @@
 import { BrowserWindow, screen } from 'electron';
-import { resolveFromModule } from '../../runtime/module.js';
-import { loadDashboardServerModule } from '../dashboardRuntimeLoader.js';
-import { createSecondaryWindowControls } from './secondary/windows.js';
+import { resolveFromModule } from '../../runtime/module';
+import { loadDashboardServerModule } from '../dashboardRuntimeLoader';
+import { createSecondaryWindowControls } from './secondary/windows';
 
 const moduleUrl = import.meta.url;
 

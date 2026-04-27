@@ -99,6 +99,53 @@ function copyAssetsToDist() {
   copyDirectory(assetsRoot, path.join(distRoot, 'assets'));
 }
 
+function resolveEmittedRelativeSpecifier(sourceFile, specifier) {
+  if (!specifier.startsWith('./') && !specifier.startsWith('../')) return specifier;
+  if (path.extname(specifier)) return specifier;
+
+  const absoluteBase = path.resolve(path.dirname(sourceFile), specifier);
+  const candidates = [
+    { file: `${absoluteBase}.js`, suffix: '.js' },
+    { file: `${absoluteBase}.mjs`, suffix: '.mjs' },
+    { file: path.join(absoluteBase, 'index.js'), suffix: '/index.js' },
+    { file: path.join(absoluteBase, 'index.mjs'), suffix: '/index.mjs' },
+  ];
+
+  const match = candidates.find(({ file }) => fs.existsSync(file));
+  return match ? `${specifier}${match.suffix}` : specifier;
+}
+
+function rewriteEmittedRelativeSpecifiers(filePath) {
+  const source = fs.readFileSync(filePath, 'utf8');
+  const rewritten = source.replace(
+    /\b(from\s*|import\s*\(\s*)(['"])(\.{1,2}\/[^'"]+?)\2/g,
+    (match, prefix, quote, specifier) => {
+      const resolved = resolveEmittedRelativeSpecifier(filePath, specifier);
+      return `${prefix}${quote}${resolved}${quote}`;
+    },
+  );
+
+  if (rewritten !== source) {
+    fs.writeFileSync(filePath, rewritten);
+  }
+}
+
+function rewriteEmittedRuntimeImports(directory = path.join(distRoot, 'src')) {
+  if (!fs.existsSync(directory)) return;
+
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    const entryPath = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      rewriteEmittedRuntimeImports(entryPath);
+      continue;
+    }
+
+    if (entry.isFile() && (entry.name.endsWith('.js') || entry.name.endsWith('.mjs'))) {
+      rewriteEmittedRelativeSpecifiers(entryPath);
+    }
+  }
+}
+
 async function buildClientEntries() {
   try {
     const { build } = await import('vite');
@@ -113,7 +160,31 @@ async function buildClientEntries() {
   }
 }
 
-async function buildOnce() {
+function getNativePreviewPackageName() {
+  const platformMap = {
+    darwin: 'darwin',
+    linux: 'linux',
+    win32: 'win32',
+  };
+  const archMap = {
+    arm: 'arm',
+    arm64: 'arm64',
+    x64: 'x64',
+  };
+  const platform = platformMap[process.platform];
+  const arch = archMap[process.arch];
+  return platform && arch ? `native-preview-${platform}-${arch}` : null;
+}
+
+function hasLocalTsgoRuntime() {
+  const packageName = getNativePreviewPackageName();
+  return Boolean(
+    packageName &&
+      fs.existsSync(path.join(projectRoot, 'node_modules', '@typescript', packageName)),
+  );
+}
+
+function runTypeScriptBuild() {
   const tsgoPath = path.join(
     projectRoot,
     'node_modules',
@@ -123,10 +194,27 @@ async function buildOnce() {
     'tsgo.js',
   );
 
-  const result = spawnSync(process.execPath, [tsgoPath, '-p', 'tsconfig.emit.json'], {
+  const command = hasLocalTsgoRuntime() ? process.execPath : 'tsgo';
+  const args = hasLocalTsgoRuntime() ? [tsgoPath, '-p', 'tsconfig.emit.json'] : ['-p', 'tsconfig.emit.json'];
+  const env = { ...process.env };
+  if (command === 'tsgo') {
+    const localBin = path.join(projectRoot, 'node_modules', '.bin');
+    env.PATH = (process.env.PATH || '')
+      .split(path.delimiter)
+      .filter((entry) => path.resolve(entry) !== localBin)
+      .join(path.delimiter);
+  }
+
+  return spawnSync(command, args, {
     stdio: 'inherit',
     cwd: projectRoot,
+    env,
+    shell: process.platform === 'win32' && command === 'tsgo',
   });
+}
+
+async function buildOnce() {
+  const result = runTypeScriptBuild();
 
   if (result.error) {
     console.error('[build-types] Failed to execute tsgo:', result.error);
@@ -141,6 +229,7 @@ async function buildOnce() {
   copyTargetsToDist();
   copyRuntimeFilesToDist();
   copyAssetsToDist();
+  rewriteEmittedRuntimeImports();
 
   const clientBuildStatus = await buildClientEntries();
   if (clientBuildStatus !== 0) {

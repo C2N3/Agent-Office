@@ -16,11 +16,11 @@ import {
   state,
   type AvatarCategory,
   type AvatarData,
-} from '../shared.js';
-import { officeCharacters } from '../../office/index.js';
-import { updateAgentUI } from '../agentViews.js';
-import { syncCentralAgentUpdate } from '../centralAgents/index.js';
-import { dashboardModalRegistry } from '../modals/registry.js';
+} from '../shared';
+import { officeCharacters } from '../../office/index';
+import { updateAgentUI } from '../agentViews';
+import { syncCentralAgentUpdate } from '../centralAgents/index';
+import { dashboardModalRegistry } from '../modals/registry';
 
 type AvatarPickerContext = {
   agentId: string;

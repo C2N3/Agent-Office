@@ -1,5 +1,5 @@
-import { refreshRemoteViewData } from './controller.js';
-import { startCentralServerConnection, stopCentralServerConnection, subscribeCentralServerConnection } from '../serverConnection.js';
+import { refreshRemoteViewData } from './controller';
+import { startCentralServerConnection, stopCentralServerConnection, subscribeCentralServerConnection } from '../serverConnection';
 
 let pollInterval: ReturnType<typeof setInterval> | null = null;
 let centralConnectionCleanup: (() => void) | null = null;

@@ -1,5 +1,5 @@
-import type { JsonObject } from './base.js';
-import type { TerminalAddonLike, TerminalLike } from './office.js';
+import type { JsonObject } from './base';
+import type { TerminalAddonLike, TerminalLike } from './office';
 
 export type AgentStatus =
   | 'working'
@@ -308,4 +308,4 @@ export type DashboardResumeUtils = {
   getDirectResumeSessionId?: (agent: DashboardAgent | undefined, openOptions?: DashboardOpenOptions) => string | null;
   shouldAutoResumeRegisteredAgent?: (agent: DashboardAgent | undefined, openOptions?: DashboardOpenOptions) => boolean;
 };
-export type { DashboardAPI } from './dashboard/api.js';
+export type { DashboardAPI } from './dashboard/api';

@@ -1,7 +1,7 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { resolveFromModule } from './runtime/module.js';
+import { resolveFromModule } from './runtime/module';
 
 const LOG_FILE = resolveFromModule(import.meta.url, 'hook_debug.log');
 

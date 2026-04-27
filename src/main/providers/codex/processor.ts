@@ -1,9 +1,9 @@
 /**
  * Codex exec --json event adapter.
  */
-import { createEventProcessor } from '../../eventProcessor.js';
-import { createIgnoredSessionTracker } from './ignoredSessions.js';
-import { getCodexSubagentInfo, getCodexWorkspacePath, normalizeCodexEvent } from './events.js';
+import { createEventProcessor } from '../../eventProcessor';
+import { createIgnoredSessionTracker } from './ignoredSessions';
+import { getCodexSubagentInfo, getCodexWorkspacePath, normalizeCodexEvent } from './events';
 
 export function createCodexProcessor({ agentManager, agentRegistry, sessionPids, debugLog, detectPidByTranscript = null }) {
   let taskCompletionHandler = null;

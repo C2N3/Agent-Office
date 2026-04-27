@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { resolveFromModule } from './runtime/module.js';
+import { resolveFromModule } from './runtime/module';
 
 const DEFAULT_MAP_SCALE = 2.1875;
 const DEFAULT_TILE_SIZE = 70;

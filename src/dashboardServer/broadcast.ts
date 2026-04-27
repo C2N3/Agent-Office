@@ -1,5 +1,5 @@
-import { adaptAgentToDashboard } from '../dashboardAdapter.js';
-import { getClients, getRefs } from './context.js';
+import { adaptAgentToDashboard } from '../dashboardAdapter';
+import { getClients, getRefs } from './context';
 
 type SerializableValue =
   | string

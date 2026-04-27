@@ -1,6 +1,6 @@
 import { BrowserWindow, screen, shell } from 'electron';
-import { resolveFromModule } from '../../../runtime/module.js';
-import { saveUiState } from '../../uiState.js';
+import { resolveFromModule } from '../../../runtime/module';
+import { saveUiState } from '../../uiState';
 
 const moduleUrl = import.meta.url;
 

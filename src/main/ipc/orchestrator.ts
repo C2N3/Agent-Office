@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron';
-import { dashboardIpcChannels } from '../../shared/contracts/ipc.js';
+import { dashboardIpcChannels } from '../../shared/contracts/ipc';
 
 export function registerOrchestratorHandlers({ orchestrator }) {
   if (!orchestrator) {

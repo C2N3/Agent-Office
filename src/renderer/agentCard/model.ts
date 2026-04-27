@@ -1,4 +1,4 @@
-import { toRelativeAssetPath } from '../../shared/assetPaths.js';
+import { toRelativeAssetPath } from '../../shared/assetPaths';
 
 export type AgentCardShellModel = {
   agentId: string;

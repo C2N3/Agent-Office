@@ -1,4 +1,4 @@
-import { getAgentGridElements } from './elements.js';
+import { getAgentGridElements } from './elements';
 
 type BeforeRemoveCard = (card: HTMLElement) => void;
 

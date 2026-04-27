@@ -1,5 +1,5 @@
 import React, { type ReactElement, type RefObject, useEffect, useMemo, useRef } from 'react';
-import type { DashboardTerminalEntry, DashboardTerminalProfile } from '../shared.js';
+import type { DashboardTerminalEntry, DashboardTerminalProfile } from '../shared';
 
 export function TerminalTabs({
   activeId,

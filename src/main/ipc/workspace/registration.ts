@@ -1,5 +1,5 @@
-import { normalizePath } from '../../registry/index.js';
-import type { DashboardPathRegistrationStrategy } from '../../../shared/contracts/index.js';
+import { normalizePath } from '../../registry/index';
+import type { DashboardPathRegistrationStrategy } from '../../../shared/contracts/index';
 
 type RegistrationPreviewInput = {
   strategy?: DashboardPathRegistrationStrategy;

@@ -7,8 +7,8 @@ import type {
   DashboardRecoveryActionResult,
   DashboardResizeRequest,
   DashboardWindowActionResult,
-} from './shared/contracts/index.js';
-import { electronIpcChannels } from './shared/contracts/index.js';
+} from './shared/contracts/index';
+import { electronIpcChannels } from './shared/contracts/index';
 
 type Listener<T> = (data: T) => void;
 

@@ -1,5 +1,5 @@
 import path from 'path';
-import { moduleDirname } from '../runtime/module.js';
+import { moduleDirname } from '../runtime/module';
 
 export const PORT = 3000;
 

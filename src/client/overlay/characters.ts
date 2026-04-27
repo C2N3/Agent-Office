@@ -1,6 +1,6 @@
 
-import { OFFICE, SPRITE_FRAMES } from '../office/officeConfig.js';
-import { getOfficeSkinImage } from '../office/officeSprite.js';
+import { OFFICE, SPRITE_FRAMES } from '../office/officeConfig';
+import { getOfficeSkinImage } from '../office/officeSprite';
 
 const ACTIVE_STATES = new Set(['working', 'thinking', 'error', 'help']);
 const VISIBLE_STATES = new Set(['working', 'thinking', 'error', 'help', 'idle', 'done', 'offline']);

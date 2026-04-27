@@ -1,14 +1,14 @@
 import React, { type ReactElement, useEffect } from 'react';
-import { RemoteViewRoot } from '../remote/root.js';
-import { CloudflarePanel } from '../react/cloudflarePanel.js';
-import { type DashboardView } from '../state/store.js';
+import { RemoteViewRoot } from '../remote/root';
+import { CloudflarePanel } from '../react/cloudflarePanel';
+import { type DashboardView } from '../state/store';
 import type {
   DashboardTerminalEntry,
   DashboardTerminalProfile,
-} from '../shared.js';
-import { fitActiveTerminal } from '../terminal/ui.js';
-import { ArchiveView, HeatmapView } from './activityViews.js';
-import { TerminalPanel } from './terminalPanel.js';
+} from '../shared';
+import { fitActiveTerminal } from '../terminal/ui';
+import { ArchiveView, HeatmapView } from './activityViews';
+import { TerminalPanel } from './terminalPanel';
 
 function viewClass(currentView: DashboardView, view: DashboardView): string {
   return `view-section${currentView === view ? ' active' : ''}`;

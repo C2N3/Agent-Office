@@ -1,5 +1,5 @@
-import type { RemoteMode } from '../remoteMode.js';
-import type { RemoteSnapshot } from './status.js';
+import type { RemoteMode } from '../remoteMode';
+import type { RemoteSnapshot } from './status';
 
 export type RoomAccessStatus = {
   publicMode: boolean;

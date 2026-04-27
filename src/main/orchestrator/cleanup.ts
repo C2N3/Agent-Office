@@ -1,4 +1,4 @@
-import { sharedSessionAllowlist } from './sessionAllowlist.js';
+import { sharedSessionAllowlist } from './sessionAllowlist';
 
 export function cleanupTaskRuntime(orchestrator, taskId) {
   const idleTimer = orchestrator.idleTimers.get(taskId);

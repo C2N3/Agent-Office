@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { getClients, getRefs } from './context.js';
+import { getClients, getRefs } from './context';
 
 interface UpgradeServer {
   on(event: 'upgrade', listener: (req: any, socket: any) => void): void;

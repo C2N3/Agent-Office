@@ -1,8 +1,8 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { getCodexSessionRoots } from './providers/codex/paths.js';
-import { normalizeProvider } from './providers/registry.js';
+import { getCodexSessionRoots } from './providers/codex/paths';
+import { normalizeProvider } from './providers/registry';
 
 function resolveTranscriptPath(transcriptPath) {
   if (!transcriptPath || typeof transcriptPath !== 'string') return null;

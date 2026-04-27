@@ -3,10 +3,10 @@ export {
   hideOfficePopover,
   registerOfficePopoverHost,
   showOfficePopover,
-} from './officeRuntime/popover.js';
+} from './officeRuntime/popover';
 export {
   setupOfficeClickHandler,
   setupOfficeInteractionRuntime,
   teardownOfficeInteractionRuntime,
   updateOfficeInteractionRuntime,
-} from './officeRuntime/interactions.js';
+} from './officeRuntime/interactions';

@@ -1,9 +1,9 @@
 import React, { type ReactElement, useEffect, useState } from 'react';
-import { floorManager, type Floor } from '../../office/floorManager.js';
-import { switchOfficeFloor } from '../../office/index.js';
-import { renderAgentList } from '../agentViews.js';
-import { FloorTabs } from '../react/floors.js';
-import { notifyDashboardStore } from '../state/store.js';
+import { floorManager, type Floor } from '../../office/floorManager';
+import { switchOfficeFloor } from '../../office/index';
+import { renderAgentList } from '../agentViews';
+import { FloorTabs } from '../react/floors';
+import { notifyDashboardStore } from '../state/store';
 
 type FloorDialog = 'none' | 'create' | 'manage';
 

@@ -1,5 +1,5 @@
 import { URL } from 'url';
-import { normalizeCentralServerBaseUrl } from './config.js';
+import { normalizeCentralServerBaseUrl } from './config';
 
 export function centralHttpUrlToWorkerWebSocketUrl(baseUrl: string, token = '', roomSecret = '', participantId = ''): string {
   const normalized = normalizeCentralServerBaseUrl(baseUrl);

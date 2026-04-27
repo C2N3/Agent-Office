@@ -1,4 +1,4 @@
-import type { CleanupFn } from '../base.js';
+import type { CleanupFn } from '../base';
 import type {
   DashboardActionResult,
   DashboardAgent,
@@ -20,7 +20,7 @@ import type {
   DashboardWindowActionResult,
   DashboardWorkspaceActionResult,
   DashboardPathRegistrationStrategy,
-} from '../dashboard.js';
+} from '../dashboard';
 
 export type DashboardAPI = {
   platform?: NodeJS.Platform;

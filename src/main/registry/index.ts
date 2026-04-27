@@ -3,7 +3,7 @@ import os from 'os';
 import fs from 'fs';
 import crypto from 'crypto';
 import EventEmitter from 'events';
-import { sanitizeProjectPath } from '../../utils.js';
+import { sanitizeProjectPath } from '../../utils';
 import {
   normalizePath,
   sanitizeWorkspace,
@@ -15,8 +15,8 @@ import {
   getAgentSessionHistory,
   findAgentSessionHistoryEntry,
   findAgentByProjectPath,
-} from './shared.js';
-import type { PersistentAgent } from './types.js';
+} from './shared';
+import type { PersistentAgent } from './types';
 
 const PERSIST_DIR = path.join(os.homedir(), '.agent-office');
 const PERSIST_FILE = path.join(PERSIST_DIR, 'agent-registry.json');

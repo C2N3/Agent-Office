@@ -1,4 +1,4 @@
-import { recoverExistingSessions } from '../sessionPersistence.js';
+import { recoverExistingSessions } from '../sessionPersistence';
 
 export function recoverProviderSessions({
   enabledProviders,

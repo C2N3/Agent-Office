@@ -15,8 +15,8 @@ import {
   pruneOldDays,
   savePersisted,
   scanFile,
-} from './helpers.js';
-import type { DashboardDayStats } from '../shared/contracts/index.js';
+} from './helpers';
+import type { DashboardDayStats } from '../shared/contracts/index';
 
 type HeatmapDayStats = DashboardDayStats & {
   _sessions?: Set<string>;

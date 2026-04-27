@@ -1,6 +1,6 @@
 import path from 'node:path';
-import { normalizePath } from '../registry/index.js';
-import type { PendingSessionStart } from './sessionState.js';
+import { normalizePath } from '../registry/index';
+import type { PendingSessionStart } from './sessionState';
 
 export function createSessionLifecycleHandlers(options: any) {
   const {

@@ -1,7 +1,7 @@
 
 import fs from 'fs';
 import path from 'path';
-import { applyUsage, normalizeTokenUsage } from '../usage.js';
+import { applyUsage, normalizeTokenUsage } from '../usage';
 
 function parseJsonLines(content) {
   return content

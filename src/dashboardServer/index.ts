@@ -1,12 +1,12 @@
 import http from 'http';
-import { isDirectEntrypoint } from '../runtime/module.js';
-import { PORT } from './constants.js';
+import { isDirectEntrypoint } from '../runtime/module';
+import { PORT } from './constants';
 import {
   attachAgentManagerBroadcasts,
   attachOrchestratorBroadcasts,
   broadcastSSE,
   broadcastUpdate,
-} from './broadcast.js';
+} from './broadcast';
 import {
   getClients,
   getRefs,
@@ -20,10 +20,10 @@ import {
   setHeatmapScanner as setHeatmapScannerRef,
   setSessionScanner as setSessionScannerRef,
   setAppMeta as setAppMetaRef,
-} from './context.js';
-import { handleRequest } from './routes.js';
-import { attachWebSocketUpgrade } from './websocket.js';
-import { calculateStats as calculateStatsImpl } from './stats.js';
+} from './context';
+import { handleRequest } from './routes';
+import { attachWebSocketUpgrade } from './websocket';
+import { calculateStats as calculateStatsImpl } from './stats';
 
 const server = http.createServer(handleRequest as any);
 attachWebSocketUpgrade(server as any);

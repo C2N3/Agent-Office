@@ -1,4 +1,4 @@
-import { isActiveAgent, type AgentRecord, type RegistryLike } from './agentPayload.js';
+import { isActiveAgent, type AgentRecord, type RegistryLike } from './agentPayload';
 
 type RegistryListener = [string, (...args: any[]) => void];
 

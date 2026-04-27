@@ -1,8 +1,8 @@
-import { buildGuestInviteLink } from '../remoteMode.js';
-import { inviteLinkMatchesBaseUrl, readStoredHostInviteLink } from './invitePersistence.js';
-import { isLoopbackCentralServer } from './recovery.js';
-import { ownerAccessRequiredMessage, isOwnerAccessErrorMessage } from './messages.js';
-import type { RemoteViewModel, RemoteViewState } from './types.js';
+import { buildGuestInviteLink } from '../remoteMode';
+import { inviteLinkMatchesBaseUrl, readStoredHostInviteLink } from './invitePersistence';
+import { isLoopbackCentralServer } from './recovery';
+import { ownerAccessRequiredMessage, isOwnerAccessErrorMessage } from './messages';
+import type { RemoteViewModel, RemoteViewState } from './types';
 
 function createEmptySnapshot() {
   return {

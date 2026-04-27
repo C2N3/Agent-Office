@@ -3,14 +3,14 @@ import {
   SHARED_AVATAR_FILES,
   escapeText,
   state,
-} from '../shared.js';
+} from '../shared';
 import {
   formatWorkspaceTypeLabel,
   getActivityIcon,
   getStateColor,
   humanizeToolName,
-} from '../agentViewHelpers.js';
-import { getAgentOwnershipBadge } from './ownership.js';
+} from '../agentViewHelpers';
+import { getAgentOwnershipBadge } from './ownership';
 
 export function buildAgentCardHtml(agent: DashboardAgent): string {
   const statusClass = ['working', 'thinking', 'error', 'done', 'completed', 'offline'].includes(agent.status)

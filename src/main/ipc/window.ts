@@ -1,9 +1,9 @@
 import fs from 'fs';
 import path from 'path';
 import { ipcMain, screen } from 'electron';
-import { electronIpcChannels, dashboardIpcChannels } from '../../shared/contracts/ipc.js';
-import { appendChatMessage, clearChatHistory, loadChatHistory } from '../taskChatStore.js';
-import { resolveFromModule } from '../../runtime/module.js';
+import { electronIpcChannels, dashboardIpcChannels } from '../../shared/contracts/ipc';
+import { appendChatMessage, clearChatHistory, loadChatHistory } from '../taskChatStore';
+import { resolveFromModule } from '../../runtime/module';
 
 export function registerWindowHandlers({
   agentManager,

@@ -6,13 +6,13 @@ import {
   useEffect,
   useState,
 } from 'react';
-import { getDashboardAPI, type DashboardRegistrationPreview } from '../../shared.js';
+import { getDashboardAPI, type DashboardRegistrationPreview } from '../../shared';
 import {
   applyRegistrationPreviewDefaults,
   syncAutoBranchName,
   type CreateAgentFormState,
   type CreateAgentTouchedState,
-} from './state.js';
+} from './state';
 
 export function useRegistrationPreview({
   formState,

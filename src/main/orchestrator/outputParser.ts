@@ -1,5 +1,5 @@
 
-import type { CLIAdapter, OutputParseResult } from './types.js';
+import type { CLIAdapter, OutputParseResult } from './types';
 
 const MAX_BUFFER_SIZE = 4000;
 const MAX_FULL_BUFFER_SIZE = 100000; // 100KB for full output capture

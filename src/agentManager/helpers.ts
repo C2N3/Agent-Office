@@ -1,6 +1,6 @@
 import path from 'path';
 import AVATAR_FILES_DATA from '../../assets/shared/avatars.json' with { type: 'json' };
-import { formatSlugToDisplayName, sanitizeProjectPath } from '../utils.js';
+import { formatSlugToDisplayName, sanitizeProjectPath } from '../utils';
 
 const AVATAR_FILES = Array.isArray(AVATAR_FILES_DATA)
   ? AVATAR_FILES_DATA

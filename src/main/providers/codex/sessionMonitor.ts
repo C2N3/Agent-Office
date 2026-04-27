@@ -6,7 +6,7 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { getCodexSessionRoots } from './paths.js';
+import { getCodexSessionRoots } from './paths';
 
 const DISCOVERY_INTERVAL_MS = 5000;
 const ACTIVE_SESSION_WINDOW_MS = 30 * 60 * 1000;

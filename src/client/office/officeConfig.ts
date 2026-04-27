@@ -5,7 +5,7 @@
 
 /* eslint-disable no-unused-vars */
 
-import { toHttpAssetPath } from '../../shared/assetPaths.js';
+import { toHttpAssetPath } from '../../shared/assetPaths';
 
 // OFFICE constants — FRAME_W/H/COLS populated from sprite-frames.json at init
 export const OFFICE = {

@@ -4,7 +4,7 @@ import {
   type DashboardWorkspace,
   SHARED_AVATAR_FILES,
   state,
-} from '../shared.js';
+} from '../shared';
 
 export type CentralAgentWorkspace = {
   workerId?: string;

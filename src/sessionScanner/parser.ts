@@ -6,7 +6,7 @@ import {
     getTotalInputTokens,
     normalizeTokenUsage,
     roundCost,
-} from '../pricing.js';
+} from '../pricing';
 
 export function resolveTranscriptPath(filePath) {
     if (!filePath) return null;

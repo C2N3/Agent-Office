@@ -1,5 +1,5 @@
 
-import { OFFICE } from './officeConfig.js';
+import { OFFICE } from './officeConfig';
 
 export const rendererEffects: any = {
   spawnEffect: function (type, x, y) {

@@ -2,11 +2,11 @@ import type {
   AgentManagerLike,
   AgentRegistryLike,
   SessionPidsMap,
-} from './sessionState.js';
-import { createProcessEventHandler } from './process.js';
-import { createSessionLifecycleHandlers } from './sessions.js';
+} from './sessionState';
+import { createProcessEventHandler } from './process';
+import { createSessionLifecycleHandlers } from './sessions';
 
-type SessionState = ReturnType<typeof import('./sessionState.js').createSessionState>;
+type SessionState = ReturnType<typeof import('./sessionState').createSessionState>;
 
 type EventHandlerOptions = {
   agentManager?: AgentManagerLike | null;

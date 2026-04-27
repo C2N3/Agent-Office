@@ -9,6 +9,7 @@ The migration should no longer preserve CommonJS compatibility bridges just to k
 ## Target End State
 
 - TypeScript source uses static `import` / `export` by default.
+- TypeScript source relative imports are extensionless; the build rewrites emitted `dist/src` relative imports to Node ESM `.js` / `.mjs` specifiers.
 - Electron main, preload, dashboard server, and owned Node runtime modules load as native ESM.
 - `dist/` remains the production runtime output.
 - Runtime paths use `import.meta.url` helpers instead of `__dirname` or `__filename`.
@@ -27,7 +28,7 @@ The migration should no longer preserve CommonJS compatibility bridges just to k
 - `npm run dashboard` currently runs `dist/src/dashboardServer/entrypoint.js`.
 - `src/agentManager.cts`, `src/sessionScanner.cts`, and the old `src/main.mts` wrapper have been removed.
 - CommonJS scripts/configs that run under Node are explicitly named `.cjs`.
-- Jest remains a CommonJS test runner through `jest.config.cjs`, but its TS transform now understands `import.meta.url`, dynamic `import(...)`, import attributes, and final `.js` ESM specifiers.
+- Jest remains a CommonJS test runner through `jest.config.cjs`, but its TS transform now understands `import.meta.url`, dynamic `import(...)`, import attributes, and extensionless ESM specifiers.
 - Native/CommonJS-sensitive dependencies (`node-pty`, `cloudflared`, `tree-kill`) are loaded only through `createRequire(import.meta.url)` boundaries.
 
 ## Cutover Status
@@ -35,7 +36,7 @@ The migration should no longer preserve CommonJS compatibility bridges just to k
 Completed in this branch:
 
 - Added package-wide `"type": "module"`.
-- Migrated runtime TypeScript relative imports to emitted `.js`/`.mjs` specifiers.
+- Migrated runtime TypeScript relative imports to extensionless source specifiers; `scripts/build-types.cjs` preserves emitted `.js`/`.mjs` runtime paths for Node ESM.
 - Removed application compatibility bridges `src/agentManager.cts` and `src/sessionScanner.cts`.
 - Removed wrapper entrypoint `src/main.mts`; Electron now targets `dist/src/main.js`.
 - Renamed CommonJS tooling/config boundaries to `.cjs`, including build/dev/electron/Jest/ESLint scripts and install-time scripts.
@@ -47,7 +48,8 @@ Package validation status:
 
 - Linux `.deb` metadata is now scoped through `build.linux.maintainer` instead of changing npm package authorship.
 - `npm run dist:linux` builds `release/Agent-Office-0.1.3.AppImage` and `release/agent-office_0.1.3_amd64.deb` on WSL2.
-- Windows and macOS packaging remain unverified until those platform toolchains are available.
+- Windows packaging produced `release/Agent-Office.0.1.3.exe` and `release/agent-office-0.1.3-x64.nsis.7z` on WSL2, but the command was interrupted before its final exit status was captured.
+- macOS packaging remains unverified until a macOS toolchain is available.
 - Packaged UI smoke testing remains pending until a GUI-capable packaged-app run is available.
 
 ## Cutover Strategy
@@ -115,8 +117,8 @@ const SessionScanner = require('./sessionScanner')
 to use the final ESM/named export shape instead:
 
 ```ts
-import { AgentManager } from './agentManager.js';
-import { SessionScanner } from './sessionScanner.js';
+import { AgentManager } from './agentManager';
+import { SessionScanner } from './sessionScanner';
 ```
 
 Verification checks should use native ESM imports from emitted `dist`:

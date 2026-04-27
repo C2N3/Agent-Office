@@ -3,10 +3,10 @@
  * Converts Agent-Office agent format to Dashboard format
  */
 
-import type { DashboardAgent } from './shared/contracts/index.js';
+import type { DashboardAgent } from './shared/contracts/index';
 
 import path from 'path';
-import { sanitizeProjectPath } from './utils.js';
+import { sanitizeProjectPath } from './utils';
 
 type TokenUsage = {
   inputTokens?: number;

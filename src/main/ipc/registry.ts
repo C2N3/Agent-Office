@@ -1,10 +1,10 @@
 import fs from 'fs';
 import { ipcMain } from 'electron';
-import { parseConversation, getConversationSummary } from '../conversationParser.js';
-import { resolveResumeSessionId } from '../sessionIdResolver.js';
-import { resolveProjectPathForPlatform } from '../../utils.js';
-import { dashboardIpcChannels } from '../../shared/contracts/ipc.js';
-import { buildProviderResumeCommand } from '../providers/registry.js';
+import { parseConversation, getConversationSummary } from '../conversationParser';
+import { resolveResumeSessionId } from '../sessionIdResolver';
+import { resolveProjectPathForPlatform } from '../../utils';
+import { dashboardIpcChannels } from '../../shared/contracts/ipc';
+import { buildProviderResumeCommand } from '../providers/registry';
 
 export function registerRegistryHandlers({
   agentManager,

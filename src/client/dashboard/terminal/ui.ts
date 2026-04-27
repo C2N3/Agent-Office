@@ -4,9 +4,9 @@ import {
   state,
   termState,
   type DashboardOpenOptions,
-} from '../shared.js';
-import { initTerminalPanelCollapse, revealTerminalPanel } from './collapse.js';
-import { notifyDashboardStore } from '../state/store.js';
+} from '../shared';
+import { initTerminalPanelCollapse, revealTerminalPanel } from './collapse';
+import { notifyDashboardStore } from '../state/store';
 
 let terminalContainerHost: HTMLDivElement | null = null;
 let terminalEmptyStateHost: HTMLDivElement | null = null;

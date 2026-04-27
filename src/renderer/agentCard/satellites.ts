@@ -1,5 +1,5 @@
-import { agentAvatars, AVATAR_FILES, avatarFromAgentId } from '../config.js';
-import { toRelativeAssetPath } from '../../shared/assetPaths.js';
+import { agentAvatars, AVATAR_FILES, avatarFromAgentId } from '../config';
+import { toRelativeAssetPath } from '../../shared/assetPaths';
 
 export function createMiniAvatar(agent) {
   const mini = document.createElement('div');

@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
-import type { RemoteMode } from '../remoteMode.js';
-import type { RemoteViewState } from './types.js';
+import type { RemoteMode } from '../remoteMode';
+import type { RemoteViewState } from './types';
 
 function createInitialState(): RemoteViewState {
   return {

@@ -1,6 +1,6 @@
-import { isAuthFailureMessage } from './messages.js';
-import { fetchWithTimeout } from '../fetchWithTimeout.js';
-import type { RoomAccessStatus } from '../remote/types.js';
+import { isAuthFailureMessage } from './messages';
+import { fetchWithTimeout } from '../fetchWithTimeout';
+import type { RoomAccessStatus } from '../remote/types';
 
 export type RoomAccessFetchStatus = 'ok' | 'auth' | 'unavailable';
 

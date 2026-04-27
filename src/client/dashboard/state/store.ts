@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
-import { floorManager } from '../../office/floorManager.js';
-import { getVisibleAgents } from '../agentFilters.js';
+import { floorManager } from '../../office/floorManager';
+import { getVisibleAgents } from '../agentFilters';
 import {
   type DashboardAgent,
   type DashboardAgentHistoryEntry,
@@ -8,7 +8,7 @@ import {
   type DashboardTerminalProfile,
   state,
   termState,
-} from '../shared.js';
+} from '../shared';
 
 export const DASHBOARD_VIEWS = [
   'office',

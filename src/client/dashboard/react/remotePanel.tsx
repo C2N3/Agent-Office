@@ -1,9 +1,9 @@
 import React, { type ReactElement } from 'react';
-import type { RemoteMode } from '../remoteMode.js';
-import { resetHostAccessWarningMessage } from '../remote/messages.js';
-import type { RoomAccessStatus } from '../remote/types.js';
-import type { RemoteSnapshot } from '../remote/status.js';
-import { RemoteStatusDetails } from './remoteStatus.js';
+import type { RemoteMode } from '../remoteMode';
+import { resetHostAccessWarningMessage } from '../remote/messages';
+import type { RoomAccessStatus } from '../remote/types';
+import type { RemoteSnapshot } from '../remote/status';
+import { RemoteStatusDetails } from './remoteStatus';
 import styles from '../styles/remote/remote-panel.module.scss';
 
 export function RemotePanel({

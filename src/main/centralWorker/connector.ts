@@ -10,21 +10,21 @@ import {
   setWorkerConnectionStatus,
   type RemoteMode,
   type WorkerConnectionStatus,
-} from './config.js';
+} from './config';
 import {
   buildAgentUpsertPayload,
   isActiveAgent,
   type AgentRecord,
   type RegistryLike,
-} from './agentPayload.js';
-import { resolveWorkerConnectionAuth } from './connectionAuth.js';
-import { registerConnectorRegistryListeners, unregisterConnectorRegistryListeners } from './registryListeners.js';
-import { centralHttpUrlToWorkerWebSocketUrl } from './url.js';
-import { handleServerMessage } from './serverMessages.js';
-import { installCentralTaskOutputForwarder } from './taskOutputForwarder.js';
-import type { ConnectorOptions, DebugLog, WebSocketLike, WebSocketConstructor } from './types.js';
-import { buildWorkerHeartbeat, buildWorkerHello } from './workerMessages.js';
-export { centralHttpUrlToWorkerWebSocketUrl } from './url.js';
+} from './agentPayload';
+import { resolveWorkerConnectionAuth } from './connectionAuth';
+import { registerConnectorRegistryListeners, unregisterConnectorRegistryListeners } from './registryListeners';
+import { centralHttpUrlToWorkerWebSocketUrl } from './url';
+import { handleServerMessage } from './serverMessages';
+import { installCentralTaskOutputForwarder } from './taskOutputForwarder';
+import type { ConnectorOptions, DebugLog, WebSocketLike, WebSocketConstructor } from './types';
+import { buildWorkerHeartbeat, buildWorkerHello } from './workerMessages';
+export { centralHttpUrlToWorkerWebSocketUrl } from './url';
 const PROTOCOL_VERSION = 1;
 const HEARTBEAT_INTERVAL_MS = 5_000;
 const RECONNECT_DELAY_MS = 3_000;

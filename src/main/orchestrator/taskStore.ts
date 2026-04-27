@@ -2,8 +2,8 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import crypto from 'crypto';
-import { normalizeProvider } from '../providers/registry.js';
-import type { TaskDefinition } from './types.js';
+import { normalizeProvider } from '../providers/registry';
+import type { TaskDefinition } from './types';
 
 const PERSIST_DIR = path.join(os.homedir(), '.agent-office');
 const PERSIST_FILE = path.join(PERSIST_DIR, 'task-queue.json');

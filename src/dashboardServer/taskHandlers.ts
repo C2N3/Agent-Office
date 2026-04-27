@@ -1,6 +1,6 @@
 import fs from 'fs';
 import { URL } from 'url';
-import { getRefs } from './context.js';
+import { getRefs } from './context';
 
 interface ResponseLike {
   writeHead(statusCode: number, headers?: Record<string, string>): void;

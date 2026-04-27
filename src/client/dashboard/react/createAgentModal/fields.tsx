@@ -5,10 +5,10 @@ import React, {
 } from 'react';
 import {
   getProviderDefinitions,
-} from '../../providerCatalog.js';
-import type { DashboardPathRegistrationStrategy } from '../../shared.js';
+} from '../../providerCatalog';
+import type { DashboardPathRegistrationStrategy } from '../../shared';
 import styles from '../../styles/modals.module.scss';
-import type { CreateAgentFormState } from './state.js';
+import type { CreateAgentFormState } from './state';
 
 type CreateAgentFormFieldsProps = {
   baseBranchOptions: string[];

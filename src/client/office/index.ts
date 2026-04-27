@@ -12,8 +12,8 @@ export {
   loadAvatarFiles,
   loadOfficeLayout,
   loadSpriteFrames,
-} from './officeConfig.js';
-export { officeCharacters } from './character/index.js';
+} from './officeConfig';
+export { officeCharacters } from './character/index';
 export {
   officeCoords,
   officeCoordsByRoom,
@@ -22,7 +22,7 @@ export {
   parseRoomMapCoordinates,
   parseRoomObjectCoordinates,
   parseAllRoomCoordinates,
-} from './officeCoords.js';
+} from './officeCoords';
 export {
   initOffice,
   officeOnAgentCreated,
@@ -34,9 +34,9 @@ export {
   switchOfficeFloor,
   teardownOfficeRuntime,
   updateOfficeRuntime,
-} from './officeInit.js';
-export { floorManager } from './floorManager.js';
-export { getOfficeCanvasHost, registerOfficeCanvasHost } from './host.js';
+} from './officeInit';
+export { floorManager } from './floorManager';
+export { getOfficeCanvasHost, registerOfficeCanvasHost } from './host';
 export {
   buildOfficeLayers,
   getNearestRoom,
@@ -45,8 +45,8 @@ export {
   officeLayers,
   officeRoomOrder,
   officeRooms,
-} from './officeLayers.js';
-export { officePathfinder } from './officePathfinder.js';
-export { officeRenderer } from './officeRenderer.js';
-export { animKeyFromDir, drawOfficeSprite, getOfficeSkinImage, isIdleAnim, loadAllOfficeSkins, officeSkinImages, tickOfficeAnimation } from './officeSprite.js';
-export { OFFICE_UI_BASE_Y, drawOfficeBubble, drawOfficeNameTag } from './officeUi.js';
+} from './officeLayers';
+export { officePathfinder } from './officePathfinder';
+export { officeRenderer } from './officeRenderer';
+export { animKeyFromDir, drawOfficeSprite, getOfficeSkinImage, isIdleAnim, loadAllOfficeSkins, officeSkinImages, tickOfficeAnimation } from './officeSprite';
+export { OFFICE_UI_BASE_Y, drawOfficeBubble, drawOfficeNameTag } from './officeUi';

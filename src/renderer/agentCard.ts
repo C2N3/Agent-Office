@@ -2,12 +2,12 @@
  * Agent Card — updateAgentState, createAgentCard
  */
 
-import { stateConfig, agentStates, agentAvatars, AVATAR_FILES, avatarFromAgentId } from './config.js';
-import { playAnimation } from './animationManager.js';
-import { mountAgentCardShell, unmountAgentCardShell } from './agentCard/lifecycle.js';
-import { toRelativeAssetPath } from '../shared/assetPaths.js';
+import { stateConfig, agentStates, agentAvatars, AVATAR_FILES, avatarFromAgentId } from './config';
+import { playAnimation } from './animationManager';
+import { mountAgentCardShell, unmountAgentCardShell } from './agentCard/lifecycle';
+import { toRelativeAssetPath } from '../shared/assetPaths';
 
-export { createMiniAvatar } from './agentCard/satellites.js';
+export { createMiniAvatar } from './agentCard/satellites';
 export { unmountAgentCardShell as unmountAgentCard };
 
 function renderThinkingDots(bubble) {

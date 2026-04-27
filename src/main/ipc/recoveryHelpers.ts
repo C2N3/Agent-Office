@@ -1,6 +1,6 @@
 
 import { exec, execFile } from 'child_process';
-import { buildProviderResumeCommand } from '../providers/registry.js';
+import { buildProviderResumeCommand } from '../providers/registry';
 
 export function focusTerminalByPid(pid, label, debugLog) {
   if (process.platform === 'win32') {

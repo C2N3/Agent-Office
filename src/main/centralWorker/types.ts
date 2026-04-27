@@ -1,5 +1,5 @@
-import type { RemoteMode, WorkerConnectionStatus } from './config.js';
-import type { RegistryLike } from './agentPayload.js';
+import type { RemoteMode, WorkerConnectionStatus } from './config';
+import type { RegistryLike } from './agentPayload';
 
 export type DebugLog = (message: string) => void;
 

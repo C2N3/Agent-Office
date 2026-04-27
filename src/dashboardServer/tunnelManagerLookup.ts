@@ -1,6 +1,6 @@
-import { tunnelManager } from '../main/tunnelManager.js';
+import { tunnelManager } from '../main/tunnelManager';
 
-type TunnelManagerModule = typeof import('../main/tunnelManager.js');
+type TunnelManagerModule = typeof import('../main/tunnelManager');
 
 function loadTunnelManagerModule(): TunnelManagerModule {
   return { tunnelManager } as TunnelManagerModule;

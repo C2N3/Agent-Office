@@ -5,8 +5,8 @@
 
 /* eslint-disable no-unused-vars */
 
-import { OFFICE } from './officeConfig.js';
-import { loadOfficeImage, officeRooms, officeRoomOrder } from './officeLayers.js';
+import { OFFICE } from './officeConfig';
+import { loadOfficeImage, officeRooms, officeRoomOrder } from './officeLayers';
 
 type SpotType = 'desk' | 'idle' | 'meeting';
 interface Coord { x: number; y: number; id: number; type: SpotType; }

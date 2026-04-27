@@ -6,10 +6,10 @@
 import fs from 'fs';
 import os from 'os';
 import type { BrowserWindow } from 'electron';
-import type { DashboardOpenOptions, DashboardTerminalProfile } from '../shared/contracts/index.js';
-import { loadNodePty } from './nativeDependencies.js';
-import { loadChildProcess, loadPath } from './runtimeLoaders.js';
-import { resolveProjectPathForPlatform } from '../utils.js';
+import type { DashboardOpenOptions, DashboardTerminalProfile } from '../shared/contracts/index';
+import { loadNodePty } from './nativeDependencies';
+import { loadChildProcess, loadPath } from './runtimeLoaders';
+import { resolveProjectPathForPlatform } from '../utils';
 
 type DebugLog = (message: string) => void;
 type TerminalProfileServiceLike = {

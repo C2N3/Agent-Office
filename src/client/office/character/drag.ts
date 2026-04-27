@@ -1,8 +1,8 @@
 
-import { STATE_ZONE_MAP } from '../officeConfig.js';
-import { officeCoordsByRoom } from '../officeCoords.js';
-import { getNearestRoom, getRoomAtWorld } from '../officeLayers.js';
-import { officePathfinder } from '../officePathfinder.js';
+import { STATE_ZONE_MAP } from '../officeConfig';
+import { officeCoordsByRoom } from '../officeCoords';
+import { getNearestRoom, getRoomAtWorld } from '../officeLayers';
+import { officePathfinder } from '../officePathfinder';
 
 function seatKey(roomId, deskIndex) {
   return roomId + ':' + deskIndex;

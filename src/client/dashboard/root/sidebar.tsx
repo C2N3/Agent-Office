@@ -1,5 +1,5 @@
 import React, { type ReactElement, type ReactNode } from 'react';
-import { type DashboardView } from '../state/store.js';
+import { type DashboardView } from '../state/store';
 import styles from './sidebar.module.scss';
 
 type NavItem = {

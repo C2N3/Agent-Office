@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron';
-import { dashboardIpcChannels } from '../../shared/contracts/ipc.js';
-import { terminateAgentSession } from '../sessionTermination.js';
+import { dashboardIpcChannels } from '../../shared/contracts/ipc';
+import { terminateAgentSession } from '../sessionTermination';
 
 export function registerAgentSessionHandlers({
   agentManager,

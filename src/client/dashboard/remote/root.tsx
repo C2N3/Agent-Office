@@ -1,13 +1,13 @@
 import React, { type ReactElement, useEffect } from 'react';
-import { RemotePanel } from '../react/remotePanel.js';
-import { useRemoteViewActions, useRemoteViewModel } from './hooks.js';
+import { RemotePanel } from '../react/remotePanel';
+import { useRemoteViewActions, useRemoteViewModel } from './hooks';
 
-type RemotePollingModule = typeof import('./polling.js');
+type RemotePollingModule = typeof import('./polling');
 
 let pollingModulePromise: Promise<RemotePollingModule> | null = null;
 
 function loadRemotePolling(): Promise<RemotePollingModule> {
-  pollingModulePromise ??= import('./polling.js');
+  pollingModulePromise ??= import('./polling');
   return pollingModulePromise;
 }
 

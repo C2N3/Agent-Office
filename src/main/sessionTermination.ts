@@ -1,4 +1,4 @@
-import { loadTreeKill } from './nativeDependencies.js';
+import { loadTreeKill } from './nativeDependencies';
 
 const treeKill = loadTreeKill();
 

@@ -14,18 +14,18 @@ import {
   updateCharacter,
   updateMovement,
   updateTarget,
-} from './behavior.js';
+} from './behavior';
 import {
   dropCharacterAt,
   pinCharacterAt,
   unpinCharacter,
-} from './drag.js';
+} from './drag';
 import {
   findNearDeskIdleSpot,
   humanizeToolName,
   mapStatus,
   setBubble,
-} from './presentation.js';
+} from './presentation';
 
 export const officeCharacters: any = {
   characters: new Map(),

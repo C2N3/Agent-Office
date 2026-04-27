@@ -3,14 +3,14 @@
  * Aggregate domain-specific IPC registrations.
  */
 
-import { createWindowSenderHelpers } from './ipc/common.js';
-import { registerRecoveryHandlers } from './ipc/recovery.js';
-import { registerWindowHandlers } from './ipc/window.js';
-import { registerTerminalHandlers } from './ipc/terminal.js';
-import { registerWorkspaceHandlers } from './ipc/workspace.js';
-import { registerRegistryHandlers } from './ipc/registry.js';
-import { registerOrchestratorHandlers } from './ipc/orchestrator.js';
-import { registerAgentSessionHandlers } from './ipc/agentSession.js';
+import { createWindowSenderHelpers } from './ipc/common';
+import { registerRecoveryHandlers } from './ipc/recovery';
+import { registerWindowHandlers } from './ipc/window';
+import { registerTerminalHandlers } from './ipc/terminal';
+import { registerWorkspaceHandlers } from './ipc/workspace';
+import { registerRegistryHandlers } from './ipc/registry';
+import { registerOrchestratorHandlers } from './ipc/orchestrator';
+import { registerAgentSessionHandlers } from './ipc/agentSession';
 
 function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowManager, terminalManager, terminalProfileService, workspaceManager, nicknameStore, orchestrator, debugLog, adaptAgentToDashboard, errorHandler, attachRegisteredAgent }) {
   const senderHelpers = createWindowSenderHelpers({ windowManager });

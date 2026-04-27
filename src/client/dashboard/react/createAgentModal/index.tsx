@@ -9,11 +9,11 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { dashboardModalRegistry } from '../../modals/registry.js';
-import { getDashboardAPI } from '../../shared.js';
-import { syncCentralAgentRecord } from '../../centralAgents/index.js';
-import { normalizeProvider } from '../../providerCatalog.js';
-import { CreateAgentFormFields } from './fields.js';
+import { dashboardModalRegistry } from '../../modals/registry';
+import { getDashboardAPI } from '../../shared';
+import { syncCentralAgentRecord } from '../../centralAgents/index';
+import { normalizeProvider } from '../../providerCatalog';
+import { CreateAgentFormFields } from './fields';
 import {
   DEFAULT_PREVIEW_STATUS,
   buildCreateAgentPayload,
@@ -26,8 +26,8 @@ import {
   syncAutoBranchName,
   type CreateAgentFormState,
   type CreateAgentTouchedState,
-} from './state.js';
-import { useRegistrationPreview } from './useRegistrationPreview.js';
+} from './state';
+import { useRegistrationPreview } from './useRegistrationPreview';
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);

@@ -2,13 +2,13 @@
  * Agent Grid — add/update/remove Agent, updateGridLayout, resize
  */
 
-import { ANIM_SEQUENCES, lastAgents } from './config.js';
-import { updateAgentState, createAgentCard, unmountAgentCard } from './agentCard.js';
-import { drawFrameOn, requestDynamicResize } from './agentGridResize.js';
-import { findAgentCardElement, findMiniAvatarElement, getAgentGridElements } from './agentGrid/elements.js';
-import { appendAgentGridCard, removeAgentGridCard } from './agentGrid/cardList.js';
-import { updateGridLayoutElements } from './agentGrid/layout.js';
-import { toRelativeAssetPath } from '../shared/assetPaths.js';
+import { ANIM_SEQUENCES, lastAgents } from './config';
+import { updateAgentState, createAgentCard, unmountAgentCard } from './agentCard';
+import { drawFrameOn, requestDynamicResize } from './agentGridResize';
+import { findAgentCardElement, findMiniAvatarElement, getAgentGridElements } from './agentGrid/elements';
+import { appendAgentGridCard, removeAgentGridCard } from './agentGrid/cardList';
+import { updateGridLayoutElements } from './agentGrid/layout';
+import { toRelativeAssetPath } from '../shared/assetPaths';
 import {
   addSatelliteAvatar,
   cleanupAgentState,
@@ -17,7 +17,7 @@ import {
   migrateSatellites,
   removeSatelliteAvatar,
   updateSatelliteAvatar,
-} from './agentGrid/satellites.js';
+} from './agentGrid/satellites';
 
 export function addAgent(agent) {
   if (!lastAgents.some(a => a.id === agent.id)) {

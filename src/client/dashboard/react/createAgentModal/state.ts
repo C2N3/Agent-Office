@@ -1,12 +1,12 @@
 import type {
   DashboardPathRegistrationStrategy,
   DashboardRegistrationPreview,
-} from '../../shared.js';
-import { DEFAULT_PROVIDER_ID, normalizeProvider } from '../../providerCatalog.js';
+} from '../../shared';
+import { DEFAULT_PROVIDER_ID, normalizeProvider } from '../../providerCatalog';
 import {
   getEffectiveRegistrationStrategy,
   getRegistrationDecisionMessage,
-} from '../../registration/decision.js';
+} from '../../registration/decision';
 
 export type CreateAgentBranchMode = 'auto' | 'custom';
 

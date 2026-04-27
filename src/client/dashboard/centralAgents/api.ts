@@ -1,4 +1,4 @@
-import type { DashboardAgent, DashboardAgentRecord } from '../shared.js';
+import type { DashboardAgent, DashboardAgentRecord } from '../shared';
 import {
   type CentralAgent,
   type CentralAgentBulkResponse,
@@ -9,7 +9,7 @@ import {
   mergeCentralAgent,
   isCentralAgentArchived,
   shouldSyncLocalAgent,
-} from './model.js';
+} from './model';
 
 export type CentralServerConfig = {
   agentSyncEnabled?: boolean;

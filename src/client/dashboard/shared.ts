@@ -1,4 +1,4 @@
-import * as dashboardResumeUtilsModule from '../dashboardResume.js';
+import * as dashboardResumeUtilsModule from '../dashboardResume';
 import type {
   AgentStatus,
   CleanupFn,
@@ -29,7 +29,7 @@ import type {
   DashboardTerminalProfile,
   DashboardWindowActionResult,
   DashboardWorkspaceActionResult,
-} from '../../shared/contracts/index.js';
+} from '../../shared/contracts/index';
 
 export type {
   AgentStatus,
@@ -79,17 +79,17 @@ export type {
   TerminalLike,
   TerminalLoadableAddon,
   WebLinksAddonLike,
-} from '../../shared/contracts/index.js';
+} from '../../shared/contracts/index';
 
 export const REGISTERED_FILTER_STORAGE_KEY = 'mc-filter-registered-only';
 
-export type { AvatarCategory, AvatarData } from './avatarCatalog.js';
+export type { AvatarCategory, AvatarData } from './avatarCatalog';
 export {
   refreshSharedAvatarData,
   setSharedAvatarData,
   SHARED_AVATAR_DATA,
   SHARED_AVATAR_FILES,
-} from './avatarCatalog.js';
+} from './avatarCatalog';
 
 export type DisplayValue = string | number | boolean | null | undefined;
 

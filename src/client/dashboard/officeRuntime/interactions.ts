@@ -4,9 +4,9 @@ import {
   SHARED_AVATAR_FILES,
   getDashboardAPI,
   state,
-} from '../shared.js';
-import { getOfficeCanvasHost, OFFICE, officeCharacters, officeRenderer } from '../../office/index.js';
-import { getOfficePopoverHost, hideOfficePopover } from './popover.js';
+} from '../shared';
+import { getOfficeCanvasHost, OFFICE, officeCharacters, officeRenderer } from '../../office/index';
+import { getOfficePopoverHost, hideOfficePopover } from './popover';
 
 type OpenTerminalForAgent = (agentId: string, openOptions?: DashboardOpenOptions) => Promise<void> | void;
 

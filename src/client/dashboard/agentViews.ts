@@ -4,22 +4,22 @@ import {
   state,
   getDashboardAPI,
   refreshSharedAvatarData,
-} from './shared.js';
+} from './shared';
 import {
   officeOnAgentCreated,
   officeOnAgentRemoved,
   officeOnAgentUpdated,
-} from '../office/index.js';
-import { updateConnectionStatus } from './connectionStatus.js';
-import { getStateColor } from './agentViewHelpers.js';
+} from '../office/index';
+import { updateConnectionStatus } from './connectionStatus';
+import { getStateColor } from './agentViewHelpers';
 import {
   getClearableUnregisteredAgents,
   getVisibleAgents,
   isRegisteredOnlyFilterEnabled,
   shouldDisplayAgent,
-} from './agentFilters.js';
-import { fetchCentralDashboardAgents } from './centralAgents/index.js';
-import { notifyDashboardStore } from './state/store.js';
+} from './agentFilters';
+import { fetchCentralDashboardAgents } from './centralAgents/index';
+import { notifyDashboardStore } from './state/store';
 
 export { getStateColor };
 export {

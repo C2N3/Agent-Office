@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
-import { loadChildProcess } from '../runtimeLoaders.js';
-import { resolveFromModule } from '../../runtime/module.js';
+import { loadChildProcess } from '../runtimeLoaders';
+import { resolveFromModule } from '../../runtime/module';
 
 function installStartupLogging({ app, processRef = process, consoleRef = console }) {
   const logDir = app.isPackaged

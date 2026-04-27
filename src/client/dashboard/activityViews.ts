@@ -4,7 +4,7 @@ import {
   archiveState,
   getDashboardAPI,
   historyState,
-} from './shared.js';
+} from './shared';
 
 let heatmapTooltipHost: HTMLDivElement | null = null;
 

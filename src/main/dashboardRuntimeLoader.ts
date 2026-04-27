@@ -1,10 +1,10 @@
-type DashboardServerModule = typeof import('../dashboardServer/index.js');
-type DashboardRemoteAuthModule = typeof import('../dashboardServer/remoteAuth.js');
+type DashboardServerModule = typeof import('../dashboardServer/index');
+type DashboardRemoteAuthModule = typeof import('../dashboardServer/remoteAuth');
 
 export function loadDashboardServerModule(): Promise<DashboardServerModule> {
-  return import('../dashboardServer/index.js');
+  return import('../dashboardServer/index');
 }
 
 export function loadDashboardRemoteAuthModule(): Promise<DashboardRemoteAuthModule> {
-  return import('../dashboardServer/remoteAuth.js');
+  return import('../dashboardServer/remoteAuth');
 }

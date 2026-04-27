@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { resolveFromModule } from '../../runtime/module.js';
+import { resolveFromModule } from '../../runtime/module';
 
 // Scan assets/characters/ subfolders and update avatars.json.
 // Preserves the existing file order so assigned avatarIndex values remain valid.

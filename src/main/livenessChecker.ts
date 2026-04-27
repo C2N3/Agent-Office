@@ -6,11 +6,11 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { hasActiveOrchestratorTask, removeOrOffline } from './liveness/agents.js';
-import { sharedSessionAllowlist } from './orchestrator/sessionAllowlist.js';
-import { getProviderDefinition, normalizeProvider } from './providers/registry.js';
-import { loadChildProcess } from './runtimeLoaders.js';
-import { resolveFromModule } from '../runtime/module.js';
+import { hasActiveOrchestratorTask, removeOrOffline } from './liveness/agents';
+import { sharedSessionAllowlist } from './orchestrator/sessionAllowlist';
+import { getProviderDefinition, normalizeProvider } from './providers/registry';
+import { loadChildProcess } from './runtimeLoaders';
+import { resolveFromModule } from '../runtime/module';
 
 const sessionPids = new Map(); // sessionId → actual CLI process PID
 
