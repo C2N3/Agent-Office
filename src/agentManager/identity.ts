@@ -5,7 +5,7 @@ type AgentIdentityFields = {
   resumeSessionId?: string | null;
 };
 
-function rekeyAgent(manager, currentId, nextId, fields: AgentIdentityFields = {}) {
+export function rekeyAgent(manager, currentId, nextId, fields: AgentIdentityFields = {}) {
   if (!currentId || !nextId) return null;
 
   const current = manager.agents.get(currentId);
@@ -80,7 +80,7 @@ function rekeyAgent(manager, currentId, nextId, fields: AgentIdentityFields = {}
   return merged;
 }
 
-function transitionAgentToOffline(manager, agentId) {
+export function transitionAgentToOffline(manager, agentId) {
   const agent = manager.agents.get(agentId);
   if (!agent) return false;
   manager._cancelPendingEmit(agentId);
@@ -99,5 +99,3 @@ function transitionAgentToOffline(manager, agentId) {
   console.log(`[AgentManager] Offline: ${agent.displayName}`);
   return true;
 }
-
-module.exports = { rekeyAgent, transitionAgentToOffline };

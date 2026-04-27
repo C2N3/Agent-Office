@@ -1,4 +1,4 @@
-function createWindowSenderHelpers({ windowManager }) {
+export function createWindowSenderHelpers({ windowManager }) {
   function getDashboardSenderWindow(event) {
     const senderId = event?.sender?.id;
     const mainWindow = windowManager?.mainWindow;
@@ -26,7 +26,3 @@ function createWindowSenderHelpers({ windowManager }) {
     isMainWindowSender,
   };
 }
-
-module.exports = {
-  createWindowSenderHelpers,
-};
