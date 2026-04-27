@@ -1,8 +1,8 @@
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
-const { getCodexSessionRoots } = require('./providers/codex/paths');
-const { normalizeProvider } = require('./providers/registry');
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import { getCodexSessionRoots } from './providers/codex/paths';
+import { normalizeProvider } from './providers/registry';
 
 function resolveTranscriptPath(transcriptPath) {
   if (!transcriptPath || typeof transcriptPath !== 'string') return null;
@@ -11,7 +11,7 @@ function resolveTranscriptPath(transcriptPath) {
     : transcriptPath;
 }
 
-function extractCodexSessionIdFromTranscriptPath(transcriptPath) {
+export function extractCodexSessionIdFromTranscriptPath(transcriptPath) {
   if (!transcriptPath || typeof transcriptPath !== 'string') return null;
 
   const normalizedPath = transcriptPath.replace(/\\/g, '/');
@@ -23,7 +23,7 @@ function extractCodexSessionIdFromTranscriptPath(transcriptPath) {
   return match ? match[1] : null;
 }
 
-function parseJsonLines(content) {
+export function parseJsonLines(content) {
   return content
     .split(/\r?\n/)
     .map((line) => line.trim())
@@ -102,7 +102,7 @@ function getCodexSessionIdFromEntry(entry) {
     || null;
 }
 
-function readCodexSessionIdFromTranscript(transcriptPath, fallbackSessionId = null) {
+export function readCodexSessionIdFromTranscript(transcriptPath, fallbackSessionId = null) {
   const resolvedPath = resolveTranscriptPath(transcriptPath);
   if (!resolvedPath || !fs.existsSync(resolvedPath)) return fallbackSessionId;
 
@@ -124,7 +124,7 @@ function readCodexSessionIdFromTranscript(transcriptPath, fallbackSessionId = nu
   return fallbackSessionId;
 }
 
-function findCodexSessionIdFromRoots({
+export function findCodexSessionIdFromRoots({
   requestedSessionId = null,
   sessionRoots = null,
 }) {
@@ -176,7 +176,7 @@ function findCodexSessionIdFromRoots({
  * Claude replaces every path separator and dot in the absolute path with '-'.
  * e.g. 'D:\Coding\Project\Agent-Office' -> 'D--Coding-Project-Agent-Office'
  */
-function getClaudeProjectDirForCwd(cwd) {
+export function getClaudeProjectDirForCwd(cwd) {
   if (!cwd || typeof cwd !== 'string') return null;
   try {
     const absolute = path.resolve(cwd);
@@ -194,7 +194,7 @@ function getClaudeProjectDirForCwd(cwd) {
  * it as-is. Otherwise fall back to the most recently modified .jsonl in that
  * directory (top-level only; subagent jsonls are nested in subdirs).
  */
-function findClaudeResumeSessionIdForCwd({ requestedSessionId, cwd }) {
+export function findClaudeResumeSessionIdForCwd({ requestedSessionId, cwd }) {
   const projectDir = getClaudeProjectDirForCwd(cwd);
   if (!projectDir || !fs.existsSync(projectDir)) return null;
 
@@ -227,7 +227,7 @@ function findClaudeResumeSessionIdForCwd({ requestedSessionId, cwd }) {
   return latestId;
 }
 
-function resolveResumeSessionId({ provider, requestedSessionId, transcriptPath, sessionRoots, cwd }) {
+export function resolveResumeSessionId({ provider, requestedSessionId, transcriptPath, sessionRoots, cwd }) {
   const normalizedProvider = normalizeProvider(provider, String(provider || '').trim() ? null : undefined);
   if (!normalizedProvider) {
     return requestedSessionId || null;
@@ -258,13 +258,3 @@ function resolveResumeSessionId({ provider, requestedSessionId, transcriptPath, 
 
   return requestedSessionId || null;
 }
-
-module.exports = {
-  resolveResumeSessionId,
-  readCodexSessionIdFromTranscript,
-  findCodexSessionIdFromRoots,
-  extractCodexSessionIdFromTranscriptPath,
-  getClaudeProjectDirForCwd,
-  findClaudeResumeSessionIdForCwd,
-  parseJsonLines,
-};

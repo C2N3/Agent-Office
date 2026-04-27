@@ -3,16 +3,14 @@
  * Parses Claude and Codex JSONL transcript files into a structured conversation message array.
  */
 
-'use strict';
-
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 
 /**
  * Resolve transcript path (expand ~ to home directory)
  */
-function resolveTranscriptPath(filePath) {
+export function resolveTranscriptPath(filePath) {
   if (!filePath) return null;
   return filePath.startsWith('~')
     ? path.join(os.homedir(), filePath.slice(1))
@@ -27,7 +25,7 @@ function resolveTranscriptPath(filePath) {
  * @param {number} [options.offset] - Skip this many messages from start
  * @returns {{ messages: Array, totalCount: number, sessionId: string|null } | null}
  */
-function parseConversation(filePath, options: { limit?: number; offset?: number } = {}) {
+export function parseConversation(filePath, options: { limit?: number; offset?: number } = {}) {
   const resolved = resolveTranscriptPath(filePath);
   if (!resolved) return null;
 
@@ -280,7 +278,7 @@ function extractTokens(message) {
  * @param {string} filePath
  * @returns {{ messageCount: number, firstAt: string|null, lastAt: string|null } | null}
  */
-function getConversationSummary(filePath) {
+export function getConversationSummary(filePath) {
   const result = parseConversation(filePath);
   if (!result) return null;
 
@@ -293,5 +291,3 @@ function getConversationSummary(filePath) {
     lastAt: timestamps.length > 0 ? timestamps[timestamps.length - 1] : null,
   };
 }
-
-module.exports = { parseConversation, getConversationSummary, resolveTranscriptPath };

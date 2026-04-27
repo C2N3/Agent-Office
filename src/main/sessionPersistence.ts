@@ -3,15 +3,15 @@
  * state.json save/restore — recover active sessions on app restart
  */
 
-const path = require('path');
-const os = require('os');
-const fs = require('fs');
-const { execFileSync } = require('child_process');
-const {
+import path from 'path';
+import os from 'os';
+import fs from 'fs';
+import { execFileSync } from 'child_process';
+import {
   getProviderDefinition,
   normalizeProvider,
   providerSupportsActiveSessionFileRecovery,
-} = require('./providers/registry');
+} from './providers/registry';
 
 const CODEX_ACTIVE_FILE_WINDOW_MS = 30 * 60 * 1000;
 
@@ -67,7 +67,7 @@ function isActiveSessionFile(sessionPath, maxAgeMs = CODEX_ACTIVE_FILE_WINDOW_MS
   }
 }
 
-function savePersistedState({ agentManager, sessionPids }) {
+export function savePersistedState({ agentManager, sessionPids }) {
   if (!agentManager) return;
   const statePath = getPersistedStatePath();
   const dir = path.dirname(statePath);
@@ -83,7 +83,7 @@ function savePersistedState({ agentManager, sessionPids }) {
   fs.renameSync(tmpPath, statePath);
 }
 
-function recoverExistingSessions({ agentManager, sessionPids, firstPreToolUseDone, firstToolUseMaps, debugLog, errorHandler }) {
+export function recoverExistingSessions({ agentManager, sessionPids, firstPreToolUseDone, firstToolUseMaps, debugLog, errorHandler }) {
   if (!agentManager) return;
   const statePath = getPersistedStatePath();
   const toolUseMaps = [];
@@ -196,5 +196,3 @@ function recoverExistingSessions({ agentManager, sessionPids, firstPreToolUseDon
     debugLog('[Recover] state.json reset after recovery');
   } catch (e) { process.stderr.write(`[session-persist] reset error: ${e.message}\n`); }
 }
-
-module.exports = { savePersistedState, recoverExistingSessions };
