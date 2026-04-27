@@ -709,6 +709,16 @@ As of the latest source-only scan after `ecb5634`, the remaining TypeScript Comm
 - Validation commands: focused `windowing-core` Jest tests; `npm run build:dist`; emitted preload/html existence check; `npm run typecheck`; `npm test -- --runInBand`; `timeout 25s npm start`; `git diff --check`.
 - Completed in the sixth Phase 5 implementation slice. Remaining CommonJS syntax is late runtime loading rather than `__dirname` path contracts.
 
+#### Electron Main ESM Entrypoint
+
+- Added `src/main.mts` as a native ESM Electron main entrypoint wrapper that imports the existing `./main.js` runtime module for startup side effects.
+- Updated `package.json` `main` from `dist/src/main.js` to `dist/src/main.mjs`; no package-wide `"type": "module"` was added.
+- Updated TypeScript include globs so `.mts` files are typechecked and emitted by the existing `dist/` build.
+- Emitted `dist` runtime shape: `dist/src/main.js` remains the CommonJS main runtime module, and `dist/src/main.mjs` becomes the Electron package entrypoint. This slice intentionally changes only the entrypoint file that Electron loads, not the preload format, dashboard startup, optional/native dependency loading, or CommonJS compatibility APIs.
+- Runtime/startup risk: Electron startup is touched, but BrowserWindow ownership, sandbox/context-isolation settings, preload API shape, dashboard late loading, package metadata other than `main`, and build scripts remain unchanged.
+- Validation commands: `npm run build:dist`; emitted main entrypoint existence/content check; `npm run typecheck`; `npm test -- --runInBand`; `timeout 25s npm start`; final source CommonJS scan; `git diff --check`.
+- Completed in the eighth Phase 5 implementation slice. The next runtime ESM slice should handle dashboard server direct execution and Electron late dashboard imports without changing unrelated bootstrap behavior.
+
 #### Late Builtin Runtime Loader Boundary
 
 - Added `src/main/runtimeLoaders.ts` as the bridge for late CommonJS loading of Node built-ins that should stay call-site lazy during the CommonJS runtime phase.

@@ -22,6 +22,7 @@
   "include": [
     "src/**/*.ts",
     "src/**/*.tsx",
+    "src/**/*.mts",
     "src/**/*.d.ts",
     "src/**/*.js",
     "__tests__/**/*.ts",
