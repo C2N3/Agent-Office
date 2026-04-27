@@ -1,15 +1,13 @@
-'use strict';
+export const DEFAULT_CONTEXT_WINDOW = 200_000;
 
-const DEFAULT_CONTEXT_WINDOW = 200_000;
-
-const DEFAULT_PRICING = {
+export const DEFAULT_PRICING = {
   inputPerMillion: 3,
   outputPerMillion: 15,
   cacheReadPerMillion: 0.3,
   cacheCreatePerMillion: 3.75,
 };
 
-const MODEL_PRICING = {
+export const MODEL_PRICING = {
   'claude-opus-4-6': {
     inputPerMillion: 15,
     outputPerMillion: 75,
@@ -42,18 +40,18 @@ const MODEL_PRICING = {
   },
 };
 
-const MODEL_CONTEXT_WINDOWS = Object.fromEntries(
+export const MODEL_CONTEXT_WINDOWS = Object.fromEntries(
   Object.keys(MODEL_PRICING).map((model) => [model, DEFAULT_CONTEXT_WINDOW])
 );
 
-function normalizeModelName(model) {
+export function normalizeModelName(model) {
   const normalized = String(model || '').trim().toLowerCase();
   if (!normalized) return '';
   if (normalized === 'codex' || normalized.includes('codex')) return 'codex';
   return normalized;
 }
 
-function getContextWindowSize(model) {
+export function getContextWindowSize(model) {
   return MODEL_CONTEXT_WINDOWS[normalizeModelName(model)] || DEFAULT_CONTEXT_WINDOW;
 }
 
@@ -62,7 +60,7 @@ function toTokenCount(value) {
   return Number.isFinite(numeric) && numeric > 0 ? numeric : 0;
 }
 
-function normalizeTokenUsage(rawUsage) {
+export function normalizeTokenUsage(rawUsage) {
   if (!rawUsage || typeof rawUsage !== 'object') return null;
   return {
     input: toTokenCount(rawUsage.input_tokens ?? rawUsage.inputTokens ?? rawUsage.input ?? rawUsage.prompt_tokens),
@@ -82,11 +80,11 @@ function normalizeTokenUsage(rawUsage) {
   };
 }
 
-function roundCost(value) {
+export function roundCost(value) {
   return Math.round((Number(value) || 0) * 1_000_000) / 1_000_000;
 }
 
-function calculateTokenCost(rawUsage, model) {
+export function calculateTokenCost(rawUsage, model) {
   const usage = normalizeTokenUsage(rawUsage);
   if (!usage) return 0;
 
@@ -102,20 +100,7 @@ function calculateTokenCost(rawUsage, model) {
   ) / 1_000_000);
 }
 
-function getTotalInputTokens(usage) {
+export function getTotalInputTokens(usage) {
   if (!usage) return 0;
   return usage.input + usage.cacheRead + usage.cacheCreate;
 }
-
-module.exports = {
-  DEFAULT_CONTEXT_WINDOW,
-  DEFAULT_PRICING,
-  MODEL_CONTEXT_WINDOWS,
-  MODEL_PRICING,
-  calculateTokenCost,
-  getContextWindowSize,
-  getTotalInputTokens,
-  normalizeModelName,
-  normalizeTokenUsage,
-  roundCost,
-};
