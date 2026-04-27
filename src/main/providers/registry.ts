@@ -115,18 +115,3 @@ export {
   providerSupportsLiveness,
   providerSupportsTranscriptStats,
 };
-
-module.exports = {
-  DEFAULT_PROVIDER,
-  KNOWN_PROVIDERS,
-  PROVIDER_DEFINITIONS,
-  buildProviderResumeCommand,
-  getProviderDefinition,
-  getProviderDefinitionOrNull,
-  getProviderIds,
-  isKnownProvider,
-  normalizeProvider,
-  providerSupportsActiveSessionFileRecovery,
-  providerSupportsLiveness,
-  providerSupportsTranscriptStats,
-};

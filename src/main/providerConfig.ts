@@ -2,8 +2,8 @@
  * Runtime provider selection.
  */
 
-const { getCodexSessionRoots } = require('./providers/codex/paths');
-const { DEFAULT_PROVIDER, KNOWN_PROVIDERS } = require('./providers/registry');
+import { getCodexSessionRoots } from './providers/codex/paths';
+import { DEFAULT_PROVIDER, KNOWN_PROVIDERS } from './providers/registry';
 
 function getDefaultEnabledProviders(env = process.env) {
   const providers = [DEFAULT_PROVIDER];
@@ -33,4 +33,3 @@ function getEnabledProviders(env = process.env) {
 }
 
 export { KNOWN_PROVIDERS, getDefaultEnabledProviders, getEnabledProviders };
-module.exports = { KNOWN_PROVIDERS, getDefaultEnabledProviders, getEnabledProviders };
