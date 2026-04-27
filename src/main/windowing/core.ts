@@ -2,7 +2,7 @@ const { BrowserWindow, screen } = require('electron');
 const path = require('path');
 const { createSecondaryWindowControls } = require('./secondary/windows');
 
-function createWindowManagerCore(context) {
+export function createWindowManagerCore(context) {
   const {
     agentManager,
     agentRegistry,
@@ -246,5 +246,3 @@ function createWindowManagerCore(context) {
     resizeWindowForAgents,
   };
 }
-
-module.exports = { createWindowManagerCore };
