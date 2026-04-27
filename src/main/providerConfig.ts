@@ -32,4 +32,5 @@ function getEnabledProviders(env = process.env) {
   return selected.length > 0 ? selected : [DEFAULT_PROVIDER];
 }
 
+export { KNOWN_PROVIDERS, getDefaultEnabledProviders, getEnabledProviders };
 module.exports = { KNOWN_PROVIDERS, getDefaultEnabledProviders, getEnabledProviders };

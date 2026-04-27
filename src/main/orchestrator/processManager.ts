@@ -240,4 +240,5 @@ class ProcessManager {
   }
 }
 
+export { ProcessManager };
 module.exports = { ProcessManager };

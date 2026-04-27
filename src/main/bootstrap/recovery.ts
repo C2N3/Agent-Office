@@ -50,6 +50,11 @@ function restoreRegisteredAgents({ agentRegistry, agentManager, debugLog }) {
   debugLog(`[Main] ${agentRegistry.getActiveAgents().length} registered agent(s) loaded`);
 }
 
+export {
+  recoverProviderSessions,
+  restoreRegisteredAgents,
+};
+
 module.exports = {
   recoverProviderSessions,
   restoreRegisteredAgents,

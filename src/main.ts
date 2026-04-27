@@ -3,48 +3,49 @@
  * Module initialization, event wiring, and app lifecycle management
  */
 
-const { app, BrowserWindow, ipcMain, Menu } = require('electron');
-const path = require('path');
-const fs = require('fs');
+import { app, BrowserWindow, Menu } from 'electron';
 
-const AgentManager = require('./agentManager');
-const SessionScanner = require('./sessionScanner');
-const HeatmapScanner = require('./heatmap');
-const { adaptAgentToDashboard } = require('./dashboardAdapter');
-const errorHandler = require('./errorHandler');
-const { getWindowSizeForAgents } = require('./utils');
+import { AgentManager } from './agentManager';
+import { SessionScanner } from './sessionScanner';
+import { HeatmapScanner } from './heatmap';
+import { adaptAgentToDashboard } from './dashboardAdapter';
+import errorHandler from './errorHandler';
+import { getWindowSizeForAgents } from './utils';
 
-const { getEnabledProviders } = require('./main/providerConfig');
-const { providerSupportsLiveness } = require('./main/providers/registry');
-const {
+import { getEnabledProviders } from './main/providerConfig';
+import { providerSupportsLiveness } from './main/providers/registry';
+import {
   sessionPids,
   startLivenessChecker,
   detectClaudePidByTranscript,
   detectProviderPidBySessionFile,
-} = require('./main/livenessChecker');
-const { registerIpcHandlers } = require('./main/ipcHandlers');
-const { NicknameStore } = require('./main/nicknameStore');
-const { TerminalManager } = require('./main/terminalManager');
-const { TerminalProfileService } = require('./main/terminalProfileService');
-const { AgentRegistry } = require('./main/registry');
-const { CentralWorkerConnector } = require('./main/centralWorker/connector');
-const { WorkspaceManager } = require('./main/workspace');
-const { TaskStore } = require('./main/orchestrator/taskStore');
-const { Orchestrator } = require('./main/orchestrator/index');
-const { configureApplicationMenu, configureRuntime, installStartupLogging } = require('./main/bootstrap/runtime');
-const {
+} from './main/livenessChecker';
+import { registerIpcHandlers } from './main/ipcHandlers';
+import { NicknameStore } from './main/nicknameStore';
+import { TerminalManager } from './main/terminalManager';
+import { TerminalProfileService } from './main/terminalProfileService';
+import { AgentRegistry } from './main/registry';
+import { CentralWorkerConnector } from './main/centralWorker/connector';
+import { WorkspaceManager } from './main/workspace';
+import { TaskStore } from './main/orchestrator/taskStore';
+import { Orchestrator } from './main/orchestrator/index';
+import { ProcessManager } from './main/orchestrator/processManager';
+import { configureApplicationMenu, configureRuntime, installStartupLogging } from './main/bootstrap/runtime';
+import {
   autoRegisterProviders,
   createProviderProcessors,
   startProviderServices,
-} = require('./main/bootstrap/providers');
-const {
+} from './main/bootstrap/providers';
+import {
   attachAgentBroadcasts,
   createApplicationWindowManager,
   startDashboardRuntime,
-} = require('./main/bootstrap/windows');
-const { recoverProviderSessions, restoreRegisteredAgents } = require('./main/bootstrap/recovery');
-const { registerAppLifecycle } = require('./main/bootstrap/shutdown');
-const { loadUiState } = require('./main/uiState');
+} from './main/bootstrap/windows';
+import { recoverProviderSessions, restoreRegisteredAgents } from './main/bootstrap/recovery';
+import { registerAppLifecycle } from './main/bootstrap/shutdown';
+import { syncAvatarFiles } from './main/bootstrap/avatars';
+import { registerTestAgents } from './main/bootstrap/testAgents';
+import { loadUiState } from './main/uiState';
 
 const { debugLog } = installStartupLogging({ app });
 
@@ -75,64 +76,8 @@ let codexEventServer = null;
 let enabledProviders = [];
 let centralWorkerConnector = null;
 
-// Scan assets/characters/ subfolders and update avatars.json.
-// Preserves the existing file order — new files are appended to the end
-// so that previously assigned avatarIndex values remain valid.
-function syncAvatarFiles() {
-  const charDir = path.join(__dirname, '..', 'assets', 'characters');
-  const jsonPath = path.join(__dirname, '..', 'assets', 'shared', 'avatars.json');
-  const imgRegex = /\.(webp|png|jpg|jpeg|gif)$/i;
-  try {
-    // Load existing JSON to preserve current order
-    let existingAllFiles: string[] = [];
-    try {
-      const existing = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
-      existingAllFiles = Array.isArray(existing) ? existing : existing.allFiles || [];
-    } catch (_) {
-      /* file missing or invalid — start fresh */
-    }
-
-    // Collect all files currently on disk (sorted within each folder)
-    const entries = fs.readdirSync(charDir, { withFileTypes: true });
-    const diskFiles: string[] = [];
-    for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
-      if (!entry.isDirectory()) continue;
-      const folderFiles = fs
-        .readdirSync(path.join(charDir, entry.name))
-        .filter((f) => imgRegex.test(f))
-        .sort();
-      diskFiles.push(...folderFiles.map((f) => `${entry.name}/${f}`));
-    }
-
-    if (diskFiles.length === 0) return;
-
-    // Build final list: keep existing order, append genuinely new files at the end
-    const diskSet = new Set(diskFiles);
-    const kept = existingAllFiles.filter((f) => diskSet.has(f));
-    const keptSet = new Set(kept);
-    const added = diskFiles.filter((f) => !keptSet.has(f));
-    const allFiles = [...kept, ...added];
-
-    // Rebuild categories from allFiles order
-    const categoryMap = new Map<string, string[]>();
-    for (const f of allFiles) {
-      const folder = f.split('/')[0];
-      if (!categoryMap.has(folder)) categoryMap.set(folder, []);
-      categoryMap.get(folder)!.push(f);
-    }
-    const categories = Array.from(categoryMap.entries()).map(([name, files]) => ({ name, files }));
-
-    fs.writeFileSync(jsonPath, JSON.stringify({ categories, allFiles }, null, 2) + '\n');
-    debugLog(
-      `[Main] avatars.json synced: ${allFiles.length} files (${added.length} new) in ${categories.length} categories`
-    );
-  } catch (e) {
-    console.error('[Main] Failed to sync avatars.json:', e.message);
-  }
-}
-
 app.whenReady().then(async () => {
-  syncAvatarFiles();
+  syncAvatarFiles({ debugLog });
   debugLog('========== Agent-Office started ==========');
 
   const isDev = process.argv.includes('--dev');
@@ -195,7 +140,6 @@ app.whenReady().then(async () => {
   });
 
   // 4.6. Create process manager for headless task execution
-  const { ProcessManager } = require('./main/orchestrator/processManager');
   const processManager = new ProcessManager({ debugLog });
 
   // 4.7. Create orchestrator and team coordinator
@@ -295,41 +239,7 @@ app.whenReady().then(async () => {
   // 8. Test agents (mix of Main, Sub, and Team)
   const ENABLE_TEST_AGENTS = false;
   if (ENABLE_TEST_AGENTS) {
-    const testSubagents = [
-      {
-        sessionId: 'test-main-1',
-        projectPath: 'E:/projects/core-engine',
-        displayName: 'Main Service',
-        state: 'Working',
-        isSubagent: false,
-        isTeammate: false,
-      },
-      {
-        sessionId: 'test-sub-1',
-        projectPath: 'E:/projects/core-engine',
-        displayName: 'Refactor Helper',
-        state: 'Working',
-        isSubagent: true,
-        isTeammate: false,
-      },
-      {
-        sessionId: 'test-team-1',
-        projectPath: 'E:/projects/web-ui',
-        displayName: 'UI Architect',
-        state: 'Waiting',
-        isSubagent: false,
-        isTeammate: true,
-      },
-      {
-        sessionId: 'test-team-2',
-        projectPath: 'E:/projects/web-ui',
-        displayName: 'CSS Specialist',
-        state: 'Working',
-        isSubagent: false,
-        isTeammate: true,
-      },
-    ];
-    testSubagents.forEach((agent) => agentManager.updateAgent(agent, 'test'));
+    registerTestAgents({ agentManager });
   }
 
   // 9. Create UI — only dashboard, no overlay window

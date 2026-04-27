@@ -303,4 +303,5 @@ class AgentManager extends EventEmitter {
   }
 }
 
+export { AgentManager };
 module.exports = AgentManager;

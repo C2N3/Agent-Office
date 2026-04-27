@@ -34,7 +34,7 @@ class HeatmapScanner {
   declare lastScan: number;
   declare fileOffsets: Record<string, number>;
 
-  constructor(debugLog = () => {}) {
+  constructor(debugLog: (message: string) => void = () => {}) {
     this.debugLog = debugLog;
     this.scanInterval = null;
     this.persistDir = path.join(os.homedir(), '.agent-office');
@@ -138,4 +138,5 @@ class HeatmapScanner {
   }
 }
 
+export { HeatmapScanner };
 module.exports = HeatmapScanner;

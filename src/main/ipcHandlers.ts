@@ -74,4 +74,5 @@ function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowM
   });
 }
 
+export { registerIpcHandlers };
 module.exports = { registerIpcHandlers };

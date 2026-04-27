@@ -289,6 +289,14 @@ class WorkspaceManager {
   }
 }
 
+export {
+  WorkspaceManager,
+  slugifyBranchName,
+  buildSuggestedBranchName,
+  normalizePathList,
+  detectDependencySymlinkPaths,
+};
+
 module.exports = {
   WorkspaceManager,
   slugifyBranchName,

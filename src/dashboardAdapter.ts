@@ -180,6 +180,14 @@ function adaptAgentToDashboard(pixelAgent: PixelAgent): DashboardAgent & { token
   };
 }
 
+export {
+  adaptAgentToDashboard,
+  mapPixelStateToDashboardState,
+  extractProjectName,
+  STATE_MAP,
+  DEFAULT_STATE,
+};
+
 module.exports = {
   adaptAgentToDashboard,
   mapPixelStateToDashboardState,

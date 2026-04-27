@@ -340,4 +340,5 @@ class TerminalManager {
   }
 }
 
+export { TerminalManager };
 module.exports = { TerminalManager };

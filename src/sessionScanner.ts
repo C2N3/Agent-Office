@@ -45,7 +45,7 @@ class SessionScanner {
      * @param {import('./agentManager')} agentManager
      * @param {(msg: string) => void} [debugLog]
      */
-    constructor(agentManager, debugLog = () => { }) {
+    constructor(agentManager, debugLog: (message: string) => void = () => { }) {
         this.agentManager = agentManager;
         this.debugLog = debugLog;
         this.scanInterval = null;
@@ -224,4 +224,5 @@ class SessionScanner {
  * @property {string|null} lastActivity
  */
 
+export { SessionScanner };
 module.exports = SessionScanner;

@@ -164,6 +164,14 @@ function getWindowSizeForAgents(agentsOrCount) {
   return { width, height };
 }
 
+export {
+  formatSlugToDisplayName,
+  formatTime,
+  sanitizeProjectPath,
+  resolveProjectPathForPlatform,
+  getWindowSizeForAgents,
+};
+
 module.exports = {
   formatSlugToDisplayName,
   formatTime,

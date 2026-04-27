@@ -110,6 +110,12 @@ function attachAgentBroadcasts({
   return agentListeners;
 }
 
+export {
+  attachAgentBroadcasts,
+  createApplicationWindowManager,
+  startDashboardRuntime,
+};
+
 module.exports = {
   attachAgentBroadcasts,
   createApplicationWindowManager,

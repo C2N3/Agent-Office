@@ -318,6 +318,13 @@ function startLivenessChecker({ agentManager, agentRegistry, taskStore, terminal
   return { zombieSweepId, livenessCheckId };
 }
 
+export {
+  sessionPids,
+  startLivenessChecker,
+  detectClaudePidByTranscript,
+  detectProviderPidBySessionFile,
+};
+
 module.exports = {
   sessionPids,
   startLivenessChecker,

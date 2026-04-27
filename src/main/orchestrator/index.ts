@@ -363,4 +363,5 @@ class Orchestrator extends EventEmitter {
   }
 }
 
+export { Orchestrator };
 module.exports = { Orchestrator };

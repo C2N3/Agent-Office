@@ -299,4 +299,5 @@ class AgentRegistry extends EventEmitter {
   }
 }
 
+export { AgentRegistry, normalizePath };
 module.exports = { AgentRegistry, normalizePath };

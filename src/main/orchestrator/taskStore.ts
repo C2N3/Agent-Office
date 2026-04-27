@@ -161,4 +161,5 @@ class TaskStore {
   }
 }
 
+export { TaskStore };
 module.exports = { TaskStore };

@@ -228,7 +228,7 @@ class ErrorHandler {
   }
 }
 
-// Singleton instance
 const errorHandler = new ErrorHandler();
 
+export default errorHandler;
 module.exports = errorHandler;

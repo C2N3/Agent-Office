@@ -260,4 +260,5 @@ class TerminalProfileService {
   }
 }
 
+export { TerminalProfileService };
 module.exports = { TerminalProfileService };

@@ -1,9 +1,9 @@
-const { ClaudeAdapter } = require('./adapters/claudeAdapter');
-const { CodexAdapter } = require('./adapters/codexAdapter');
-const { GeminiAdapter } = require('./adapters/geminiAdapter');
-const { normalizeProvider } = require('../providers/registry');
+import { ClaudeAdapter } from './adapters/claudeAdapter';
+import { CodexAdapter } from './adapters/codexAdapter';
+import { GeminiAdapter } from './adapters/geminiAdapter';
+import { normalizeProvider } from '../providers/registry';
 
-function createCLIAdapter(provider) {
+export function createCLIAdapter(provider) {
   const normalizedProvider = normalizeProvider(provider, String(provider || '').trim() ? null : undefined);
   switch (normalizedProvider) {
     case 'claude':
@@ -16,5 +16,3 @@ function createCLIAdapter(provider) {
       throw new Error(`Unknown CLI provider: ${provider}`);
   }
 }
-
-module.exports = { createCLIAdapter };

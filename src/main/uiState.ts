@@ -41,4 +41,5 @@ function loadUiState(): UiState {
   }
 }
 
+export { saveUiState, loadUiState };
 module.exports = { saveUiState, loadUiState };

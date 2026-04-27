@@ -1,6 +1,6 @@
-const { execFileSync } = require('child_process');
+import { execFileSync } from 'child_process';
 
-class CodexAdapter {
+export class CodexAdapter {
   get provider() {
     return 'codex';
   }
@@ -66,5 +66,3 @@ class CodexAdapter {
       || /maximum.*context/i.test(buffer);
   }
 }
-
-module.exports = { CodexAdapter };

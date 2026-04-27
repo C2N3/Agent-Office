@@ -94,4 +94,5 @@ class NicknameStore {
   }
 }
 
+export { NicknameStore };
 module.exports = { NicknameStore };

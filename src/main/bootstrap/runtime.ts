@@ -93,6 +93,12 @@ function configureApplicationMenu({ Menu, isDev }) {
   Menu.setApplicationMenu(Menu.buildFromTemplate(menuTemplate));
 }
 
+export {
+  configureApplicationMenu,
+  configureRuntime,
+  installStartupLogging,
+};
+
 module.exports = {
   configureApplicationMenu,
   configureRuntime,

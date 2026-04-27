@@ -90,6 +90,12 @@ function startProviderServices({ hookProcessor, codexProcessor, codexSessionMoni
   return { hookServer, codexEventServer };
 }
 
+export {
+  autoRegisterProviders,
+  createProviderProcessors,
+  startProviderServices,
+};
+
 module.exports = {
   autoRegisterProviders,
   createProviderProcessors,

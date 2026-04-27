@@ -117,6 +117,8 @@ function registerAppLifecycle({
   });
 }
 
+export { registerAppLifecycle };
+
 module.exports = {
   registerAppLifecycle,
 };
