@@ -1,7 +1,10 @@
-const path = require('path');
-const { formatSlugToDisplayName, sanitizeProjectPath } = require('../utils');
-const AVATAR_FILES_DATA = require('../../assets/shared/avatars.json');
-const AVATAR_FILES = AVATAR_FILES_DATA.allFiles || AVATAR_FILES_DATA;
+import path from 'path';
+import AVATAR_FILES_DATA from '../../assets/shared/avatars.json';
+import { formatSlugToDisplayName, sanitizeProjectPath } from '../utils';
+
+const AVATAR_FILES = Array.isArray(AVATAR_FILES_DATA)
+  ? AVATAR_FILES_DATA
+  : AVATAR_FILES_DATA.allFiles;
 const AVATAR_COUNT = AVATAR_FILES.length;
 
 type AgentLike = {
@@ -10,14 +13,14 @@ type AgentLike = {
   state?: string;
 };
 
-function formatDisplayName(slug, projectPath) {
+export function formatDisplayName(slug, projectPath) {
   if (slug) return formatSlugToDisplayName(slug);
   const sanitizedProjectPath = sanitizeProjectPath(projectPath);
   if (sanitizedProjectPath) return path.basename(sanitizedProjectPath);
   return 'Agent';
 }
 
-function assignAvatarIndex(agentId, usedAvatarIndices) {
+export function assignAvatarIndex(agentId, usedAvatarIndices) {
   let hash = 0;
   const str = agentId || '';
   for (let i = 0; i < str.length; i++) {
@@ -38,13 +41,13 @@ function assignAvatarIndex(agentId, usedAvatarIndices) {
   return hashIdx;
 }
 
-function releaseAvatarIndex(avatarIndex, usedAvatarIndices) {
+export function releaseAvatarIndex(avatarIndex, usedAvatarIndices) {
   if (avatarIndex !== undefined && avatarIndex !== null) {
     usedAvatarIndices.delete(avatarIndex);
   }
 }
 
-function getAgentWithEffectiveState(agents: Map<string, AgentLike>, agentId) {
+export function getAgentWithEffectiveState(agents: Map<string, AgentLike>, agentId) {
   const agent = agents.get(agentId);
   if (!agent) return null;
   if (agent.state === 'Help' || agent.state === 'Error') return agent;
@@ -60,7 +63,7 @@ function getAgentWithEffectiveState(agents: Map<string, AgentLike>, agentId) {
   return agent;
 }
 
-function getStats(agents) {
+export function getStats(agents) {
   const counts = { Done: 0, Thinking: 0, Working: 0, Waiting: 0, Help: 0, Error: 0 };
   for (const agent of agents) {
     if (Object.prototype.hasOwnProperty.call(counts, agent.state)) {
@@ -69,11 +72,3 @@ function getStats(agents) {
   }
   return { total: agents.length, byState: counts };
 }
-
-module.exports = {
-  assignAvatarIndex,
-  formatDisplayName,
-  getAgentWithEffectiveState,
-  getStats,
-  releaseAvatarIndex,
-};
