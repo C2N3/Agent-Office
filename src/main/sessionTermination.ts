@@ -1,16 +1,6 @@
-let treeKill: (pid: number, signal: string, callback?: (err?: Error) => void) => void;
-try {
-  treeKill = require('tree-kill');
-} catch {
-  treeKill = (pid: number, signal: string, callback?: (err?: Error) => void) => {
-    try {
-      process.kill(pid, signal as any);
-      callback?.();
-    } catch (error: any) {
-      callback?.(error);
-    }
-  };
-}
+import { loadTreeKill } from './nativeDependencies';
+
+const treeKill = loadTreeKill(require);
 
 const ACTIVE_TASK_STATUSES = new Set(['running', 'provisioning', 'retrying']);
 const noopDebugLog = (_message: string) => {};

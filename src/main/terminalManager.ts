@@ -7,6 +7,7 @@ import fs from 'fs';
 import os from 'os';
 import type { BrowserWindow } from 'electron';
 import type { DashboardOpenOptions, DashboardTerminalProfile } from '../shared/contracts/index.js';
+import { loadNodePty } from './nativeDependencies';
 import { resolveProjectPathForPlatform } from '../utils';
 
 type DebugLog = (message: string) => void;
@@ -73,7 +74,7 @@ class TerminalManager {
     // Lazy-require node-pty to avoid crash if not installed
     let pty;
     try {
-      pty = require('node-pty');
+      pty = loadNodePty(require);
     } catch (e) {
       this.debugLog(`[Terminal] node-pty not available: ${e.message}`);
       return { success: false, error: 'node-pty not available' };

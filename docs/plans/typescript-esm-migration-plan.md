@@ -663,6 +663,16 @@ As of the latest source-only scan after `ecb5634`, the remaining TypeScript Comm
 - Validation commands: focused Jest test for `runtimeModule.test.js`; `npm run typecheck`; `npm run build:dist`; emitted `require()` shape check; `git diff --check`.
 - Completed in the first Phase 5 implementation slice. The next path-contract slice can consume these helpers one runtime-owner group at a time.
 
+#### Optional And Native Dependency Bridge
+
+- Added `src/main/nativeDependencies.ts` as the bridge for package-resolution-sensitive native/optional dependencies.
+- Bridge exports: `loadNodePty(packageRequire)`, `loadCloudflaredPackageBin(packageRequire)`, and `loadTreeKill(packageRequire)`.
+- Current CommonJS runtime callers pass their ambient `require` into the bridge, preserving lazy loading, existing Jest mocks, startup behavior, and fallback behavior.
+- Future native ESM callers can pass `createRequire(import.meta.url)` into the same bridge without statically importing `node-pty`, `cloudflared`, or `tree-kill`.
+- Runtime/startup/path risk: this slice does not change package metadata, electron-builder inclusion, startup ordering, or path contracts. `node-pty` remains loaded inside terminal creation; `cloudflared` remains resolved during tunnel lookup; `tree-kill` keeps the existing fallback to `process.kill`.
+- Validation commands: focused Jest tests for the bridge, terminal creation, and agent session termination; `npm run typecheck`; `npm run build:dist`; emitted bridge shape check; package-specific `require(...)` scan; `git diff --check`.
+- Completed in the second Phase 5 implementation slice. Remaining package-adjacent validation is deferred to the packaging proof slice because this did not change packaged file inclusion.
+
 #### `agentManager.ts` / `sessionScanner.ts` Default CommonJS API
 
 - Current CommonJS/export shape: tests and compatibility callers can use `const AgentManager = require('../src/agentManager')` and `const SessionScanner = require('../src/sessionScanner')`; both modules also expose `.AgentManager` / `.SessionScanner` on the required constructor.

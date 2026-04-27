@@ -3,11 +3,12 @@ import { EventEmitter } from 'events';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { loadCloudflaredPackageBin } from './nativeDependencies';
 
 function findCloudflared(): string | null {
   // 1. npm cloudflared package (bundled with this project)
   try {
-    const { bin } = require('cloudflared');
+    const bin = loadCloudflaredPackageBin(require);
     if (bin && fs.existsSync(bin)) return bin;
   } catch {}
 
