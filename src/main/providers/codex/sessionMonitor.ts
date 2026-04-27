@@ -60,7 +60,7 @@ export function createCodexSessionMonitor({
   codexProcessor,
   agentManager,
   debugLog,
-  sessionRoot,
+  sessionRoot = null,
   activeWindowMs = ACTIVE_SESSION_WINDOW_MS,
   sessionAllowlist = null,
   detectPidByTranscript = null,

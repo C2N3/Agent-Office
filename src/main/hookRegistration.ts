@@ -7,11 +7,11 @@
  * stripping Agent-Office hook entries from ~/.claude/settings.json.
  */
 
-const path = require('path');
-const os = require('os');
-const fs = require('fs');
+import path from 'path';
+import os from 'os';
+import fs from 'fs';
 
-const HOOK_SERVER_PORT = 47821;
+export const HOOK_SERVER_PORT = 47821;
 
 function getClaudeConfigPath() {
   return path.join(os.homedir(), '.claude', 'settings.json');
@@ -51,7 +51,7 @@ function isOurHookUrl(url) {
     || url.includes(`localhost:${HOOK_SERVER_PORT}/hook`);
 }
 
-function unregisterClaudeHooks(debugLog) {
+export function unregisterClaudeHooks(debugLog) {
   const config = readClaudeConfig(debugLog);
   if (!config || !config.hooks || typeof config.hooks !== 'object') return false;
 
@@ -96,5 +96,3 @@ function unregisterClaudeHooks(debugLog) {
   }
   return false;
 }
-
-module.exports = { HOOK_SERVER_PORT, unregisterClaudeHooks };
