@@ -1,9 +1,9 @@
-const { dialog, ipcMain } = require('electron');
-const { dashboardIpcChannels } = require('../../shared/contracts/ipc');
-const { createWorkspaceRegistrationService } = require('./workspace/registration');
+import { dialog, ipcMain } from 'electron';
+import { dashboardIpcChannels } from '../../shared/contracts/ipc';
+import { createWorkspaceRegistrationService } from './workspace/registration';
 import type { DashboardDirectoryPickerOptions } from '../../shared/contracts/index.js';
 
-function registerWorkspaceHandlers({
+export function registerWorkspaceHandlers({
   agentManager,
   agentRegistry,
   terminalManager,
@@ -232,7 +232,3 @@ function registerWorkspaceHandlers({
     }
   });
 }
-
-module.exports = {
-  registerWorkspaceHandlers,
-};
