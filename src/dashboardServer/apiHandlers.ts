@@ -2,10 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { URL } from 'url';
 import { adaptAgentToDashboard } from '../dashboardAdapter.js';
-const { loadOfficeLayoutManifest, resolveOfficeLayoutAssetPath } = require('../officeLayout.js') as {
-  loadOfficeLayoutManifest: () => any;
-  resolveOfficeLayoutAssetPath: (assetPath: string) => string | null;
-};
+import { loadOfficeLayoutManifest, resolveOfficeLayoutAssetPath } from '../officeLayout.js';
 import { ASSET_ROOT, MIME_TYPES } from './constants.js';
 import { getClients, getRefs } from './context.js';
 import { calculateStats } from './stats.js';
