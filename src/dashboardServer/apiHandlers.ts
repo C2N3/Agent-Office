@@ -1,9 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { URL } from 'url';
-const { adaptAgentToDashboard } = require('../dashboardAdapter.js') as {
-  adaptAgentToDashboard: (agent: any) => any;
-};
+import { adaptAgentToDashboard } from '../dashboardAdapter.js';
 const { loadOfficeLayoutManifest, resolveOfficeLayoutAssetPath } = require('../officeLayout.js') as {
   loadOfficeLayoutManifest: () => any;
   resolveOfficeLayoutAssetPath: (assetPath: string) => string | null;

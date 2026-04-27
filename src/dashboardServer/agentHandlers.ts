@@ -1,11 +1,6 @@
 import { URL } from 'url';
-const { getConversationSummary, parseConversation } = require('../main/conversationParser.js') as {
-  getConversationSummary: (transcriptPath: string) => any;
-  parseConversation: (transcriptPath: string, options?: { limit?: number; offset?: number }) => any;
-};
-const { terminateAgentSession } = require('../main/sessionTermination.js') as {
-  terminateAgentSession: (options: any) => Promise<any>;
-};
+import { getConversationSummary, parseConversation } from '../main/conversationParser.js';
+import { terminateAgentSession } from '../main/sessionTermination.js';
 import { getRefs } from './context.js';
 
 interface ResponseLike {
