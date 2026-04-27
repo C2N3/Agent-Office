@@ -1,11 +1,11 @@
 /**
  * Codex exec --json event adapter.
  */
-const { createEventProcessor } = require('../../eventProcessor');
-const { createIgnoredSessionTracker } = require('./ignoredSessions');
-const { getCodexSubagentInfo, getCodexWorkspacePath, normalizeCodexEvent } = require('./events');
+import { createEventProcessor } from '../../eventProcessor';
+import { createIgnoredSessionTracker } from './ignoredSessions';
+import { getCodexSubagentInfo, getCodexWorkspacePath, normalizeCodexEvent } from './events';
 
-function createCodexProcessor({ agentManager, agentRegistry, sessionPids, debugLog, detectPidByTranscript = null }) {
+export function createCodexProcessor({ agentManager, agentRegistry, sessionPids, debugLog, detectPidByTranscript = null }) {
   let taskCompletionHandler = null;
   const processor = createEventProcessor({
     agentManager,
@@ -297,4 +297,4 @@ function createCodexProcessor({ agentManager, agentRegistry, sessionPids, debugL
   };
 }
 
-module.exports = { createCodexProcessor, normalizeCodexEvent };
+export { normalizeCodexEvent };
