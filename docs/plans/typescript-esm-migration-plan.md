@@ -654,6 +654,15 @@ As of the latest source-only scan after `ecb5634`, the remaining TypeScript Comm
 
 ### Compatibility Slice Notes
 
+#### Path Helper And ESM Entrypoint Guard
+
+- Added `src/runtime/module.ts` as the reviewed helper boundary for later native ESM runtime slices.
+- Helper exports: `moduleFilename(import.meta.url)`, `moduleDirname(import.meta.url)`, `resolveFromModule(import.meta.url, ...segments)`, and `isDirectEntrypoint(import.meta.url, process.argv[1])`.
+- Runtime/startup/path risk: this slice adds helpers and tests only. It does not replace existing `__dirname` / `__filename` contracts, change Electron or dashboard entrypoints, add package-wide `"type": "module"`, or alter build/Jest/package behavior.
+- Emitted `dist` shape: `require('./dist/src/runtime/module.js')` exposes named helper functions as CommonJS properties.
+- Validation commands: focused Jest test for `runtimeModule.test.js`; `npm run typecheck`; `npm run build:dist`; emitted `require()` shape check; `git diff --check`.
+- Completed in the first Phase 5 implementation slice. The next path-contract slice can consume these helpers one runtime-owner group at a time.
+
 #### `agentManager.ts` / `sessionScanner.ts` Default CommonJS API
 
 - Current CommonJS/export shape: tests and compatibility callers can use `const AgentManager = require('../src/agentManager')` and `const SessionScanner = require('../src/sessionScanner')`; both modules also expose `.AgentManager` / `.SessionScanner` on the required constructor.
