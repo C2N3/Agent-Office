@@ -3,8 +3,8 @@
  * Eliminates code duplication across modules
  */
 
-const os = require('os');
-const path = require('path');
+import * as os from 'os';
+import * as path from 'path';
 
 /**
  * Format slug to display name
@@ -170,12 +170,4 @@ export {
   sanitizeProjectPath,
   resolveProjectPathForPlatform,
   getWindowSizeForAgents,
-};
-
-module.exports = {
-  formatSlugToDisplayName,
-  formatTime,
-  sanitizeProjectPath,
-  resolveProjectPathForPlatform,
-  getWindowSizeForAgents
 };

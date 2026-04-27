@@ -35,7 +35,8 @@ fs.unlinkSync.mockImplementation(() => {});
 fs.mkdirSync.mockImplementation(() => {});
 fs.promises.appendFile.mockResolvedValue(undefined);
 
-const errorHandler = require('../src/errorHandler');
+const errorHandlerModule = require('../src/errorHandler');
+const errorHandler = errorHandlerModule.default || errorHandlerModule;
 
 describe('ErrorHandler', () => {
   beforeEach(() => {

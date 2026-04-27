@@ -5,8 +5,8 @@
 
 import type { DashboardAgent } from './shared/contracts/index.js';
 
-const path = require('path');
-const { sanitizeProjectPath } = require('./utils');
+import * as path from 'path';
+import { sanitizeProjectPath } from './utils';
 
 type TokenUsage = {
   inputTokens?: number;
@@ -186,12 +186,4 @@ export {
   extractProjectName,
   STATE_MAP,
   DEFAULT_STATE,
-};
-
-module.exports = {
-  adaptAgentToDashboard,
-  mapPixelStateToDashboardState,
-  extractProjectName,
-  STATE_MAP,
-  DEFAULT_STATE
 };
