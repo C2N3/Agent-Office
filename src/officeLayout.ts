@@ -1,5 +1,5 @@
-const fs = require('node:fs');
-const path = require('node:path');
+import fs from 'node:fs';
+import path from 'node:path';
 
 const DEFAULT_MAP_SCALE = 2.1875;
 const DEFAULT_TILE_SIZE = 70;
@@ -300,7 +300,7 @@ function resolveOfficeLayoutAssetPath(assetPath) {
   return resolved;
 }
 
-module.exports = {
+export {
   DEFAULT_LAYOUT,
   loadOfficeLayoutManifest,
   normalizeLayout,
