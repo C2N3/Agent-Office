@@ -1,12 +1,12 @@
-const fs = require('fs');
-const path = require('path');
-const { execFileSync } = require('child_process');
-const { sanitizeProjectPath } = require('../../utils');
-const {
-  mergeWorkspace: mergeWorkspaceLifecycle,
-  removeWorkspace: removeWorkspaceLifecycle,
-} = require('./lifecycle');
-const {
+import fs from 'fs';
+import path from 'path';
+import { execFileSync } from 'child_process';
+import { sanitizeProjectPath } from '../../utils';
+import {
+  mergeWorkspace as mergeWorkspaceLifecycle,
+  removeWorkspace as removeWorkspaceLifecycle,
+} from './lifecycle';
+import {
   GLOBAL_WORKTREE_DIR,
   buildSuggestedBranchName,
   slugifyBranchName,
@@ -17,7 +17,7 @@ const {
   inspectWorkspacePath,
   copyIntoWorkspace,
   symlinkIntoWorkspace,
-} = require('./helpers');
+} from './helpers';
 
 type WorkspaceManagerOptions = {
   debugLog?: (message: string) => void;
@@ -38,7 +38,7 @@ type WorkspaceCreateOptions = {
   bootstrapCommand?: string;
 };
 
-class WorkspaceManager {
+export class WorkspaceManager {
   declare debugLog: (message: string) => void;
 
   constructor({ debugLog }: WorkspaceManagerOptions = {}) {
@@ -290,15 +290,6 @@ class WorkspaceManager {
 }
 
 export {
-  WorkspaceManager,
-  slugifyBranchName,
-  buildSuggestedBranchName,
-  normalizePathList,
-  detectDependencySymlinkPaths,
-};
-
-module.exports = {
-  WorkspaceManager,
   slugifyBranchName,
   buildSuggestedBranchName,
   normalizePathList,
