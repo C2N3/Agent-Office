@@ -3,11 +3,11 @@
  * Manages node-pty instances for embedded terminals
  */
 
-const fs = require('fs');
-const os = require('os');
-const { resolveProjectPathForPlatform } = require('../utils');
+import fs from 'fs';
+import os from 'os';
 import type { BrowserWindow } from 'electron';
 import type { DashboardOpenOptions, DashboardTerminalProfile } from '../shared/contracts/index.js';
+import { resolveProjectPathForPlatform } from '../utils';
 
 type DebugLog = (message: string) => void;
 type TerminalProfileServiceLike = {
@@ -341,4 +341,3 @@ class TerminalManager {
 }
 
 export { TerminalManager };
-module.exports = { TerminalManager };
