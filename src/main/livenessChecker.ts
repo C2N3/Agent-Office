@@ -6,9 +6,11 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { pathToFileURL } from 'url';
 import { hasActiveOrchestratorTask, removeOrOffline } from './liveness/agents';
 import { sharedSessionAllowlist } from './orchestrator/sessionAllowlist';
 import { getProviderDefinition, normalizeProvider } from './providers/registry';
+import { resolveFromModule } from '../runtime/module';
 
 const sessionPids = new Map(); // sessionId → actual CLI process PID
 
@@ -44,7 +46,7 @@ function detectProviderPidBySessionFile(provider, jsonlPath, callback) {
     : jsonlPath;
 
   if (process.platform === 'win32') {
-    const scriptPath = path.join(__dirname, '..', 'find-file-owner.ps1');
+    const scriptPath = resolveFromModule(pathToFileURL(module.filename), '..', 'find-file-owner.ps1');
     execFile('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', scriptPath, '-FilePath', resolved],
       { timeout: 5000 }, (err, stdout) => {
       if (!err && stdout) {

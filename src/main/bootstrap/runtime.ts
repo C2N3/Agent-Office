@@ -1,8 +1,12 @@
 import fs from 'fs';
 import path from 'path';
+import { pathToFileURL } from 'url';
+import { resolveFromModule } from '../../runtime/module';
 
 function installStartupLogging({ app, processRef = process, consoleRef = console }) {
-  const logDir = app.isPackaged ? app.getPath('userData') : path.join(__dirname, '..', '..');
+  const logDir = app.isPackaged
+    ? app.getPath('userData')
+    : resolveFromModule(pathToFileURL(module.filename), '..', '..');
   const errorLogPath = path.join(logDir, 'startup-error.log');
   const originalConsoleError = consoleRef.error;
 

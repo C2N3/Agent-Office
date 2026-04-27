@@ -691,6 +691,15 @@ As of the latest source-only scan after `ecb5634`, the remaining TypeScript Comm
 - Validation commands: focused `officeLayout` Jest tests; `npm run build:dist`; emitted asset/office-layout path check; `npm run typecheck`; `npm test -- --runInBand`; `timeout 25s npm start`; `git diff --check`.
 - Completed in the fourth Phase 5 implementation slice. Remaining path-contract groups are helper scripts/logs and Electron preload/html/window paths.
 
+#### Helper Script And Log Path Contracts
+
+- Converted script/log path contracts in `src/sessionend_hook.ts`, `src/main/livenessChecker.ts`, and `src/main/bootstrap/runtime.ts` from direct `__dirname` use to the reviewed module path helper.
+- Current CommonJS runtime anchor: `pathToFileURL(module.filename)` feeds `resolveFromModule(...)`; this preserves the current `dist/` output contract without changing Electron startup, packaging, or TypeScript emit.
+- Path before/after emit: `sessionend_hook` still writes next to its emitted module; `livenessChecker` still resolves `find-file-owner.ps1` using the existing `../find-file-owner.ps1` contract; startup logging still writes under `dist/src` for unpackaged runtime and `app.getPath('userData')` for packaged runtime.
+- Runtime/startup risk: this slice leaves late `child_process` requires in place because they preserve platform-specific lazy loading and test mock behavior. It does not touch terminal Windows command resolution, Electron preload/html paths, dashboard late loading, package metadata, or build configuration.
+- Validation commands: focused `livenessChecker` Jest tests; `npm run build:dist`; emitted startup logging path check; `npm run typecheck`; `npm test -- --runInBand`; `timeout 25s npm start`; `git diff --check`.
+- Completed in the fifth Phase 5 implementation slice. Remaining path-contract group is Electron preload/html/window paths, which should stay a dedicated slice.
+
 #### `agentManager.ts` / `sessionScanner.ts` Default CommonJS API
 
 - Current CommonJS/export shape: tests and compatibility callers can use `const AgentManager = require('../src/agentManager')` and `const SessionScanner = require('../src/sessionScanner')`; both modules also expose `.AgentManager` / `.SessionScanner` on the required constructor.
