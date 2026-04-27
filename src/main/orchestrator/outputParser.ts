@@ -4,7 +4,7 @@ import type { CLIAdapter, OutputParseResult } from './types.js';
 const MAX_BUFFER_SIZE = 4000;
 const MAX_FULL_BUFFER_SIZE = 100000; // 100KB for full output capture
 
-class OutputParser {
+export class OutputParser {
   declare adapter: CLIAdapter;
   declare outputFormat: 'text' | 'stream-json' | 'codex-json';
   declare buffer: string;
@@ -295,5 +295,3 @@ class OutputParser {
     this.lastAssistantMessage = null;
   }
 }
-
-module.exports = { OutputParser };
