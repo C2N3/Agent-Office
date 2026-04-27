@@ -325,24 +325,43 @@ Stop condition: if Electron cannot load a preload as ESM without changing sandbo
 
 ##### Dashboard Server Runtime Strategy
 
-Target strategy:
+Target strategy for the first dangerous slice from the current `refactor/esm` state: dashboard direct execution should go before any deeper Electron main conversion.
 
-- Convert dashboard server startup after Electron main can load ESM.
-- Replace the `require.main === module` guard in `src/dashboardServer/index.ts` with an ESM entrypoint check based on `import.meta.url` and `process.argv[1]`.
-- Change `npm run dashboard` only in the dashboard runtime slice, from `node dist/src/dashboardServer/index.js` to the emitted ESM dashboard entrypoint.
-- Convert late dashboard imports from Electron bootstrap/windowing to dynamic `import()` unless they must stay synchronous for startup ordering.
+- Reason: Electron already has the minimal native ESM package entrypoint wrapper, `src/main.mts` -> `dist/src/main.mjs`, while the direct dashboard command still executes `dist/src/dashboardServer/index.js` as CommonJS. The dashboard command can prove Node ESM entrypoint behavior without also changing Electron window ownership, preload loading, BrowserWindow settings, or packaged app startup.
+- First ESM emit strategy: add a narrow `.mts` dashboard CLI wrapper that is emitted by the existing `tsconfig.emit.json` NodeNext build. Do not add `tsconfig.emit.esm.json` for this slice, because `.mts` already produces `.mjs` under the current build and avoids splitting `dist/` output across two emit configs.
+- Keep `package.json` without `"type": "module"`.
+- Keep `src/dashboardServer/index.ts` as the CommonJS-emitted dashboard server library module for this slice.
+- Add a new ESM entrypoint source such as `src/dashboardServer/entrypoint.mts` that imports `startServer` from `./index.js` and calls it for side effects.
+- The exact emitted `dist/` runtime files after the slice should be:
+  - existing `dist/src/dashboardServer/index.js`: CommonJS-emitted server module with `startServer`, setter exports, broadcast exports, `PORT`, `getRefs`, and `calculateStats`
+  - new `dist/src/dashboardServer/entrypoint.mjs`: native ESM dashboard CLI entrypoint that imports `./index.js` and starts the server
+  - existing supporting dashboard files under `dist/src/dashboardServer/*.js`: still CommonJS-emitted modules
+  - existing Electron entrypoint files unchanged: `dist/src/main.mjs` wrapper and `dist/src/main.js` CommonJS runtime module
+- `package.json` / npm script change for this slice: change only `dashboard` from `node dist/src/dashboardServer/index.js` to `node dist/src/dashboardServer/entrypoint.mjs`. Keep `predashboard`, `build:dist`, `build:dist:watch`, `start`, and `main` unchanged.
+- Leave Electron late dashboard imports unchanged in this first dashboard slice:
+  - `src/main/windowing/core.ts` keeps `require('../../dashboardServer/index.js')`
+  - `src/main/bootstrap/windows.ts` keeps `require('../../dashboardServer/index.js')`
+  - `src/main/bootstrap/windows.ts` keeps `require('../../dashboardServer/remoteAuth.js')`
+- Leave `src/dashboardServer/tunnelHandlers.ts` using its current lazy tunnel-manager lookup. It is a main-process singleton compatibility boundary and should move only in a later dashboard/main interop slice.
 - Keep dashboard server state in existing context modules; do not redesign the server lifecycle while migrating modules.
 
 Validation:
 
 ```bash
 npm run build:dist
+test -f dist/src/dashboardServer/entrypoint.mjs
+node -e "import('./dist/src/dashboardServer/entrypoint.mjs').then(() => setTimeout(() => process.kill(process.pid, 'SIGINT'), 100)).catch((error) => { console.error(error); process.exit(1); })"
 npm run typecheck
 npm test -- --runInBand
 npm run dashboard
 ```
 
-Stop condition: if dynamic dashboard imports change startup order, singleton state, or port binding behavior, stop and split the server lifecycle change into a separate design task.
+Stop conditions:
+
+- If importing the ESM entrypoint starts a second server, changes singleton state, or changes port binding behavior, stop and keep `npm run dashboard` on `dist/src/dashboardServer/index.js`.
+- If the `.mts` wrapper requires changing the existing dashboard server library to `.mts` or native ESM in the same slice, stop and split that into a reviewed server-internals slice.
+- If Electron late dashboard `require(...)` calls must change for the direct dashboard command to work, stop; that means the slice is no longer isolated from Electron startup.
+- If the implementation needs package-wide `"type": "module"`, a separate `tsconfig.emit.esm.json`, Jest ESM changes, or build-script changes, stop and update this design before editing runtime code.
 
 ##### Jest Transform And Runtime Strategy
 
@@ -473,6 +492,8 @@ Packaged verification checklist:
 
 ##### Ordered Migration Slices For The Next Implementation Phase
 
+Current next slice after the dashboard direct-entry wrapper: handle dashboard/Electron interop for the remaining late dashboard imports, but only if the rescan still shows the same isolated runtime boundaries. Earlier helper, bridge, path-contract, late-builtin-loader, compatibility, Electron main wrapper, and dashboard direct-entry wrapper slices are already recorded as completed in the notes below.
+
 1. Path helper and entrypoint guard design slice.
    - Add ESM-safe helpers only where they can be tested without changing runtime module loading.
    - Validation: focused helper tests, `npm run typecheck`, `git diff --check`.
@@ -499,9 +520,10 @@ Packaged verification checklist:
    - Stop if Electron startup, menu/window creation, or preload loading changes behavior.
 
 6. Dashboard server ESM entrypoint slice.
-   - Convert dashboard direct execution and Electron late imports to the selected ESM pattern.
-   - Validation: `npm run build:dist`, `npm run typecheck`, `npm test -- --runInBand`, `npm run dashboard`, `timeout 25s npm start`.
-   - Stop if server singleton state or startup order changes.
+   - Completed target: converted only dashboard direct execution by adding `src/dashboardServer/entrypoint.mts`, emitting `dist/src/dashboardServer/entrypoint.mjs`, and changing only `npm run dashboard` to run that `.mjs` entrypoint.
+   - Keep Electron late dashboard imports as CommonJS `require(...)` for this first dashboard slice.
+   - Validation: `npm run build:dist`, `test -f dist/src/dashboardServer/entrypoint.mjs`, ESM entrypoint import smoke, `npm run typecheck`, `npm test -- --runInBand`, `npm run dashboard`, `timeout 25s npm start`, `git diff --check`.
+   - Stop if server singleton state, startup order, port binding, Electron startup, Jest config, build scripts, or package-wide module type must change.
 
 7. Preload/window ESM evaluation slice.
    - Convert one preload/window path at a time only after Electron main and dashboard ESM are stable.
@@ -650,7 +672,7 @@ As of the latest source-only scan after `ecb5634`, the remaining TypeScript Comm
 - `src/main/bootstrap/windows.ts`: top-level window manager import is converted; remaining dashboard auth/server requires are intentional late runtime loading.
 - `src/main/terminalManager.ts`: top-level imports and named export are converted; remaining CommonJS syntax is intentional lazy/platform-specific loading for `node-pty`, `child_process`, and the Windows `.cmd` shim `path` helper.
 - `src/main/tunnelManager.ts`, `src/main/sessionTermination.ts`, and `src/dashboardServer/tunnelHandlers.ts`: optional/native or platform-specific dependency loading (`cloudflared`, `tree-kill`).
-- `src/dashboardServer/index.ts`: SIGINT client cleanup now uses the static context import; the remaining CommonJS entrypoint guard is a dashboard startup/runtime boundary.
+- `src/dashboardServer/index.ts`: SIGINT client cleanup uses the static context import. The legacy `require.main === module` guard remains only for direct `node dist/src/dashboardServer/index.js` compatibility; `npm run dashboard` now uses the native ESM wrapper and the guard is not part of the current `require(...)` rescan results.
 
 ### Compatibility Slice Notes
 
@@ -717,7 +739,18 @@ As of the latest source-only scan after `ecb5634`, the remaining TypeScript Comm
 - Emitted `dist` runtime shape: `dist/src/main.js` remains the CommonJS main runtime module, and `dist/src/main.mjs` becomes the Electron package entrypoint. This slice intentionally changes only the entrypoint file that Electron loads, not the preload format, dashboard startup, optional/native dependency loading, or CommonJS compatibility APIs.
 - Runtime/startup risk: Electron startup is touched, but BrowserWindow ownership, sandbox/context-isolation settings, preload API shape, dashboard late loading, package metadata other than `main`, and build scripts remain unchanged.
 - Validation commands: `npm run build:dist`; emitted main entrypoint existence/content check; `npm run typecheck`; `npm test -- --runInBand`; `timeout 25s npm start`; final source CommonJS scan; `git diff --check`.
-- Completed in the eighth Phase 5 implementation slice. The next runtime ESM slice should handle dashboard server direct execution and Electron late dashboard imports without changing unrelated bootstrap behavior.
+- Completed in the eighth Phase 5 implementation slice. The dashboard direct-entry wrapper was completed in the following slice; remaining dashboard work is Electron interop for late dashboard imports.
+
+#### Dashboard Server ESM Direct Entrypoint
+
+- Added `src/dashboardServer/entrypoint.mts` as the native ESM dashboard CLI entrypoint. It imports `startServer` from `./index.js` and calls it for side effects.
+- Updated only the `dashboard` npm script from `node dist/src/dashboardServer/index.js` to `node dist/src/dashboardServer/entrypoint.mjs`; `predashboard`, `build:dist`, `build:dist:watch`, `start`, and package `main` are unchanged.
+- Emitted `dist` runtime shape: `dist/src/dashboardServer/index.js` remains the CommonJS-emitted dashboard server library module; `dist/src/dashboardServer/entrypoint.mjs` is the native ESM dashboard CLI entrypoint; supporting dashboard modules remain CommonJS-emitted `.js`; `dist/src/main.mjs` and `dist/src/main.js` remain unchanged.
+- Runtime/startup/path/native risk: this slice changes only direct `npm run dashboard` startup. Electron late dashboard `require(...)` callers, dashboard singleton state, startup order, port binding, lazy tunnel-manager lookup, and native/optional dependency loading stay unchanged.
+- Validation commands: `npm run build:dist`; `test -f dist/src/dashboardServer/entrypoint.mjs`; ESM entrypoint import smoke; `npm run typecheck`; `npm test -- --runInBand`; `npm run dashboard` smoke with HTTP probe and SIGINT termination; `timeout 25s npm start`; final source CommonJS scan; `git diff --check`.
+- Validation results: build, emitted file check, ESM import smoke, typecheck, Jest (`78` suites / `593` tests), dashboard HTTP smoke, final source scan, and `git diff --check` passed. `timeout 25s npm start` reached successful Electron/dashboard startup logs and exited by timeout as expected for the smoke.
+- Remaining CommonJS scan results: `src/dashboardServer/tunnelHandlers.ts` keeps the lazy main-process tunnel-manager singleton lookup; `src/main/windowing/core.ts` keeps late dashboard server startup loading; `src/main/bootstrap/windows.ts` keeps late dashboard remote-auth loading and dashboard server wiring. These remain the next dashboard/Electron interop slice rather than part of direct dashboard CLI startup.
+- Completed in the ninth Phase 5 implementation slice. The next runtime ESM slice should address dashboard/Electron interop for late dashboard imports without changing Electron preload behavior, Jest config, build scripts, packaging config, or native dependency loading.
 
 #### Late Builtin Runtime Loader Boundary
 
@@ -756,24 +789,27 @@ Operating rules:
 
 Current state:
 - Source-level import/export cleanup is effectively complete.
-- Remaining scan results are compatibility/runtime boundaries:
-  - default CommonJS public APIs: `src/agentManager.ts`, `src/sessionScanner.ts`
-  - optional/native loading: `node-pty`, `cloudflared`, `tree-kill`
-  - late dashboard/window/bootstrap runtime `require(...)`
-  - Electron preload/window/html/asset/script `__dirname` path contracts
-- Preserve dist-based CommonJS runtime output until the selected implementation slice intentionally changes an entrypoint.
+- Current `src/**/*.ts`, `src/**/*.tsx`, and `src/**/*.mts` runtime scan results are only late dashboard/main runtime `require(...)` boundaries:
+  - `src/dashboardServer/tunnelHandlers.ts`: lazy main-process tunnel-manager singleton lookup
+  - `src/main/windowing/core.ts`: late dashboard server startup load
+  - `src/main/bootstrap/windows.ts`: late dashboard remote-auth load and late dashboard server wiring load
+- `__dirname` and `__filename` path contracts have already moved to the reviewed runtime module helpers in completed Phase 5 slices.
+- Electron main already uses `src/main.mts` -> `dist/src/main.mjs`; preserve the existing package `main`.
+- Dashboard direct execution already uses `src/dashboardServer/entrypoint.mts` -> `dist/src/dashboardServer/entrypoint.mjs`; preserve the existing `dashboard` script unless the selected slice explicitly owns it.
+- Preserve dist-based CommonJS runtime modules until the selected implementation slice intentionally changes a specific entrypoint.
 - Do not make broad Jest, packaging, bootstrap, or build-config changes.
 
 Start with the first reviewed slice that is still valid after the rescan:
-1. Path helper and ESM entrypoint guard design slice.
-2. Compatibility bridge slice for `agentManager.ts` and `sessionScanner.ts`.
-3. Optional/native dependency bridge slice for `node-pty`, `cloudflared`, and `tree-kill`.
-4. Runtime path-contract slice for `__dirname` / `__filename`.
-5. Electron main ESM entrypoint slice.
-6. Dashboard server ESM entrypoint slice.
-7. Preload/window ESM evaluation slice.
-8. Tooling and Jest ESM slice.
-9. Packaging proof slice.
+1. Dashboard/Electron interop slice for late dashboard imports.
+   - Evaluate only the remaining late dashboard runtime boundaries:
+     `src/main/windowing/core.ts`, `src/main/bootstrap/windows.ts`, and `src/dashboardServer/tunnelHandlers.ts`.
+   - Preserve Electron startup, preload behavior, BrowserWindow ownership, sandbox/context isolation, Jest config, build scripts, packaging config, dashboard singleton state, startup order, and port binding behavior.
+   - Keep `src/dashboardServer/entrypoint.mts`, `dist/src/dashboardServer/entrypoint.mjs`, and the `dashboard` npm script unchanged unless the reviewed interop design explicitly requires a narrow adjustment.
+   - Stop and update this plan if dynamic `import()` or `createRequire(import.meta.url)` changes startup order, introduces cycles, or requires converting dashboard server internals broadly to native ESM.
+2. Native ESM compatibility bridge slice for `agentManager.ts` and `sessionScanner.ts`, only when default CommonJS constructor compatibility can be preserved or intentionally retired.
+3. Preload/window ESM evaluation slice.
+4. Tooling and Jest ESM slice.
+5. Packaging proof slice.
 
 For the chosen slice, write a short risk note before editing:
 - files owned by the slice
@@ -788,8 +824,8 @@ Keep these as dedicated compatibility/runtime boundaries; do not fold them into 
 - `node-pty`
 - `cloudflared`
 - `tree-kill`
-- Electron preload/window path contracts
-- asset/html/script `__dirname` path contracts
+- Electron preload/window ESM behavior
+- already-converted asset/html/script path contracts
 - dashboard/window/bootstrap late runtime `require(...)` that may preserve startup order or avoid cycles
 
 Validation requirements:

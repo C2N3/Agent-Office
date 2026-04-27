@@ -17,7 +17,7 @@
     "test:coverage": "jest --coverage",
     "test:watch": "jest --watch",
     "predashboard": "npm run build:dist",
-    "dashboard": "node dist/src/dashboardServer/index.js",
+    "dashboard": "node dist/src/dashboardServer/entrypoint.mjs",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
     "format": "prettier --write \"src/**/*.{js,ts}\" \"__tests__/**/*.js\" \"scripts/**/*.js\" \"*.js\"",
