@@ -1,7 +1,7 @@
 import { execFileSync } from 'child_process';
 
 export class GeminiAdapter {
-  get provider() {
+  get provider(): 'gemini' {
     return 'gemini';
   }
 

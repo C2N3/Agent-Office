@@ -1,7 +1,7 @@
 import { execFileSync } from 'child_process';
 
 export class ClaudeAdapter {
-  get provider() {
+  get provider(): 'claude' {
     return 'claude';
   }
 
