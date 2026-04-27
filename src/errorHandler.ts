@@ -3,8 +3,8 @@
  * Captures, classifies, logs, and forwards all errors to the UI
  */
 import { app } from 'electron';
-import * as path from 'path';
-import * as fs from 'fs';
+import path from 'path';
+import fs from 'fs';
 import type { BrowserWindow } from 'electron';
 
 import { ErrorSeverity, ErrorCategory } from './errorConstants';

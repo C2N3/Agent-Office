@@ -1,4 +1,4 @@
-import * as path from 'node:path';
+import path from 'node:path';
 import type { PendingSessionStart } from './sessionState.js';
 
 export function createSessionLifecycleHandlers(options: any) {

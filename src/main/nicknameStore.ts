@@ -3,9 +3,9 @@
  * Persists agent nicknames to ~/.agent-office/nicknames.json
  */
 
-import * as path from 'path';
-import * as os from 'os';
-import * as fs from 'fs';
+import path from 'path';
+import os from 'os';
+import fs from 'fs';
 
 const PERSIST_DIR = path.join(os.homedir(), '.agent-office');
 const PERSIST_FILE = path.join(PERSIST_DIR, 'nicknames.json');

@@ -1,7 +1,7 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
-import * as crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
+import crypto from 'crypto';
 import { normalizeProvider } from '../providers/registry';
 import type { TaskDefinition } from './types.js';
 

@@ -1,4 +1,4 @@
-import * as fs from 'fs';
+import fs from 'fs';
 import type { DashboardDayStats } from '../shared/contracts/index.js';
 
 const MAX_AGE_DAYS = 400;

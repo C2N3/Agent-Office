@@ -5,9 +5,9 @@
  * consistent with the session state file location.
  */
 
-import * as path from 'path';
-import * as os from 'os';
-import * as fs from 'fs';
+import path from 'path';
+import os from 'os';
+import fs from 'fs';
 
 interface UiState {
   overlayOpen?: boolean;

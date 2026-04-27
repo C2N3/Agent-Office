@@ -5,7 +5,7 @@
 
 import type { DashboardAgent } from './shared/contracts/index.js';
 
-import * as path from 'path';
+import path from 'path';
 import { sanitizeProjectPath } from './utils';
 
 type TokenUsage = {

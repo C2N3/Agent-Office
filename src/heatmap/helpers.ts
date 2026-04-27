@@ -1,6 +1,6 @@
-import * as fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import { getCodexSessionRoots } from '../main/providers/codex/paths';
 import { loadPersisted, pruneOldDays, savePersisted } from './persistence';
 import { scanFile } from './scan/file';
