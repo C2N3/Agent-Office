@@ -287,6 +287,7 @@ app.whenReady().then(async () => {
 
   centralWorkerConnector = new CentralWorkerConnector({
     agentRegistry,
+    orchestrator,
     debugLog,
   });
   centralWorkerConnector.start();

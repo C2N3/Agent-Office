@@ -9,115 +9,21 @@ import React, {
   useState,
 } from 'react';
 import { createRoot } from 'react-dom/client';
+import { TaskChatHeader, TaskChatInput, TaskChatWorkspaceBar } from './taskChat/chrome.js';
+import {
+  type AgentInfo,
+  type ChatMessage,
+  type MessageKind,
+  type TaskOutputPayload,
+  closeWindow,
+  fetchAgentInfo,
+  getBridge,
+  makeMessageId,
+  readParams,
+  submitAgentTask,
+} from './taskChat/model.js';
+import { TaskChatMessages } from './taskChat/messages.js';
 import './taskChat.css';
-
-type MessageKind = 'user' | 'assistant-text' | 'assistant-tool' | 'assistant-error' | 'status';
-
-type ChatMessage = {
-  id: string;
-  kind: MessageKind;
-  text: string;
-  timestamp: number;
-  taskId?: string | null;
-};
-
-type TaskChatBridge = {
-  close?: (agentRegistryId: string) => void;
-  loadHistory?: (agentRegistryId: string) => Promise<ChatMessage[]>;
-  appendMessage?: (
-    agentRegistryId: string,
-    message: Omit<ChatMessage, 'id'> & { id?: string },
-  ) => Promise<{ success?: boolean; message?: ChatMessage }>;
-  clearHistory?: (agentRegistryId: string) => Promise<{ success?: boolean }>;
-  mergeWorkspace?: (registryId: string) => Promise<{ success?: boolean; error?: string | null }>;
-  removeWorkspace?: (registryId: string) => Promise<{ success?: boolean; error?: string | null }>;
-};
-
-type AgentWorkspace = {
-  type?: string | null;
-  branch?: string | null;
-  repositoryName?: string | null;
-  repositoryPath?: string | null;
-  worktreePath?: string | null;
-};
-
-type AgentInfo = {
-  id: string;
-  registryId?: string | null;
-  provider?: string | null;
-  project?: string | null;
-  metadata?: { projectPath?: string | null; workspace?: AgentWorkspace | null } | null;
-};
-
-type TaskOutputPayload = {
-  text: string;
-  type?: string;
-};
-
-function readParams() {
-  const params = new URLSearchParams(window.location.search);
-  return {
-    agentRegistryId: params.get('agentRegistryId') || '',
-    agentName: params.get('agentName') || 'Agent',
-    avatarFile: params.get('avatarFile') || '',
-  };
-}
-
-function getBridge(): TaskChatBridge | null {
-  return (window as Window & { taskChatAPI?: TaskChatBridge }).taskChatAPI || null;
-}
-
-function makeMessageId(): string {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-}
-
-function isSameDay(a: number, b: number): boolean {
-  const da = new Date(a);
-  const db = new Date(b);
-  return da.getFullYear() === db.getFullYear() && da.getMonth() === db.getMonth() && da.getDate() === db.getDate();
-}
-
-function formatTime(timestamp: number, now = Date.now()): string {
-  const date = new Date(timestamp);
-  const hh = String(date.getHours()).padStart(2, '0');
-  const mm = String(date.getMinutes()).padStart(2, '0');
-  if (isSameDay(timestamp, now)) {
-    return `${hh}:${mm}`;
-  }
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  return `${months[date.getMonth()]} ${date.getDate()} ${hh}:${mm}`;
-}
-
-function resolveRepositoryPath(agent: AgentInfo | null): string {
-  if (!agent) return '';
-  const workspace = agent.metadata?.workspace || null;
-  return (
-    workspace?.repositoryPath
-    || agent.metadata?.projectPath
-    || agent.project
-    || workspace?.worktreePath
-    || ''
-  );
-}
-
-async function fetchAgentInfo(agentRegistryId: string): Promise<AgentInfo | null> {
-  try {
-    const response = await fetch('/api/agents');
-    if (!response.ok) return null;
-    const agents = (await response.json()) as AgentInfo[];
-    if (!Array.isArray(agents)) return null;
-    return agents.find((agent) => agent?.id === agentRegistryId) || null;
-  } catch {
-    return null;
-  }
-}
-
-function closeWindow(agentRegistryId: string) {
-  const bridge = getBridge();
-  if (bridge?.close) bridge.close(agentRegistryId);
-  else window.close();
-}
-
 function TaskChatApp(): ReactElement {
   const { agentRegistryId, agentName, avatarFile } = useMemo(readParams, []);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -128,7 +34,6 @@ function TaskChatApp(): ReactElement {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [disconnected, setDisconnected] = useState(false);
   const [workspaceBusy, setWorkspaceBusy] = useState<'merge' | 'remove' | null>(null);
-
   const bodyRef = useRef<HTMLDivElement | null>(null);
   const textAreaRef = useRef<HTMLTextAreaElement | null>(null);
   const activeTaskIdsRef = useRef<Set<string>>(new Set());
@@ -137,7 +42,6 @@ function TaskChatApp(): ReactElement {
   useEffect(() => {
     document.title = agentName;
   }, [agentName]);
-
   const saveMessage = useCallback((message: ChatMessage) => {
     setMessages((prev) => [...prev, message]);
     const bridge = getBridge();
@@ -166,11 +70,12 @@ function TaskChatApp(): ReactElement {
 
   useEffect(() => {
     if (!agentRegistryId) return;
-    const eventSource = new EventSource('/api/events');
+    const isCentralAgent = agentInfo?.metadata?.source === 'central';
+    const eventSource = new EventSource(isCentralAgent ? '/api/server/events' : '/api/events');
     let retryTimer: number | null = null;
 
     const setActiveSet = (mutator: (set: Set<string>) => void) => {
-      const next = new Set(activeTaskIdsRef.current);
+      const next = new Set<string>(activeTaskIdsRef.current);
       mutator(next);
       activeTaskIdsRef.current = next;
       setActiveTaskIds(next);
@@ -192,12 +97,13 @@ function TaskChatApp(): ReactElement {
 
     const onTaskOutput = (event: MessageEvent) => {
       try {
-        const data = JSON.parse(event.data) as { data?: { taskId?: string; text?: string } };
+        const data = JSON.parse(event.data) as { data?: { taskId?: string; text?: string; body?: string } };
         const payload = data.data;
-        if (!payload?.taskId || !payload.text) return;
+        const text = payload?.text || payload?.body || '';
+        if (!payload?.taskId || !text) return;
         if (!seenTaskIdsRef.current.has(payload.taskId)) return;
         try {
-          const parsed = JSON.parse(payload.text) as TaskOutputPayload;
+          const parsed = JSON.parse(text) as TaskOutputPayload;
           const type = parsed.type || 'text';
           if (type === 'tool_use') {
             appendAssistant('assistant-tool', parsed.text, payload.taskId);
@@ -207,7 +113,7 @@ function TaskChatApp(): ReactElement {
             appendAssistant('assistant-text', parsed.text, payload.taskId);
           }
         } catch {
-          appendAssistant('assistant-text', payload.text, payload.taskId);
+          appendAssistant('assistant-text', text, payload.taskId);
         }
       } catch {}
     };
@@ -229,6 +135,10 @@ function TaskChatApp(): ReactElement {
         const data = JSON.parse(event.data) as { data?: AgentInfo };
         const agent = data.data;
         if (!agent || agent.id !== agentRegistryId) return;
+        if (isCentralAgent) {
+          fetchAgentInfo(agentRegistryId).then(setAgentInfo).catch(() => {});
+          return;
+        }
         setAgentInfo(agent);
       } catch {}
     };
@@ -236,9 +146,12 @@ function TaskChatApp(): ReactElement {
     eventSource.addEventListener('connected', () => setDisconnected(false));
     eventSource.addEventListener('task.running', onTaskRunning);
     eventSource.addEventListener('task.output', onTaskOutput);
+    eventSource.addEventListener('worker.task.output', onTaskOutput);
     eventSource.addEventListener('task.succeeded', onTaskTerminal('completed'));
     eventSource.addEventListener('task.failed', onTaskTerminal('failed'));
     eventSource.addEventListener('task.cancelled', onTaskTerminal('cancelled'));
+    eventSource.addEventListener('worker.task.completed', onTaskTerminal('completed'));
+    eventSource.addEventListener('worker.task.failed', onTaskTerminal('failed'));
     eventSource.addEventListener('agent.created', onAgentUpdate);
     eventSource.addEventListener('agent.updated', onAgentUpdate);
     eventSource.onerror = () => {
@@ -251,7 +164,7 @@ function TaskChatApp(): ReactElement {
       if (retryTimer != null) window.clearTimeout(retryTimer);
       eventSource.close();
     };
-  }, [agentRegistryId, saveMessage]);
+  }, [agentInfo?.metadata?.source, agentRegistryId, saveMessage]);
 
   useEffect(() => {
     const body = bodyRef.current;
@@ -279,34 +192,18 @@ function TaskChatApp(): ReactElement {
     setDraft('');
 
     try {
-      const response = await fetch('/api/tasks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: `${agentName}: ${prompt.slice(0, 50)}`,
-          prompt,
-          provider: agentInfo?.provider || 'claude',
-          executionEnvironment: 'native',
-          model: null,
-          maxTurns: 30,
-          repositoryPath: resolveRepositoryPath(agentInfo),
-          priority: 'normal',
-          autoMergeOnSuccess: false,
-          agentRegistryId,
-        }),
-      });
-      const result = (await response.json()) as { error?: string; id?: string };
-      if (result?.error) {
-        setErrorMessage(result.error);
+      const { error, taskId } = await submitAgentTask({ agentInfo, agentName, agentRegistryId, prompt });
+      if (error) {
+        setErrorMessage(error);
         saveMessage({
           id: makeMessageId(),
           kind: 'assistant-error',
-          text: result.error,
+          text: error,
           timestamp: Date.now(),
         });
-      } else if (result?.id) {
-        seenTaskIdsRef.current.add(result.id);
-        activeTaskIdsRef.current = new Set(activeTaskIdsRef.current).add(result.id);
+      } else if (taskId) {
+        seenTaskIdsRef.current.add(taskId);
+        activeTaskIdsRef.current = new Set(activeTaskIdsRef.current).add(taskId);
         setActiveTaskIds(activeTaskIdsRef.current);
       }
     } catch (error) {
@@ -353,7 +250,7 @@ function TaskChatApp(): ReactElement {
     if (!agentRegistryId || hasActiveTasks || workspaceBusy) return;
     const branch = agentInfo?.metadata?.workspace?.branch || '';
     const message = action === 'merge'
-      ? `Apply branch "${branch}" — merge to base and clean up the workspace?`
+      ? `Apply branch "${branch}" - merge to base and clean up the workspace?`
       : `Remove workspace branch "${branch}" without merging?`;
     if (!window.confirm(message)) return;
 
@@ -398,128 +295,36 @@ function TaskChatApp(): ReactElement {
 
   return (
     <div className="tc-shell">
-      <header className="tc-header">
-        {resolvedAvatar ? <div className="tc-avatar" style={{ backgroundImage: `url('${resolvedAvatar}')` }} /> : null}
-        <div className="tc-header-main">
-          <div className="tc-title">{agentName}</div>
-          <div className="tc-subtitle">{hasActiveTasks ? 'Task running…' : disconnected ? 'Disconnected — reconnecting' : 'Ready'}</div>
-        </div>
-        <button className="tc-icon-btn" disabled={hasActiveTasks || messages.length === 0} title="Clear history" type="button" onClick={handleClear}>
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 4h10" />
-            <path d="M5 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1" />
-            <path d="M4.5 4l.6 9a1 1 0 0 0 1 .9h3.8a1 1 0 0 0 1-.9l.6-9" />
-          </svg>
-        </button>
-        <button className="tc-icon-btn" title="Close" type="button" onClick={() => closeWindow(agentRegistryId)}>×</button>
-      </header>
+      <TaskChatHeader
+        agentName={agentName}
+        clearDisabled={hasActiveTasks || messages.length === 0}
+        disconnected={disconnected}
+        hasActiveTasks={hasActiveTasks}
+        resolvedAvatar={resolvedAvatar}
+        onClear={() => { void handleClear(); }}
+        onClose={() => closeWindow(agentRegistryId)}
+      />
       {showWorkspaceBar && workspace ? (
-        <div className="tc-workspace-bar">
-          <div className="tc-workspace-meta">
-            <svg className="tc-workspace-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="6" cy="6" r="2" />
-              <circle cx="18" cy="6" r="2" />
-              <circle cx="12" cy="18" r="2" />
-              <path d="M8 6h8" />
-              <path d="M6 8v4c0 2 2 4 4 4h2" />
-              <path d="M18 8v4c0 2-2 4-4 4h-2" />
-            </svg>
-            <span className="tc-workspace-branch">{workspace.branch || '(no branch)'}</span>
-            {workspace.repositoryName ? <span className="tc-workspace-repo">{workspace.repositoryName}</span> : null}
-          </div>
-          <div className="tc-workspace-actions">
-            <button
-              className="tc-workspace-btn apply"
-              disabled={workspaceLocked}
-              title="Merge branch and clean up workspace"
-              type="button"
-              onClick={() => { void handleWorkspaceAction('merge'); }}
-            >
-              {workspaceBusy === 'merge' ? '…' : 'Apply'}
-            </button>
-            <button
-              className="tc-workspace-btn remove"
-              disabled={workspaceLocked}
-              title="Remove workspace and delete branch without merge"
-              type="button"
-              onClick={() => { void handleWorkspaceAction('remove'); }}
-            >
-              {workspaceBusy === 'remove' ? '…' : 'Remove'}
-            </button>
-          </div>
-        </div>
+        <TaskChatWorkspaceBar
+          workspace={workspace}
+          workspaceBusy={workspaceBusy}
+          workspaceLocked={workspaceLocked}
+          onWorkspaceAction={(action) => { void handleWorkspaceAction(action); }}
+        />
       ) : null}
       <div ref={bodyRef} className="tc-body">
-        {messages.length === 0 ? (
-          <div className="tc-empty">Send a message to start a task.</div>
-        ) : (
-          messages.map((message) => {
-            const time = formatTime(message.timestamp, now);
-            if (message.kind === 'user') {
-              return (
-                <div key={message.id} className="tc-row tc-row-user">
-                  <div className="tc-bubble tc-bubble-user">{message.text}</div>
-                  <div className="tc-time">{time}</div>
-                </div>
-              );
-            }
-            if (message.kind === 'assistant-tool') {
-              return (
-                <div key={message.id} className="tc-row tc-row-assistant">
-                  <div className="tc-tool">
-                    <span className="tc-tool-icon">&gt;</span>
-                    <span>{message.text}</span>
-                  </div>
-                  <div className="tc-time">{time}</div>
-                </div>
-              );
-            }
-            if (message.kind === 'assistant-error') {
-              return (
-                <div key={message.id} className="tc-row tc-row-assistant">
-                  <div className="tc-error">{message.text}</div>
-                  <div className="tc-time">{time}</div>
-                </div>
-              );
-            }
-            if (message.kind === 'status') {
-              return (
-                <div key={message.id} className="tc-row tc-row-status">
-                  <div className="tc-status">{message.text}</div>
-                  <div className="tc-time">{time}</div>
-                </div>
-              );
-            }
-            return (
-              <div key={message.id} className="tc-row tc-row-assistant">
-                <div className="tc-bubble tc-bubble-assistant">{message.text}</div>
-                <div className="tc-time">{time}</div>
-              </div>
-            );
-          })
-        )}
+        <TaskChatMessages messages={messages} now={now} />
       </div>
-      <form className="tc-input" onSubmit={handleSend}>
-        {errorMessage ? <div className="tc-input-error">{errorMessage}</div> : null}
-        <textarea
-          ref={textAreaRef}
-          className="tc-input-textarea"
-          disabled={hasActiveTasks || submitting}
-          placeholder={hasActiveTasks ? 'Task running — wait for it to finish.' : 'Type a task for this agent… (Enter to send, Shift+Enter for newline)'}
-          rows={2}
-          value={draft}
-          onChange={(event) => setDraft(event.currentTarget.value)}
-          onKeyDown={handleKeyDown}
-        />
-        <button
-          className="tc-send"
-          disabled={!draft.trim() || hasActiveTasks || submitting}
-          title="Send (Enter)"
-          type="submit"
-        >
-          {submitting ? '…' : 'Send'}
-        </button>
-      </form>
+      <TaskChatInput
+        draft={draft}
+        errorMessage={errorMessage}
+        hasActiveTasks={hasActiveTasks}
+        submitting={submitting}
+        textAreaRef={textAreaRef}
+        onDraftChange={setDraft}
+        onKeyDown={handleKeyDown}
+        onSubmit={handleSend}
+      />
     </div>
   );
 }

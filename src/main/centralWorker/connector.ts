@@ -1,4 +1,3 @@
-import os from 'os';
 import {
   getAgentSyncEnabled,
   getCentralServerBaseUrl,
@@ -22,18 +21,17 @@ import { resolveWorkerConnectionAuth } from './connectionAuth.js';
 import { registerConnectorRegistryListeners, unregisterConnectorRegistryListeners } from './registryListeners.js';
 import { centralHttpUrlToWorkerWebSocketUrl } from './url.js';
 import { handleServerMessage } from './serverMessages.js';
+import { installCentralTaskOutputForwarder } from './taskOutputForwarder.js';
 import type { ConnectorOptions, DebugLog, WebSocketLike, WebSocketConstructor } from './types.js';
-
+import { buildWorkerHeartbeat, buildWorkerHello } from './workerMessages.js';
 export { centralHttpUrlToWorkerWebSocketUrl } from './url.js';
-
 const PROTOCOL_VERSION = 1;
 const HEARTBEAT_INTERVAL_MS = 5_000;
 const RECONNECT_DELAY_MS = 3_000;
-const WORKER_CAPABILITIES = ['heartbeat:v1', 'agent-sync:v1', 'agent-office:electron-client'];
-
 export class CentralWorkerConnector {
   private readonly agentRegistry: RegistryLike | null;
   private readonly debugLog: DebugLog;
+  private readonly orchestrator: any;
   private readonly WebSocketImpl?: WebSocketConstructor;
   private readonly heartbeatIntervalMs: number;
   private readonly reconnectDelayMs: number;
@@ -52,12 +50,15 @@ export class CentralWorkerConnector {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private unsubscribeConfig: (() => void) | null = null;
   private registryListeners: Array<[string, (...args: any[]) => void]> = [];
+  private readonly centralTaskBindings = new Map<string, string>();
+  private readonly centralTaskSequences = new Map<string, number>();
   private stopped = true;
   private intentionalClose = false;
 
   constructor(options: ConnectorOptions = {}) {
     this.agentRegistry = options.agentRegistry || null;
     this.debugLog = options.debugLog || (() => {});
+    this.orchestrator = options.orchestrator || null;
     this.WebSocketImpl = options.WebSocketImpl || (globalThis.WebSocket as any);
     this.heartbeatIntervalMs = options.heartbeatIntervalMs ?? HEARTBEAT_INTERVAL_MS;
     this.reconnectDelayMs = options.reconnectDelayMs ?? RECONNECT_DELAY_MS;
@@ -177,7 +178,11 @@ export class CentralWorkerConnector {
         raw: event.data,
         workerId: this.workerId,
         debugLog: this.debugLog,
+        agentRegistry: this.agentRegistry,
+        orchestrator: this.orchestrator,
+        bindTask: (localTaskId, centralTaskId) => this.bindCentralTask(localTaskId, centralTaskId),
         send: (payload) => this.send(payload),
+        unbindTask: (localTaskId) => this.unbindCentralTask(localTaskId),
       });
       socket.onerror = () => {
         if (this.socket === socket) this.setStatus('error');
@@ -251,27 +256,30 @@ export class CentralWorkerConnector {
     this.socket?.send(JSON.stringify(payload));
   }
 
-  private sendHello(): void {
-    this.send({
-      type: 'worker.hello',
+  private bindCentralTask(localTaskId: string, centralTaskId: string): void {
+    this.centralTaskBindings.set(localTaskId, centralTaskId);
+    this.centralTaskSequences.set(localTaskId, 0);
+    installCentralTaskOutputForwarder({
+      bindings: this.centralTaskBindings,
+      orchestrator: this.orchestrator,
+      sequences: this.centralTaskSequences,
+      send: (payload) => this.send(payload),
       workerId: this.workerId,
-      userId: 'local',
-      displayName: os.hostname() || 'Agent-Office Client',
-      hostname: os.hostname(),
-      platform: `${process.platform}/${process.arch}`,
       protocolVersion: PROTOCOL_VERSION,
-      capabilities: WORKER_CAPABILITIES,
     });
   }
 
+  private unbindCentralTask(localTaskId: string): void {
+    this.centralTaskBindings.delete(localTaskId);
+    this.centralTaskSequences.delete(localTaskId);
+  }
+
+  private sendHello(): void {
+    this.send(buildWorkerHello(this.workerId, PROTOCOL_VERSION));
+  }
+
   private sendHeartbeat(): void {
-    this.send({
-      type: 'worker.heartbeat',
-      workerId: this.workerId,
-      protocolVersion: PROTOCOL_VERSION,
-      runningTasks: 0,
-      timestamp: Date.now(),
-    });
+    this.send(buildWorkerHeartbeat(this.workerId, PROTOCOL_VERSION, this.centralTaskBindings.size));
   }
 
   private sendAgentUpsert(agent: AgentRecord): void {

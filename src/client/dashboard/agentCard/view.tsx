@@ -14,6 +14,7 @@ import { AgentNameEditor } from './nameEditor.js';
 import { getAgentOwnershipBadge } from './ownership.js';
 
 type AgentCardProps = {
+  key?: string;
   agent: DashboardAgent;
   focused: boolean;
   history: DashboardAgentHistoryEntry[];

@@ -46,7 +46,10 @@ export type DashboardAgentMetadata = {
   centralCreatedByParticipantId?: string | null;
   centralOwnerLabel?: string | null;
   centralOwnership?: 'mine' | 'host' | 'guest' | 'unknown' | string | null;
+  centralProjectId?: string | null;
+  centralRoomId?: string | null;
   centralUpdatedByParticipantId?: string | null;
+  centralWorkerId?: string | null;
 };
 
 export type DashboardAgent = {

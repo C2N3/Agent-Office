@@ -213,10 +213,14 @@ function centralRequestHeaders(headers: Record<string, string>): Record<string, 
   if (getRemoteMode() === 'local') return headers;
   const roomSecret = getCentralRoomSecret().trim();
   if (!roomSecret) return headers;
-  return {
+  const next: Record<string, string> = {
     ...headers,
     'X-AO-Room-Secret': roomSecret,
   };
+  if (getRemoteMode() === 'guest') {
+    next['X-AO-Participant-ID'] = getOrCreateCentralWorkerId();
+  }
+  return next;
 }
 
 export function handleCentralServerRoute(req: RequestLike, res: ResponseLike, url: URL): boolean {
@@ -240,6 +244,20 @@ export function handleCentralServerRoute(req: RequestLike, res: ResponseLike, ur
       return true;
     }
     if (req.method === 'POST' || req.method === 'PATCH' || req.method === 'DELETE') {
+      void proxyRequest(req, res, centralPath, url.search);
+      return true;
+    }
+    writeJSON(res, 405, { error: 'Method not allowed' });
+    return true;
+  }
+
+  if (url.pathname === '/api/server/tasks' || url.pathname.startsWith('/api/server/tasks/')) {
+    const centralPath = url.pathname.replace('/api/server', '/api');
+    if (req.method === 'GET') {
+      void proxyJSON(req, res, centralPath, url.search);
+      return true;
+    }
+    if (req.method === 'POST') {
       void proxyRequest(req, res, centralPath, url.search);
       return true;
     }

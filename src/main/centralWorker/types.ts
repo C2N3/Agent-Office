@@ -17,6 +17,7 @@ export type WebSocketConstructor = new (url: string) => WebSocketLike;
 
 export type ConnectorOptions = {
   agentRegistry?: RegistryLike | null;
+  orchestrator?: any;
   debugLog?: DebugLog;
   WebSocketImpl?: WebSocketConstructor;
   heartbeatIntervalMs?: number;
