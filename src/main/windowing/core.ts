@@ -1,6 +1,9 @@
 import { BrowserWindow, screen } from 'electron';
-import path from 'path';
+import { pathToFileURL } from 'url';
+import { resolveFromModule } from '../../runtime/module';
 import { createSecondaryWindowControls } from './secondary/windows';
+
+const moduleUrl = pathToFileURL(module.filename);
 
 export function createWindowManagerCore(context) {
   const {
@@ -110,7 +113,7 @@ export function createWindowManagerCore(context) {
       focusable: false,
       show: false,
       webPreferences: {
-        preload: path.join(__dirname, '..', '..', 'preload.js'),
+        preload: resolveFromModule(moduleUrl, '..', '..', 'preload.js'),
         nodeIntegration: false,
         contextIsolation: true,
       },
@@ -119,7 +122,7 @@ export function createWindowManagerCore(context) {
     if (process.argv.includes('--dev')) {
       mainWindow.loadURL(resolveBrowserDevUrl('/index.html'));
     } else {
-      mainWindow.loadFile(path.join(__dirname, '..', '..', 'index.html'));
+      mainWindow.loadFile(resolveFromModule(moduleUrl, '..', '..', 'index.html'));
     }
     errorHandler.setMainWindow(mainWindow);
 

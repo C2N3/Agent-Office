@@ -1,6 +1,9 @@
 import { BrowserWindow, screen, shell } from 'electron';
-import path from 'path';
+import { pathToFileURL } from 'url';
+import { resolveFromModule } from '../../../runtime/module';
 import { saveUiState } from '../../uiState';
+
+const moduleUrl = pathToFileURL(module.filename);
 
 function createSecondaryWindowControls(options) {
   const {
@@ -62,7 +65,7 @@ function createSecondaryWindowControls(options) {
         nodeIntegration: false,
         contextIsolation: true,
         sandbox: false,
-        preload: path.join(__dirname, '..', '..', '..', 'overlayPreload.js'),
+        preload: resolveFromModule(moduleUrl, '..', '..', '..', 'overlayPreload.js'),
       },
     });
 
@@ -114,7 +117,7 @@ function createSecondaryWindowControls(options) {
           nodeIntegration: false,
           contextIsolation: true,
           sandbox: false,
-          preload: path.join(__dirname, '..', '..', '..', 'dashboardPreload.js'),
+          preload: resolveFromModule(moduleUrl, '..', '..', '..', 'dashboardPreload.js'),
         },
       });
 
@@ -181,7 +184,7 @@ function createSecondaryWindowControls(options) {
         nodeIntegration: false,
         contextIsolation: true,
         sandbox: false,
-        preload: path.join(__dirname, '..', '..', '..', 'pipPreload.js'),
+        preload: resolveFromModule(moduleUrl, '..', '..', '..', 'pipPreload.js'),
       },
     });
 
@@ -246,7 +249,7 @@ function createSecondaryWindowControls(options) {
         nodeIntegration: false,
         contextIsolation: true,
         sandbox: false,
-        preload: path.join(__dirname, '..', '..', '..', 'taskChatPreload.js'),
+        preload: resolveFromModule(moduleUrl, '..', '..', '..', 'taskChatPreload.js'),
         additionalArguments: [`--task-chat-agent=${agentRegistryId}`],
       },
     });

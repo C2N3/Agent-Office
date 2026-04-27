@@ -700,6 +700,15 @@ As of the latest source-only scan after `ecb5634`, the remaining TypeScript Comm
 - Validation commands: focused `livenessChecker` Jest tests; `npm run build:dist`; emitted startup logging path check; `npm run typecheck`; `npm test -- --runInBand`; `timeout 25s npm start`; `git diff --check`.
 - Completed in the fifth Phase 5 implementation slice. Remaining path-contract group is Electron preload/html/window paths, which should stay a dedicated slice.
 
+#### Electron Preload And HTML Path Contracts
+
+- Converted Electron preload/html path contracts in `src/main/windowing/core.ts` and `src/main/windowing/secondary/windows.ts` from direct `__dirname` use to the reviewed module path helper.
+- Current CommonJS runtime anchor: `pathToFileURL(module.filename)` feeds `resolveFromModule(...)`; this preserves the current `dist/` output contract without changing Electron main loading or preload module format.
+- Path before/after emit: main window preload still resolves to `dist/src/preload.js`; main HTML still resolves to `dist/index.html`; dashboard, overlay, PiP, and task chat preloads still resolve to their emitted `dist/src/*Preload.js` files.
+- Runtime/startup risk: this slice does not change BrowserWindow ownership, `sandbox`, `contextIsolation`, preload API shape, dashboard late `require(...)`, package metadata, or build configuration.
+- Validation commands: focused `windowing-core` Jest tests; `npm run build:dist`; emitted preload/html existence check; `npm run typecheck`; `npm test -- --runInBand`; `timeout 25s npm start`; `git diff --check`.
+- Completed in the sixth Phase 5 implementation slice. Remaining CommonJS syntax is late runtime loading rather than `__dirname` path contracts.
+
 #### `agentManager.ts` / `sessionScanner.ts` Default CommonJS API
 
 - Current CommonJS/export shape: tests and compatibility callers can use `const AgentManager = require('../src/agentManager')` and `const SessionScanner = require('../src/sessionScanner')`; both modules also expose `.AgentManager` / `.SessionScanner` on the required constructor.
