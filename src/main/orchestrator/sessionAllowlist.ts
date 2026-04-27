@@ -130,6 +130,4 @@ export class SessionAllowlist {
   }
 }
 
-const sharedSessionAllowlist = new SessionAllowlist();
-
-module.exports = { SessionAllowlist, sharedSessionAllowlist, normalizeCwd };
+export const sharedSessionAllowlist = new SessionAllowlist();
