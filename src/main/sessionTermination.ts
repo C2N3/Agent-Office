@@ -46,7 +46,7 @@ function killPid(pid, debugLog) {
   });
 }
 
-async function terminateAgentSession({
+export async function terminateAgentSession({
   agentId,
   agentManager,
   agentRegistry,
@@ -110,7 +110,3 @@ async function terminateAgentSession({
 
   return { success: true, actions };
 }
-
-module.exports = {
-  terminateAgentSession,
-};

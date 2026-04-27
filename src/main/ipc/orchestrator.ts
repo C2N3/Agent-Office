@@ -1,7 +1,7 @@
-const { ipcMain } = require('electron');
-const { dashboardIpcChannels } = require('../../shared/contracts/ipc');
+import { ipcMain } from 'electron';
+import { dashboardIpcChannels } from '../../shared/contracts/ipc';
 
-function registerOrchestratorHandlers({ orchestrator }) {
+export function registerOrchestratorHandlers({ orchestrator }) {
   if (!orchestrator) {
     return;
   }
@@ -66,7 +66,3 @@ function registerOrchestratorHandlers({ orchestrator }) {
     }
   });
 }
-
-module.exports = {
-  registerOrchestratorHandlers,
-};
