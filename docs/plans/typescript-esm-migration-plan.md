@@ -394,7 +394,7 @@ As of the latest source-only scan after `0d49575`, the remaining TypeScript Comm
 - `src/main/bootstrap/windows.ts`: top-level window manager import is converted; remaining dashboard auth/server requires are intentional late runtime loading.
 - `src/main/terminalManager.ts`: top-level imports and named export are converted; remaining CommonJS syntax is intentional lazy/platform-specific loading for `node-pty`, `child_process`, and the Windows `.cmd` shim `path` helper.
 - `src/main/tunnelManager.ts`, `src/main/sessionTermination.ts`, and `src/dashboardServer/tunnelHandlers.ts`: optional/native or platform-specific dependency loading (`cloudflared`, `tree-kill`).
-- `src/dashboardServer/index.ts`: dashboard startup/runtime boundary.
+- `src/dashboardServer/index.ts`: SIGINT client cleanup now uses the static context import; the remaining CommonJS entrypoint guard is a dashboard startup/runtime boundary.
 
 ## Suggested Follow-Up Prompt
 

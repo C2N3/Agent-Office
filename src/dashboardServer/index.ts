@@ -7,6 +7,7 @@ import {
   broadcastUpdate,
 } from './broadcast.js';
 import {
+  getClients,
   getRefs,
   setAgentManager as setAgentManagerRef,
   setAgentRegistry as setAgentRegistryRef,
@@ -90,7 +91,7 @@ export function startServer(): any {
 }
 
 process.on('SIGINT', () => {
-  const { wsClients } = require('./context.js').getClients();
+  const { wsClients } = getClients();
   wsClients.forEach((client: any) => {
     try {
       client.close();
