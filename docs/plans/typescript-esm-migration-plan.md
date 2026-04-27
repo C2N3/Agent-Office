@@ -261,19 +261,276 @@ Options:
 
 After most source files use static modules, design the native runtime ESM cutover.
 
-Decisions required:
+#### Phase 5 Runtime ESM Design
 
-- `package.json` `"type": "module"` versus `.mjs`/`.cjs` split
-- TypeScript emit settings
-- Electron main/preload loading
-- Jest transform and mocks
-- `__dirname` to `import.meta.url`
-- optional/native dependency loading through `createRequire()` or dynamic `import()`
-- electron-builder packaging verification
+This phase is documentation-only until the design is reviewed. It must not add `"type": "module"`, switch Electron/Node runtime loading, or change Jest/build/package behavior by itself.
 
-Deliverable:
+##### Package And Module Strategy
 
-- a short design note or checklist in this document that names the selected module strategy and every required config/file change
+Selected strategy for the next implementation phase: use an explicit `.mjs` / `.cjs` split first, and defer package-wide `"type": "module"` until after the packaged Electron runtime is proven.
+
+- Keep `package.json` without `"type": "module"` during the next implementation phase.
+- Move native ESM runtime entrypoints and directly-owned runtime modules to emitted `.mjs` files through `.mts` source files or an equivalent dedicated ESM emit path.
+- Keep CommonJS-only tooling, config, and compatibility bridges as `.cjs`.
+- Keep `dist/` as the production runtime output. Do not introduce a source-runtime path that bypasses `dist/`.
+- Defer package-wide `"type": "module"` because it would immediately reclassify root `.js` scripts/configs, copied runtime `.js` files, Jest config, and Electron packaging assumptions in one broad change.
+
+Stop condition: if the `.mjs` split requires renaming a large cross-section of unrelated modules only to satisfy extension rules, stop and reassess whether a later package-wide `"type": "module"` cutover is lower risk.
+
+##### TypeScript Emit Strategy
+
+Target strategy:
+
+- Keep the current `tsconfig.emit.json` CommonJS-compatible output until the first runtime ESM slice is ready to switch an entrypoint.
+- Add a dedicated ESM emit configuration only when implementation starts, rather than mutating the existing emit config in place.
+- Emit native ESM for runtime ESM slices with Node-compatible resolution and explicit runtime extensions.
+- Preserve `dist/src/main.js` and `dist/src/dashboardServer/index.js` until the corresponding entrypoint slice intentionally changes `package.json` or npm scripts.
+- Verify every public CommonJS compatibility bridge from emitted `dist/`, not from source.
+
+Likely implementation shape:
+
+- `tsconfig.emit.json` remains the current CommonJS runtime emit during compatibility work.
+- A later `tsconfig.emit.esm.json` or file-extension-based `.mts` slice emits `.mjs` runtime files.
+- ESM source imports must use runtime-correct `.js` / `.mjs` specifiers according to the chosen emit path.
+
+Stop condition: do not alter `scripts/build-types.js`, Vite output, copied assets, and runtime TypeScript emit in the same commit unless the prior slice has already proven the emitted ESM entrypoint shape.
+
+##### Electron Main And Preload Strategy
+
+Target strategy:
+
+- Convert the Electron main entrypoint only after path helpers and native dependency bridges exist.
+- Point `package.json` `main` from `dist/src/main.js` to the emitted ESM main file only in the Electron runtime slice.
+- Replace `require.main === module` style checks with an ESM-safe entrypoint helper where needed.
+- Treat preload scripts as a separate sub-slice from main-process startup.
+- Prefer keeping preload compatibility wrappers as `.cjs` until Electron preload ESM behavior is verified in development and packaged builds.
+- If a preload is converted to native ESM, verify `contextBridge` exposure, `BrowserWindow` `webPreferences.preload`, and packaged path resolution in the same slice.
+
+Validation for the main-process slice:
+
+```bash
+npm run build:dist
+npm run typecheck
+npm test -- --runInBand
+timeout 25s npm start
+```
+
+Additional validation for each preload slice:
+
+- Open the window that owns the preload.
+- Verify the exposed preload API used by that window.
+- Verify the emitted preload path exists under `dist/`.
+
+Stop condition: if Electron cannot load a preload as ESM without changing sandbox/context-isolation behavior, keep that preload as an intentional `.cjs` boundary and document it before continuing.
+
+##### Dashboard Server Runtime Strategy
+
+Target strategy:
+
+- Convert dashboard server startup after Electron main can load ESM.
+- Replace the `require.main === module` guard in `src/dashboardServer/index.ts` with an ESM entrypoint check based on `import.meta.url` and `process.argv[1]`.
+- Change `npm run dashboard` only in the dashboard runtime slice, from `node dist/src/dashboardServer/index.js` to the emitted ESM dashboard entrypoint.
+- Convert late dashboard imports from Electron bootstrap/windowing to dynamic `import()` unless they must stay synchronous for startup ordering.
+- Keep dashboard server state in existing context modules; do not redesign the server lifecycle while migrating modules.
+
+Validation:
+
+```bash
+npm run build:dist
+npm run typecheck
+npm test -- --runInBand
+npm run dashboard
+```
+
+Stop condition: if dynamic dashboard imports change startup order, singleton state, or port binding behavior, stop and split the server lifecycle change into a separate design task.
+
+##### Jest Transform And Runtime Strategy
+
+Target strategy:
+
+- Defer broad Jest ESM runtime changes until after Electron and dashboard emitted ESM entrypoints are proven.
+- Keep `jest.config.js` CommonJS initially; if package-wide `"type": "module"` is later adopted, rename it to `jest.config.cjs`.
+- Keep `scripts/jest-ts-transform.js` and `scripts/jest-ts-transform/helpers.js` CommonJS unless the test runtime itself is intentionally converted.
+- Add ESM test coverage in a focused slice for the new path helper, ESM entrypoint guard, and compatibility bridges.
+- Convert tests that assert default CommonJS public APIs only when the matching `.cjs` compatibility bridge exists or callers have been intentionally migrated.
+
+Stop condition: do not combine native Jest ESM configuration, test rewrites, and Electron runtime ESM loading in one commit.
+
+##### `__dirname` And `__filename` Replacement
+
+Target strategy:
+
+- Add a small ESM path helper before converting path-heavy runtime modules.
+- Replace each `__dirname` or `__filename` contract only inside the slice that owns its runtime path.
+- Verify before/after emitted paths for preload scripts, HTML files, assets, PowerShell/helper scripts, hook logs, and dashboard runtime roots.
+
+Required helper behavior:
+
+- `moduleFilename(import.meta.url)` returns the file path equivalent of CommonJS `__filename`.
+- `moduleDirname(import.meta.url)` returns the directory equivalent of CommonJS `__dirname`.
+- `resolveFromModule(import.meta.url, ...segments)` is allowed if it reduces repeated path logic.
+
+Owned path-contract slices:
+
+- Electron preload and HTML paths: `src/main/windowing/core.ts`, `src/main/windowing/secondary/windows.ts`.
+- Asset paths: `src/main/ipc/window.ts`, `src/main/bootstrap/avatars.ts`, `src/officeLayout.ts`.
+- Script paths and logs: `src/main/livenessChecker.ts`, `src/main/bootstrap/runtime.ts`, `src/sessionend_hook.ts`.
+- Dashboard runtime root: `src/dashboardServer/constants.ts`.
+
+Stop condition: if a path depends on whether code is running from source, emitted `dist`, or a packaged `app.asar`, document the current and target path first and verify it under `npm start` before touching the next path contract.
+
+##### Optional And Native Dependency Strategy
+
+Target strategy:
+
+- Use `createRequire(import.meta.url)` for CommonJS-only, native, or package-resolution-sensitive dependencies.
+- Use dynamic `import()` only when asynchronous loading is acceptable and package interop is verified.
+- Keep lazy loading where it currently avoids startup cost, optional dependency failures, platform-only behavior, or test initialization side effects.
+
+Dependency decisions:
+
+- `node-pty`: use `createRequire(import.meta.url)` behind the existing lazy terminal loading boundary. Do not statically import it at app startup.
+- `cloudflared`: use `createRequire(import.meta.url)` in the tunnel manager so package-specific `bin` resolution stays synchronous and packaging-visible.
+- `tree-kill`: use `createRequire(import.meta.url)` or a tiny `.cjs` bridge if default interop is ambiguous. Preserve existing fallback behavior.
+- Late `child_process` loads: prefer normal ESM imports only when tests and platform branches do not rely on late property lookup; otherwise isolate with a small lazy helper.
+
+Validation:
+
+- Terminal creation with `node-pty`.
+- Tunnel binary resolution with `cloudflared`.
+- Session termination fallback with `tree-kill`.
+- Packaged build includes required native/package files.
+
+Stop condition: if a dependency behaves differently under unpackaged and packaged runtime, stop after documenting the exact package path and electron-builder inclusion requirement.
+
+##### `agentManager.ts` And `sessionScanner.ts` Compatibility Strategy
+
+Target strategy:
+
+- Preserve the current default CommonJS public API until all callers are intentionally migrated.
+- Convert the implementation to native ESM class exports only in a dedicated compatibility slice.
+- Provide `.cjs` bridge files if existing callers must keep `const AgentManager = require(...)` or `const SessionScanner = require(...)`.
+- Verify both default constructor access and named property access from emitted `dist`.
+
+Required emitted compatibility checks:
+
+```bash
+node -e "const AgentManager = require('./dist/src/agentManager.cjs'); console.log(typeof AgentManager, AgentManager === AgentManager.AgentManager)"
+node -e "const SessionScanner = require('./dist/src/sessionScanner.cjs'); console.log(typeof SessionScanner, SessionScanner === SessionScanner.SessionScanner)"
+```
+
+Stop condition: do not remove default CommonJS constructor compatibility unless every source, test, and external runtime caller has been migrated in the same reviewed slice.
+
+##### Scripts That Stay CommonJS
+
+Keep these scripts/configs CommonJS during the next runtime implementation phase:
+
+- `scripts/build-types.js`
+- `scripts/dev-runtime.js`
+- `scripts/dev-runtime/file-change.js`
+- `scripts/run-electron.js`
+- `scripts/dist-mac-signed.js`
+- `scripts/jest-ts-transform.js`
+- `scripts/jest-ts-transform/helpers.js`
+- `scripts/renderer-dev/client-script.js`
+- `scripts/vite-dev-server.js`
+- `scripts/watch-utils.js`
+- `jest.config.js`
+- `eslint.config.js`
+
+If a later package-wide `"type": "module"` cutover is approved, rename the Node-run CommonJS files to `.cjs` in a tooling-only slice before adding `"type": "module"`.
+
+##### Packaging Verification Sequence
+
+Use this sequence when an implementation slice changes runtime module loading, Electron entrypoints, preloads, native dependency loading, or packaging metadata:
+
+```bash
+npm run build:dist
+npm run typecheck
+npm test -- --runInBand
+timeout 25s npm start
+npm run dashboard
+```
+
+Then run the platform package target on the platform being used:
+
+```bash
+npm run dist:win
+npm run dist:mac:unsigned
+npm run dist:linux
+```
+
+Packaged verification checklist:
+
+- App launches from packaged artifact.
+- Main window loads `index.html`.
+- Dashboard, overlay, PiP, and task chat windows load their preload APIs.
+- Dashboard server starts once and binds the expected port.
+- Terminal creation works with `node-pty`.
+- Tunnel setup can resolve `cloudflared`.
+- Session termination can call `tree-kill` fallback behavior.
+- Asset paths resolve avatars, shared manifests, office layout defaults, helper scripts, and hook logs.
+
+##### Ordered Migration Slices For The Next Implementation Phase
+
+1. Path helper and entrypoint guard design slice.
+   - Add ESM-safe helpers only where they can be tested without changing runtime module loading.
+   - Validation: focused helper tests, `npm run typecheck`, `git diff --check`.
+   - Stop if helper use requires immediate package or Electron entrypoint changes.
+
+2. Compatibility bridge slice for `agentManager.ts` and `sessionScanner.ts`.
+   - Preserve default CommonJS constructor behavior while preparing ESM implementation exports.
+   - Validation: `npm run build:dist`, emitted compatibility checks, focused Jest tests, `npm run typecheck`.
+   - Stop if default constructor and named property access cannot both be preserved.
+
+3. Optional/native dependency bridge slice.
+   - Isolate `node-pty`, `cloudflared`, and `tree-kill` behind `createRequire(import.meta.url)`-compatible helpers or `.cjs` bridges.
+   - Validation: focused tests or smoke scripts for each loader, `npm run build:dist`, `npm run typecheck`.
+   - Stop if packaged dependency resolution changes.
+
+4. Runtime path-contract slice.
+   - Convert `__dirname` / `__filename` users in small groups: assets, helper scripts/logs, dashboard constants, then window preload/html paths.
+   - Validation: before/after emitted path checks, `npm run build:dist`, `npm run typecheck`, focused tests where available.
+   - Stop if any path has source/dist/packaged ambiguity.
+
+5. Electron main ESM entrypoint slice.
+   - Introduce the emitted `.mjs` main entrypoint and switch `package.json` `main` only in this slice.
+   - Validation: `npm run build:dist`, `npm run typecheck`, `npm test -- --runInBand`, `timeout 25s npm start`.
+   - Stop if Electron startup, menu/window creation, or preload loading changes behavior.
+
+6. Dashboard server ESM entrypoint slice.
+   - Convert dashboard direct execution and Electron late imports to the selected ESM pattern.
+   - Validation: `npm run build:dist`, `npm run typecheck`, `npm test -- --runInBand`, `npm run dashboard`, `timeout 25s npm start`.
+   - Stop if server singleton state or startup order changes.
+
+7. Preload/window ESM evaluation slice.
+   - Convert one preload/window path at a time only after Electron main and dashboard ESM are stable.
+   - Validation: window-specific smoke checks, full startup smoke, and packaged-path inspection.
+   - Stop and keep `.cjs` wrappers if Electron preload ESM behavior is not reliable.
+
+8. Tooling and Jest ESM slice.
+   - Update Jest only after runtime ESM is stable.
+   - Validation: `npm run typecheck`, `npm test -- --runInBand`.
+   - Stop if mocks or transform behavior require a broad unrelated test rewrite.
+
+9. Packaging proof slice.
+   - Run the relevant `dist:<target>` package command and inspect packaged runtime paths.
+   - Validation: package target plus packaged app smoke checks.
+   - Stop if electron-builder file inclusion needs native dependency or asar-unpack redesign.
+
+##### Phase 5 Stop Conditions
+
+Stop implementation and update this plan before continuing if any slice requires:
+
+- adding package-wide `"type": "module"`
+- switching all scripts/configs from `.js` to `.cjs`/ESM at once
+- changing Electron sandbox, context isolation, preload API shape, or BrowserWindow ownership
+- changing Vite/browser asset output while changing Node/Electron runtime modules
+- redesigning dashboard server lifecycle, singleton state, or port ownership
+- broad Jest transform changes before runtime ESM entrypoints are proven
+- removing default CommonJS compatibility for `agentManager.ts` or `sessionScanner.ts`
+- statically importing `node-pty`, `cloudflared`, or `tree-kill` at app startup
+- changing electron-builder file inclusion without packaged verification
 
 ### Phase 6: Test And Tooling ESM Cutover
 
@@ -396,14 +653,23 @@ As of the latest source-only scan after `0d49575`, the remaining TypeScript Comm
 - `src/main/tunnelManager.ts`, `src/main/sessionTermination.ts`, and `src/dashboardServer/tunnelHandlers.ts`: optional/native or platform-specific dependency loading (`cloudflared`, `tree-kill`).
 - `src/dashboardServer/index.ts`: SIGINT client cleanup now uses the static context import; the remaining CommonJS entrypoint guard is a dashboard startup/runtime boundary.
 
+### Compatibility Slice Notes
+
+#### `agentManager.ts` / `sessionScanner.ts` Default CommonJS API
+
+- Current CommonJS/export shape: tests and compatibility callers can use `const AgentManager = require('../src/agentManager')` and `const SessionScanner = require('../src/sessionScanner')`; both modules also expose `.AgentManager` / `.SessionScanner` on the required constructor.
+- Emitted `dist` shape to preserve: `require('./dist/src/agentManager.js')` and `require('./dist/src/sessionScanner.js')` must return constructable classes, and the corresponding named property must point at the same class object.
+- Runtime/startup/path risk: this slice does not change startup order, Electron paths, optional/native loading, or `__dirname` path contracts. `src/main.ts` keeps static named imports. The boundary files use a narrow `module['exports']` compatibility assignment because direct TypeScript `export =` preserves the emitted shape but is not supported by the current Jest transform; broad Jest transform changes stay out of scope for this phase.
+- Validation commands: `npm run build:dist`; emitted shape checks for both modules; `npm run typecheck`; focused Jest tests for `agentManager` and `sessionScanner`.
+
 ## Suggested Follow-Up Prompt
 
 ```text
-Continue TypeScript import/export cleanup and runtime-boundary preparation on `refactor/esm` until there are no more safely separable slices in this phase.
+Implement the reviewed Phase 5 Runtime ESM Design plan on `refactor/esm` in the smallest safe slice. Do not add package-wide `"type": "module"` unless the reviewed plan has been updated to approve that cutover.
 
 Operating rules:
 1. Read `AGENTS.md` first and follow the repo rules.
-2. Read `docs/plans/typescript-esm-migration-plan.md`, especially Current Phase Goal, Boundaries To Preserve, Stop Conditions, Source-Only Cleanup Status, and Validation Matrix.
+2. Read `docs/plans/typescript-esm-migration-plan.md`, especially Phase 5 Runtime ESM Design, Validation Matrix, Stop Conditions, and Source-Only Cleanup Status.
 3. Check `git status --short --branch` before editing. Do not revert changes you did not make.
 4. Rescan `src/**/*.ts` for:
    - `require(...)`
@@ -411,40 +677,37 @@ Operating rules:
    - `exports.*`
    - `__dirname`
    - `__filename`
-5. Preserve the current dist-based CommonJS runtime contract unless you explicitly stop and document a native runtime ESM cutover plan:
-   - do not add `"type": "module"`
-   - do not switch Electron/Node runtime to native ESM
-   - do not make broad Jest transform, packaging, bootstrap, or build-config changes
+5. Keep `dist/` as the production runtime output and preserve compatibility boundaries that the selected slice does not own.
 
 Current state:
-- Recent completed cleanup commits include:
-  - `2c2cac6` `refactor: convert hook helper scripts to TS imports`
-  - `e3fd284` `refactor: convert window IPC registrations to TS exports`
-  - `1a53920` `docs: record remaining ESM migration stop set`
-- Source-only leaf cleanup is mostly exhausted. Remaining work is compatibility/runtime-boundary work; still keep CommonJS emit for this phase.
+- Source-level import/export cleanup is effectively complete.
+- Remaining scan results are compatibility/runtime boundaries:
+  - default CommonJS public APIs: `src/agentManager.ts`, `src/sessionScanner.ts`
+  - optional/native loading: `node-pty`, `cloudflared`, `tree-kill`
+  - late dashboard/window/bootstrap runtime `require(...)`
+  - Electron preload/window/html/asset/script `__dirname` path contracts
+- Preserve dist-based CommonJS runtime output until the selected implementation slice intentionally changes an entrypoint.
+- Do not make broad Jest, packaging, bootstrap, or build-config changes.
 
-Work strategy:
-1. Group remaining scan results into small, independently verifiable slices.
-2. Prefer slices that can preserve emitted CommonJS shape and avoid startup/path redesign:
-   - named CommonJS object exports that can become TS named exports with identical `require()` shape
-   - modules whose `__dirname` can be left untouched while import/export syntax is cleaned
-   - compatibility wrappers where all source/tests can keep their current `require()` behavior
-3. For each slice, before editing, write a short risk note covering:
-   - export shape before/after
-   - emitted CommonJS `require()` shape to preserve
-   - runtime/path/startup-order risk
-   - optional/native dependency risk
-   - validation commands
-4. Implement the slice, validate it, update this plan if the remaining boundary list changes, and commit the slice.
-5. Do not stop after one slice. After each successful commit, rescan and continue with the next safely separable slice.
+Start with the first reviewed slice that is still valid after the rescan:
+1. Path helper and ESM entrypoint guard design slice.
+2. Compatibility bridge slice for `agentManager.ts` and `sessionScanner.ts`.
+3. Optional/native dependency bridge slice for `node-pty`, `cloudflared`, and `tree-kill`.
+4. Runtime path-contract slice for `__dirname` / `__filename`.
+5. Electron main ESM entrypoint slice.
+6. Dashboard server ESM entrypoint slice.
+7. Preload/window ESM evaluation slice.
+8. Tooling and Jest ESM slice.
+9. Packaging proof slice.
 
-High-priority candidate slices to evaluate first:
-- `src/main/livenessChecker.ts`: likely named object export, but has `__dirname` script path and child_process late requires; only convert if path and late-loading contracts remain unchanged and emitted shape is verified.
-- `src/main/bootstrap/runtime.ts`: named object export, but owns log-path/bootstrap behavior; only convert if `__dirname` contract remains unchanged and full runtime validation is run.
-- `src/main/terminalManager.ts`: named object export, but contains `node-pty` and platform-specific late requires; only clean static non-native imports if dynamic optional/native loads remain untouched, otherwise stop.
-- `src/officeLayout.ts`: public named object export plus `__dirname` asset contract; only convert in a dedicated path-contract slice with emitted shape checks.
+For the chosen slice, write a short risk note before editing:
+- files owned by the slice
+- export shape before/after
+- emitted `dist` runtime shape to preserve or intentionally change
+- startup/path/native dependency risk
+- exact validation commands
 
-Keep these as dedicated compatibility/runtime slices; do not casually fold them into unrelated cleanup:
+Keep these as dedicated compatibility/runtime boundaries; do not fold them into unrelated work:
 - `src/agentManager.ts`
 - `src/sessionScanner.ts`
 - `node-pty`
@@ -455,25 +718,29 @@ Keep these as dedicated compatibility/runtime slices; do not casually fold them 
 - dashboard/window/bootstrap late runtime `require(...)` that may preserve startup order or avoid cycles
 
 Validation requirements:
-- If public export shape changes or a CommonJS `module.exports` object becomes TS exports:
+- Documentation-only or plan updates:
+  - `git diff --check`
+- If public export shape changes or a CommonJS compatibility bridge changes:
   - `npm run build:dist`
-  - `node -e "console.log(require('./dist/src/path/to/module.js'))"`
+  - emitted `node -e "require(...)"` shape checks from `dist`
+  - focused Jest tests
+  - `npm run typecheck`
 - If runtime boundary, Electron startup/path/bootstrap, dashboard startup, preload/windowing, or asset path contract is touched:
   - `npm run build:dist`
   - relevant dist `require()` shape checks
   - `npm run typecheck`
   - `npm test -- --runInBand`
   - `timeout 25s npm start`
-- For narrow internal cleanup with no runtime boundary and no export shape change, use focused tests and/or `npm run typecheck`, but escalate if any boundary risk appears.
+- If native dependencies or packaging metadata are touched:
+  - add the relevant platform package command from the Phase 5 Packaging Verification Sequence
 
-Stop only when every remaining scan result requires one of these larger changes:
-- native runtime ESM conversion
-- Electron startup/packaging redesign
-- broad Jest transform changes
-- default CommonJS public API migration
-- unresolved circular dependency initialization risk
-- optional/native dependency loading redesign
-- runtime path contract redesign
+Stop and update the plan if the chosen slice requires:
+- adding package-wide `"type": "module"`
+- changing Electron sandbox/context-isolation/preload API shape
+- broad Jest transform changes before runtime ESM entrypoints are proven
+- removing default CommonJS compatibility for `agentManager.ts` or `sessionScanner.ts`
+- statically importing `node-pty`, `cloudflared`, or `tree-kill` at startup
+- changing electron-builder file inclusion without packaged verification
 
 Final response must include:
 - completed commit list
