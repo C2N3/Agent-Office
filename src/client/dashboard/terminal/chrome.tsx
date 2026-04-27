@@ -1,4 +1,5 @@
 import React, { type ReactElement, type RefObject, useEffect, useMemo, useRef } from 'react';
+import { useI18n } from '../../i18n/react.js';
 import type { DashboardTerminalEntry, DashboardTerminalProfile } from '../shared.js';
 
 export function TerminalTabs({
@@ -12,6 +13,8 @@ export function TerminalTabs({
   onActivate: (terminalId: string) => void;
   onClose: (terminalId: string) => void;
 }): ReactElement {
+  const { t } = useI18n();
+
   return (
     <>
       {terminals.map(([terminalId, terminal]) => (
@@ -25,7 +28,7 @@ export function TerminalTabs({
           <span className="terminal-tab-label">{terminal.label}</span>
           <button
             className="terminal-tab-close"
-            title="Close"
+            title={t('terminal.closeTab')}
             type="button"
             onClick={(event) => {
               event.stopPropagation();
@@ -84,6 +87,7 @@ export function TerminalProfileMenu({
   profiles: DashboardTerminalProfile[];
   triggerRef: RefObject<HTMLElement | null>;
 }): ReactElement | null {
+  const { t } = useI18n();
   const menuRef = useRef<HTMLDivElement | null>(null);
   const defaultProfile = useMemo(
     () => profiles.find((profile) => profile.id === defaultProfileId) || profiles[0] || null,
@@ -121,8 +125,8 @@ export function TerminalProfileMenu({
         <>
           <div className="terminal-launch-header">
             <div>
-              <div className="terminal-launch-title">New Terminal</div>
-              <div className="terminal-launch-subtitle">No shell profiles were detected on this machine.</div>
+              <div className="terminal-launch-title">{t('terminal.new')}</div>
+              <div className="terminal-launch-subtitle">{t('terminal.noProfiles')}</div>
             </div>
             <button className="terminal-launch-close" type="button" onClick={onClose}>&times;</button>
           </div>
@@ -131,8 +135,8 @@ export function TerminalProfileMenu({
         <>
           <div className="terminal-launch-header">
             <div>
-              <div className="terminal-launch-title">New Terminal</div>
-              <div className="terminal-launch-subtitle">Choose a shell for this tab, or change the default profile.</div>
+              <div className="terminal-launch-title">{t('terminal.new')}</div>
+              <div className="terminal-launch-subtitle">{t('terminal.profileHelp')}</div>
             </div>
             <button className="terminal-launch-close" type="button" onClick={onClose}>&times;</button>
           </div>
@@ -145,10 +149,10 @@ export function TerminalProfileMenu({
               void onOpenProfile(defaultProfile.id);
             }}
           >
-            <span className="terminal-launch-primary-label">Open default terminal</span>
+            <span className="terminal-launch-primary-label">{t('terminal.openDefault')}</span>
             <span className="terminal-launch-primary-value">{defaultProfile.title}</span>
           </button>
-          <div className="terminal-profile-section-title">Open With</div>
+          <div className="terminal-profile-section-title">{t('terminal.openWith')}</div>
           <div className="terminal-profile-list">
             {profiles.map((profile) => (
               <button
@@ -164,14 +168,14 @@ export function TerminalProfileMenu({
               >
                 <span className="terminal-profile-item-main">
                   <span className="terminal-profile-item-title">{profile.title}</span>
-                  <span className="terminal-profile-item-hint">Open a one-off terminal with this shell</span>
+                  <span className="terminal-profile-item-hint">{t('terminal.oneOffHint')}</span>
                 </span>
-                {profile.id === defaultProfile?.id ? <span className="terminal-profile-badge">Default</span> : null}
+                {profile.id === defaultProfile?.id ? <span className="terminal-profile-badge">{t('terminal.defaultBadge')}</span> : null}
               </button>
             ))}
           </div>
           <div className="terminal-profile-divider" />
-          <div className="terminal-profile-section-title">Default Profile</div>
+          <div className="terminal-profile-section-title">{t('terminal.defaultProfile')}</div>
           <div className="terminal-profile-list">
             {profiles.map((profile) => (
               <button
@@ -186,7 +190,7 @@ export function TerminalProfileMenu({
               >
                 <span className="terminal-profile-item-main">
                   <span className="terminal-profile-item-title">{profile.title}</span>
-                  <span className="terminal-profile-item-hint">Use when pressing the New Terminal button</span>
+                  <span className="terminal-profile-item-hint">{t('terminal.setDefaultHint')}</span>
                 </span>
                 <span className="terminal-profile-check">{profile.id === defaultProfile?.id ? '✓' : ''}</span>
               </button>

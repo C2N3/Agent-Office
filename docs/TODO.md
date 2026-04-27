@@ -12,6 +12,7 @@ This file tracks client-side work that is planned, discovered, blocked, or compl
 
 ## Open
 
+- [ ] Continue `docs/plans/client-i18n-plan.md` by migrating remaining dashboard feature panels, task chat, PiP, overlay, and remote static browser surfaces to the shared i18n layer.
 - [ ] Add full Gemini session visualization support by implementing Gemini session ingestion/monitoring, transcript statistics, recovery metadata, and provider registry/catalog capability updates comparable to Claude and Codex.
 - [ ] Execute the SQLite persistence migration plan in `docs/plans/sqlite-persistence-plan.md`.
 - [ ] Complete Phase 1 of `docs/plans/sqlite-persistence-plan.md`.
@@ -22,6 +23,7 @@ This file tracks client-side work that is planned, discovered, blocked, or compl
 
 ## Done
 
+- [x] Complete the first client i18n slice from `docs/plans/client-i18n-plan.md` by adding typed locale resources, renderer locale persistence, `Intl` formatting helpers, key-parity tests, and dashboard shell language selection for `en-US`/`ko-KR`.
 - [x] Show central agent ownership in dashboard cards using the server participant provenance (`Mine`, `Host`, or guest participant ID).
 - [x] Persist the latest host invitation link in localStorage and restore it in the Remote Access panel after tab switches or app restarts.
 - [x] Hide the dashboard rename UI for central agents this client cannot mutate, while keeping local and participant-owned central agents editable.

@@ -1,4 +1,5 @@
 import React, { type ReactElement, useRef } from 'react';
+import { useI18n } from '../../i18n/react.js';
 import type {
   DashboardTerminalEntry,
   DashboardTerminalProfile,
@@ -31,6 +32,7 @@ export function TerminalPanel({
   terminalProfiles: DashboardTerminalProfile[];
   terminals: Array<[string, DashboardTerminalEntry]>;
 }): ReactElement {
+  const { t } = useI18n();
   const newTerminalButtonRef = useRef<HTMLButtonElement | null>(null);
   const defaultTerminalProfile = terminalProfiles.find((profile) => profile.id === terminalDefaultProfileId) || terminalProfiles[0] || null;
 
@@ -52,7 +54,7 @@ export function TerminalPanel({
     const profile = terminalProfiles.find((entry) => entry.id === profileId) || defaultTerminalProfile;
     await openTerminalForAgent(`local-${Date.now()}`, {
       profileId,
-      label: profile?.title || 'Terminal',
+      label: profile?.title || t('dashboard.sidebar.terminal'),
     });
   };
 
@@ -72,7 +74,7 @@ export function TerminalPanel({
             ref={newTerminalButtonRef}
             className="terminal-new-btn"
             id="terminalNewBtn"
-            title={defaultTerminalProfile ? `New Terminal (${defaultTerminalProfile.title})` : 'New Terminal'}
+            title={defaultTerminalProfile ? t('terminal.newWithProfile', { profile: defaultTerminalProfile.title }) : t('terminal.new')}
             type="button"
             onClick={() => {
               void handleTerminalNewClick();
@@ -88,8 +90,8 @@ export function TerminalPanel({
             <polyline points="8 34 20 22 8 10" />
             <line x1="24" y1="38" x2="40" y2="38" />
           </svg>
-          <div className="terminal-empty-title">No terminal open</div>
-          <div className="terminal-empty-hint">Click an agent to open a terminal.</div>
+          <div className="terminal-empty-title">{t('terminal.emptyTitle')}</div>
+          <div className="terminal-empty-hint">{t('terminal.emptyHint')}</div>
         </div>
         <TerminalProfileMenu
           defaultProfileId={terminalDefaultProfileId}
