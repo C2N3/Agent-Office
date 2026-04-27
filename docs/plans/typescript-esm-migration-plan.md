@@ -393,19 +393,86 @@ As of the latest source-only scan, the remaining TypeScript CommonJS syntax is n
 ## Suggested Follow-Up Prompt
 
 ```text
-Continue the runtime ESM migration on refactor/esm using docs/plans/typescript-esm-migration-plan.md as the operating plan.
+Continue TypeScript import/export cleanup and runtime-boundary preparation on `refactor/esm` until there are no more safely separable slices in this phase.
 
-The big goal is full native ESM, including Electron. If the current safe step is still source-level preparation, keep dist-based CommonJS runtime output and do not add "type": "module" in that slice.
+Operating rules:
+1. Read `AGENTS.md` first and follow the repo rules.
+2. Read `docs/plans/typescript-esm-migration-plan.md`, especially Current Phase Goal, Boundaries To Preserve, Stop Conditions, Source-Only Cleanup Status, and Validation Matrix.
+3. Check `git status --short --branch` before editing. Do not revert changes you did not make.
+4. Rescan `src/**/*.ts` for:
+   - `require(...)`
+   - `module.exports`
+   - `exports.*`
+   - `__dirname`
+   - `__filename`
+5. Preserve the current dist-based CommonJS runtime contract unless you explicitly stop and document a native runtime ESM cutover plan:
+   - do not add `"type": "module"`
+   - do not switch Electron/Node runtime to native ESM
+   - do not make broad Jest transform, packaging, bootstrap, or build-config changes
 
-Pick the next small safe slice, analyze runtime path/export-shape risk first, implement it, run focused validation, verify emitted CommonJS shape when exports changed, and commit the slice.
+Current state:
+- Recent completed cleanup commits include:
+  - `2c2cac6` `refactor: convert hook helper scripts to TS imports`
+  - `e3fd284` `refactor: convert window IPC registrations to TS exports`
+  - `1a53920` `docs: record remaining ESM migration stop set`
+- Source-only leaf cleanup is mostly exhausted. Remaining work is compatibility/runtime-boundary work; still keep CommonJS emit for this phase.
 
-Avoid agentManager.ts and sessionScanner.ts default CommonJS public APIs unless the slice explicitly updates all callers/tests or documents a compatibility export.
-Avoid node-pty/cloudflared/tree-kill dynamic loading changes unless there is a specific compatibility plan.
-If Electron startup, preload path, __dirname asset path, or bootstrap behavior changes, run:
-- npm run build:dist
-- npm run typecheck
-- npm test -- --runInBand
-- timeout 25s npm start
+Work strategy:
+1. Group remaining scan results into small, independently verifiable slices.
+2. Prefer slices that can preserve emitted CommonJS shape and avoid startup/path redesign:
+   - named CommonJS object exports that can become TS named exports with identical `require()` shape
+   - modules whose `__dirname` can be left untouched while import/export syntax is cleaned
+   - compatibility wrappers where all source/tests can keep their current `require()` behavior
+3. For each slice, before editing, write a short risk note covering:
+   - export shape before/after
+   - emitted CommonJS `require()` shape to preserve
+   - runtime/path/startup-order risk
+   - optional/native dependency risk
+   - validation commands
+4. Implement the slice, validate it, update this plan if the remaining boundary list changes, and commit the slice.
+5. Do not stop after one slice. After each successful commit, rescan and continue with the next safely separable slice.
 
-When remaining work is runtime ESM migration, packaging/test infrastructure changes, or large public API compatibility work, stop source-only cleanup and write the next concrete runtime ESM cutover prompt with the exact files/configs to change and validation required.
+High-priority candidate slices to evaluate first:
+- `src/main/livenessChecker.ts`: likely named object export, but has `__dirname` script path and child_process late requires; only convert if path and late-loading contracts remain unchanged and emitted shape is verified.
+- `src/main/bootstrap/runtime.ts`: named object export, but owns log-path/bootstrap behavior; only convert if `__dirname` contract remains unchanged and full runtime validation is run.
+- `src/main/terminalManager.ts`: named object export, but contains `node-pty` and platform-specific late requires; only clean static non-native imports if dynamic optional/native loads remain untouched, otherwise stop.
+- `src/officeLayout.ts`: public named object export plus `__dirname` asset contract; only convert in a dedicated path-contract slice with emitted shape checks.
+
+Keep these as dedicated compatibility/runtime slices; do not casually fold them into unrelated cleanup:
+- `src/agentManager.ts`
+- `src/sessionScanner.ts`
+- `node-pty`
+- `cloudflared`
+- `tree-kill`
+- Electron preload/window path contracts
+- asset/html/script `__dirname` path contracts
+- dashboard/window/bootstrap late runtime `require(...)` that may preserve startup order or avoid cycles
+
+Validation requirements:
+- If public export shape changes or a CommonJS `module.exports` object becomes TS exports:
+  - `npm run build:dist`
+  - `node -e "console.log(require('./dist/src/path/to/module.js'))"`
+- If runtime boundary, Electron startup/path/bootstrap, dashboard startup, preload/windowing, or asset path contract is touched:
+  - `npm run build:dist`
+  - relevant dist `require()` shape checks
+  - `npm run typecheck`
+  - `npm test -- --runInBand`
+  - `timeout 25s npm start`
+- For narrow internal cleanup with no runtime boundary and no export shape change, use focused tests and/or `npm run typecheck`, but escalate if any boundary risk appears.
+
+Stop only when every remaining scan result requires one of these larger changes:
+- native runtime ESM conversion
+- Electron startup/packaging redesign
+- broad Jest transform changes
+- default CommonJS public API migration
+- unresolved circular dependency initialization risk
+- optional/native dependency loading redesign
+- runtime path contract redesign
+
+Final response must include:
+- completed commit list
+- files changed in each commit
+- validation commands and results
+- exact remaining scan results and why each is a stop condition
+- a concrete next-session prompt that can continue from the new state
 ```
