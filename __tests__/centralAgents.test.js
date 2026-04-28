@@ -158,6 +158,41 @@ describe('centralAgents', () => {
     expect(agents.find((agent) => agent.id === 'other-1')?.metadata?.centralOwnership).toBe('guest');
   });
 
+  test('explicit agent record sync posts in guest mode even when worker bridge is enabled', async () => {
+    global.fetch = jest.fn(async (url, options = {}) => {
+      if (String(url) === '/api/server/config') {
+        return makeJsonResponse({
+          agentSyncEnabled: true,
+          workerEnabled: true,
+          remoteMode: 'guest',
+          workerId: 'worker-guest',
+        });
+      }
+      if (String(url) === '/api/server/agents/bulk-upsert') {
+        return makeJsonResponse({ agents: JSON.parse(options.body).agents });
+      }
+      throw new Error(`Unexpected fetch: ${url}`);
+    });
+
+    const api = require('../src/client/dashboard/centralAgents/api.ts');
+    await api.syncCentralAgentRecord({
+      id: 'guest-agent-1',
+      name: 'Guest Agent',
+      isRegistered: true,
+      projectPath: '/workspace/app',
+      avatarIndex: 1,
+      provider: 'codex',
+    });
+
+    const upsertCall = global.fetch.mock.calls.find(([url]) => String(url) === '/api/server/agents/bulk-upsert');
+    expect(upsertCall).toBeTruthy();
+    expect(JSON.parse(upsertCall[1].body).agents[0]).toEqual(expect.objectContaining({
+      id: 'guest-agent-1',
+      name: 'Guest Agent',
+      provider: 'codex',
+    }));
+  });
+
   test('browser-local sync uploads only local registered agents', async () => {
     global.fetch = jest.fn(async (url, options) => {
       if (String(url) === '/api/server/config') {
@@ -332,6 +367,12 @@ describe('centralAgents', () => {
   });
 
   test('worker-owned sync skips browser local upsert and removes stale central agents missing from snapshot', async () => {
+    const originalSetInterval = global.setInterval;
+    const originalClearInterval = global.clearInterval;
+    const setIntervalSpy = jest.fn(() => 123);
+    global.setInterval = setIntervalSpy;
+    global.clearInterval = jest.fn();
+
     global.fetch = jest.fn(async (url) => {
       if (String(url) === '/api/server/config') {
         return makeJsonResponse({ agentSyncEnabled: true, workerEnabled: true, remoteMode: 'host' });
@@ -365,8 +406,12 @@ describe('centralAgents', () => {
     expect(removeAgent).toHaveBeenCalledWith('central-stale');
     expect(upsertAgent).not.toHaveBeenCalled();
     expect(FakeEventSource.instances).toHaveLength(1);
+    expect(setIntervalSpy).toHaveBeenCalled();
 
     sync.__resetCentralAgentSyncForTests();
+
+    global.setInterval = originalSetInterval;
+    global.clearInterval = originalClearInterval;
   });
 
   test('guest mode falls back to polling instead of central SSE', async () => {

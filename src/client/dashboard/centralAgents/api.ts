@@ -84,7 +84,7 @@ export async function syncLocalAgentsToCentral(): Promise<void> {
 }
 
 export async function syncCentralAgentRecord(agent?: DashboardAgentRecord | null): Promise<void> {
-  if (!agent?.id || !await isBrowserLocalAgentSyncEnabled()) return;
+  if (!agent?.id || !await isCentralAgentSyncEnabled()) return;
   await upsertCentralAgents([agent]);
 }
 
@@ -92,7 +92,7 @@ export async function syncCentralAgentUpdate(
   id?: string | null,
   fields: Partial<DashboardAgentRecord> = {},
 ): Promise<void> {
-  if (!id || !await isBrowserLocalAgentSyncEnabled()) return;
+  if (!id || !await isCentralAgentSyncEnabled()) return;
   const payload: Partial<CentralAgent> = {};
   if (fields.name !== undefined) payload.name = fields.name || 'Agent';
   if (fields.role !== undefined) payload.role = fields.role || '';

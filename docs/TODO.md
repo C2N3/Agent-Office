@@ -22,6 +22,7 @@ This file tracks client-side work that is planned, discovered, blocked, or compl
 
 ## Done
 
+- [x] Add direct Host/Guest central agent create/update sync plus host-mode snapshot reconciliation so guest-created agents appear without relying only on the worker bridge or SSE timing.
 - [x] Show central agent ownership in dashboard cards using the server participant provenance (`Mine`, `Host`, or guest participant ID).
 - [x] Persist the latest host invitation link in localStorage and restore it in the Remote Access panel after tab switches or app restarts.
 - [x] Hide the dashboard rename UI for central agents this client cannot mutate, while keeping local and participant-owned central agents editable.

@@ -4,7 +4,11 @@ import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
 import { defineConfig, type Plugin } from 'vite';
 import { hasViteAssetQuery } from './scripts/vite-asset-query.js';
-import { resolveBrowserEntryPath } from './scripts/vite-browser-routes.js';
+import {
+  resolveBrowserEntryPath,
+  resolveBrowserSourceModuleFilePath,
+  resolveBrowserSourceModulePath,
+} from './scripts/vite-browser-routes.js';
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 const assetRoot = path.join(projectRoot, 'assets');
@@ -37,6 +41,9 @@ function resolveAssetPath(requestPath: string): string | null {
 function browserContractPlugin(): Plugin {
   return {
     name: 'agent-office-browser-contract',
+    resolveId(source) {
+      return resolveBrowserSourceModuleFilePath(source, projectRoot);
+    },
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         const requestUrl = new URL(req.url || '/', 'http://localhost');
@@ -45,6 +52,13 @@ function browserContractPlugin(): Plugin {
 
         if (entryPath) {
           req.url = `${entryPath}${requestUrl.search}`;
+          next();
+          return;
+        }
+
+        const sourceModulePath = resolveBrowserSourceModulePath(pathname, projectRoot);
+        if (sourceModulePath) {
+          req.url = `${sourceModulePath}${requestUrl.search}`;
           next();
           return;
         }

@@ -124,6 +124,7 @@ async function restartCentralAgentEvents(): Promise<void> {
     stopCentralAgentEvents();
     startCentralAgentPolling();
   };
+  startCentralAgentPolling();
 }
 
 export function startCentralAgentSync(nextCallbacks: SyncCallbacks): void {
