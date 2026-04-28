@@ -1,4 +1,4 @@
-import type { DashboardOpenOptions } from '../shared.js';
+import type { DashboardOpenOptions } from '../shared';
 
 type OpenTerminalForAgent = (agentId: string, openOptions?: DashboardOpenOptions) => Promise<void> | void;
 

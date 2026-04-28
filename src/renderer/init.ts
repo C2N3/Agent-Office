@@ -4,12 +4,12 @@
 
 import { createElement } from 'react';
 import { createRoot } from 'react-dom/client';
-import { AVATAR_FILES, lastAgents, agentStates } from './config.js';
-import { playAnimation } from './animationManager.js';
-import { addAgent, updateAgent, removeAgent, cleanupAgents, updateGridLayout, showIdleAvatar } from './agentGrid.js';
-import { createErrorUI } from './errorUI.js';
-import { OverlayShell } from './overlayShell.js';
-import { installHoverTooltips } from '../shared/uiTooltip.js';
+import { AVATAR_FILES, lastAgents, agentStates } from './config';
+import { playAnimation } from './animationManager';
+import { addAgent, updateAgent, removeAgent, cleanupAgents, updateGridLayout, showIdleAvatar } from './agentGrid';
+import { createErrorUI } from './errorUI';
+import { OverlayShell } from './overlayShell';
+import { installHoverTooltips } from '../shared/uiTooltip';
 
 let availableAvatars = [];
 let idleAvatar = 'avatar_0.webp';

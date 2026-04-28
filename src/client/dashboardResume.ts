@@ -1,5 +1,5 @@
 
-import type { DashboardAgent, DashboardOpenOptions } from './dashboard/shared.js';
+import type { DashboardAgent, DashboardOpenOptions } from './dashboard/shared';
 
 function toTimestamp(value) {
   return Number.isFinite(value) ? value : 0;

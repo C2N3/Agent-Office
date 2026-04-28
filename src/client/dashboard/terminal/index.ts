@@ -1,6 +1,6 @@
 
-import { dashboardResumeUtils, getDashboardAPI, state, termState } from '../shared.js';
-import { getTerminalBootCommand } from '../providerCatalog.js';
+import { dashboardResumeUtils, getDashboardAPI, state, termState } from '../shared';
+import { getTerminalBootCommand } from '../providerCatalog';
 import {
   activateTerminalTab,
   createXtermInstance,
@@ -10,14 +10,14 @@ import {
   renderTerminalTabs,
   resumeLatestRegisteredSession,
   closeTerminal,
-} from './ui.js';
+} from './ui';
 import {
   initTerminalProfileMenu as initTerminalProfileMenuHelper,
   closeTerminalProfileMenu,
   refreshTerminalProfiles,
-} from './profiles.js';
-import { setPsPolicyBlocked } from '../state/store.js';
-import type { DashboardOpenOptions } from '../shared.js';
+} from './profiles';
+import { setPsPolicyBlocked } from '../state/store';
+import type { DashboardOpenOptions } from '../shared';
 
 export function initTerminals() {
   const dashboardAPI = getDashboardAPI();

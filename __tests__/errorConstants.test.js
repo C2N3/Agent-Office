@@ -1,4 +1,4 @@
-const { ErrorCategory, ErrorSeverity } = require('../src/errorConstants');
+import { ErrorCategory, ErrorSeverity } from '../src/errorConstants';
 
 describe('ErrorCategory', () => {
   test('should contain all expected categories', () => {

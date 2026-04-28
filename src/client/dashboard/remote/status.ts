@@ -1,4 +1,4 @@
-import { type RemoteMode } from '../remoteMode.js';
+import { type RemoteMode } from '../remoteMode';
 
 type RemoteConfig = {
   baseUrl?: string;

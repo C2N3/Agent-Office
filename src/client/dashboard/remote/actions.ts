@@ -1,9 +1,9 @@
-import { type RemoteMode } from '../remoteMode.js';
-import { refreshRemoteViewData } from './controller.js';
-import { copyInviteText, handleGuestJoin, handleHostDisable, handleHostEnable, handleHostResetAccess, handleHostRotate, handleHostStart, handleLocalApply } from './controller.js';
-import { deriveRemoteViewModel } from './model.js';
-import { getRemoteViewState, setSelectedRemoteMode, updateRemoteViewState } from './store.js';
-import type { RemoteViewActions } from './types.js';
+import { type RemoteMode } from '../remoteMode';
+import { refreshRemoteViewData } from './controller';
+import { copyInviteText, handleGuestJoin, handleHostDisable, handleHostEnable, handleHostResetAccess, handleHostRotate, handleHostStart, handleLocalApply } from './controller';
+import { deriveRemoteViewModel } from './model';
+import { getRemoteViewState, setSelectedRemoteMode, updateRemoteViewState } from './store';
+import type { RemoteViewActions } from './types';
 
 export function createRemoteViewActions(): RemoteViewActions {
   return {

@@ -3,11 +3,14 @@
  * Manages node-pty instances for embedded terminals
  */
 
-const fs = require('fs');
-const os = require('os');
-const { resolveProjectPathForPlatform } = require('../utils');
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import { execFileSync } from 'child_process';
 import type { BrowserWindow } from 'electron';
-import type { DashboardOpenOptions, DashboardTerminalProfile } from '../shared/contracts/index.js';
+import type { DashboardOpenOptions, DashboardTerminalProfile } from '../shared/contracts/index';
+import { loadNodePty } from './nativeDependencies';
+import { resolveProjectPathForPlatform } from '../utils';
 
 type DebugLog = (message: string) => void;
 type TerminalProfileServiceLike = {
@@ -70,10 +73,10 @@ class TerminalManager {
       return { success: true, existing: true };
     }
 
-    // Lazy-require node-pty to avoid crash if not installed
+    // Lazy-load node-pty to avoid crash if not installed
     let pty;
     try {
-      pty = require('node-pty');
+      pty = loadNodePty();
     } catch (e) {
       this.debugLog(`[Terminal] node-pty not available: ${e.message}`);
       return { success: false, error: 'node-pty not available' };
@@ -97,7 +100,6 @@ class TerminalManager {
     // Prefer .cmd/.exe over extensionless scripts to avoid ERROR_BAD_EXE_FORMAT (193).
     if (process.platform === 'win32' && options.command && !options.command.includes('\\') && !options.command.includes('/')) {
       try {
-        const { execFileSync } = require('child_process');
         const candidates = execFileSync('where', [options.command], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim().split(/\r?\n/);
         const preferred = candidates.find(c => /\.(cmd|exe|bat)$/i.test(c)) || candidates[0];
         if (preferred) command = preferred;
@@ -128,7 +130,6 @@ class TerminalManager {
           // or simpler: "%dp0%\node_modules\...\cli.js"
           const jsMatch = cmdContent.match(/"%dp0%\\([^"]+\.js)"/);
           if (jsMatch) {
-            const path = require('path');
             const scriptPath = path.join(path.dirname(command), jsMatch[1]);
             if (fs.existsSync(scriptPath)) {
               const originalArgs = args;
@@ -140,7 +141,6 @@ class TerminalManager {
                 nodeBin = shimNodePath;
               } else {
                 try {
-                  const { execFileSync } = require('child_process');
                   nodeBin = execFileSync('where', ['node'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim().split(/\r?\n/)[0];
                 } catch {}
               }
@@ -340,4 +340,4 @@ class TerminalManager {
   }
 }
 
-module.exports = { TerminalManager };
+export { TerminalManager };

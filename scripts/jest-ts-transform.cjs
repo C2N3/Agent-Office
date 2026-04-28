@@ -3,12 +3,13 @@ const { transformSync } = require('@babel/core');
 const traverse = require('@babel/traverse').default;
 const t = require('@babel/types');
 const generate = require('@babel/generator').default;
+const { pathToFileURL } = require('url');
 const {
   collectBindingNames,
   createExportAssignments,
   createRequireStatements,
   resolveImportSource,
-} = require('./jest-ts-transform/helpers');
+} = require('./jest-ts-transform/helpers.cjs');
 
 function stripTypeSyntax(ast, sourcePath) {
   const state = {
@@ -66,11 +67,43 @@ function stripTypeSyntax(ast, sourcePath) {
     },
     CallExpression(path) {
       const [firstArgument] = path.node.arguments;
+      if (t.isImport(path.node.callee) && t.isStringLiteral(firstArgument)) {
+        path.replaceWith(
+          t.callExpression(
+            t.memberExpression(
+              t.callExpression(
+                t.memberExpression(t.identifier('Promise'), t.identifier('resolve')),
+                [],
+              ),
+              t.identifier('then'),
+            ),
+            [
+              t.arrowFunctionExpression(
+                [],
+                t.callExpression(t.identifier('require'), [
+                  t.stringLiteral(resolveImportSource(firstArgument.value, sourcePath)),
+                ]),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
       if (
         t.isIdentifier(path.node.callee, { name: 'require' }) &&
         t.isStringLiteral(firstArgument)
       ) {
         firstArgument.value = resolveImportSource(firstArgument.value, sourcePath);
+      }
+    },
+    MemberExpression(path) {
+      if (
+        t.isMetaProperty(path.node.object) &&
+        path.node.object.meta.name === 'import' &&
+        path.node.object.property.name === 'meta' &&
+        t.isIdentifier(path.node.property, { name: 'url' })
+      ) {
+        path.replaceWith(t.stringLiteral(pathToFileURL(sourcePath).href));
       }
     },
     ImportDeclaration(path) {
@@ -200,6 +233,36 @@ function stripTypeSyntax(ast, sourcePath) {
   }
 }
 
+function isHoistableJestCall(statement) {
+  if (!t.isExpressionStatement(statement)) return false;
+  const { expression } = statement;
+  if (!t.isCallExpression(expression)) return false;
+  const { callee } = expression;
+  return (
+    t.isMemberExpression(callee) &&
+    t.isIdentifier(callee.object, { name: 'jest' }) &&
+    t.isIdentifier(callee.property) &&
+    ['mock', 'unmock', 'doMock', 'dontMock'].includes(callee.property.name)
+  );
+}
+
+function hoistTopLevelJestCalls(ast) {
+  const hoisted = [];
+  const body = [];
+
+  for (const statement of ast.program.body) {
+    if (isHoistableJestCall(statement)) {
+      hoisted.push(statement);
+    } else {
+      body.push(statement);
+    }
+  }
+
+  if (hoisted.length > 0) {
+    ast.program.body = [...hoisted, ...body];
+  }
+}
+
 module.exports = {
   process(sourceText, sourcePath) {
     const ast = parser.parse(sourceText, {
@@ -211,6 +274,7 @@ module.exports = {
       ],
     });
 
+    hoistTopLevelJestCalls(ast);
     stripTypeSyntax(ast, sourcePath);
     const transformed = transformSync(
       generate(ast, { sourceMaps: 'inline' }, sourceText).code,

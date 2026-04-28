@@ -11,7 +11,7 @@ import type {
   TerminalAddonLike,
   TerminalCtor,
   WebLinksAddonLike,
-} from './shared/contracts/index.js';
+} from './shared/contracts/index';
 
 declare global {
   interface Element {

@@ -1,4 +1,4 @@
-const { resolveBrowserEntryPath } = require('../scripts/vite-browser-routes.ts');
+import { resolveBrowserEntryPath } from '../scripts/vite-browser-routes.ts';
 
 describe('vite browser routes', () => {
   test('serves the dashboard at the dev server root', () => {

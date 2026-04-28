@@ -2,13 +2,13 @@
  * P0-4: Test Coverage - utils.js Tests
  */
 
-const {
+import {
   formatSlugToDisplayName,
   formatTime,
   sanitizeProjectPath,
   resolveProjectPathForPlatform,
   getWindowSizeForAgents
-} = require('../src/utils');
+} from '../src/utils';
 
 describe('formatSlugToDisplayName', () => {
   test('converts slug to title case', () => {

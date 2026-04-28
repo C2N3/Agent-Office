@@ -9,7 +9,7 @@ import React, {
   useState,
 } from 'react';
 import { createRoot } from 'react-dom/client';
-import { TaskChatHeader, TaskChatInput, TaskChatWorkspaceBar } from './taskChat/chrome.js';
+import { TaskChatHeader, TaskChatInput, TaskChatWorkspaceBar } from './taskChat/chrome';
 import {
   type AgentInfo,
   type ChatMessage,
@@ -21,8 +21,8 @@ import {
   makeMessageId,
   readParams,
   submitAgentTask,
-} from './taskChat/model.js';
-import { TaskChatMessages } from './taskChat/messages.js';
+} from './taskChat/model';
+import { TaskChatMessages } from './taskChat/messages';
 import './taskChat.css';
 function TaskChatApp(): ReactElement {
   const { agentRegistryId, agentName, avatarFile } = useMemo(readParams, []);

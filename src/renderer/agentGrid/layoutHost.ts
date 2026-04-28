@@ -1,4 +1,4 @@
-import { applyAgentGridCardOrder } from './cardList.js';
+import { applyAgentGridCardOrder } from './cardList';
 
 type BeforeRemoveCard = (card: HTMLElement) => void;
 

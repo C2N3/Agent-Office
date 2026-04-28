@@ -1,14 +1,14 @@
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
-const crypto = require('crypto');
-const { normalizeProvider } = require('../providers/registry');
-import type { TaskDefinition } from './types.js';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
+import crypto from 'crypto';
+import { normalizeProvider } from '../providers/registry';
+import type { TaskDefinition } from './types';
 
 const PERSIST_DIR = path.join(os.homedir(), '.agent-office');
 const PERSIST_FILE = path.join(PERSIST_DIR, 'task-queue.json');
 
-class TaskStore {
+export class TaskStore {
   declare debugLog: (message: string) => void;
   declare tasks: Map<string, TaskDefinition>;
 
@@ -61,7 +61,7 @@ class TaskStore {
       id: crypto.randomUUID(),
       title: input.title || 'Untitled Task',
       prompt: input.prompt || '',
-      provider,
+      provider: provider as TaskDefinition['provider'],
       fallbackProviders: input.fallbackProviders || [],
       executionEnvironment: input.executionEnvironment || 'auto',
       model: input.model || null,
@@ -160,5 +160,3 @@ class TaskStore {
     return this.getAllTasks().filter((t) => t.dependsOn.includes(taskId));
   }
 }
-
-module.exports = { TaskStore };

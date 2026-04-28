@@ -1,13 +1,13 @@
 import React, { type ReactElement, useEffect } from 'react';
-import { renderArchiveView, renderHeatmapView } from '../activityViews.js';
-import { setDashboardView, useDashboardSnapshot } from '../state/store.js';
-import { DashboardModals } from '../react/modals.js';
-import { setRegisteredOnlyFilter } from '../agentViews.js';
-import { PowerShellPolicyBanner } from '../terminal/chrome.js';
-import { dismissPsPolicyBanner, openPsPolicyTerminal } from '../terminal/index.js';
-import { OfficeView } from './officeView.js';
-import { OtherViews } from './otherViews.js';
-import { Sidebar } from './sidebar.js';
+import { renderArchiveView, renderHeatmapView } from '../activityViews';
+import { setDashboardView, useDashboardSnapshot } from '../state/store';
+import { DashboardModals } from '../react/modals';
+import { setRegisteredOnlyFilter } from '../agentViews';
+import { PowerShellPolicyBanner } from '../terminal/chrome';
+import { dismissPsPolicyBanner, openPsPolicyTerminal } from '../terminal/index';
+import { OfficeView } from './officeView';
+import { OtherViews } from './otherViews';
+import { Sidebar } from './sidebar';
 
 function syncActiveView(currentView: ReturnType<typeof useDashboardSnapshot>['currentView']): void {
   if (currentView === 'heatmap') {

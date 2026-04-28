@@ -6,8 +6,9 @@
     "jsx": "react-jsx",
     "target": "ES2022",
     "lib": ["ES2022", "DOM"],
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "allowArbitraryExtensions": true,
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
@@ -30,9 +31,11 @@
     "scripts/**/*.ts",
     "scripts/**/*.tsx",
     "scripts/**/*.js",
+    "scripts/**/*.cjs",
     "*.ts",
     "*.tsx",
-    "*.js"
+    "*.js",
+    "*.cjs"
   ],
   "exclude": [
     "node_modules",

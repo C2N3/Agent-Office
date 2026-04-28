@@ -1,10 +1,10 @@
 
-import { stateConfig, lastAgents, agentStates, agentAvatars } from '../config.js';
-import { animationManager, playAnimation } from '../animationManager.js';
-import { createMiniAvatar, unmountAgentCard } from '../agentCard.js';
-import { requestDynamicResize } from '../agentGridResize.js';
-import { getAgentGridCardElements, removeAgentGridCard } from './cardList.js';
-import { findAgentCardElement } from './elements.js';
+import { stateConfig, lastAgents, agentStates, agentAvatars } from '../config';
+import { animationManager, playAnimation } from '../animationManager';
+import { createMiniAvatar, unmountAgentCard } from '../agentCard';
+import { requestDynamicResize } from '../agentGridResize';
+import { getAgentGridCardElements, removeAgentGridCard } from './cardList';
+import { findAgentCardElement } from './elements';
 
 const MINI_AVATAR_SCALE = 0.5;
 

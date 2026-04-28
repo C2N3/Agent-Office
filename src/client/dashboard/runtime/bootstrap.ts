@@ -1,14 +1,14 @@
 import {
   type DisplayValue,
   state,
-} from '../shared.js';
+} from '../shared';
 import {
   connectSSE,
   removeAgent,
   renderAgentList,
   updateAgent,
-} from '../agentViews.js';
-import { setupOfficeInteractionRuntime } from '../office.js';
+} from '../agentViews';
+import { setupOfficeInteractionRuntime } from '../office';
 import {
   fitActiveTerminal,
   initResizableHandles,
@@ -16,17 +16,17 @@ import {
   initTerminals,
   openTerminalForAgent,
   refreshTerminalProfiles,
-} from '../terminal/index.js';
+} from '../terminal/index';
 import {
   officeOnAgentCreated,
   officeOnAgentRemoved,
   officeOnAgentUpdated,
   setupOfficeRuntime,
-} from '../../office/index.js';
-import { installHoverTooltips } from '../../../shared/uiTooltip.js';
-import { startCentralAgentSync } from '../centralAgents/index.js';
-import { initOverlayControls, initPipControls } from '../app/windowControls.js';
-import { installDashboardRuntimeGlobals } from './globals.js';
+} from '../../office/index';
+import { installHoverTooltips } from '../../../shared/uiTooltip';
+import { startCentralAgentSync } from '../centralAgents/index';
+import { initOverlayControls, initPipControls } from '../app/windowControls';
+import { installDashboardRuntimeGlobals } from './globals';
 
 type DashboardUiError = Error | { message?: string } | DisplayValue;
 

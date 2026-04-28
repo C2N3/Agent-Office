@@ -1,4 +1,4 @@
-const { hasViteAssetQuery } = require('../scripts/vite-asset-query.ts');
+import { hasViteAssetQuery } from '../scripts/vite-asset-query.ts';
 
 describe('vite asset query detection', () => {
   test('treats Vite raw and import params as bundler-handled asset requests', () => {

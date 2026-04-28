@@ -1,4 +1,4 @@
-import { buildGuestInviteLink, parseGuestInviteLink } from '../remoteMode.js';
+import { buildGuestInviteLink, parseGuestInviteLink } from '../remoteMode';
 
 export const HOST_INVITE_LINK_STORAGE_KEY = 'ao-host-invite-link';
 

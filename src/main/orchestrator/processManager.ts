@@ -5,17 +5,10 @@
  *
  * Modeled after CLITrigger's ClaudeManager.startWithSpawn() pattern.
  */
-const { spawn } = require('child_process');
+import { spawn } from 'child_process';
+import { loadTreeKill } from '../nativeDependencies';
 
-let treeKill: (pid: number, signal: string, callback?: (err?: Error) => void) => void;
-try {
-  treeKill = require('tree-kill');
-} catch {
-  // Fallback: use process.kill if tree-kill unavailable
-  treeKill = (pid: number, signal: string) => {
-    try { process.kill(pid, signal as any); } catch {}
-  };
-}
+const treeKill = loadTreeKill();
 
 type DebugLog = (message: string) => void;
 type TaskExecutionEnvironment = 'auto' | 'native' | 'wsl';
@@ -73,7 +66,7 @@ function buildWslSpawn(config: SpawnConfig) {
   };
 }
 
-class ProcessManager {
+export class ProcessManager {
   declare processes: Map<string, ManagedProcess>;
   declare debugLog: DebugLog;
 
@@ -239,5 +232,3 @@ class ProcessManager {
     await Promise.all(taskIds.map((id) => this.kill(id)));
   }
 }
-
-module.exports = { ProcessManager };

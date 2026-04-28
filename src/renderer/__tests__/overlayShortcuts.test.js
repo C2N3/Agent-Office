@@ -1,4 +1,4 @@
-const { isOpenDashboardShortcut } = require('../overlayShortcuts.ts');
+import { isOpenDashboardShortcut } from '../overlayShortcuts.ts';
 
 describe('overlay dashboard shortcuts', () => {
   test('matches Ctrl/Cmd+D without relying on the rendered button id', () => {

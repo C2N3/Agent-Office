@@ -1,11 +1,11 @@
-const {
+import {
   buildProviderResumeCommand,
   getProviderDefinition,
   getProviderIds,
   normalizeProvider,
   providerSupportsActiveSessionFileRecovery,
   providerSupportsTranscriptStats,
-} = require('../src/main/providers/registry');
+} from '../src/main/providers/registry';
 
 describe('provider registry', () => {
   test('lists known providers from one registry', () => {

@@ -7,23 +7,23 @@ import {
   renameAgentNickname,
   terminateAgent,
   unregisterAgent,
-} from '../agentActions.js';
-import { clearUnregisteredAgents, getClearableUnregisteredAgents } from '../agentViews.js';
-import { AgentPanel } from '../react/agentPanel.js';
+} from '../agentActions';
+import { clearUnregisteredAgents, getClearableUnregisteredAgents } from '../agentViews';
+import { AgentPanel } from '../react/agentPanel';
 import type {
   DashboardAgent,
   DashboardAgentHistoryEntry,
-} from '../shared.js';
-import { beginHorizontalPanelResize } from '../terminal/resizable.js';
-import { FloorTabsContainer } from './floorTabsContainer.js';
-import { type DashboardView } from '../state/store.js';
+} from '../shared';
+import { beginHorizontalPanelResize } from '../terminal/resizable';
+import { FloorTabsContainer } from './floorTabsContainer';
+import { type DashboardView } from '../state/store';
 import {
   toggleOverlayWindow,
   togglePipWindow,
   useWindowControlsSnapshot,
-} from '../app/windowControls.js';
-import { registerOfficePopoverHost, updateOfficeInteractionRuntime } from '../office.js';
-import { registerOfficeCanvasHost } from '../../office/index.js';
+} from '../app/windowControls';
+import { registerOfficePopoverHost, updateOfficeInteractionRuntime } from '../office';
+import { registerOfficeCanvasHost } from '../../office/index';
 import styles from './officeView.module.scss';
 
 export function OfficeView({

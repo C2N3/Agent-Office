@@ -1,10 +1,11 @@
-const fs = require('fs');
-const path = require('path');
-const { ipcMain, screen } = require('electron');
-const { electronIpcChannels, dashboardIpcChannels } = require('../../shared/contracts/ipc');
-const { appendChatMessage, clearChatHistory, loadChatHistory } = require('../taskChatStore');
+import fs from 'fs';
+import path from 'path';
+import { ipcMain, screen } from 'electron';
+import { electronIpcChannels, dashboardIpcChannels } from '../../shared/contracts/ipc';
+import { appendChatMessage, clearChatHistory, loadChatHistory } from '../taskChatStore';
+import { resolveFromModule } from '../../runtime/module';
 
-function registerWindowHandlers({
+export function registerWindowHandlers({
   agentManager,
   windowManager,
   debugLog,
@@ -30,7 +31,15 @@ function registerWindowHandlers({
 
   ipcMain.on(electronIpcChannels.getAvatars, (event) => {
     try {
-      const avatarCatalogPath = path.join(__dirname, '..', '..', '..', 'assets', 'shared', 'avatars.json');
+      const avatarCatalogPath = resolveFromModule(
+        import.meta.url,
+        '..',
+        '..',
+        '..',
+        'assets',
+        'shared',
+        'avatars.json',
+      );
       const catalog = JSON.parse(fs.readFileSync(avatarCatalogPath, 'utf8'));
       const allFiles = Array.isArray(catalog) ? catalog : (catalog?.allFiles || []);
       event.reply(electronIpcChannels.avatarsResponse, allFiles);
@@ -182,7 +191,3 @@ function registerWindowHandlers({
     return { success: true };
   });
 }
-
-module.exports = {
-  registerWindowHandlers,
-};

@@ -1,9 +1,9 @@
-const {
+import {
   buildGuestInviteLink,
   flagsFromRemoteMode,
   modeUsesWorkerToken,
   parseGuestInviteLink,
-} = require('../src/client/dashboard/remoteMode.ts');
+} from '../src/client/dashboard/remoteMode.ts';
 
 describe('remoteMode helpers', () => {
   test('buildGuestInviteLink uses the local app origin and includes the central server origin in the fragment', () => {

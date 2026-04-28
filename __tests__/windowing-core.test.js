@@ -10,8 +10,8 @@ jest.mock('../src/dashboardServer/index.ts', () => ({
   startServer: jest.fn(() => ({ close: jest.fn(), listening: true })),
 }));
 
-const dashboardServer = require('../src/dashboardServer/index.ts');
-const { createWindowManagerCore } = require('../src/main/windowing/core');
+import * as dashboardServer from '../src/dashboardServer/index.ts';
+import { createWindowManagerCore } from '../src/main/windowing/core';
 
 function createBrowserWindowMock() {
   return {
@@ -101,14 +101,21 @@ describe('windowing core', () => {
     windowManager.createOverlayWindow();
 
     const preloadPaths = BrowserWindow.mock.calls.map(([options]) => options.webPreferences.preload);
+    const overlayWebPreferences = BrowserWindow.mock.calls[2][0].webPreferences;
 
     expect(preloadPaths.map((preloadPath) => path.basename(preloadPath))).toEqual([
       'dashboardPreload.js',
       'pipPreload.js',
-      'overlayPreload.js',
+      'overlayPreload.mjs',
     ]);
+    expect(overlayWebPreferences).toEqual(expect.objectContaining({
+      contextIsolation: true,
+      sandbox: false,
+    }));
     preloadPaths.forEach((preloadPath) => {
-      const sourcePath = preloadPath.replace(/\.js$/, '.ts');
+      const sourcePath = preloadPath.endsWith('.mjs')
+        ? preloadPath.replace(/\.mjs$/, '.mts')
+        : preloadPath.replace(/\.js$/, '.ts');
       expect(fs.existsSync(preloadPath) || fs.existsSync(sourcePath)).toBe(true);
     });
   });

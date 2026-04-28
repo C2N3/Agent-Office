@@ -1,6 +1,7 @@
 
-async function launchExternalResumeTerminal({ cwd, resumeCommand, terminalProfileService }) {
-  const { spawn, execFile } = require('child_process');
+import * as childProcess from 'child_process';
+
+export async function launchExternalResumeTerminal({ cwd, resumeCommand, terminalProfileService }) {
   const trimmedResumeCommand = String(resumeCommand || '').replace(/\r/g, '').trim();
   if (!trimmedResumeCommand) {
     return { success: false, error: 'Missing resume command' };
@@ -16,7 +17,7 @@ async function launchExternalResumeTerminal({ cwd, resumeCommand, terminalProfil
       trimmedResumeCommand,
     ].filter(Boolean).join('; ');
 
-    const child = spawn('cmd.exe', ['/c', 'start', '', powerShellPath, '-NoExit', '-Command', powerShellScript], {
+    const child = childProcess.spawn('cmd.exe', ['/c', 'start', '', powerShellPath, '-NoExit', '-Command', powerShellScript], {
       cwd: cwd || undefined,
       detached: true,
       stdio: 'ignore',
@@ -35,7 +36,7 @@ async function launchExternalResumeTerminal({ cwd, resumeCommand, terminalProfil
     ].join('\n');
 
     await new Promise((resolve, reject) => {
-      execFile('osascript', ['-e', macScript], { timeout: 5000 }, (error) => {
+      childProcess.execFile('osascript', ['-e', macScript], { timeout: 5000 }, (error) => {
         if (error) reject(error);
         else resolve(null);
       });
@@ -43,7 +44,7 @@ async function launchExternalResumeTerminal({ cwd, resumeCommand, terminalProfil
     return { success: true };
   }
 
-  const linuxLaunchers = [
+  const linuxLaunchers: Array<[string, string[]]> = [
     ['x-terminal-emulator', ['-e', `${cwd ? `cd ${JSON.stringify(cwd)} && ` : ''}${trimmedResumeCommand}`]],
     ['gnome-terminal', ['--', 'bash', '-lc', `${cwd ? `cd ${JSON.stringify(cwd)} && ` : ''}${trimmedResumeCommand}; exec bash -l`]],
     ['konsole', ['-e', 'bash', '-lc', `${cwd ? `cd ${JSON.stringify(cwd)} && ` : ''}${trimmedResumeCommand}; exec bash -l`]],
@@ -53,7 +54,7 @@ async function launchExternalResumeTerminal({ cwd, resumeCommand, terminalProfil
 
   for (const [command, args] of linuxLaunchers) {
     try {
-      const child = spawn(command, args, {
+      const child = childProcess.spawn(command, args, {
         cwd: cwd || undefined,
         detached: true,
         stdio: 'ignore',
@@ -68,5 +69,3 @@ async function launchExternalResumeTerminal({ cwd, resumeCommand, terminalProfil
 
   return { success: false, error: 'No supported terminal launcher found' };
 }
-
-module.exports = { launchExternalResumeTerminal };

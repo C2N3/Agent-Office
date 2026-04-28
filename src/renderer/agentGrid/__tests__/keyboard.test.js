@@ -1,4 +1,4 @@
-const { installAgentGridKeyboardNavigation } = require('../keyboard.ts');
+import { installAgentGridKeyboardNavigation } from '../keyboard.ts';
 
 function createAgentCard(agentId) {
   return {

@@ -3,7 +3,7 @@
  * Convert technical errors into user-friendly messages
  */
 
-const ErrorMessages = {
+export const ErrorMessages = {
   // File I/O errors
   'ENOENT': {
     userMessage: 'Could not find the file',
@@ -59,7 +59,7 @@ const ErrorMessages = {
 };
 
 // Error code messages
-const ErrorCodeMessages = {
+export const ErrorCodeMessages = {
   'E001': {
     short: 'Could not find config file',
     detail: 'settings.json does not exist. Create a new one?',
@@ -153,20 +153,13 @@ const ErrorCodeMessages = {
 /**
  * Look up message by error code
  */
-function getMessageByErrorCode(errorCode) {
+export function getMessageByErrorCode(errorCode) {
   return ErrorCodeMessages[errorCode] || ErrorCodeMessages['E000'];
 }
 
 /**
  * Look up message by error name
  */
-function getMessageByErrorName(errorName) {
+export function getMessageByErrorName(errorName) {
   return ErrorMessages[errorName] || ErrorMessages['default'];
 }
-
-module.exports = {
-  ErrorMessages,
-  ErrorCodeMessages,
-  getMessageByErrorCode,
-  getMessageByErrorName
-};

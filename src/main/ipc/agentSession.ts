@@ -1,8 +1,8 @@
-const { ipcMain } = require('electron');
-const { dashboardIpcChannels } = require('../../shared/contracts/ipc');
-const { terminateAgentSession } = require('../sessionTermination');
+import { ipcMain } from 'electron';
+import { dashboardIpcChannels } from '../../shared/contracts/ipc';
+import { terminateAgentSession } from '../sessionTermination';
 
-function registerAgentSessionHandlers({
+export function registerAgentSessionHandlers({
   agentManager,
   agentRegistry,
   sessionPids,
@@ -27,7 +27,3 @@ function registerAgentSessionHandlers({
     }
   });
 }
-
-module.exports = {
-  registerAgentSessionHandlers,
-};

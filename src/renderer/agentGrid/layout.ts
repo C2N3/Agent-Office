@@ -1,12 +1,12 @@
-import { lastAgents } from '../config.js';
-import { unmountAgentCard } from '../agentCard.js';
-import { getAgentGridCardElements } from './cardList.js';
+import { lastAgents } from '../config';
+import { unmountAgentCard } from '../agentCard';
+import { getAgentGridCardElements } from './cardList';
 import {
   applyAgentGridLayout,
   showEmptyAgentGridLayout,
   type AgentGridCardPlacement,
-} from './layoutHost.js';
-import { findParentCard, isSatelliteCandidate } from './satellites.js';
+} from './layoutHost';
+import { findParentCard, isSatelliteCandidate } from './satellites';
 
 type AgentGridData = {
   id?: string;

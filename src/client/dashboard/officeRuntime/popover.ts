@@ -3,8 +3,8 @@ import {
   escapeText,
   getDashboardAPI,
   state,
-} from '../shared.js';
-import { OFFICE, officeCharacters } from '../../office/index.js';
+} from '../shared';
+import { OFFICE, officeCharacters } from '../../office/index';
 
 let officePopoverHost: HTMLDivElement | null = null;
 let popoverActionListener: ((event: MouseEvent) => void) | null = null;

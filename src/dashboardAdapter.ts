@@ -3,10 +3,10 @@
  * Converts Agent-Office agent format to Dashboard format
  */
 
-import type { DashboardAgent } from './shared/contracts/index.js';
+import type { DashboardAgent } from './shared/contracts/index';
 
-const path = require('path');
-const { sanitizeProjectPath } = require('./utils');
+import path from 'path';
+import { sanitizeProjectPath } from './utils';
 
 type TokenUsage = {
   inputTokens?: number;
@@ -180,10 +180,10 @@ function adaptAgentToDashboard(pixelAgent: PixelAgent): DashboardAgent & { token
   };
 }
 
-module.exports = {
+export {
   adaptAgentToDashboard,
   mapPixelStateToDashboardState,
   extractProjectName,
   STATE_MAP,
-  DEFAULT_STATE
+  DEFAULT_STATE,
 };

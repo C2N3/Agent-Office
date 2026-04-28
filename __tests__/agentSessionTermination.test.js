@@ -1,7 +1,7 @@
 jest.mock('tree-kill', () => jest.fn((_pid, _signal, callback) => callback && callback()));
 
 const treeKill = require('tree-kill');
-const { terminateAgentSession } = require('../src/main/sessionTermination');
+import { terminateAgentSession } from '../src/main/sessionTermination';
 
 describe('agent session termination', () => {
   beforeEach(() => {

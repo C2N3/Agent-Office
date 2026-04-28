@@ -4,7 +4,7 @@
  */
 
 // Error categories
-const ErrorCategory = {
+export const ErrorCategory = {
   FILE_IO: 'FILE_IO',
   NETWORK: 'NETWORK',
   PARSE: 'PARSE',
@@ -16,14 +16,9 @@ const ErrorCategory = {
 };
 
 // Error severity levels
-const ErrorSeverity = {
+export const ErrorSeverity = {
   FATAL: 'fatal',      // App cannot continue running
   ERROR: 'error',      // Feature is not working
   WARNING: 'warning',  // Feature has limited functionality
   INFO: 'info'         // Informational
-};
-
-module.exports = {
-  ErrorCategory,
-  ErrorSeverity
 };

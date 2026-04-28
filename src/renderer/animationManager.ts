@@ -2,7 +2,7 @@
  * Animation Manager — rAF loop, drawFrame, playAnimation
  */
 
-import { SHEET, ANIM_SEQUENCES, agentStates } from './config.js';
+import { SHEET, ANIM_SEQUENCES, agentStates } from './config';
 
 // Cache sprite sheet Y-offsets for images taller than expected (e.g. AI generates 2528 instead of 2520)
 // Offset is stored in CSS display pixels (base scale, not source pixels)

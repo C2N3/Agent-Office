@@ -1,4 +1,4 @@
-import type { DashboardAgent } from './dashboard/shared.js';
+import type { DashboardAgent } from './dashboard/shared';
 import {
   initOffice,
   officeOnAgentCreated,
@@ -6,10 +6,10 @@ import {
   officeOnAgentUpdated,
   stopOffice,
   resumeOffice,
-} from './office/index.js';
-import { AVATAR_FILES, loadAvatarFiles, loadSpriteFrames } from './office/officeConfig.js';
-import { loadAllOfficeSkins } from './office/officeSprite.js';
-import { createCharacterRenderer } from './overlay/characters.js';
+} from './office/index';
+import { AVATAR_FILES, loadAvatarFiles, loadSpriteFrames } from './office/officeConfig';
+import { loadAllOfficeSkins } from './office/officeSprite';
+import { createCharacterRenderer } from './overlay/characters';
 
 // ─── Types ───
 interface OverlayAgent {

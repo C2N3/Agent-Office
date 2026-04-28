@@ -1,5 +1,5 @@
 const fs = require('fs');
-const { getEnabledProviders } = require('../src/main/providerConfig');
+import { getEnabledProviders } from '../src/main/providerConfig';
 
 describe('providerConfig', () => {
   beforeEach(() => {

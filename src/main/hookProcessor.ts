@@ -3,9 +3,9 @@
  * Maintains the existing hookProcessor API while delegating to the shared event processor.
  */
 
-const { createEventProcessor } = require('./eventProcessor');
+import { createEventProcessor } from './eventProcessor';
 
-function normalizeHookEvent(data) {
+export function normalizeHookEvent(data) {
   const sessionId = data.session_id || data.sessionId;
   const base = {
     sessionId,
@@ -119,7 +119,7 @@ function normalizeHookEvent(data) {
   }
 }
 
-function createHookProcessor({ agentManager, agentRegistry, sessionPids, debugLog, detectClaudePidByTranscript }) {
+export function createHookProcessor({ agentManager, agentRegistry, sessionPids, debugLog, detectClaudePidByTranscript }) {
   let taskCompletionHandler = null;
   const processor = createEventProcessor({
     agentManager,
@@ -151,5 +151,3 @@ function createHookProcessor({ agentManager, agentRegistry, sessionPids, debugLo
     get firstPreToolUseDone() { return processor.firstToolUseDone; },
   };
 }
-
-module.exports = { createHookProcessor, normalizeHookEvent };

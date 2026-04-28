@@ -2,8 +2,8 @@ const path = require('path');
 const fs = require('fs');
 const { ipcMain } = require('electron');
 
-const { electronIpcChannels } = require('../src/shared/contracts/ipc.ts');
-const { registerWindowHandlers } = require('../src/main/ipc/window.ts');
+import { electronIpcChannels } from '../src/shared/contracts/ipc.ts';
+import { registerWindowHandlers } from '../src/main/ipc/window.ts';
 
 jest.mock('fs');
 

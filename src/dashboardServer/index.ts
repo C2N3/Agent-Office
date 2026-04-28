@@ -1,12 +1,14 @@
 import http from 'http';
-import { PORT } from './constants.js';
+import { isDirectEntrypoint } from '../runtime/module';
+import { PORT } from './constants';
 import {
   attachAgentManagerBroadcasts,
   attachOrchestratorBroadcasts,
   broadcastSSE,
   broadcastUpdate,
-} from './broadcast.js';
+} from './broadcast';
 import {
+  getClients,
   getRefs,
   setAgentManager as setAgentManagerRef,
   setAgentRegistry as setAgentRegistryRef,
@@ -18,10 +20,10 @@ import {
   setHeatmapScanner as setHeatmapScannerRef,
   setSessionScanner as setSessionScannerRef,
   setAppMeta as setAppMetaRef,
-} from './context.js';
-import { handleRequest } from './routes.js';
-import { attachWebSocketUpgrade } from './websocket.js';
-import { calculateStats as calculateStatsImpl } from './stats.js';
+} from './context';
+import { handleRequest } from './routes';
+import { attachWebSocketUpgrade } from './websocket';
+import { calculateStats as calculateStatsImpl } from './stats';
 
 const server = http.createServer(handleRequest as any);
 attachWebSocketUpgrade(server as any);
@@ -90,7 +92,7 @@ export function startServer(): any {
 }
 
 process.on('SIGINT', () => {
-  const { wsClients } = require('./context.js').getClients();
+  const { wsClients } = getClients();
   wsClients.forEach((client: any) => {
     try {
       client.close();
@@ -111,6 +113,6 @@ export function calculateStats() {
   return calculateStatsImpl(getRefs().agentManager);
 }
 
-if (require.main === module) {
+if (isDirectEntrypoint(import.meta.url)) {
   startServer();
 }

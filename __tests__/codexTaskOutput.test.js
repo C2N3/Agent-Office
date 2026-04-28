@@ -1,5 +1,5 @@
-const { CodexAdapter } = require('../src/main/orchestrator/adapters/codexAdapter');
-const { OutputParser } = require('../src/main/orchestrator/outputParser');
+import { CodexAdapter } from '../src/main/orchestrator/adapters/codexAdapter';
+import { OutputParser } from '../src/main/orchestrator/outputParser';
 
 describe('Codex task output', () => {
   test('runs Codex exec in JSON mode for structured task chat output', () => {

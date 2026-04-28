@@ -1,9 +1,9 @@
-const {
+import {
   buildAgentCardShellModel,
   getAgentCardNameText,
   getAgentCardProjectLabel,
   getAgentCardTypeClass,
-} = require('../model.ts');
+} from '../model.ts';
 
 describe('overlay agent card shell model', () => {
   test('builds project, nickname, avatar, and focus labels for the React shell', () => {

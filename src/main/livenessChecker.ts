@@ -3,12 +3,14 @@
  * PID detection, session-file re-verification, 2-second interval process liveness check
  */
 
-const path = require('path');
-const os = require('os');
-const fs = require('fs');
-const { hasActiveOrchestratorTask, removeOrOffline } = require('./liveness/agents');
-const { getProviderDefinition, normalizeProvider } = require('./providers/registry');
-const { sharedSessionAllowlist } = require('./orchestrator/sessionAllowlist');
+import { execFile } from 'child_process';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import { hasActiveOrchestratorTask, removeOrOffline } from './liveness/agents';
+import { sharedSessionAllowlist } from './orchestrator/sessionAllowlist';
+import { getProviderDefinition, normalizeProvider } from './providers/registry';
+import { resolveFromModule } from '../runtime/module';
 
 const sessionPids = new Map(); // sessionId → actual CLI process PID
 
@@ -27,7 +29,6 @@ async function checkLivenessTier1(agentId, pid) {
  * Windows: Restart Manager API (find-file-owner.ps1)
  */
 function detectProviderPidBySessionFile(provider, jsonlPath, callback) {
-  const { execFile } = require('child_process');
   const resolvedProvider = normalizeProvider(provider, null);
   if (!resolvedProvider) {
     callback(null);
@@ -44,7 +45,7 @@ function detectProviderPidBySessionFile(provider, jsonlPath, callback) {
     : jsonlPath;
 
   if (process.platform === 'win32') {
-    const scriptPath = path.join(__dirname, '..', 'find-file-owner.ps1');
+    const scriptPath = resolveFromModule(import.meta.url, '..', 'find-file-owner.ps1');
     execFile('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', scriptPath, '-FilePath', resolved],
       { timeout: 5000 }, (err, stdout) => {
       if (!err && stdout) {
@@ -69,7 +70,6 @@ function detectProviderPidBySessionFile(provider, jsonlPath, callback) {
 }
 
 function detectProviderPidsFallback(provider, callback) {
-  const { execFile } = require('child_process');
   const definition = getProviderDefinition(provider);
   const providerPattern = definition.processPattern;
 
@@ -138,7 +138,6 @@ function retryPidDetection(sessionId, provider, agentManager, debugLog) {
  * Count running provider CLI processes.
  */
 function countProviderProcesses(provider, callback) {
-  const { execFile } = require('child_process');
   const definition = getProviderDefinition(provider);
   const providerPattern = definition.processPattern;
   if (process.platform === 'win32') {
@@ -318,7 +317,7 @@ function startLivenessChecker({ agentManager, agentRegistry, taskStore, terminal
   return { zombieSweepId, livenessCheckId };
 }
 
-module.exports = {
+export {
   sessionPids,
   startLivenessChecker,
   detectClaudePidByTranscript,

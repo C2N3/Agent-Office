@@ -1,9 +1,9 @@
-const fs = require('fs');
-const path = require('path');
-const { sanitizeProjectPath } = require('../../utils');
-import type { DashboardWorkspace } from '../../shared/contracts/index.js';
+import fs from 'fs';
+import path from 'path';
+import { sanitizeProjectPath } from '../../utils';
+import type { DashboardWorkspace } from '../../shared/contracts/index';
 
-function mergeWorkspace(manager, workspace: DashboardWorkspace) {
+export function mergeWorkspace(manager, workspace: DashboardWorkspace) {
   if (!workspace || typeof workspace !== 'object') {
     throw new Error('Workspace metadata is required');
   }
@@ -63,7 +63,7 @@ function mergeWorkspace(manager, workspace: DashboardWorkspace) {
   }
 }
 
-function removeWorkspace(manager, workspace: DashboardWorkspace, options: { deleteBranch?: boolean } = {}) {
+export function removeWorkspace(manager, workspace: DashboardWorkspace, options: { deleteBranch?: boolean } = {}) {
   if (!workspace || typeof workspace !== 'object') {
     throw new Error('Workspace metadata is required');
   }
@@ -93,8 +93,3 @@ function removeWorkspace(manager, workspace: DashboardWorkspace, options: { dele
     worktreePath,
   };
 }
-
-module.exports = {
-  mergeWorkspace,
-  removeWorkspace,
-};

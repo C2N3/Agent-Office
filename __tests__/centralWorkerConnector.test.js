@@ -64,7 +64,7 @@ class FakeWebSocket {
 
 global.WebSocket = FakeWebSocket;
 
-const centralWorkerModule = require('../src/main/centralWorker/connector');
+import * as centralWorkerModule from '../src/main/centralWorker/connector';
 
 const CentralWorkerConnector = centralWorkerModule.CentralWorkerConnector || centralWorkerModule.default;
 const buildWorkerWebSocketUrl =

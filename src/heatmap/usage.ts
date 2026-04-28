@@ -22,7 +22,7 @@ function calculateTokenCost(usage, model) {
   return (inputTokens * pricing.inputPerMillion + outputTokens * pricing.outputPerMillion) / 1_000_000;
 }
 
-function normalizeTokenUsage(rawUsage) {
+export function normalizeTokenUsage(rawUsage) {
   if (!rawUsage) return null;
   return {
     input: rawUsage.input_tokens ?? rawUsage.inputTokens ?? rawUsage.input ?? 0,
@@ -32,7 +32,7 @@ function normalizeTokenUsage(rawUsage) {
   };
 }
 
-function applyUsage(day, usage, model) {
+export function applyUsage(day, usage, model) {
   if (!usage) return;
 
   const resolvedModel = normalizeModelName(model);
@@ -57,5 +57,3 @@ function applyUsage(day, usage, model) {
     day.byModel[model].estimatedCost = roundCost(day.byModel[model].estimatedCost + entryCost);
   }
 }
-
-module.exports = { applyUsage, normalizeTokenUsage };

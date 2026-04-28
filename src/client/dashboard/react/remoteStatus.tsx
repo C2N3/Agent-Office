@@ -1,5 +1,5 @@
 import React, { type ReactElement } from 'react';
-import type { RemoteSnapshot } from '../remote/status.js';
+import type { RemoteSnapshot } from '../remote/status';
 
 function workerStatusClass(status?: string): string {
   if (status === 'connected') return 'online';

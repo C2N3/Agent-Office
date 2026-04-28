@@ -1,4 +1,4 @@
-import type { RemoteMode } from './config.js';
+import type { RemoteMode } from './config';
 
 type WorkerConnectionAuthInput = {
   remoteMode: RemoteMode;

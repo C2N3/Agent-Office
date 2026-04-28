@@ -1,4 +1,4 @@
-const { resolveAgentContextMenuState } = require('../overlayContextMenu.ts');
+import { resolveAgentContextMenuState } from '../overlayContextMenu.ts';
 
 function createAgentCard(agentId) {
   const element = {

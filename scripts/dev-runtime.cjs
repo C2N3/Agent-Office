@@ -2,14 +2,14 @@
 
 const path = require('path');
 const { spawn, spawnSync } = require('child_process');
-const { createRecursiveWatcher } = require('./watch-utils');
-const { startViteDevServer } = require('./vite-dev-server');
-const { createFileChangeClassifier } = require('./dev-runtime/file-change');
+const { createRecursiveWatcher } = require('./watch-utils.cjs');
+const { startViteDevServer } = require('./vite-dev-server.cjs');
+const { createFileChangeClassifier } = require('./dev-runtime/file-change.cjs');
 
 const projectRoot = path.join(__dirname, '..');
 const browserRoot = path.join(projectRoot, 'src', 'browser');
-const buildScript = path.join(__dirname, 'build-types.js');
-const electronScript = path.join(__dirname, 'run-electron.js');
+const buildScript = path.join(__dirname, 'build-types.cjs');
+const electronScript = path.join(__dirname, 'run-electron.cjs');
 
 const watchTargets = [
   path.join(projectRoot, 'src'),

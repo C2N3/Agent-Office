@@ -1,4 +1,4 @@
-import type { DebugLog } from './types.js';
+import type { DebugLog } from './types';
 
 const PROTOCOL_VERSION = 1;
 

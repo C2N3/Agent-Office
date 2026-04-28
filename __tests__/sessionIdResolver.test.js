@@ -2,12 +2,12 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const {
+import {
   resolveResumeSessionId,
   readCodexSessionIdFromTranscript,
   findCodexSessionIdFromRoots,
   extractCodexSessionIdFromTranscriptPath,
-} = require('../src/main/sessionIdResolver');
+} from '../src/main/sessionIdResolver';
 
 describe('sessionIdResolver', () => {
   let tempDir;

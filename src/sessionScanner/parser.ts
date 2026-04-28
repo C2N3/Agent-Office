@@ -1,21 +1,21 @@
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
-const {
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import {
     calculateTokenCost,
     getTotalInputTokens,
     normalizeTokenUsage,
     roundCost,
-} = require('../pricing');
+} from '../pricing';
 
-function resolveTranscriptPath(filePath) {
+export function resolveTranscriptPath(filePath) {
     if (!filePath) return null;
     return filePath.startsWith('~')
         ? path.join(os.homedir(), filePath.slice(1))
         : filePath;
 }
 
-function listJsonlFiles(dir) {
+export function listJsonlFiles(dir) {
     if (!dir || !fs.existsSync(dir)) return [];
 
     const entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -33,7 +33,7 @@ function listJsonlFiles(dir) {
     return files;
 }
 
-function parseJsonLines(content) {
+export function parseJsonLines(content) {
     return content
         .split(/\r?\n/)
         .map((line) => line.trim())
@@ -48,7 +48,7 @@ function parseJsonLines(content) {
         .filter(Boolean);
 }
 
-function getEntrySessionId(entry) {
+export function getEntrySessionId(entry) {
     return entry?.sessionId
         || entry?.session_id
         || entry?.thread_id
@@ -80,7 +80,7 @@ function makeEmptyStats() {
     };
 }
 
-function detectSessionFormat(entries, filePath) {
+export function detectSessionFormat(entries, filePath) {
     const normalizedPath = filePath.replace(/\\/g, '/');
     if (normalizedPath.includes('/.codex/sessions/')) {
         return 'codex';
@@ -104,7 +104,7 @@ function finalizeCost(stats) {
     return stats;
 }
 
-function parseClaudeEntries(entries) {
+export function parseClaudeEntries(entries) {
     const stats = makeEmptyStats();
 
     for (const entry of entries) {
@@ -152,7 +152,7 @@ function parseClaudeEntries(entries) {
     return finalizeCost(stats);
 }
 
-function parseCodexEntries(entries) {
+export function parseCodexEntries(entries) {
     const stats = makeEmptyStats();
     let turnHasAssistantMessage = false;
     let turnHasUserMessage = false;
@@ -242,13 +242,3 @@ function parseCodexEntries(entries) {
 
     return finalizeCost(stats);
 }
-
-module.exports = {
-  detectSessionFormat,
-  getEntrySessionId,
-  listJsonlFiles,
-  parseClaudeEntries,
-  parseCodexEntries,
-  parseJsonLines,
-  resolveTranscriptPath,
-};

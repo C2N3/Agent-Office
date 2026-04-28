@@ -1,4 +1,4 @@
-import type { DashboardAgent } from '../shared.js';
+import type { DashboardAgent } from '../shared';
 
 type OwnershipBadge = {
   className: string;

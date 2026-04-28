@@ -1,7 +1,8 @@
+import { BrowserWindow, screen, shell } from 'electron';
+import { resolveFromModule } from '../../../runtime/module';
+import { saveUiState } from '../../uiState';
 
-const { BrowserWindow, screen, shell } = require('electron');
-const path = require('path');
-const { saveUiState } = require('../../uiState');
+const moduleUrl = import.meta.url;
 
 function createSecondaryWindowControls(options) {
   const {
@@ -63,7 +64,7 @@ function createSecondaryWindowControls(options) {
         nodeIntegration: false,
         contextIsolation: true,
         sandbox: false,
-        preload: path.join(__dirname, '..', '..', '..', 'overlayPreload.js'),
+        preload: resolveFromModule(moduleUrl, '..', '..', '..', 'overlayPreload.mjs'),
       },
     });
 
@@ -115,7 +116,7 @@ function createSecondaryWindowControls(options) {
           nodeIntegration: false,
           contextIsolation: true,
           sandbox: false,
-          preload: path.join(__dirname, '..', '..', '..', 'dashboardPreload.js'),
+          preload: resolveFromModule(moduleUrl, '..', '..', '..', 'dashboardPreload.js'),
         },
       });
 
@@ -182,7 +183,7 @@ function createSecondaryWindowControls(options) {
         nodeIntegration: false,
         contextIsolation: true,
         sandbox: false,
-        preload: path.join(__dirname, '..', '..', '..', 'pipPreload.js'),
+        preload: resolveFromModule(moduleUrl, '..', '..', '..', 'pipPreload.js'),
       },
     });
 
@@ -247,7 +248,7 @@ function createSecondaryWindowControls(options) {
         nodeIntegration: false,
         contextIsolation: true,
         sandbox: false,
-        preload: path.join(__dirname, '..', '..', '..', 'taskChatPreload.js'),
+        preload: resolveFromModule(moduleUrl, '..', '..', '..', 'taskChatPreload.js'),
         additionalArguments: [`--task-chat-agent=${agentRegistryId}`],
       },
     });
@@ -330,4 +331,4 @@ function createSecondaryWindowControls(options) {
   };
 }
 
-module.exports = { createSecondaryWindowControls };
+export { createSecondaryWindowControls };

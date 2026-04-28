@@ -1,7 +1,7 @@
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
-const { execFileSync } = require('child_process');
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import { execFileSync } from 'child_process';
 import type { ExecFileSyncOptionsWithStringEncoding } from 'child_process';
 
 type CodexSessionRootsOptions = {
@@ -17,11 +17,13 @@ type CodexSessionRootsOptions = {
   ) => string | Buffer;
 };
 
-function getLocalCodexSessionsRoot(homedir = os.homedir()) {
+type RunExec = NonNullable<CodexSessionRootsOptions['runExec']>;
+
+export function getLocalCodexSessionsRoot(homedir = os.homedir()) {
   return path.join(homedir, '.codex', 'sessions');
 }
 
-function getWindowsAccessibleWslCodexRoot(runExec = execFileSync) {
+export function getWindowsAccessibleWslCodexRoot(runExec: RunExec = execFileSync as RunExec) {
   if (process.platform !== 'win32') return null;
 
   try {
@@ -36,7 +38,7 @@ function getWindowsAccessibleWslCodexRoot(runExec = execFileSync) {
   }
 }
 
-function getCodexSessionRoots(options: CodexSessionRootsOptions = {}) {
+export function getCodexSessionRoots(options: CodexSessionRootsOptions = {}) {
   const env = options.env || process.env;
   const existsSync = options.existsSync || fs.existsSync;
   const localRoot = options.localRoot || getLocalCodexSessionsRoot(options.homedir);
@@ -57,9 +59,3 @@ function getCodexSessionRoots(options: CodexSessionRootsOptions = {}) {
     return existsSync(root);
   });
 }
-
-module.exports = {
-  getCodexSessionRoots,
-  getLocalCodexSessionsRoot,
-  getWindowsAccessibleWslCodexRoot,
-};

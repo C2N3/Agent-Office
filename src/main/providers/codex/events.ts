@@ -1,9 +1,9 @@
 
-function getCodexWorkspacePath(data) {
+export function getCodexWorkspacePath(data) {
   return data.cwd || data.workspacePath || data.workspace_path || '';
 }
 
-function getCodexSubagentInfo(data) {
+export function getCodexSubagentInfo(data) {
   const source = data && typeof data.source === 'object' ? data.source : null;
   const threadSpawn = source?.subagent?.thread_spawn || null;
   return {
@@ -13,7 +13,7 @@ function getCodexSubagentInfo(data) {
   };
 }
 
-function normalizeCodexEvent(data) {
+export function normalizeCodexEvent(data) {
   const sessionId = data.session_id || data.sessionId || data.thread_id;
   const subagentInfo = getCodexSubagentInfo(data);
   const base = {
@@ -111,5 +111,3 @@ function extractCodexToolInput(item) {
   if (item.type === 'file_change') return { path: item.path || null };
   return null;
 }
-
-module.exports = { getCodexSubagentInfo, getCodexWorkspacePath, normalizeCodexEvent };

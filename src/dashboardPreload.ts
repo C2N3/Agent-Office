@@ -5,8 +5,8 @@ import type {
   DashboardAgentRecord,
   DashboardAgentRemoval,
   DashboardOpenOptions,
-} from './shared/contracts/index.js';
-import { dashboardIpcChannels } from './shared/contracts/index.js';
+} from './shared/contracts/index';
+import { dashboardIpcChannels } from './shared/contracts/index';
 
 type Cleanup = () => void;
 type DashboardTupleArg = string | number;

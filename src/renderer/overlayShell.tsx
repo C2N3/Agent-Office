@@ -1,10 +1,10 @@
 import React, { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { resolveAgentContextMenuState } from './overlayContextMenu.js';
-import { registerAgentGridElements } from './agentGrid/elements.js';
-import { installAgentGridKeyboardNavigation } from './agentGrid/keyboard.js';
-import { registerOverlayShellController, type OverlayContextMenuState } from './overlayShellController.js';
-import { isOpenDashboardShortcut } from './overlayShortcuts.js';
+import { resolveAgentContextMenuState } from './overlayContextMenu';
+import { registerAgentGridElements } from './agentGrid/elements';
+import { installAgentGridKeyboardNavigation } from './agentGrid/keyboard';
+import { registerOverlayShellController, type OverlayContextMenuState } from './overlayShellController';
+import { isOpenDashboardShortcut } from './overlayShortcuts';
 
 const AgentGridShell = memo(function AgentGridShell({
   onAgentContextMenu,

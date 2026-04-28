@@ -19,8 +19,8 @@ jest.mock('../src/main/providers/codex/paths', () => ({
 
 const fs = require('fs');
 const path = require('path');
-const { getCodexSessionRoots } = require('../src/main/providers/codex/paths');
-const { createCodexSessionMonitor } = require('../src/main/providers/codex/sessionMonitor');
+import { getCodexSessionRoots } from '../src/main/providers/codex/paths';
+import { createCodexSessionMonitor } from '../src/main/providers/codex/sessionMonitor';
 
 describe('codexSessionMonitor', () => {
   beforeEach(() => {

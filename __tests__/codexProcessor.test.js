@@ -3,7 +3,7 @@
  * Codex exec --json event normalization and agent state transitions.
  */
 
-const { createCodexProcessor, normalizeCodexEvent } = require('../src/main/providers/codex/processor');
+import { createCodexProcessor, normalizeCodexEvent } from '../src/main/providers/codex/processor';
 
 function createMockAgentManager() {
   const agents = new Map();

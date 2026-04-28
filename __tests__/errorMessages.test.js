@@ -1,9 +1,9 @@
-const {
+import {
   ErrorMessages,
   ErrorCodeMessages,
   getMessageByErrorCode,
   getMessageByErrorName,
-} = require('../src/errorMessages');
+} from '../src/errorMessages';
 
 describe('ErrorMessages', () => {
   test('should have required fields for every entry', () => {

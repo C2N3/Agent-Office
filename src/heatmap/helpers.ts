@@ -1,13 +1,11 @@
-'use strict';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import { getCodexSessionRoots } from '../main/providers/codex/paths';
+import { loadPersisted, pruneOldDays, savePersisted } from './persistence';
+import { scanFile } from './scan/file';
 
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
-const { getCodexSessionRoots } = require('../main/providers/codex/paths');
-const { pruneOldDays, savePersisted, loadPersisted } = require('./persistence');
-const { scanFile } = require('./scan/file');
-
-function listJsonlFiles(dir) {
+export function listJsonlFiles(dir) {
   if (!dir || !fs.existsSync(dir)) return [];
 
   const entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -23,7 +21,7 @@ function listJsonlFiles(dir) {
   return files;
 }
 
-function getRoots() {
+export function getRoots() {
   const roots = [];
   const claudeRoot = path.join(os.homedir(), '.claude', 'projects');
   if (fs.existsSync(claudeRoot)) {
@@ -40,9 +38,7 @@ function getRoots() {
   return roots;
 }
 
-module.exports = {
-  getRoots,
-  listJsonlFiles,
+export {
   scanFile,
   pruneOldDays,
   savePersisted,

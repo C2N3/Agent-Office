@@ -42,7 +42,7 @@ const EventEmitter = require('events');
 const http = require('http');
 
 // Load module ONCE and capture request handler
-const dashboardServer = require('../src/dashboardServer');
+import * as dashboardServer from '../src/dashboardServer';
 const handler = http.createServer.mock.calls[0][0];
 
 // Helper: create mock request/response pair

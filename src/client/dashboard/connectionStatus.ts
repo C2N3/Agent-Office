@@ -1,5 +1,5 @@
-import { state } from './shared.js';
-import { notifyDashboardStore } from './state/store.js';
+import { state } from './shared';
+import { notifyDashboardStore } from './state/store';
 
 export function updateConnectionStatus(up: boolean) {
   state.connected = up;

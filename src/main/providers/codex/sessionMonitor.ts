@@ -3,15 +3,15 @@
  * Watches ~/.codex/sessions JSONL files and feeds live session updates into the Codex processor.
  */
 
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
-const { getCodexSessionRoots } = require('./paths');
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import { getCodexSessionRoots } from './paths';
 
 const DISCOVERY_INTERVAL_MS = 5000;
 const ACTIVE_SESSION_WINDOW_MS = 30 * 60 * 1000;
 
-function getCodexSessionsRoot() {
+export function getCodexSessionsRoot() {
   return path.join(os.homedir(), '.codex', 'sessions');
 }
 
@@ -56,11 +56,11 @@ function parseJsonLines(content) {
     .filter(Boolean);
 }
 
-function createCodexSessionMonitor({
+export function createCodexSessionMonitor({
   codexProcessor,
   agentManager,
   debugLog,
-  sessionRoot,
+  sessionRoot = null,
   activeWindowMs = ACTIVE_SESSION_WINDOW_MS,
   sessionAllowlist = null,
   detectPidByTranscript = null,
@@ -258,5 +258,3 @@ function createCodexSessionMonitor({
 
   return { start, stop, scan };
 }
-
-module.exports = { createCodexSessionMonitor, getCodexSessionsRoot };

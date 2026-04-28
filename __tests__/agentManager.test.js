@@ -3,8 +3,8 @@
  * AgentManager core logic tests
  */
 
-const AgentManager = require('../src/agentManager');
-const EventEmitter = require('events');
+import EventEmitter from 'events';
+import { AgentManager } from '../src/agentManager';
 
 describe('AgentManager', () => {
   let manager;
@@ -16,6 +16,13 @@ describe('AgentManager', () => {
 
   afterEach(() => {
     manager.stop();
+  });
+
+  describe('export shape', () => {
+    test('exposes the native named ESM constructor', () => {
+      expect(typeof AgentManager).toBe('function');
+      expect(new AgentManager()).toBeInstanceOf(EventEmitter);
+    });
   });
 
   describe('start and stop', () => {

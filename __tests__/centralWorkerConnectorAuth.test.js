@@ -10,7 +10,7 @@ class FakeWebSocket {
 
 global.WebSocket = FakeWebSocket;
 
-const { CentralWorkerConnector } = require('../src/main/centralWorker/connector.ts');
+import { CentralWorkerConnector } from '../src/main/centralWorker/connector.ts';
 
 function startConnector(options = {}) {
   FakeWebSocket.instances = [];

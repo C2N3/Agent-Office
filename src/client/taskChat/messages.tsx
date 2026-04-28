@@ -1,5 +1,5 @@
 import React, { type ReactElement } from 'react';
-import { type ChatMessage, formatTime } from './model.js';
+import { type ChatMessage, formatTime } from './model';
 
 export function TaskChatMessages({
   messages,

@@ -4,7 +4,7 @@ import {
   startCloudflareTunnel,
   stopCloudflareTunnel,
   type TunnelStatus,
-} from '../cloudflareView.js';
+} from '../cloudflareView';
 
 function formatStartedAt(value: number | null | undefined): string {
   if (!value) return '-';

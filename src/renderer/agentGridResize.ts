@@ -1,6 +1,6 @@
 
-import { SHEET } from './config.js';
-import { getSpriteYOffset } from './animationManager.js';
+import { SHEET } from './config';
+import { getSpriteYOffset } from './animationManager';
 
 export function drawFrameOn(el, frameIndex) {
   if (!el) return;

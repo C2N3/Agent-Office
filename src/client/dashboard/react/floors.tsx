@@ -1,5 +1,5 @@
 import React, { type KeyboardEvent, type ReactElement } from 'react';
-import type { Floor } from '../../office/floorManager.js';
+import type { Floor } from '../../office/floorManager';
 
 type FloorDialog = 'none' | 'create' | 'manage';
 

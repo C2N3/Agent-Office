@@ -1,6 +1,6 @@
-const EventEmitter = require('events');
-const { transitionTask } = require('./taskStateMachine');
-const {
+import { EventEmitter } from 'events';
+import { transitionTask } from './taskStateMachine';
+import {
   cleanupTaskRuntime,
   cleanupTaskWorktree,
   dispatchTask,
@@ -12,12 +12,29 @@ const {
   handleTaskSuccess,
   resetIdleTimer,
   withRepoLock,
-} = require('./runtime');
+} from './runtime';
 
 const TICK_INTERVAL_MS = 2000;
 const MAX_CONCURRENT_TASKS = 5;
 
-class Orchestrator extends EventEmitter {
+export class Orchestrator extends EventEmitter {
+  declare taskStore: any;
+  declare terminalManager: any;
+  declare processManager: any;
+  declare workspaceManager: any;
+  declare agentRegistry: any;
+  declare agentManager: any;
+  declare debugLog: (message: string) => void;
+  declare maxConcurrentTasks: number;
+  declare broadcastTaskOutput: any;
+  declare outputParsers: Map<string, any>;
+  declare cleanupFns: Map<string, Array<() => void>>;
+  declare repoLocks: Map<string, Promise<any>>;
+  declare idleTimers: Map<string, NodeJS.Timeout>;
+  declare taskOutputBytes: Map<string, number>;
+  declare tickInterval: NodeJS.Timeout | null;
+  declare _exitSent?: Set<string>;
+
   constructor(options) {
     super();
     this.taskStore = options.taskStore;
@@ -362,5 +379,3 @@ class Orchestrator extends EventEmitter {
     return withRepoLock(this, repoPath, fn);
   }
 }
-
-module.exports = { Orchestrator };

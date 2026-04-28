@@ -1,4 +1,4 @@
-function autoCommitTaskChanges(orchestrator, task) {
+export function autoCommitTaskChanges(orchestrator, task) {
   if (!task || !task.workspacePath || !orchestrator.workspaceManager) return;
   try {
     const status = orchestrator.workspaceManager.runGit(task.workspacePath, ['status', '--porcelain']);
@@ -14,5 +14,3 @@ function autoCommitTaskChanges(orchestrator, task) {
     orchestrator.debugLog(`[Orchestrator] Auto-commit failed for ${task.id.slice(0, 8)}: ${e.message}`);
   }
 }
-
-module.exports = { autoCommitTaskChanges };

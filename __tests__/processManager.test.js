@@ -9,7 +9,7 @@ jest.mock('child_process', () => ({
 
 jest.mock('tree-kill', () => jest.fn());
 
-const { ProcessManager } = require('../src/main/orchestrator/processManager');
+import { ProcessManager } from '../src/main/orchestrator/processManager';
 
 function makeChild(pid = 1234) {
   const child = new EventEmitter();

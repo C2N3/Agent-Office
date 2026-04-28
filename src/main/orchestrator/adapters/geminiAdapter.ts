@@ -1,7 +1,7 @@
-const { execFileSync } = require('child_process');
+import { execFileSync } from 'child_process';
 
-class GeminiAdapter {
-  get provider() {
+export class GeminiAdapter {
+  get provider(): 'gemini' {
     return 'gemini';
   }
 
@@ -62,5 +62,3 @@ class GeminiAdapter {
       || /input.*too.*long/i.test(buffer);
   }
 }
-
-module.exports = { GeminiAdapter };

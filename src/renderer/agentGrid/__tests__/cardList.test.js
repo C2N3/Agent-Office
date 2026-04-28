@@ -1,9 +1,9 @@
-const {
+import {
   appendAgentGridCard,
   applyAgentGridCardOrder,
   removeAgentGridCard,
-} = require('../cardList.ts');
-const { registerAgentGridElements } = require('../elements.ts');
+} from '../cardList.ts';
+import { registerAgentGridElements } from '../elements.ts';
 
 function createCard(agentId) {
   const card = {

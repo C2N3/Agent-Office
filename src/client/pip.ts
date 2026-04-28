@@ -1,10 +1,10 @@
-import type { DashboardAgent } from './dashboard/shared.js';
+import type { DashboardAgent } from './dashboard/shared';
 import {
   initOffice,
   officeOnAgentCreated,
   officeOnAgentRemoved,
   officeOnAgentUpdated,
-} from './office/index.js';
+} from './office/index';
 
 let sseDelay = 1000;
 let sseSource: EventSource | null = null;

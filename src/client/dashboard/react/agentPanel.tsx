@@ -2,8 +2,8 @@ import React, { type ReactElement } from 'react';
 import type {
   DashboardAgent,
   DashboardAgentHistoryEntry,
-} from '../shared.js';
-import { AgentCard } from '../agentCard/view.js';
+} from '../shared';
+import { AgentCard } from '../agentCard/view';
 import styles from './agentPanel.module.scss';
 
 export function AgentPanel({

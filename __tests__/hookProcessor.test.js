@@ -3,7 +3,7 @@
  * Core hook event processing, state transitions, token calculation, PID reconnect
  */
 
-const { createHookProcessor } = require('../src/main/hookProcessor');
+import { createHookProcessor } from '../src/main/hookProcessor';
 
 // Mock agentManager factory
 function createMockAgentManager() {

@@ -10,13 +10,13 @@ import {
   isCentralRoomSecretConfigured,
   isCentralWorkerTokenConfigured,
   saveCentralServerConfig,
-} from '../main/centralWorker/config.js';
+} from '../main/centralWorker/config';
 import {
   CENTRAL_PROXY_TIMEOUT_MS,
   createProxyRequestAbort,
   writeJSON,
   writeProxyError,
-} from './proxySupport.js';
+} from './proxySupport';
 
 interface ResponseLike {
   writeHead(statusCode: number, headers?: Record<string, string>): void;

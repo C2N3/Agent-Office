@@ -17,7 +17,7 @@ jest.mock('http', () => {
 });
 
 const http = require('http');
-const { startHookServer } = require('../src/main/hookServer');
+import { startHookServer } from '../src/main/hookServer';
 
 // Helper: simulate HTTP request
 function simulateRequest(handler, method, url, body = '') {

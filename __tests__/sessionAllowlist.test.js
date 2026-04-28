@@ -5,7 +5,7 @@
  * react to task-launched CLIs.
  */
 
-const { SessionAllowlist, normalizeCwd, sharedSessionAllowlist } = require('../src/main/orchestrator/sessionAllowlist');
+import { SessionAllowlist, normalizeCwd, sharedSessionAllowlist } from '../src/main/orchestrator/sessionAllowlist';
 
 describe('normalizeCwd', () => {
   test('returns empty string for nullish input', () => {

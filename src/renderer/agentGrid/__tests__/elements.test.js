@@ -1,9 +1,9 @@
-const {
+import {
   findAgentCardElement,
   findMiniAvatarElement,
   getAgentGridElements,
   registerAgentGridElements,
-} = require('../elements.ts');
+} from '../elements.ts';
 
 function createGridElement(children = []) {
   return {

@@ -1,10 +1,10 @@
-const path = require('path');
-const os = require('os');
-const fs = require('fs');
-const crypto = require('crypto');
-const EventEmitter = require('events');
-const { sanitizeProjectPath } = require('../../utils');
-const {
+import path from 'path';
+import os from 'os';
+import fs from 'fs';
+import crypto from 'crypto';
+import EventEmitter from 'events';
+import { sanitizeProjectPath } from '../../utils';
+import {
   normalizePath,
   sanitizeWorkspace,
   buildSessionHistoryEntry,
@@ -15,13 +15,13 @@ const {
   getAgentSessionHistory,
   findAgentSessionHistoryEntry,
   findAgentByProjectPath,
-} = require('./shared');
-import type { PersistentAgent } from './types.js';
+} from './shared';
+import type { PersistentAgent } from './types';
 
 const PERSIST_DIR = path.join(os.homedir(), '.agent-office');
 const PERSIST_FILE = path.join(PERSIST_DIR, 'agent-registry.json');
 
-class AgentRegistry extends EventEmitter {
+export class AgentRegistry extends EventEmitter {
   declare debugLog: (message: string) => void;
   declare agents: Map<string, PersistentAgent>;
 
@@ -299,4 +299,4 @@ class AgentRegistry extends EventEmitter {
   }
 }
 
-module.exports = { AgentRegistry, normalizePath };
+export { normalizePath };

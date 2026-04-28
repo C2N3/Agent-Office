@@ -1,8 +1,8 @@
 import React from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot, type Root } from 'react-dom/client';
-import { buildAgentCardShellModel } from './model.js';
-import { AgentCardShell } from './view.js';
+import { buildAgentCardShellModel } from './model';
+import { AgentCardShell } from './view';
 
 const cardRoots = new WeakMap<HTMLElement, Root>();
 

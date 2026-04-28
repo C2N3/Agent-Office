@@ -1,4 +1,4 @@
-const { isOutsideTerminalProfileMenu } = require('../terminal/chrome.tsx');
+import { isOutsideTerminalProfileMenu } from '../terminal/chrome.tsx';
 
 function fakeElement(containedTargets = []) {
   const contained = new Set(containedTargets);

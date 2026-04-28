@@ -1,6 +1,4 @@
-const { TaskStatus, TaskDefinition } = require('./types');
-
-const VALID_TRANSITIONS: Record<string, string[]> = {
+export const VALID_TRANSITIONS: Record<string, string[]> = {
   pending:      ['ready', 'cancelled'],
   ready:        ['provisioning', 'cancelled'],
   provisioning: ['running', 'failed', 'cancelled'],
@@ -12,11 +10,11 @@ const VALID_TRANSITIONS: Record<string, string[]> = {
   cancelled:    ['ready'],
 };
 
-function canTransition(from: string, to: string): boolean {
+export function canTransition(from: string, to: string): boolean {
   return VALID_TRANSITIONS[from]?.includes(to) ?? false;
 }
 
-function transitionTask(task: any, to: string, meta?: Record<string, any>): any {
+export function transitionTask(task: any, to: string, meta?: Record<string, any>): any {
   if (!canTransition(task.status, to)) {
     throw new Error(`Invalid transition: ${task.status} -> ${to} for task ${task.id}`);
   }
@@ -38,8 +36,6 @@ function transitionTask(task: any, to: string, meta?: Record<string, any>): any 
   return { ...task, ...updates };
 }
 
-function isTerminalStatus(status: string): boolean {
+export function isTerminalStatus(status: string): boolean {
   return status === 'succeeded' || status === 'failed' || status === 'cancelled';
 }
-
-module.exports = { VALID_TRANSITIONS, canTransition, transitionTask, isTerminalStatus };

@@ -10,7 +10,7 @@ import type {
   TerminalAddonLike,
   TerminalCtor,
   WebLinksAddonLike,
-} from './shared.js';
+} from './shared';
 
 export {};
 

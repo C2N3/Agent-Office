@@ -2,21 +2,21 @@ import React, { type ReactElement, useRef } from 'react';
 import type {
   DashboardTerminalEntry,
   DashboardTerminalProfile,
-} from '../shared.js';
-import { TerminalProfileMenu, TerminalTabs } from '../terminal/chrome.js';
-import { openTerminalForAgent } from '../terminal/index.js';
+} from '../shared';
+import { TerminalProfileMenu, TerminalTabs } from '../terminal/chrome';
+import { openTerminalForAgent } from '../terminal/index';
 import {
   closeTerminalProfileMenu,
   openTerminalProfileMenu,
   refreshTerminalProfiles,
   setDefaultTerminalProfile,
-} from '../terminal/profiles.js';
+} from '../terminal/profiles';
 import {
   activateTerminalTab,
   closeTerminal,
   registerTerminalContainerHost,
   registerTerminalEmptyStateHost,
-} from '../terminal/ui.js';
+} from '../terminal/ui';
 
 export function TerminalPanel({
   activeTerminalId,

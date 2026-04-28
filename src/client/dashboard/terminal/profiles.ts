@@ -1,5 +1,5 @@
-import { getDashboardAPI, termState } from '../shared.js';
-import { notifyDashboardStore, setTerminalProfileMenuOpen } from '../state/store.js';
+import { getDashboardAPI, termState } from '../shared';
+import { notifyDashboardStore, setTerminalProfileMenuOpen } from '../state/store';
 
 function getTerminalProfile(profileId: string | null | undefined) {
   return termState.profiles.find((profile) => profile.id === profileId) || null;

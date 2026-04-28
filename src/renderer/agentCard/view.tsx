@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef } from 'react';
-import type { AgentCardShellModel } from './model.js';
+import type { AgentCardShellModel } from './model';
 
 const FOCUS_TOOLTIP = 'Focus terminal (click to switch to this terminal)';
 

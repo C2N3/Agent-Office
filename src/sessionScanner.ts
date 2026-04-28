@@ -4,12 +4,11 @@
  * supplements them into the agentManager.
  */
 
-'use strict';
+import * as fs from 'fs';
 
-const fs = require('fs');
-const { getCodexSessionRoots } = require('./main/providers/codex/paths');
-const { normalizeProvider, providerSupportsTranscriptStats } = require('./main/providers/registry');
-const {
+import { getCodexSessionRoots } from './main/providers/codex/paths';
+import { normalizeProvider, providerSupportsTranscriptStats } from './main/providers/registry';
+import {
     detectSessionFormat,
     getEntrySessionId,
     listJsonlFiles,
@@ -17,7 +16,7 @@ const {
     parseCodexEntries,
     parseJsonLines,
     resolveTranscriptPath,
-} = require('./sessionScanner/parser');
+} from './sessionScanner/parser';
 
 type SessionStats = {
     model: string | null;
@@ -35,7 +34,7 @@ type SessionStats = {
     lastActivity: string | null;
 };
 
-class SessionScanner {
+export class SessionScanner {
     declare agentManager: any;
     declare debugLog: (message: string) => void;
     declare scanInterval: NodeJS.Timeout | null;
@@ -45,7 +44,7 @@ class SessionScanner {
      * @param {import('./agentManager')} agentManager
      * @param {(msg: string) => void} [debugLog]
      */
-    constructor(agentManager, debugLog = () => { }) {
+    constructor(agentManager, debugLog: (message: string) => void = () => { }) {
         this.agentManager = agentManager;
         this.debugLog = debugLog;
         this.scanInterval = null;
@@ -223,5 +222,3 @@ class SessionScanner {
  * @property {string|null} lastMessageAt
  * @property {string|null} lastActivity
  */
-
-module.exports = SessionScanner;

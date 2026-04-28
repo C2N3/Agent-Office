@@ -4,7 +4,7 @@
  *
  * Usage:
  *   1. npm start  (app must be running)
- *   2. node scripts/demo-simulate.js
+ *   2. node scripts/demo-simulate.cjs
  */
 
 'use strict';

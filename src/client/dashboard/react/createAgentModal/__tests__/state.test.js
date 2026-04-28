@@ -1,4 +1,4 @@
-const {
+import {
   applyRegistrationPreviewDefaults,
   buildCreateAgentPayload,
   buildDefaultCreateAgentFormState,
@@ -6,7 +6,7 @@ const {
   describeRegistrationPreview,
   getBranchModeForValue,
   isWorktreeStrategyEnabled,
-} = require('../state.ts');
+} from '../state.ts';
 
 describe('create agent modal state helpers', () => {
   test('builds stable default form state', () => {

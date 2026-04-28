@@ -1,1 +1,1 @@
-export { initDashboardRuntime as initDashboardApp } from './runtime/bootstrap.js';
+export { initDashboardRuntime as initDashboardApp } from './runtime/bootstrap';

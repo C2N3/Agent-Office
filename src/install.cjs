@@ -10,7 +10,7 @@
  * into dist/.
  */
 
-const { unregisterClaudeHooks } = require('./main/hookRegistration.install');
+const { unregisterClaudeHooks } = require('./main/hookRegistration.install.cjs');
 
 function main() {
   console.log('=================================');

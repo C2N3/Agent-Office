@@ -1,5 +1,5 @@
-import type { RemoteMode } from './remoteMode.js';
-import { fetchWithTimeout } from './fetchWithTimeout.js';
+import type { RemoteMode } from './remoteMode';
+import { fetchWithTimeout } from './fetchWithTimeout';
 
 export interface CentralServerConfig {
   baseUrl: string;

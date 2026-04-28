@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import { getDashboardAPI } from '../shared.js';
+import { getDashboardAPI } from '../shared';
 
 type WindowControlsSnapshot = {
   overlayOpen: boolean;

@@ -1,8 +1,11 @@
-const { BrowserWindow, screen } = require('electron');
-const path = require('path');
-const { createSecondaryWindowControls } = require('./secondary/windows');
+import { BrowserWindow, screen } from 'electron';
+import { resolveFromModule } from '../../runtime/module';
+import { loadDashboardServerModule } from '../dashboardRuntimeLoader';
+import { createSecondaryWindowControls } from './secondary/windows';
 
-function createWindowManagerCore(context) {
+const moduleUrl = import.meta.url;
+
+export function createWindowManagerCore(context) {
   const {
     agentManager,
     agentRegistry,
@@ -110,7 +113,7 @@ function createWindowManagerCore(context) {
       focusable: false,
       show: false,
       webPreferences: {
-        preload: path.join(__dirname, '..', '..', 'preload.js'),
+        preload: resolveFromModule(moduleUrl, '..', '..', 'preload.js'),
         nodeIntegration: false,
         contextIsolation: true,
       },
@@ -119,7 +122,7 @@ function createWindowManagerCore(context) {
     if (process.argv.includes('--dev')) {
       mainWindow.loadURL(resolveBrowserDevUrl('/index.html'));
     } else {
-      mainWindow.loadFile(path.join(__dirname, '..', '..', 'index.html'));
+      mainWindow.loadFile(resolveFromModule(moduleUrl, '..', '..', 'index.html'));
     }
     errorHandler.setMainWindow(mainWindow);
 
@@ -188,7 +191,7 @@ function createWindowManagerCore(context) {
 
     debugLog('[Dashboard] Starting server...');
     dashboardServerStartPromise = (async () => {
-      const serverModule = require('../../dashboardServer/index.js');
+      const serverModule = await loadDashboardServerModule();
       if (agentManager) serverModule.setAgentManager(agentManager);
       if (sessionScanner) serverModule.setSessionScanner(sessionScanner);
       if (heatmapScanner) serverModule.setHeatmapScanner(heatmapScanner);
@@ -246,5 +249,3 @@ function createWindowManagerCore(context) {
     resizeWindowForAgents,
   };
 }
-
-module.exports = { createWindowManagerCore };

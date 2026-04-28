@@ -1,6 +1,6 @@
 
-import { avatarIndexFromId } from '../officeConfig.js';
-import { officeCoordsByRoom } from '../officeCoords.js';
+import { avatarIndexFromId } from '../officeConfig';
+import { officeCoordsByRoom } from '../officeCoords';
 
 export function humanizeToolName(toolName, provider) {
   if (!toolName) return null;

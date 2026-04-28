@@ -1,12 +1,12 @@
-import type { DashboardAgent } from '../shared.js';
-import { state } from '../shared.js';
+import type { DashboardAgent } from '../shared';
+import { state } from '../shared';
 import {
   fetchCentralAgentConfig,
   fetchCentralDashboardAgents,
   isCentralAgentSyncEnabled,
   syncLocalAgentsToCentral,
-} from './api.js';
-import { mergeCentralAgent } from './model.js';
+} from './api';
+import { mergeCentralAgent } from './model';
 
 export {
   fetchCentralAgentConfig,
@@ -16,7 +16,7 @@ export {
   syncCentralAgentRecord,
   syncCentralAgentRemoval,
   syncCentralAgentUpdate,
-} from './api.js';
+} from './api';
 
 type SyncCallbacks = {
   upsertAgent: (agent: DashboardAgent) => void;

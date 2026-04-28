@@ -101,7 +101,7 @@ function providerSupportsActiveSessionFileRecovery(provider: string | null | und
   return getProviderDefinitionOrNull(provider)?.supportsActiveSessionFileRecovery || false;
 }
 
-module.exports = {
+export {
   DEFAULT_PROVIDER,
   KNOWN_PROVIDERS,
   PROVIDER_DEFINITIONS,

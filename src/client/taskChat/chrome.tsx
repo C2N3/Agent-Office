@@ -4,7 +4,7 @@ import React, {
   type ReactElement,
   type RefObject,
 } from 'react';
-import type { AgentWorkspace } from './model.js';
+import type { AgentWorkspace } from './model';
 
 export function TaskChatHeader({
   agentName,

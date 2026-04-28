@@ -88,14 +88,14 @@ codex exec --json "summarize this repo" | node dist/src/codex-forward.js
 
 | 스크립트                    | 실제 명령                                                                                                 | 설명                                                                         |
 | --------------------------- | --------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| `npm run postinstall`       | `node src/install.js`                                                                                     | Claude hook을 등록합니다. `npm install` 후 자동으로 실행됩니다               |
+| `npm run postinstall`       | `node src/install.cjs`                                                                                     | 이전 Agent-Office Claude hook을 정리합니다. `npm install` 후 자동으로 실행됩니다 |
 | `npm run rebuild`           | `electron-rebuild -f -w node-pty`                                                                         | Electron용 native `node-pty` 모듈을 다시 빌드합니다                          |
-| `npm run build:dist`        | `node scripts/build-types.js`                                                                             | TypeScript 런타임을 `dist/`로 빌드합니다                                     |
-| `npm run build:dist:watch`  | `node scripts/build-types.js --watch`                                                                     | source, assets, 브라우저 shell HTML/CSS, tsconfig 변경을 감시하며 `dist/`를 다시 빌드합니다 |
+| `npm run build:dist`        | `node scripts/build-types.cjs`                                                                             | TypeScript 런타임을 `dist/`로 빌드합니다                                     |
+| `npm run build:dist:watch`  | `node scripts/build-types.cjs --watch`                                                                     | source, assets, 브라우저 shell HTML/CSS, tsconfig 변경을 감시하며 `dist/`를 다시 빌드합니다 |
 | `npm run build:types`       | `npm run build:dist`                                                                                      | `dist/` TypeScript 빌드의 alias입니다                                        |
 | `npm run prestart`          | `npm run build:dist`                                                                                      | `dist/`를 빌드합니다. `npm start` 전에 자동으로 실행됩니다                   |
-| `npm start`                 | `node scripts/run-electron.js`                                                                            | `prestart`가 `dist/`를 빌드한 뒤 Electron 앱을 실행합니다                    |
-| `npm run dev`               | `node scripts/dev-runtime.js`                                                                             | index, dashboard, pip, overlay에는 Vite를 띄우고 브라우저 바깥 변경 시 `dist/`를 다시 빌드한 뒤 Electron을 자동 재시작합니다 |
+| `npm start`                 | `node scripts/run-electron.cjs`                                                                            | `prestart`가 `dist/`를 빌드한 뒤 Electron 앱을 실행합니다                    |
+| `npm run dev`               | `node scripts/dev-runtime.cjs`                                                                             | index, dashboard, pip, overlay에는 Vite를 띄우고 브라우저 바깥 변경 시 `dist/`를 다시 빌드한 뒤 Electron을 자동 재시작합니다 |
 | `npm run typecheck`         | `node node_modules/@typescript/native-preview/bin/tsgo.js -p tsconfig.json --noEmit && node node_modules/@typescript/native-preview/bin/tsgo.js -p tsconfig.client.json --noEmit` | 런타임과 Vite client 설정 둘 다 `tsgo`로 no-emit TypeScript 검사를 실행합니다 |
 | `npm test`                  | `jest`                                                                                                    | source TypeScript 기준으로 Jest 테스트를 실행합니다                          |
 | `npm run test:coverage`     | `jest --coverage`                                                                                         | coverage 출력과 함께 Jest를 실행합니다                                       |
@@ -110,7 +110,7 @@ codex exec --json "summarize this repo" | node dist/src/codex-forward.js
 | `npm run dist:win`          | `npm run build:dist && electron-builder --win --publish never`                                            | `dist/`를 빌드하고 publish 없이 Windows 패키지를 만듭니다                    |
 | `npm run dist:mac`          | `npm run build:dist && electron-builder --mac --publish never`                                            | `dist/`를 빌드하고 publish 없이 macOS 패키지를 만듭니다                      |
 | `npm run dist:mac:unsigned` | `npm run build:dist && electron-builder --mac --publish never -c.mac.identity=null -c.mac.notarize=false` | `dist/`를 빌드하고 unsigned, non-notarized macOS 패키지를 만듭니다           |
-| `npm run dist:mac:signed`   | `node scripts/dist-mac-signed.js`                                                                         | 인증 정보가 있을 때 rebuild, verify, sign, notarize 후 macOS DMG를 만듭니다  |
+| `npm run dist:mac:signed`   | `node scripts/dist-mac-signed.cjs`                                                                         | 인증 정보가 있을 때 rebuild, verify, sign, notarize 후 macOS DMG를 만듭니다  |
 | `npm run dist:linux`        | `npm run build:dist && electron-builder --linux --publish never`                                          | `dist/`를 빌드하고 publish 없이 Linux 패키지를 만듭니다                      |
 
 ## macOS 정식 배포

@@ -3,10 +3,8 @@
  * Main window, dashboard window, keep-alive, resize, dashboard server management
  */
 
-const { createWindowManagerCore } = require('./core');
+import { createWindowManagerCore } from './core';
 
-function createWindowManager(options) {
+export function createWindowManager(options) {
   return createWindowManagerCore(options);
 }
-
-module.exports = { createWindowManager };

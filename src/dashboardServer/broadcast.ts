@@ -1,7 +1,5 @@
-const { adaptAgentToDashboard } = require('../dashboardAdapter.js') as {
-  adaptAgentToDashboard: (agent: any) => any;
-};
-import { getClients, getRefs } from './context.js';
+import { adaptAgentToDashboard } from '../dashboardAdapter';
+import { getClients, getRefs } from './context';
 
 type SerializableValue =
   | string

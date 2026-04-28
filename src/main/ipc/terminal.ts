@@ -1,7 +1,8 @@
-const { ipcMain } = require('electron');
-const { dashboardIpcChannels } = require('../../shared/contracts/ipc');
+import { spawn } from 'child_process';
+import { ipcMain } from 'electron';
+import { dashboardIpcChannels } from '../../shared/contracts/ipc';
 
-function registerTerminalHandlers({
+export function registerTerminalHandlers({
   agentManager,
   agentRegistry,
   terminalManager,
@@ -84,7 +85,6 @@ function registerTerminalHandlers({
   ipcMain.handle(dashboardIpcChannels.powershellOpenPolicyTerminal, async () => {
     if (process.platform !== 'win32') return { success: false };
 
-    const { spawn } = require('child_process');
     const cmd = 'Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force; Write-Host "완료! 이 창을 닫아도 됩니다." -ForegroundColor Green';
     spawn('cmd.exe', ['/c', 'start', 'powershell.exe', '-NoExit', '-Command', cmd], {
       detached: true,
@@ -94,7 +94,3 @@ function registerTerminalHandlers({
     return { success: true };
   });
 }
-
-module.exports = {
-  registerTerminalHandlers,
-};

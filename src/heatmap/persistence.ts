@@ -1,5 +1,5 @@
-const fs = require('fs');
-import type { DashboardDayStats } from '../shared/contracts/index.js';
+import fs from 'fs';
+import type { DashboardDayStats } from '../shared/contracts/index';
 
 const MAX_AGE_DAYS = 400;
 
@@ -22,7 +22,7 @@ function roundCost(value) {
   return Math.round((Number(value) || 0) * 1_000_000) / 1_000_000;
 }
 
-function pruneOldDays(scanner: HeatmapScannerLike) {
+export function pruneOldDays(scanner: HeatmapScannerLike) {
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - MAX_AGE_DAYS);
   const cutoffStr = cutoff.toISOString().slice(0, 10);
@@ -31,7 +31,7 @@ function pruneOldDays(scanner: HeatmapScannerLike) {
   }
 }
 
-function savePersisted(scanner: HeatmapScannerLike) {
+export function savePersisted(scanner: HeatmapScannerLike) {
   try {
     if (!fs.existsSync(scanner.persistDir)) {
       fs.mkdirSync(scanner.persistDir, { recursive: true });
@@ -59,7 +59,7 @@ function savePersisted(scanner: HeatmapScannerLike) {
   }
 }
 
-function loadPersisted(scanner: HeatmapScannerLike) {
+export function loadPersisted(scanner: HeatmapScannerLike) {
   try {
     if (!fs.existsSync(scanner.persistFile)) return;
     const data = JSON.parse(fs.readFileSync(scanner.persistFile, 'utf-8'));
@@ -80,5 +80,3 @@ function loadPersisted(scanner: HeatmapScannerLike) {
     scanner.debugLog(`[HeatmapScanner] Failed to load persisted data: ${e.message}`);
   }
 }
-
-module.exports = { pruneOldDays, savePersisted, loadPersisted };

@@ -1,5 +1,6 @@
-const fs = require('node:fs');
-const path = require('node:path');
+import fs from 'node:fs';
+import path from 'node:path';
+import { resolveFromModule } from './runtime/module';
 
 const DEFAULT_MAP_SCALE = 2.1875;
 const DEFAULT_TILE_SIZE = 70;
@@ -95,7 +96,7 @@ const VALID_IDLE_VALUES = new Set(['up', 'down', 'left', 'right', 'dance']);
 const VALID_DECOR_LAYERS = new Set(['bg', 'fg']);
 
 type PlainObject = Record<string, any>;
-const DEFAULT_LAYOUT_FOLDER = path.resolve(__dirname, '..', 'office-layout');
+const DEFAULT_LAYOUT_FOLDER = resolveFromModule(import.meta.url, '..', 'office-layout');
 
 function cloneDefaultLayout() {
   return JSON.parse(JSON.stringify(DEFAULT_LAYOUT));
@@ -300,7 +301,7 @@ function resolveOfficeLayoutAssetPath(assetPath) {
   return resolved;
 }
 
-module.exports = {
+export {
   DEFAULT_LAYOUT,
   loadOfficeLayoutManifest,
   normalizeLayout,

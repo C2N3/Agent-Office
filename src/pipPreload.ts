@@ -3,8 +3,8 @@
  * Provides secure IPC bridge for PiP window
  */
 
-const { contextBridge, ipcRenderer } = require('electron');
-const { dashboardIpcChannels } = require('./shared/contracts/ipc');
+import { contextBridge, ipcRenderer } from 'electron';
+import { dashboardIpcChannels } from './shared/contracts/ipc';
 
 contextBridge.exposeInMainWorld('pipAPI', {
   close: () => ipcRenderer.send(dashboardIpcChannels.pipClose),

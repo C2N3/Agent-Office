@@ -1,7 +1,11 @@
-const { createWindowManager } = require('../windowing');
-const { savePersistedState } = require('../sessionPersistence');
+import { savePersistedState } from '../sessionPersistence';
+import {
+  loadDashboardRemoteAuthModule,
+  loadDashboardServerModule,
+} from '../dashboardRuntimeLoader';
+import { createWindowManager } from '../windowing/index';
 
-function createApplicationWindowManager({
+export function createApplicationWindowManager({
   agentManager,
   agentRegistry,
   sessionScanner,
@@ -23,7 +27,7 @@ function createApplicationWindowManager({
   });
 }
 
-async function startDashboardRuntime({
+export async function startDashboardRuntime({
   windowManager,
   orchestrator,
   workspaceManager,
@@ -36,7 +40,7 @@ async function startDashboardRuntime({
 
   // Initialize remote access token and print info
   try {
-    const { loadOrCreateToken } = require('../../dashboardServer/remoteAuth.js');
+    const { loadOrCreateToken } = await loadDashboardRemoteAuthModule();
     const token = loadOrCreateToken();
     const port = 3000;
     debugLog(`[Remote] Token: ${token}`);
@@ -57,7 +61,7 @@ async function startDashboardRuntime({
   }
 
   try {
-    const serverModule = require('../../dashboardServer/index.js');
+    const serverModule = await loadDashboardServerModule();
     serverModule.setAppMeta({ isDev: !!isDev });
     serverModule.setOrchestrator(orchestrator);
     if (workspaceManager) serverModule.setWorkspaceManager(workspaceManager);
@@ -68,7 +72,7 @@ async function startDashboardRuntime({
   }
 }
 
-function attachAgentBroadcasts({
+export function attachAgentBroadcasts({
   agentManager,
   windowManager,
   sessionPids,
@@ -109,9 +113,3 @@ function attachAgentBroadcasts({
 
   return agentListeners;
 }
-
-module.exports = {
-  attachAgentBroadcasts,
-  createApplicationWindowManager,
-  startDashboardRuntime,
-};

@@ -1,7 +1,7 @@
-const {
+import {
   beginHorizontalPanelResize,
   beginVerticalPanelResize,
-} = require('../terminal/resizable.ts');
+} from '../terminal/resizable.ts';
 
 function fakeDocument() {
   const listeners = new Map();

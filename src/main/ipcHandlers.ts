@@ -3,14 +3,14 @@
  * Aggregate domain-specific IPC registrations.
  */
 
-const { createWindowSenderHelpers } = require('./ipc/common');
-const { registerRecoveryHandlers } = require('./ipc/recovery');
-const { registerWindowHandlers } = require('./ipc/window');
-const { registerTerminalHandlers } = require('./ipc/terminal');
-const { registerWorkspaceHandlers } = require('./ipc/workspace');
-const { registerRegistryHandlers } = require('./ipc/registry');
-const { registerOrchestratorHandlers } = require('./ipc/orchestrator');
-const { registerAgentSessionHandlers } = require('./ipc/agentSession');
+import { createWindowSenderHelpers } from './ipc/common';
+import { registerRecoveryHandlers } from './ipc/recovery';
+import { registerWindowHandlers } from './ipc/window';
+import { registerTerminalHandlers } from './ipc/terminal';
+import { registerWorkspaceHandlers } from './ipc/workspace';
+import { registerRegistryHandlers } from './ipc/registry';
+import { registerOrchestratorHandlers } from './ipc/orchestrator';
+import { registerAgentSessionHandlers } from './ipc/agentSession';
 
 function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowManager, terminalManager, terminalProfileService, workspaceManager, nicknameStore, orchestrator, debugLog, adaptAgentToDashboard, errorHandler, attachRegisteredAgent }) {
   const senderHelpers = createWindowSenderHelpers({ windowManager });
@@ -74,4 +74,4 @@ function registerIpcHandlers({ agentManager, agentRegistry, sessionPids, windowM
   });
 }
 
-module.exports = { registerIpcHandlers };
+export { registerIpcHandlers };

@@ -1,7 +1,7 @@
-const {
+import {
   applyAgentGridLayout,
   showEmptyAgentGridLayout,
-} = require('../layoutHost.ts');
+} from '../layoutHost.ts';
 
 function attachClassList(element, initialClassName = '') {
   const classes = new Set(initialClassName.split(/\s+/).filter(Boolean));

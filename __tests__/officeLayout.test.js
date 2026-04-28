@@ -2,12 +2,12 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const {
+import {
   DEFAULT_LAYOUT,
   loadOfficeLayoutManifest,
   resolveOfficeLayoutAssetPath,
   toClientAssetUrl,
-} = require('../src/officeLayout');
+} from '../src/officeLayout';
 
 describe('officeLayout', () => {
   const originalDir = process.env.AGENT_OFFICE_LAYOUT_DIR;

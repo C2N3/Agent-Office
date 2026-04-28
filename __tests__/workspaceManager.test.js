@@ -7,11 +7,11 @@ jest.mock('child_process', () => ({
 }));
 
 const { execFileSync } = require('child_process');
-const {
+import {
   WorkspaceManager,
   buildSuggestedBranchName,
   slugifyBranchName,
-} = require('../src/main/workspace');
+} from '../src/main/workspace';
 
 describe('WorkspaceManager', () => {
   let tempRoot;

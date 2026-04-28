@@ -1,5 +1,5 @@
-const { normalizePath } = require('../../registry');
-import type { DashboardPathRegistrationStrategy } from '../../../shared/contracts/index.js';
+import { normalizePath } from '../../registry/index';
+import type { DashboardPathRegistrationStrategy } from '../../../shared/contracts/index';
 
 type RegistrationPreviewInput = {
   strategy?: DashboardPathRegistrationStrategy;
@@ -29,7 +29,7 @@ function buildPreviewSummary(preview) {
   return 'Will register this folder directly';
 }
 
-function createWorkspaceRegistrationService({
+export function createWorkspaceRegistrationService({
   agentManager,
   agentRegistry,
   workspaceManager,
@@ -130,7 +130,3 @@ function createWorkspaceRegistrationService({
     resolveRegistrationPreview,
   };
 }
-
-module.exports = {
-  createWorkspaceRegistrationService,
-};

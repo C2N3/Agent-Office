@@ -1,4 +1,4 @@
-import type { ElectronAPI as SharedElectronAPI } from './shared/contracts/index.js';
+import type { ElectronAPI as SharedElectronAPI } from './shared/contracts/index';
 
 export {};
 

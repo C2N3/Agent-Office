@@ -1,16 +1,16 @@
 import fs from 'fs';
 import path from 'path';
 import { URL } from 'url';
-import { APP_ROOT, ASSET_ROOT, HTML_FILE, MIME_TYPES, OVERLAY_FILE, PIP_FILE, REMOTE_FILE, TASK_CHAT_FILE } from './constants.js';
+import { APP_ROOT, ASSET_ROOT, HTML_FILE, MIME_TYPES, OVERLAY_FILE, PIP_FILE, REMOTE_FILE, TASK_CHAT_FILE } from './constants';
 import {
   apiRoutes,
   handleAgentApiRoute,
   handleGetOfficeLayoutAsset,
   handleTaskApiRoute,
-} from './apiHandlers.js';
-import { handleCentralServerRoute } from './centralServerProxy.js';
-import { extractToken, isValidToken } from './remoteAuth.js';
-import { handleGetTunnel, handleStartTunnel, handleStopTunnel } from './tunnelHandlers.js';
+} from './apiHandlers';
+import { handleCentralServerRoute } from './centralServerProxy';
+import { extractToken, isValidToken } from './remoteAuth';
+import { handleGetTunnel, handleStartTunnel, handleStopTunnel } from './tunnelHandlers';
 
 interface ResponseLike {
   writeHead(statusCode: number, headers?: Record<string, string>): void;

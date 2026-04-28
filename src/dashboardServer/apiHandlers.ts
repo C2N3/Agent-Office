@@ -1,18 +1,13 @@
 import fs from 'fs';
 import path from 'path';
 import { URL } from 'url';
-const { adaptAgentToDashboard } = require('../dashboardAdapter.js') as {
-  adaptAgentToDashboard: (agent: any) => any;
-};
-const { loadOfficeLayoutManifest, resolveOfficeLayoutAssetPath } = require('../officeLayout.js') as {
-  loadOfficeLayoutManifest: () => any;
-  resolveOfficeLayoutAssetPath: (assetPath: string) => string | null;
-};
-import { ASSET_ROOT, MIME_TYPES } from './constants.js';
-import { getClients, getRefs } from './context.js';
-import { calculateStats } from './stats.js';
-import { handleAgentApiRoute } from './agentHandlers.js';
-import { handleCreateTask, handleListTasks, handleTaskApiRoute } from './taskHandlers.js';
+import { adaptAgentToDashboard } from '../dashboardAdapter';
+import { loadOfficeLayoutManifest, resolveOfficeLayoutAssetPath } from '../officeLayout';
+import { ASSET_ROOT, MIME_TYPES } from './constants';
+import { getClients, getRefs } from './context';
+import { calculateStats } from './stats';
+import { handleAgentApiRoute } from './agentHandlers';
+import { handleCreateTask, handleListTasks, handleTaskApiRoute } from './taskHandlers';
 
 export { handleAgentApiRoute, handleTaskApiRoute };
 

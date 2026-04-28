@@ -3,12 +3,14 @@
  * HTTP hook server that receives POST requests directly from Claude CLI (with schema validation)
  */
 
-const http = require('http');
-const Ajv = require('ajv');
+import http from 'http';
+import * as AjvModule from 'ajv';
+
+const Ajv = (AjvModule as any).default || AjvModule;
 
 const MAX_BODY_SIZE = 1024 * 1024; // 1MB
 
-function startHookServer({ processHookEvent, debugLog, HOOK_SERVER_PORT, errorHandler, sessionAllowlist = null }) {
+export function startHookServer({ processHookEvent, debugLog, HOOK_SERVER_PORT, errorHandler, sessionAllowlist = null }) {
   // JSON Schema for hook validation
   const hookSchema = {
     type: 'object',
@@ -71,7 +73,7 @@ function startHookServer({ processHookEvent, debugLog, HOOK_SERVER_PORT, errorHa
       res.end(JSON.stringify({ ok: true }));
 
       try {
-        const data = JSON.parse(body);
+        const data: any = JSON.parse(body);
         debugLog(`[Hook] ← ${data.hook_event_name || '?'} session=${(data.session_id || '').slice(0, 8) || '?'} _pid=${data._pid} _timestamp=${data._timestamp}`);
 
         // Validate JSON schema
@@ -86,9 +88,10 @@ function startHookServer({ processHookEvent, debugLog, HOOK_SERVER_PORT, errorHa
         // manually added one to a project settings file — this prevents any such
         // stray events from creating agent characters outside of tasks.
         if (sessionAllowlist) {
-          const allowed = sessionAllowlist.accepts({ cwd: data.cwd, pid: data._pid });
+          const hookEvent = data as any;
+          const allowed = sessionAllowlist.accepts({ cwd: hookEvent.cwd, pid: hookEvent._pid });
           if (!allowed) {
-            debugLog(`[Hook] Dropped non-task event ${data.hook_event_name} cwd=${data.cwd || '?'} pid=${data._pid || '?'}`);
+            debugLog(`[Hook] Dropped non-task event ${hookEvent.hook_event_name} cwd=${hookEvent.cwd || '?'} pid=${hookEvent._pid || '?'}`);
             return;
           }
         }
@@ -112,5 +115,3 @@ function startHookServer({ processHookEvent, debugLog, HOOK_SERVER_PORT, errorHa
 
   return server;
 }
-
-module.exports = { startHookServer };
