@@ -1,5 +1,6 @@
 import React, { type ReactElement, useEffect, useState } from 'react';
 import { floorManager, type Floor } from '../../office/floorManager';
+import { t } from '../../i18n';
 import { switchOfficeFloor } from '../../office/index';
 import { renderAgentList } from '../agentViews';
 import { FloorTabs } from '../react/floors';
@@ -37,7 +38,7 @@ export function FloorTabsContainer(): ReactElement {
   function handleDeleteFloor(floorId: string) {
     const floor = floorManager.getFloors().find((entry) => entry.id === floorId);
     if (!floor) return;
-    if (!confirm(`Delete "${floor.name}"? Agents on this floor will be unassigned.`)) return;
+    if (!confirm(t('dashboard.floor.confirmDelete', { name: floor.name }))) return;
     for (const agentId of [...floor.agentIds]) {
       floorManager.unassignAgent(agentId);
     }

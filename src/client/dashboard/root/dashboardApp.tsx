@@ -5,6 +5,7 @@ import { DashboardModals } from '../react/modals';
 import { setRegisteredOnlyFilter } from '../agentViews';
 import { PowerShellPolicyBanner } from '../terminal/chrome';
 import { dismissPsPolicyBanner, openPsPolicyTerminal } from '../terminal/index';
+import { I18nProvider, useI18n } from '../../i18n/react';
 import { OfficeView } from './officeView';
 import { OtherViews } from './otherViews';
 import { Sidebar } from './sidebar';
@@ -18,7 +19,16 @@ function syncActiveView(currentView: ReturnType<typeof useDashboardSnapshot>['cu
 }
 
 export function DashboardApp(): ReactElement {
+  return (
+    <I18nProvider>
+      <DashboardAppContent />
+    </I18nProvider>
+  );
+}
+
+function DashboardAppContent(): ReactElement {
   const snapshot = useDashboardSnapshot();
+  const { t } = useI18n();
 
   useEffect(() => {
     syncActiveView(snapshot.currentView);
@@ -34,7 +44,7 @@ export function DashboardApp(): ReactElement {
         />
         <main className="main-area">
           <div className="disconnect-banner" hidden={snapshot.connected} id="disconnectBanner">
-            Network disconnected. Attempting to restore websocket connection...
+            {t('dashboard.connection.restoreWebsocket')}
           </div>
 
           <PowerShellPolicyBanner
