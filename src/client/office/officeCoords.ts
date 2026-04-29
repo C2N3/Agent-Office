@@ -40,6 +40,46 @@ function colorMatch(r, g, b, tr, tg, tb, threshold) {
   return Math.abs(r - tr) < threshold && Math.abs(g - tg) < threshold && Math.abs(b - tb) < threshold;
 }
 
+// Flood-fill connected components of same-class pixels.
+// Each visual blob → one entry, regardless of pixel size. Discovery order is
+// image scan order (top→bottom, left→right by first-seen pixel of the blob).
+function findColorClusters<T extends string>(
+  data: Uint8ClampedArray,
+  iw: number,
+  ih: number,
+  classify: (r: number, g: number, b: number, a: number) => T | null,
+): Array<{ type: T; centroidX: number; centroidY: number }> {
+  const visited = new Uint8Array(iw * ih);
+  const out: Array<{ type: T; centroidX: number; centroidY: number }> = [];
+  const pixelType = (x: number, y: number) => {
+    const i = (y * iw + x) * 4;
+    return classify(data[i], data[i + 1], data[i + 2], data[i + 3]);
+  };
+
+  for (let y = 0; y < ih; y++) {
+    for (let x = 0; x < iw; x++) {
+      if (visited[y * iw + x]) continue;
+      const t = pixelType(x, y);
+      if (!t) { visited[y * iw + x] = 1; continue; }
+
+      const stack: number[] = [x, y];
+      let sumX = 0, sumY = 0, count = 0;
+      while (stack.length) {
+        const cy = stack.pop() as number;
+        const cx = stack.pop() as number;
+        if (cx < 0 || cy < 0 || cx >= iw || cy >= ih) continue;
+        if (visited[cy * iw + cx]) continue;
+        if (pixelType(cx, cy) !== t) { visited[cy * iw + cx] = 1; continue; }
+        visited[cy * iw + cx] = 1;
+        sumX += cx; sumY += cy; count++;
+        stack.push(cx + 1, cy, cx - 1, cy, cx, cy + 1, cx, cy - 1);
+      }
+      if (count > 0) out.push({ type: t, centroidX: sumX / count, centroidY: sumY / count });
+    }
+  }
+  return out;
+}
+
 export async function parseRoomMapCoordinates(roomId: string) {
   const room = officeRooms[roomId];
   if (!room) return;
@@ -58,35 +98,25 @@ export async function parseRoomMapCoordinates(roomId: string) {
   const tempIdle: any[] = [];
   const tempDesk: any[] = [];
   const tempMeeting: any[] = [];
-  const seenGrid: Record<string, boolean> = {};
 
-  for (let y = 0; y < ih; y++) {
-    for (let x = 0; x < iw; x++) {
-      const idx = (y * iw + x) * 4;
-      const r = data[idx], g = data[idx + 1], b = data[idx + 2], a = data[idx + 3];
-      if (a < 128) continue;
+  const classify = (r: number, g: number, b: number, a: number) => {
+    if (a < 128) return null;
+    if (colorMatch(r, g, b, 0, 255, 0, THRESHOLD) || colorMatch(r, g, b, 0, 0, 0, THRESHOLD)) return 'idle' as const;
+    if (colorMatch(r, g, b, 0, 0, 255, THRESHOLD)) return 'desk' as const;
+    if (colorMatch(r, g, b, 255, 255, 0, THRESHOLD)) return 'meeting' as const;
+    return null;
+  };
 
-      const mapX = x * scaleX;
-      const mapY = y * scaleY;
-      const gx = Math.floor(mapX / TILE);
-      const gy = Math.floor(mapY / TILE);
-      const key = gx + ',' + gy;
-      if (seenGrid[key]) continue;
-      seenGrid[key] = true;
-
-      const localX = gx * TILE + Math.floor(TILE / 2);
-      const localY = gy * TILE + TILE;
-      const worldX = localX + room.originX;
-      const worldY = localY + room.originY;
-
-      if (colorMatch(r, g, b, 0, 255, 0, THRESHOLD) || colorMatch(r, g, b, 0, 0, 0, THRESHOLD)) {
-        tempIdle.push({ x: worldX, y: worldY });
-      } else if (colorMatch(r, g, b, 0, 0, 255, THRESHOLD)) {
-        tempDesk.push({ x: worldX, y: worldY });
-      } else if (colorMatch(r, g, b, 255, 255, 0, THRESHOLD)) {
-        tempMeeting.push({ x: worldX, y: worldY });
-      }
-    }
+  const clusters = findColorClusters(data, iw, ih, classify);
+  for (const c of clusters) {
+    // Marker ≈ character butt position. agent.y is feet, so feet sit slightly below marker.
+    const localX = Math.round(c.centroidX * scaleX);
+    const localY = Math.round(c.centroidY * scaleY + 30);
+    const worldX = localX + room.originX;
+    const worldY = localY + room.originY;
+    if (c.type === 'idle') tempIdle.push({ x: worldX, y: worldY });
+    else if (c.type === 'desk') tempDesk.push({ x: worldX, y: worldY });
+    else if (c.type === 'meeting') tempMeeting.push({ x: worldX, y: worldY });
   }
 
   let localId = 0;
@@ -124,31 +154,25 @@ export async function parseRoomObjectCoordinates(roomId: string) {
   const THRESHOLD = 80;
   const TILE = OFFICE.TILE_SIZE;
   const spots: LaptopSpot[] = [];
-  const seenGrid: Record<string, boolean> = {};
 
-  for (let y = 0; y < ih; y++) {
-    for (let x = 0; x < iw; x++) {
-      const idx = (y * iw + x) * 4;
-      const r = data[idx], g = data[idx + 1], b = data[idx + 2], a = data[idx + 3];
-      if (a < 128) continue;
+  const classify = (r: number, g: number, b: number, a: number) => {
+    if (a < 128) return null;
+    if (colorMatch(r, g, b, 255, 128, 0, THRESHOLD)) return 'left' as const;
+    if (colorMatch(r, g, b, 0, 255, 255, THRESHOLD)) return 'down' as const;
+    if (colorMatch(r, g, b, 255, 0, 255, THRESHOLD)) return 'up' as const;
+    if (colorMatch(r, g, b, 0, 0, 255, THRESHOLD)) return 'right' as const;
+    return null;
+  };
 
-      let dir: string | null = null;
-      if (colorMatch(r, g, b, 255, 128, 0, THRESHOLD)) dir = 'left';
-      else if (colorMatch(r, g, b, 0, 255, 255, THRESHOLD)) dir = 'down';
-      else if (colorMatch(r, g, b, 255, 0, 255, THRESHOLD)) dir = 'up';
-      else if (colorMatch(r, g, b, 0, 0, 255, THRESHOLD)) dir = 'right';
-      else continue;
-
-      const mapX = x * scaleX;
-      const mapY = y * scaleY;
-      const gx = Math.floor(mapX / TILE);
-      const gy = Math.floor(mapY / TILE);
-      const key = gx + ',' + gy;
-      if (seenGrid[key]) continue;
-      seenGrid[key] = true;
-
-      spots.push({ x: gx * TILE + room.originX, y: gy * TILE + room.originY, dir });
-    }
+  const clusters = findColorClusters(data, iw, ih, classify);
+  for (const c of clusters) {
+    const gx = Math.floor((c.centroidX * scaleX) / TILE);
+    const gy = Math.floor((c.centroidY * scaleY) / TILE);
+    // Sprite is 2 tiles tall with content in lower half. Shift up so visible
+    // laptop sits on the table. Up-facing laptops sit on the back of the desk
+    // (further up on screen) so they need an extra tile of upward shift.
+    const yShift = c.type === 'up' ? Math.floor(1.5 * TILE) : TILE;
+    spots.push({ x: gx * TILE + room.originX, y: gy * TILE - yShift + room.originY, dir: c.type });
   }
 
   const coords = getRoomCoords(roomId);
