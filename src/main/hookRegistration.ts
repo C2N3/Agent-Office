@@ -11,7 +11,7 @@ import path from 'path';
 import os from 'os';
 import fs from 'fs';
 
-export const HOOK_SERVER_PORT = 47821;
+export const HOOK_SERVER_PORT = Number(process.env.AO_HOOK_PORT || 47821);
 
 function getClaudeConfigPath() {
   return path.join(os.homedir(), '.claude', 'settings.json');

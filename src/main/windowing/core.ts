@@ -25,7 +25,8 @@ export function createWindowManagerCore(context) {
   let dashboardServer: any = null;
   let dashboardServerStartPromise: Promise<any> | null = null;
   const browserDevServerUrl = process.env.DASHBOARD_DEV_SERVER_URL || 'http://127.0.0.1:3001';
-  const dashboardRootUrl = process.argv.includes('--dev') ? browserDevServerUrl : 'http://localhost:3000';
+  const dashboardPort = process.env.AO_DASHBOARD_PORT || 3000;
+  const dashboardRootUrl = process.argv.includes('--dev') ? browserDevServerUrl : `http://localhost:${dashboardPort}`;
   const taskChatWindows = new Map();
   const refs = {
     get dashboardWindow() { return dashboardWindow; },
