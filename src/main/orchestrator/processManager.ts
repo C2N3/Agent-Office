@@ -6,6 +6,8 @@
  * Modeled after CLITrigger's ClaudeManager.startWithSpawn() pattern.
  */
 import { spawn } from 'child_process';
+import fs from 'fs';
+import path from 'path';
 import { loadTreeKill } from '../nativeDependencies';
 
 const treeKill = loadTreeKill();
@@ -66,6 +68,40 @@ function buildWslSpawn(config: SpawnConfig) {
   };
 }
 
+function buildSpawnEnv(extraEnv: Record<string, string> = {}): NodeJS.ProcessEnv {
+  const env = Object.assign({}, process.env, extraEnv);
+  const pathKey = process.platform === 'win32' ? 'Path' : 'PATH';
+  const existingPath = env[pathKey] || env.PATH || env.Path || '';
+  const pathParts = existingPath.split(path.delimiter).filter(Boolean);
+  const defaults = process.platform === 'darwin'
+    ? ['/opt/homebrew/bin', '/usr/local/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin', '/Applications/Codex.app/Contents/Resources']
+    : process.platform === 'win32'
+      ? []
+      : ['/usr/local/bin', '/usr/bin', '/bin'];
+
+  for (const entry of defaults) {
+    if (!pathParts.includes(entry)) pathParts.unshift(entry);
+  }
+  env[pathKey] = pathParts.join(path.delimiter);
+  if (pathKey !== 'PATH') env.PATH = env[pathKey];
+  return env;
+}
+
+function resolveSpawnCommand(command: string, env: NodeJS.ProcessEnv): string {
+  if (!command || command.includes('/') || command.includes('\\')) return command;
+  if (process.platform === 'win32') return command;
+
+  const searchPath = String(env.PATH || '').split(path.delimiter).filter(Boolean);
+  for (const dir of searchPath) {
+    const candidate = path.join(dir, command);
+    try {
+      fs.accessSync(candidate, fs.constants.X_OK);
+      return candidate;
+    } catch {}
+  }
+  return command;
+}
+
 export class ProcessManager {
   declare processes: Map<string, ManagedProcess>;
   declare debugLog: DebugLog;
@@ -88,7 +124,7 @@ export class ProcessManager {
         this.kill(taskId).catch(() => {});
       }
 
-      const env = Object.assign({}, process.env, config.env || {});
+      const env = buildSpawnEnv(config.env || {});
       // Prevent "nested Claude Code session" error
       delete env.CLAUDECODE;
       // Hint UTF-8 locale on Windows
@@ -99,7 +135,9 @@ export class ProcessManager {
       let child: import('child_process').ChildProcess;
       try {
         const useWsl = process.platform === 'win32' && config.executionEnvironment === 'wsl';
-        const spawnConfig = useWsl ? buildWslSpawn(config) : config;
+        const spawnConfig = useWsl
+          ? buildWslSpawn(config)
+          : { ...config, command: resolveSpawnCommand(config.command, env) };
         if (useWsl) {
           this.debugLog(`[ProcessManager] Spawning via WSL: ${config.command} cwd=${toWslPath(config.cwd)}`);
         }
@@ -120,29 +158,34 @@ export class ProcessManager {
         return;
       }
 
+      let settled = false;
       child.on('error', (err: Error) => {
+        if (settled) return;
+        settled = true;
         reject(new Error(
           `Failed to start ${config.command}. Is it installed and on PATH? ${err.message}`
         ));
       });
 
-      const pid = child.pid;
-      if (pid === undefined) {
-        reject(new Error(`Failed to get PID for ${config.command} process`));
-        return;
-      }
-
-      this.processes.set(taskId, { child, pid });
-
-      const exitPromise = new Promise<number>((resolveExit) => {
-        child.on('exit', (code: number | null) => {
-          this.processes.delete(taskId);
-          resolveExit(code ?? 1);
-        });
-      });
-
-      // Resolve immediately (don't wait for exit)
       setImmediate(() => {
+        if (settled) return;
+        const pid = child.pid;
+        if (pid === undefined) {
+          settled = true;
+          reject(new Error(`Failed to get PID for ${config.command} process`));
+          return;
+        }
+
+        settled = true;
+        this.processes.set(taskId, { child, pid });
+
+        const exitPromise = new Promise<number>((resolveExit) => {
+          child.on('exit', (code: number | null) => {
+            this.processes.delete(taskId);
+            resolveExit(code ?? 1);
+          });
+        });
+
         resolve({
           pid,
           stdout: child.stdout!,

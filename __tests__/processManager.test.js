@@ -8,6 +8,16 @@ jest.mock('child_process', () => ({
 }));
 
 jest.mock('tree-kill', () => jest.fn());
+jest.mock('fs', () => {
+  const actual = jest.requireActual('fs');
+  return {
+    ...actual,
+    accessSync: jest.fn((candidate) => {
+      if (candidate === '/opt/homebrew/bin/codex') return;
+      throw new Error('not found');
+    }),
+  };
+});
 
 import { ProcessManager } from '../src/main/orchestrator/processManager';
 
@@ -51,6 +61,32 @@ describe('ProcessManager', () => {
         shell: true,
       }),
     );
+  });
+
+  test('adds common macOS CLI paths for GUI-launched Electron', async () => {
+    Object.defineProperty(process, 'platform', { value: 'darwin', configurable: true });
+    const originalPath = process.env.PATH;
+    process.env.PATH = '/usr/bin:/bin';
+
+    try {
+      const manager = new ProcessManager({ debugLog: jest.fn() });
+      await manager.spawn('task-mac', {
+        command: 'codex',
+        args: ['exec', '--full-auto'],
+        cwd: '/workspace/Agent-Office',
+        executionEnvironment: 'auto',
+      });
+
+      const options = mockSpawn.mock.calls[0][2];
+      expect(mockSpawn.mock.calls[0][0]).toBe('/opt/homebrew/bin/codex');
+      expect(options.env.PATH.split(':')).toEqual(expect.arrayContaining([
+        '/opt/homebrew/bin',
+        '/usr/local/bin',
+        '/Applications/Codex.app/Contents/Resources',
+      ]));
+    } finally {
+      process.env.PATH = originalPath;
+    }
   });
 
   test('wraps task commands with wsl.exe when WSL is selected on Windows', async () => {

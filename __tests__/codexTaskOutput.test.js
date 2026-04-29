@@ -15,6 +15,18 @@ describe('Codex task output', () => {
     expect(config.outputFormat).toBe('codex-json');
   });
 
+  test('pins a current Codex model when no task model is selected', () => {
+    const adapter = new CodexAdapter();
+    const config = adapter.buildSpawnConfig({
+      cwd: '/workspace/app',
+      prompt: 'summarize',
+      model: null,
+      maxTurns: 30,
+    });
+
+    expect(config.args).toEqual(expect.arrayContaining(['--model', 'gpt-5.4']));
+  });
+
   test('emits only assistant messages from Codex JSON task output', () => {
     const parser = new OutputParser(new CodexAdapter(), 'codex-json');
     const events = parser.feedStdout([

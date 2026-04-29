@@ -134,7 +134,7 @@ function TaskChatApp(): ReactElement {
       try {
         const data = JSON.parse(event.data) as { data?: AgentInfo };
         const agent = data.data;
-        if (!agent || agent.id !== agentRegistryId) return;
+        if (!agent || (agent.id !== agentRegistryId && agent.registryId !== agentRegistryId)) return;
         if (isCentralAgent) {
           fetchAgentInfo(agentRegistryId).then(setAgentInfo).catch(() => {});
           return;

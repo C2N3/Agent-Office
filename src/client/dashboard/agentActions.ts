@@ -1,4 +1,4 @@
-import { archiveState, getDashboardAPI, state } from './shared';
+import { archiveState, getDashboardAPI, SHARED_AVATAR_FILES, state, type DashboardAgent } from './shared';
 import { renderArchiveView } from './activityViews';
 import { officeOnAgentUpdated, officeRenderer } from '../office/index';
 import { syncCentralAgentDisplayName, syncCentralAgentRemoval } from './centralAgents/index';
@@ -7,6 +7,23 @@ import { dashboardModalRegistry } from './modals/registry';
 
 export function openCreateAgentModal(): void {
   dashboardModalRegistry.openCreateAgentModal?.();
+}
+
+export function openAgentTaskChat(agent: DashboardAgent): void {
+  const dashboardAPI = getDashboardAPI();
+  if (!dashboardAPI?.openTaskChatWindow) {
+    alert('Task chat is unavailable in this environment.');
+    return;
+  }
+
+  const avatarFile = SHARED_AVATAR_FILES[agent.avatarIndex != null ? agent.avatarIndex : 0]
+    || SHARED_AVATAR_FILES[0]
+    || 'Origin/avatar_0.webp';
+  void dashboardAPI.openTaskChatWindow({
+    agentRegistryId: agent.registryId || agent.id,
+    agentName: agent.nickname || agent.name || 'Agent',
+    avatarFile,
+  });
 }
 
 export async function terminateAgent(agentId: string): Promise<void> {

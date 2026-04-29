@@ -3,6 +3,7 @@ import {
   changeAgentAvatar,
   deleteAgentRecord,
   focusAgentCard,
+  openAgentTaskChat,
   openCreateAgentModal,
   renameAgentNickname,
   terminateAgent,
@@ -205,6 +206,7 @@ export function OfficeView({
                 onChangeAvatar={changeAgentAvatar}
                 onDelete={deleteAgentRecord}
                 onFocus={focusAgentCard}
+                onOpenTask={openAgentTaskChat}
                 onRename={renameAgentNickname}
                 onTerminate={terminateAgent}
                 onUnregister={unregisterAgent}
