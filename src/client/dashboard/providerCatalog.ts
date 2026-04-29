@@ -28,9 +28,9 @@ export const DASHBOARD_PROVIDER_DEFINITIONS: DashboardProviderDefinition[] = [
     label: 'Codex',
     models: [
       { value: '', label: 'Default' },
-      { value: 'o4-mini', label: 'o4-mini' },
-      { value: 'o3', label: 'o3' },
-      { value: 'gpt-4.1', label: 'GPT-4.1' },
+      { value: 'gpt-5.4', label: 'gpt-5.4' },
+      { value: 'gpt-5.4-mini', label: 'gpt-5.4-mini' },
+      { value: 'gpt-5.3-codex', label: 'gpt-5.3-codex' },
     ],
     buildTerminalBootCommand: (sessionId) => sessionId ? `codex resume ${sessionId}\r` : 'codex\r',
   },

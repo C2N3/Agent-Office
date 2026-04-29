@@ -92,7 +92,7 @@ export async function fetchAgentInfo(agentRegistryId: string): Promise<AgentInfo
     if (response.ok) {
       const agents = (await response.json()) as AgentInfo[];
       if (Array.isArray(agents)) {
-        const local = agents.find((agent) => agent?.id === agentRegistryId);
+        const local = agents.find((agent) => agent?.id === agentRegistryId || agent?.registryId === agentRegistryId);
         if (local) return local;
       }
     }

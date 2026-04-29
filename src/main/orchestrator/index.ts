@@ -148,6 +148,9 @@ export class Orchestrator extends EventEmitter {
       errorMessage: null,
       lastOutput: null,
       completedAt: null,
+      workspacePath: null,
+      terminalId: null,
+      outputPath: null,
     });
     this.taskStore.updateTask(taskId, updated);
     this.emit('task:updated', updated);

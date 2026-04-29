@@ -7,6 +7,8 @@ import type { TaskDefinition } from './types';
 
 const PERSIST_DIR = path.join(os.homedir(), '.agent-office');
 const PERSIST_FILE = path.join(PERSIST_DIR, 'task-queue.json');
+const INTERRUPTED_STATUSES = new Set(['provisioning', 'running', 'retrying']);
+const INTERRUPTED_MESSAGE = 'Task interrupted because Agent-Office restarted before the CLI process completed';
 
 export class TaskStore {
   declare debugLog: (message: string) => void;
@@ -24,8 +26,27 @@ export class TaskStore {
       const raw = fs.readFileSync(PERSIST_FILE, 'utf-8');
       const parsed = JSON.parse(raw);
       if (parsed && parsed.version === 1 && Array.isArray(parsed.tasks)) {
+        let interrupted = 0;
+        const now = Date.now();
         for (const task of parsed.tasks) {
-          this.tasks.set(task.id, task);
+          if (INTERRUPTED_STATUSES.has(task.status)) {
+            this.tasks.set(task.id, {
+              ...task,
+              status: 'failed',
+              completedAt: task.completedAt || now,
+              updatedAt: now,
+              exitCode: task.exitCode ?? null,
+              errorMessage: task.errorMessage || INTERRUPTED_MESSAGE,
+              terminalId: null,
+            });
+            interrupted += 1;
+          } else {
+            this.tasks.set(task.id, task);
+          }
+        }
+        if (interrupted > 0) {
+          this._save();
+          this.debugLog(`[TaskStore] Marked ${interrupted} interrupted task(s) as failed`);
         }
         this.debugLog(`[TaskStore] Loaded ${this.tasks.size} task(s)`);
       }

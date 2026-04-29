@@ -89,6 +89,7 @@ describe('dashboard react-owned surfaces', () => {
         onChangeAvatar: jest.fn(),
         onDelete: jest.fn(),
         onFocus: jest.fn(),
+        onOpenTask: jest.fn(),
         onRename: jest.fn(),
         onTerminate: jest.fn(),
         onUnregister: jest.fn(),
@@ -100,7 +101,7 @@ describe('dashboard react-owned surfaces', () => {
     expect(markup).toContain('agent-terminate-btn');
     expect(markup).toContain('mc-timeline');
     expect(markup).toContain('Builder');
-    expect(markup).not.toContain('agent-assign-task-btn');
+    expect(markup).toContain('agent-assign-task-btn');
     expect(markup).not.toContain('agent-form-team-btn');
     expect(markup).not.toContain('agent-workspace-btn');
   });
@@ -128,6 +129,7 @@ describe('dashboard react-owned surfaces', () => {
         onChangeAvatar: jest.fn(),
         onDelete: jest.fn(),
         onFocus: jest.fn(),
+        onOpenTask: jest.fn(),
         onRename: jest.fn(),
         onTerminate: jest.fn(),
         onUnregister: jest.fn(),
@@ -137,6 +139,7 @@ describe('dashboard react-owned surfaces', () => {
     expect(markup).toContain('Remote Agent');
     expect(markup).toContain('Guest worker-other');
     expect(markup).toContain('Owner participant: worker-other');
+    expect(markup).toContain('agent-assign-task-btn');
     expect(markup).not.toContain('Double-click to rename');
     expect(markup).not.toContain('nickname-input');
   });

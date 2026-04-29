@@ -6,7 +6,7 @@ import path from 'path';
 import { URL } from 'url';
 
 export const DEFAULT_CENTRAL_SERVER_URL = 'http://127.0.0.1:47823';
-export const CONFIG_DIR = path.join(os.homedir(), '.agent-office');
+export const CONFIG_DIR = process.env.AO_CONFIG_DIR || path.join(os.homedir(), '.agent-office');
 export const CENTRAL_SERVER_URL_FILE = path.join(CONFIG_DIR, 'central-server-url.txt');
 export const CENTRAL_AGENT_SYNC_FILE = path.join(CONFIG_DIR, 'central-agent-sync.txt');
 export const CENTRAL_WORKER_ENABLED_FILE = path.join(CONFIG_DIR, 'central-worker-enabled.txt');

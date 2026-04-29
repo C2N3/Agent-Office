@@ -21,6 +21,7 @@ type AgentCardProps = {
   onChangeAvatar: (agentId: string, registryId: string) => void;
   onDelete: (registryId: string) => void;
   onFocus: (agentId: string) => void;
+  onOpenTask: (agent: DashboardAgent) => void;
   onRename: (agentId: string, nickname: string) => boolean | Promise<boolean>;
   onTerminate: (agentId: string) => void;
   onUnregister: (registryId: string) => void;
@@ -69,6 +70,7 @@ export function AgentCard({
   onChangeAvatar,
   onDelete,
   onFocus,
+  onOpenTask,
   onRename,
   onTerminate,
   onUnregister,
@@ -90,6 +92,7 @@ export function AgentCard({
     ? <span className="mc-type-badge workspace" title={workspaceType}>{workspaceType}</span>
     : null;
   const isLocalRegistered = !!agent.isRegistered && agent.metadata?.source !== 'central';
+  const canAssignTask = !!agent.isRegistered && !!(agent.registryId || agent.id);
   const canRename = isLocalRegistered || agent.metadata?.canRename === true;
   const canTerminate = !['offline', 'done', 'completed'].includes(agent.status);
   const activityIcon = getActivityIcon(statusClass, agent.currentTool);
@@ -144,6 +147,14 @@ export function AgentCard({
         </div>
       ) : null}
       <div className="mc-agent-actions">
+        {canAssignTask ? (
+          <button className="agent-assign-task-btn" type="button" onClick={(event) => { event.stopPropagation(); onOpenTask(agent); }} {...tooltipProps('Assign Task')}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 5v14" />
+              <path d="M5 12h14" />
+            </svg>
+          </button>
+        ) : null}
         {isLocalRegistered && agent.registryId ? (
           <button className="agent-avatar-btn" type="button" onClick={(event) => { event.stopPropagation(); onChangeAvatar(agent.id, agent.registryId!); }} {...tooltipProps('Change avatar')}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

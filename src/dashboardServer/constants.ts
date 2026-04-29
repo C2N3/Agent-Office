@@ -1,7 +1,7 @@
 import path from 'path';
 import { moduleDirname } from '../runtime/module';
 
-export const PORT = 3000;
+export const PORT = Number(process.env.AO_DASHBOARD_PORT || 3000);
 
 const runtimeRoot = path.resolve(moduleDirname(import.meta.url), '..', '..');
 

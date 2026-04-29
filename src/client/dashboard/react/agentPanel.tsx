@@ -13,6 +13,7 @@ export function AgentPanel({
   onChangeAvatar,
   onDelete,
   onFocus,
+  onOpenTask,
   onRename,
   onTerminate,
   onUnregister,
@@ -23,6 +24,7 @@ export function AgentPanel({
   onChangeAvatar: (agentId: string, registryId: string) => void;
   onDelete: (registryId: string) => void;
   onFocus: (agentId: string | null) => void;
+  onOpenTask: (agent: DashboardAgent) => void;
   onRename: (agentId: string, nickname: string) => boolean | Promise<boolean>;
   onTerminate: (agentId: string) => void;
   onUnregister: (registryId: string) => void;
@@ -51,6 +53,7 @@ export function AgentPanel({
           onChangeAvatar={onChangeAvatar}
           onDelete={onDelete}
           onFocus={onFocus}
+          onOpenTask={onOpenTask}
           onRename={onRename}
           onTerminate={onTerminate}
           onUnregister={onUnregister}
