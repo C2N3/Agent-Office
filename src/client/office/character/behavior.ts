@@ -167,6 +167,18 @@ export function assignDesk(agentId) {
 
   if (available.length === 0) {
     char.deskOverflow = true;
+    const noSeatMessages = [
+      'Where\'s my chair..?',
+      'No seats left?!',
+      'I need a desk...',
+      'Someone took my seat!',
+      'Where do I sit?',
+    ];
+    char.bubble = {
+      text: noSeatMessages[Math.floor(Math.random() * noSeatMessages.length)],
+      icon: null,
+      expiresAt: Date.now() + 5000,
+    };
     return;
   }
 
@@ -201,11 +213,34 @@ export function updateAll(deltaSec, deltaMs) {
 export function updateTarget(char) {
   if (!char.roomId) char.roomId = pickInitialRoomId(char.id);
   const coords = officeCoordsByRoom[char.roomId];
-  if (!coords || !coords.desk || !coords.idle) return;
+  if (!coords) return;
+  const deskCoords = coords.desk || [];
+  const idleCoords = coords.idle || [];
 
   if (char.manualPinned) {
     char.path = [];
     char.pathIndex = 0;
+    return;
+  }
+
+  // No seats at all — wander randomly and show bubble
+  if (deskCoords.length === 0 && idleCoords.length === 0) {
+    if (char.path.length > 0 && char.pathIndex < char.path.length) return;
+    this._wanderRandom(char);
+    if (!char.bubble || char.bubble.expiresAt < Date.now()) {
+      const lostMessages = [
+        'Where\'s my chair..?',
+        'Is this the right office?',
+        'Where is everyone?',
+        'No furniture here...',
+        'Am I lost?',
+      ];
+      char.bubble = {
+        text: lostMessages[Math.floor(Math.random() * lostMessages.length)],
+        icon: null,
+        expiresAt: Date.now() + 6000,
+      };
+    }
     return;
   }
 
@@ -220,6 +255,9 @@ export function updateTarget(char) {
         if (Math.abs(char.x - nearIdle.x) < 5 && Math.abs(char.y - nearIdle.y) < 5) return;
         char.path = officePathfinder.findPath(char.roomId, char.x, char.y, nearIdle.x, nearIdle.y);
         char.pathIndex = 0;
+      } else {
+        // No idle spots either — wander
+        this._wanderRandom(char);
       }
       return;
     }
@@ -288,8 +326,11 @@ export function updateMovement(char, deltaSec) {
       }
     }
 
-    if (char.agentState === 'done' || char.agentState === 'completed') {
-      if (currentSpot && currentSpot.type === 'idle') {
+    if (!currentSpot) {
+      // Not at any seat — stand idle
+      char.currentAnim = `${char.facingDir || 'down'}_idle`;
+    } else if (char.agentState === 'done' || char.agentState === 'completed') {
+      if (currentSpot.type === 'idle') {
         const entry = getIdleSeatEntry(char.roomId, currentSpot.id);
         char.currentAnim = entry === 'dance' ? 'dance' : `sit_${entry || 'down'}`;
       } else {
@@ -300,12 +341,12 @@ export function updateMovement(char, deltaSec) {
       char.currentAnim = 'down_idle';
     } else if (char.agentState === 'error') {
       char.currentAnim = 'alert_jump';
-    } else if (currentSpot && currentSpot.type === 'idle') {
+    } else if (currentSpot.type === 'idle') {
       const idleConfig = getSeatConfig(char.roomId, currentSpot.id);
       char.facingDir = idleConfig.dir;
       char.currentAnim = idleConfig.animType === 'sit' ? `sit_${idleConfig.dir}` : `${idleConfig.dir}_idle`;
     } else {
-      const config = currentSpot ? getSeatConfig(char.roomId, currentSpot.id) : { dir: 'down', animType: 'sit' };
+      const config = getSeatConfig(char.roomId, currentSpot.id);
       char.facingDir = config.dir;
       if (config.animType === 'sit') {
         const isWorking = char.agentState === 'working' || char.agentState === 'thinking' || char.agentState === 'help';
@@ -335,4 +376,28 @@ export function updateMovement(char, deltaSec) {
   const dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
   char.facingDir = dir;
   char.currentAnim = animKeyFromDir(dir, true);
+}
+
+export function wanderRandom(char) {
+  if (char.path.length > 0 && char.pathIndex < char.path.length) return;
+  const room = officeRooms[char.roomId];
+  if (!room) return;
+  const TILE = OFFICE.TILE_SIZE;
+  const pf = officePathfinder.rooms[char.roomId];
+  if (!pf) return;
+
+  // Pick a random walkable tile
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const gx = Math.floor(Math.random() * pf.gridW);
+    const gy = Math.floor(Math.random() * pf.gridH);
+    if (!officePathfinder.isWalkable(char.roomId, gx, gy)) continue;
+    const wx = room.originX + gx * TILE + Math.floor(TILE / 2);
+    const wy = room.originY + gy * TILE + Math.floor(TILE / 2);
+    const path = officePathfinder.findPath(char.roomId, char.x, char.y, wx, wy);
+    if (path.length > 0) {
+      char.path = path;
+      char.pathIndex = 0;
+      return;
+    }
+  }
 }

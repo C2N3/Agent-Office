@@ -7,6 +7,7 @@
 
 import { OFFICE } from './officeConfig';
 import { loadOfficeImage, officeRooms, officeRoomOrder } from './officeLayers';
+import { buildSeatsFromObjects, buildLaptopsFromObjects, getObjectCatalog } from './tilemap';
 
 type SpotType = 'desk' | 'idle' | 'meeting';
 interface Coord { x: number; y: number; id: number; type: SpotType; }
@@ -83,6 +84,29 @@ function findColorClusters<T extends string>(
 export async function parseRoomMapCoordinates(roomId: string) {
   const room = officeRooms[roomId];
   if (!room) return;
+
+  // Tilemap path: extract seats from JSON objects
+  if (room.tilemap) {
+    const catalog = getObjectCatalog();
+    if (catalog) {
+      const seats = buildSeatsFromObjects(room.tilemap, catalog, room.originX, room.originY);
+      const existing = officeCoordsByRoom[roomId] || { laptopSpots: [] } as any;
+      officeCoordsByRoom[roomId] = {
+        desk: seats.desk.map(function (s) { return { x: s.x, y: s.y, id: s.id, type: s.type }; }),
+        idle: seats.idle.map(function (s) { return { x: s.x, y: s.y, id: s.id, type: 'idle' as const }; }),
+        laptopSpots: existing.laptopSpots || [],
+      };
+      // Store seat configs for behavior.ts (direction/animType)
+      const seatMap: Record<number, { dir: string; animType: string }> = {};
+      const allSeats = seats.desk.concat(seats.idle);
+      for (let i = 0; i < allSeats.length; i++) {
+        seatMap[allSeats[i].id] = { dir: allSeats[i].dir, animType: allSeats[i].animType };
+      }
+      room.seatMap = seatMap;
+      return;
+    }
+  }
+
   const assets = room.assets || {};
   const src = assets.coordinates;
   if (!src) {
@@ -140,6 +164,27 @@ export async function parseRoomMapCoordinates(roomId: string) {
 export async function parseRoomObjectCoordinates(roomId: string) {
   const room = officeRooms[roomId];
   if (!room) return;
+
+  // Tilemap path: extract laptops from JSON objects
+  if (room.tilemap) {
+    const catalog = getObjectCatalog();
+    if (catalog) {
+      const coords = getRoomCoords(roomId);
+      const deskSeats = coords.desk.map(function (d) {
+        return { x: d.x, y: d.y, id: d.id, type: d.type as 'desk', dir: 'down', animType: 'sit' };
+      });
+      const laptops = buildLaptopsFromObjects(room.tilemap, catalog, room.originX, room.originY, deskSeats);
+      coords.laptopSpots = laptops.map(function (lp) { return { x: lp.x, y: lp.y, dir: lp.dir }; });
+      // Build laptopSeatMap
+      const laptopSeatMap: Record<number, number> = {};
+      for (let i = 0; i < laptops.length; i++) {
+        laptopSeatMap[i] = laptops[i].seatId;
+      }
+      room.laptopSeatMap = laptopSeatMap;
+      return;
+    }
+  }
+
   const assets = room.assets || {};
   const src = assets.laptopSpots;
   if (!src) {

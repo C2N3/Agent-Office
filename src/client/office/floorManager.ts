@@ -9,6 +9,7 @@ export type Floor = {
   name: string;
   roomId: string;        // internal room id used by officeLayers
   agentIds: string[];    // agents assigned to this floor
+  tilemapId?: string | null;  // if set, floor uses a JSON tilemap instead of images
 };
 
 export type FloorEvent = 'floor-changed' | 'floors-updated';
@@ -96,15 +97,29 @@ export const floorManager = {
     emit('floor-changed', floor);
   },
 
-  addFloor(name: string): Floor {
+  addFloor(name: string, opts?: { tilemapId?: string }): Floor {
     const id = generateId();
-    // All floors use room1 template assets
     const roomId = 'room1';
-    const floor: Floor = { id, name, roomId, agentIds: [] };
+    const floor: Floor = { id, name, roomId, agentIds: [], tilemapId: (opts && opts.tilemapId) || null };
     floors.push(floor);
     save();
     emit('floors-updated', floors);
     return floor;
+  },
+
+  /** Assign a tilemap to a floor. */
+  setTilemapId(floorId: string, tilemapId: string | null) {
+    const floor = floors.find(f => f.id === floorId);
+    if (!floor) return;
+    floor.tilemapId = tilemapId;
+    save();
+    emit('floors-updated', floors);
+  },
+
+  /** Get the tilemap ID for a floor. */
+  getTilemapId(floorId: string): string | null {
+    const floor = floors.find(f => f.id === floorId);
+    return (floor && floor.tilemapId) || null;
   },
 
   removeFloor(floorId: string): boolean {

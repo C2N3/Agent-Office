@@ -6,6 +6,9 @@ import {
   apiRoutes,
   handleAgentApiRoute,
   handleGetOfficeLayoutAsset,
+  handleGetOfficeTilemap,
+  handlePutOfficeTilemap,
+  handleCreateOfficeTilemap,
   handleTaskApiRoute,
 } from './apiHandlers';
 import { handleCentralServerRoute } from './centralServerProxy';
@@ -162,6 +165,11 @@ function handleAPIRequest(req: RequestLike, res: ResponseLike, url: URL): void {
   if (req.method === 'GET' && url.pathname.startsWith('/api/office-layout/assets/')) {
     handleGetOfficeLayoutAsset(req as any, res as any, url);
     return;
+  }
+  if (url.pathname.startsWith('/api/office-tilemap/')) {
+    if (req.method === 'GET') { handleGetOfficeTilemap(req as any, res as any, url); return; }
+    if (req.method === 'PUT') { handlePutOfficeTilemap(req as any, res as any, url); return; }
+    if (req.method === 'POST') { handleCreateOfficeTilemap(req as any, res as any, url); return; }
   }
   if (handleTaskApiRoute(req as any, res as any, url)) return;
   if (handleAgentApiRoute(req as any, res as any, url)) return;

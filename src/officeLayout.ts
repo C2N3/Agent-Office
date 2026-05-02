@@ -104,7 +104,6 @@ const DEFAULT_LAYOUT = {
   roomGap: DEFAULT_ROOM_GAP,
   rooms: [
     buildDefaultRoom('room1', 'rooms/room1'),
-    buildDefaultRoom('room2', 'rooms/room2'),
   ],
 };
 
@@ -223,7 +222,7 @@ function normalizeDecor(value) {
 
 function normalizeRoomAssets(assets, fallbackAssets) {
   const input = assets && typeof assets === 'object' ? assets : {};
-  return {
+  const result: PlainObject = {
     background: toClientAssetUrl(input.background) || fallbackAssets.background,
     foreground: toClientAssetUrl(input.foreground) || fallbackAssets.foreground,
     coordinates: toClientAssetUrl(input.coordinates) || fallbackAssets.coordinates,
@@ -231,6 +230,10 @@ function normalizeRoomAssets(assets, fallbackAssets) {
     laptopSpots: toClientAssetUrl(input.laptopSpots) || fallbackAssets.laptopSpots,
     laptopStates: mergeLaptopStates(input.laptopStates, fallbackAssets.laptopStates),
   };
+  // Preserve tilemap path if present in input or fallback
+  const tilemap = toClientAssetUrl(input.tilemap) || (fallbackAssets && fallbackAssets.tilemap) || null;
+  if (tilemap) result.tilemap = tilemap;
+  return result;
 }
 
 function normalizeRoom(room, fallbackRoom, index) {

@@ -14,6 +14,7 @@ import {
   updateCharacter,
   updateMovement,
   updateTarget,
+  wanderRandom,
 } from './behavior';
 import {
   dropCharacterAt,
@@ -48,4 +49,5 @@ export const officeCharacters: any = {
   _mapStatus: mapStatus,
   _setBubble: setBubble,
   _findNearDeskIdleSpot: findNearDeskIdleSpot,
+  _wanderRandom: wanderRandom,
 };

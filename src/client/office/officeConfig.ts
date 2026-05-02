@@ -161,6 +161,8 @@ const DEFAULT_LAPTOP_ID_MAP = {
 
 function buildRoomTemplateAssets(roomDir) {
   return {
+    // Tilemap (JSON-based system) — if present, bg/fg/coordinates/collision/laptopSpots are ignored
+    tilemap: null as string | null,
     background: toHttpAssetPath(`office/${roomDir}/map/office_bg_32.webp`),
     foreground: toHttpAssetPath(`office/${roomDir}/map/office_fg_32.webp`),
     coordinates: toHttpAssetPath(`office/${roomDir}/map/office_xy.webp`),
@@ -205,7 +207,13 @@ export let OFFICE_LAYOUT: any = {
   tileSize: OFFICE.TILE_SIZE,
   roomGap: 0,
   rooms: [
-    buildDefaultRoom('room1', 'rooms/room1'),
+    // room1: tilemap-based (new system)
+    (function () {
+      const r = buildDefaultRoom('room1', 'rooms/room1');
+      r.assets.tilemap = toHttpAssetPath('office/rooms/room1/tilemap.json');
+      return r;
+    })(),
+    // room2: image-based (legacy)
     buildDefaultRoom('room2', 'rooms/room2'),
   ],
 };

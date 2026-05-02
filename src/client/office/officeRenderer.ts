@@ -24,6 +24,10 @@ import { drawOfficeSprite, loadAllOfficeSkins } from './officeSprite';
 import { drawOfficeBubble, drawOfficeNameTag } from './officeUi';
 import { screenToWorld, setupCameraControls } from './renderer/camera';
 import { rendererEffects } from './officeRendererEffects';
+import { editorState } from './editor/editorState';
+import { drawEditorOverlay } from './editor/editorRenderer';
+import { showEditorUi, hideEditorUi, setCurrentTilemap, setEditorChangeCallback } from './editor/editorUi';
+import { compositeBackCanvas, compositeFrontCanvas, getObjectCatalog } from './tilemap';
 
 export const officeRenderer: any = {
   canvas: null,
@@ -39,16 +43,16 @@ export const officeRenderer: any = {
   camera: { zoom: 1, panX: 0, panY: 0, minZoom: 0.15, maxZoom: 3 },
   followTarget: null as { agentId: string; zoom: number } | null,
 
-  async initWithFloor(canvas, roomFilter?: string[]) {
-    return this.init(canvas, roomFilter);
+  async initWithFloor(canvas, roomFilter?: string[], tilemapId?: string | null) {
+    return this.init(canvas, roomFilter, tilemapId);
   },
 
-  async init(canvas, roomFilter?: string[]) {
+  async init(canvas, roomFilter?: string[], tilemapId?: string | null) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
 
     // 1. Load layers (optionally filtered by floor)
-    await buildOfficeLayers(roomFilter);
+    await buildOfficeLayers(roomFilter, tilemapId);
     this._fitCanvasToContainer(true);
 
     // 2. Build pathfinder grid per room
@@ -185,11 +189,11 @@ export const officeRenderer: any = {
   },
 
   /** Switch to a different floor. Rebuilds layers, pathfinder, coords, laptops. */
-  async switchToFloor(roomFilter: string[]) {
+  async switchToFloor(roomFilter: string[], tilemapId?: string | null) {
     this.stop();
 
     // 1. Rebuild layers for the target floor's room(s)
-    await buildOfficeLayers(roomFilter);
+    await buildOfficeLayers(roomFilter, tilemapId);
     this._fitCanvasToContainer(true);
 
     // 2. Rebuild pathfinder
@@ -348,8 +352,14 @@ export const officeRenderer: any = {
       const roomId = officeRoomOrder[i];
       const room = officeRooms[roomId];
       if (!room) continue;
-      if (room.fgImage && room.fgImage.complete && room.fgImage.naturalWidth > 0) {
-        ctx.drawImage(room.fgImage, room.originX, room.originY, room.width, room.height);
+      if (room.fgImage) {
+        // Canvas elements (tilemap) don't have .complete/.naturalWidth — check width directly
+        const fgReady = room.fgImage instanceof HTMLCanvasElement
+          ? room.fgImage.width > 0
+          : (room.fgImage.complete && room.fgImage.naturalWidth > 0);
+        if (fgReady) {
+          ctx.drawImage(room.fgImage, room.originX, room.originY, room.width, room.height);
+        }
       }
       this._drawDecorItems(ctx, room.decorAfter);
     }
@@ -357,7 +367,163 @@ export const officeRenderer: any = {
     // Effects
     this.renderEffects(ctx);
 
+    // Editor overlay (grid, ghost, selection)
+    if (editorState.active) {
+      for (let i = 0; i < officeRoomOrder.length; i++) {
+        const roomId = officeRoomOrder[i];
+        const room = officeRooms[roomId];
+        if (room && room.tilemap) {
+          drawEditorOverlay(ctx, room.tilemap, room.originX, room.originY);
+        }
+      }
+    }
+
     ctx.restore();
+  },
+
+  // ── Editor integration ──
+
+  toggleEditor(tilemapId?: string) {
+    const roomId = officeRoomOrder[0];
+    if (!roomId) return;
+    const room = officeRooms[roomId];
+    if (!room || !room.tilemap) {
+      console.warn('[Editor] Room has no tilemap, cannot open editor');
+      return;
+    }
+
+    editorState.toggle(roomId, tilemapId);
+    const container = this.canvas && this.canvas.parentElement;
+    if (!container) return;
+
+    if (editorState.active) {
+      setCurrentTilemap(room.tilemap);
+      setEditorChangeCallback(this._recompositeTilemap.bind(this, roomId));
+      showEditorUi(container, room.tilemap);
+      this._setupEditorInput();
+    } else {
+      hideEditorUi();
+      this._teardownEditorInput();
+    }
+  },
+
+  async _recompositeTilemap(roomId: string) {
+    const room = officeRooms[roomId];
+    if (!room || !room.tilemap) return;
+    const catalog = getObjectCatalog();
+    if (!catalog) return;
+    const [backCanvas, frontCanvas] = await Promise.all([
+      compositeBackCanvas(room.tilemap, catalog, room.width, room.height),
+      compositeFrontCanvas(room.tilemap, catalog, room.width, room.height),
+    ]);
+    room.bgImage = backCanvas;
+    room.fgImage = frontCanvas;
+
+    // Rebuild pathfinder collision grid + seat/laptop coords for this room
+    officePathfinder.initRoom(roomId);
+    await parseRoomMapCoordinates(roomId);
+    await parseRoomObjectCoordinates(roomId);
+  },
+
+  _editorClickHandler: null as ((e: MouseEvent) => void) | null,
+  _editorMoveHandler: null as ((e: MouseEvent) => void) | null,
+  _editorKeyHandler: null as ((e: KeyboardEvent) => void) | null,
+
+  _setupEditorInput() {
+    const self = this;
+    const canvas = this.canvas;
+    if (!canvas) return;
+
+    this._editorClickHandler = function (e: MouseEvent) {
+      if (e.button !== 0) return; // left click only
+      if (!editorState.active) return;
+      const roomId = editorState.roomId;
+      const room = officeRooms[roomId];
+      if (!room || !room.tilemap) return;
+
+      const world = self.screenToWorld(e.clientX, e.clientY);
+      const tileX = Math.floor((world.x - room.originX) / room.tilemap.tileSize);
+      const tileY = Math.floor((world.y - room.originY) / room.tilemap.tileSize);
+
+      if (editorState.tool === 'place') {
+        // Re-validate ghost at click position before placing
+        editorState.updateGhost(tileX, tileY, room.tilemap);
+        const placed = editorState.placeObject(room.tilemap);
+        if (placed) self._recompositeTilemap(roomId);
+      } else if (editorState.tool === 'select') {
+        editorState.selectAt(room.tilemap, tileX, tileY);
+      } else if (editorState.tool === 'delete') {
+        if (editorState.deleteAt(room.tilemap, tileX, tileY)) {
+          self._recompositeTilemap(roomId);
+        }
+      }
+    };
+
+    this._editorMoveHandler = function (e: MouseEvent) {
+      const roomId = editorState.roomId;
+      const room = officeRooms[roomId];
+      if (!room || !room.tilemap) return;
+
+      const world = self.screenToWorld(e.clientX, e.clientY);
+      const tileX = Math.floor((world.x - room.originX) / room.tilemap.tileSize);
+      const tileY = Math.floor((world.y - room.originY) / room.tilemap.tileSize);
+
+      if (editorState.tool === 'place') {
+        editorState.updateGhost(tileX, tileY, room.tilemap);
+      } else if (editorState.tool === 'delete') {
+        // Show hover indicator for delete
+        editorState.ghost = { objectId: '', tileX, tileY, rotation: 0, valid: false };
+      }
+    };
+
+    this._editorKeyHandler = function (e: KeyboardEvent) {
+      if (!editorState.active) return;
+      const roomId = editorState.roomId;
+      const room = officeRooms[roomId];
+      if (!room || !room.tilemap) return;
+
+      if (e.key === 'r' || e.key === 'R') {
+        if (editorState.selection) {
+          editorState.rotateSelection(room.tilemap);
+          self._recompositeTilemap(roomId);
+        } else if (editorState.tool === 'place') {
+          editorState.rotatePlacing();
+        }
+      } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (editorState.deleteSelection(room.tilemap)) {
+          self._recompositeTilemap(roomId);
+        }
+      } else if (e.key === 'z' && (e.ctrlKey || e.metaKey)) {
+        if (editorState.undo(room.tilemap)) {
+          self._recompositeTilemap(roomId);
+        }
+      } else if (e.key === 'Escape') {
+        if (editorState.tool === 'place') {
+          editorState.setTool('select');
+        } else {
+          editorState.selection = null;
+        }
+      }
+    };
+
+    canvas.addEventListener('mousedown', this._editorClickHandler);
+    canvas.addEventListener('mousemove', this._editorMoveHandler);
+    window.addEventListener('keydown', this._editorKeyHandler);
+  },
+
+  _teardownEditorInput() {
+    if (this._editorClickHandler && this.canvas) {
+      this.canvas.removeEventListener('mousedown', this._editorClickHandler);
+    }
+    if (this._editorMoveHandler && this.canvas) {
+      this.canvas.removeEventListener('mousemove', this._editorMoveHandler);
+    }
+    if (this._editorKeyHandler) {
+      window.removeEventListener('keydown', this._editorKeyHandler);
+    }
+    this._editorClickHandler = null;
+    this._editorMoveHandler = null;
+    this._editorKeyHandler = null;
   },
 
   ...rendererEffects,

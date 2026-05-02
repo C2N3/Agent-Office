@@ -1,0 +1,119 @@
+{
+  "objects": {
+    "wall_straight": {
+      "name": "Straight Wall",
+      "category": "wall",
+      "widthTiles": 1,
+      "heightTiles": 1,
+      "collision": true,
+      "sprites": {
+        "back": "walls/wall_straight.webp",
+        "front": null
+      },
+      "rotatable": true
+    },
+    "wall_corner": {
+      "name": "Corner Wall",
+      "category": "wall",
+      "widthTiles": 1,
+      "heightTiles": 1,
+      "collision": true,
+      "sprites": {
+        "back": "walls/wall_corner.webp",
+        "front": null
+      },
+      "rotatable": true
+    },
+    "desk_2x1": {
+      "name": "Office Desk",
+      "category": "furniture",
+      "widthTiles": 2,
+      "heightTiles": 1,
+      "collision": true,
+      "sprites": {
+        "back": "furniture/desk_2x1_back.webp",
+        "front": "furniture/desk_2x1_front.webp"
+      },
+      "rotatable": true,
+      "seatSlots": [
+        { "offsetX": 0, "offsetY": 1, "dir": "up" },
+        { "offsetX": 1, "offsetY": 1, "dir": "up" }
+      ],
+      "laptopSlots": [
+        { "offsetX": 0, "offsetY": 0, "dir": "up" },
+        { "offsetX": 1, "offsetY": 0, "dir": "up" }
+      ]
+    },
+    "chair_office": {
+      "name": "Office Chair",
+      "category": "furniture",
+      "widthTiles": 1,
+      "heightTiles": 1,
+      "collision": false,
+      "sprites": {
+        "back": "furniture/chair_base.webp",
+        "front": "furniture/chair_backrest.webp"
+      },
+      "rotatable": true,
+      "isSeat": true,
+      "seatType": "desk"
+    },
+    "sofa_2x1": {
+      "name": "Sofa",
+      "category": "furniture",
+      "widthTiles": 2,
+      "heightTiles": 1,
+      "collision": true,
+      "sprites": {
+        "back": "furniture/sofa_back.webp",
+        "front": null
+      },
+      "rotatable": true,
+      "isSeat": true,
+      "seatType": "idle"
+    },
+    "plant_pot": {
+      "name": "Plant Pot",
+      "category": "decoration",
+      "widthTiles": 1,
+      "heightTiles": 1,
+      "collision": true,
+      "sprites": {
+        "back": "decoration/plant_pot.webp",
+        "front": null
+      },
+      "rotatable": false
+    },
+    "bookshelf": {
+      "name": "Bookshelf",
+      "category": "decoration",
+      "widthTiles": 2,
+      "heightTiles": 1,
+      "collision": true,
+      "sprites": {
+        "back": "decoration/bookshelf.webp",
+        "front": null
+      },
+      "rotatable": true
+    }
+  },
+  "floors": {
+    "wood": {
+      "name": "Wood Floor",
+      "sprite": "floors/wood.webp"
+    },
+    "carpet_blue": {
+      "name": "Blue Carpet",
+      "sprite": "floors/carpet_blue.webp"
+    },
+    "tile_white": {
+      "name": "White Tile",
+      "sprite": "floors/tile_white.webp"
+    }
+  },
+  "categories": [
+    { "id": "wall", "name": "Walls" },
+    { "id": "furniture", "name": "Furniture" },
+    { "id": "decoration", "name": "Decoration" }
+  ]
+}

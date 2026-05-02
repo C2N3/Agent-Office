@@ -1,0 +1,192 @@
+{
+  "version": 1,
+  "name": "Main Office",
+  "gridWidth": 20,
+  "gridHeight": 15,
+  "tileSize": 70,
+  "floorType": "wood",
+  "objects": [
+    {
+      "id": "wall_top_0",
+      "objectId": "wall_straight",
+      "tileX": 0,
+      "tileY": 0,
+      "rotation": 0
+    },
+    {
+      "id": "wall_top_1",
+      "objectId": "wall_straight",
+      "tileX": 1,
+      "tileY": 0,
+      "rotation": 0
+    },
+    {
+      "id": "wall_top_2",
+      "objectId": "wall_straight",
+      "tileX": 2,
+      "tileY": 0,
+      "rotation": 0
+    },
+    {
+      "id": "wall_top_3",
+      "objectId": "wall_straight",
+      "tileX": 3,
+      "tileY": 0,
+      "rotation": 0
+    },
+    {
+      "id": "wall_top_4",
+      "objectId": "wall_straight",
+      "tileX": 4,
+      "tileY": 0,
+      "rotation": 0
+    },
+    {
+      "id": "wall_top_5",
+      "objectId": "wall_straight",
+      "tileX": 5,
+      "tileY": 0,
+      "rotation": 0
+    },
+    {
+      "id": "wall_top_6",
+      "objectId": "wall_straight",
+      "tileX": 6,
+      "tileY": 0,
+      "rotation": 0
+    },
+    {
+      "id": "wall_top_7",
+      "objectId": "wall_straight",
+      "tileX": 7,
+      "tileY": 0,
+      "rotation": 0
+    },
+    {
+      "id": "wall_top_8",
+      "objectId": "wall_straight",
+      "tileX": 8,
+      "tileY": 0,
+      "rotation": 0
+    },
+    {
+      "id": "wall_top_9",
+      "objectId": "wall_straight",
+      "tileX": 9,
+      "tileY": 0,
+      "rotation": 0
+    },
+    {
+      "id": "desk_1",
+      "objectId": "desk_2x1",
+      "tileX": 3,
+      "tileY": 3,
+      "rotation": 0
+    },
+    {
+      "id": "desk_2",
+      "objectId": "desk_2x1",
+      "tileX": 6,
+      "tileY": 3,
+      "rotation": 0
+    },
+    {
+      "id": "desk_3",
+      "objectId": "desk_2x1",
+      "tileX": 3,
+      "tileY": 7,
+      "rotation": 0
+    },
+    {
+      "id": "desk_4",
+      "objectId": "desk_2x1",
+      "tileX": 6,
+      "tileY": 7,
+      "rotation": 0
+    },
+    {
+      "id": "chair_1",
+      "objectId": "chair_office",
+      "tileX": 3,
+      "tileY": 4,
+      "rotation": 0
+    },
+    {
+      "id": "chair_2",
+      "objectId": "chair_office",
+      "tileX": 4,
+      "tileY": 4,
+      "rotation": 0
+    },
+    {
+      "id": "chair_3",
+      "objectId": "chair_office",
+      "tileX": 6,
+      "tileY": 4,
+      "rotation": 0
+    },
+    {
+      "id": "chair_4",
+      "objectId": "chair_office",
+      "tileX": 7,
+      "tileY": 4,
+      "rotation": 0
+    },
+    {
+      "id": "plant_1",
+      "objectId": "plant_pot",
+      "tileX": 1,
+      "tileY": 2,
+      "rotation": 0
+    },
+    {
+      "id": "plant_2",
+      "objectId": "plant_pot",
+      "tileX": 10,
+      "tileY": 2,
+      "rotation": 0
+    },
+    {
+      "id": "obj_1777718670611_yyata",
+      "objectId": "wall_straight",
+      "tileX": 9,
+      "tileY": 1,
+      "rotation": 0
+    },
+    {
+      "id": "obj_1777718670835_4jewp",
+      "objectId": "wall_straight",
+      "tileX": 9,
+      "tileY": 2,
+      "rotation": 0
+    },
+    {
+      "id": "obj_1777718671240_excc7",
+      "objectId": "wall_straight",
+      "tileX": 9,
+      "tileY": 3,
+      "rotation": 0
+    },
+    {
+      "id": "obj_1777718671514_wsmuw",
+      "objectId": "wall_straight",
+      "tileX": 9,
+      "tileY": 4,
+      "rotation": 0
+    },
+    {
+      "id": "obj_1777718671813_fh249",
+      "objectId": "wall_straight",
+      "tileX": 9,
+      "tileY": 6,
+      "rotation": 0
+    },
+    {
+      "id": "obj_1777718672274_jpax8",
+      "objectId": "wall_straight",
+      "tileX": 9,
+      "tileY": 5,
+      "rotation": 0
+    }
+  ]
+}

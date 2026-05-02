@@ -9,6 +9,7 @@
 import { OFFICE } from './officeConfig';
 import { loadOfficeImage, officeRooms, officeRoomOrder } from './officeLayers';
 import { toHttpAssetPath } from '../../shared/assetPaths';
+import { buildCollisionGrid, getObjectCatalog } from './tilemap';
 
 interface RoomGrid {
   grid: boolean[][];
@@ -36,6 +37,30 @@ export const officePathfinder: any = {
     const room = officeRooms[roomId];
     if (!room) return;
     const TILE = OFFICE.TILE_SIZE;
+
+    // Tilemap path: build collision grid from JSON
+    if (room.tilemap) {
+      const catalog = getObjectCatalog();
+      if (catalog) {
+        const grid = buildCollisionGrid(room.tilemap, catalog);
+        const gridW = room.tilemap.gridWidth;
+        const gridH = room.tilemap.gridHeight;
+        const tmTile = room.tilemap.tileSize || TILE;
+        this.rooms[roomId] = {
+          grid,
+          gridW,
+          gridH,
+          originX: room.originX,
+          originY: room.originY,
+          tile: tmTile,
+          width: room.width,
+          height: room.height,
+        };
+        return;
+      }
+    }
+
+    // Legacy image-based collision
     const assets = room.assets || {};
     const src = assets.collision || toHttpAssetPath('office/rooms/room1/map/office_collision.webp');
     const sep = src.indexOf('?') === -1 ? '?' : '&';
@@ -189,6 +214,8 @@ export const officePathfinder: any = {
       if (Object.keys(closedSet).length > 2000) break;
     }
 
-    return [{ x: endX, y: endY }];
+    // No path found — return empty so the character stays put instead of
+    // walking through obstacles in a straight line.
+    return [];
   },
 };

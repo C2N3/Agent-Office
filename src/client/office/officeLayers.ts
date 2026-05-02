@@ -7,6 +7,9 @@
 
 import { OFFICE, OFFICE_LAYOUT } from './officeConfig';
 import { toHttpAssetPath } from '../../shared/assetPaths';
+import {
+  loadTilemap, loadObjectCatalog, compositeBackCanvas, compositeFrontCanvas,
+} from './tilemap';
 
 export function loadOfficeImage(src) {
   return new Promise<HTMLImageElement>(function (resolve) {
@@ -94,7 +97,7 @@ async function loadRoomDecor(roomCfg: any, originX: number, originY: number) {
  * Build office layers. If roomFilter is provided, only rooms whose IDs are
  * in the array will be loaded (used for floor-based rendering).
  */
-export async function buildOfficeLayers(roomFilter?: string[]) {
+export async function buildOfficeLayers(roomFilter?: string[], tilemapId?: string | null) {
   const layout: any = OFFICE_LAYOUT || {};
   let rooms: any[] = Array.isArray(layout.rooms) && layout.rooms.length > 0
     ? layout.rooms
@@ -131,22 +134,40 @@ export async function buildOfficeLayers(roomFilter?: string[]) {
   // Load all room backgrounds in parallel first, then layout sequentially.
   const loadResults = await Promise.all(rooms.map(async function (roomCfg) {
     const assets = (roomCfg && roomCfg.assets) || {};
+
+    // Tilemap: use tilemapId (per-floor) or assets.tilemap (layout config)
+    const tilemapUrl = tilemapId
+      ? '/api/office-tilemap/' + encodeURIComponent(tilemapId)
+      : assets.tilemap;
+    if (tilemapUrl) {
+      const catalog = await loadObjectCatalog();
+      const tilemapData = await loadTilemap(cacheBustSrc(tilemapUrl, ts));
+      const tileSize = tilemapData.tileSize || OFFICE.TILE_SIZE;
+      const tmWidth = tilemapData.gridWidth * tileSize;
+      const tmHeight = tilemapData.gridHeight * tileSize;
+      const [backCanvas, frontCanvas] = await Promise.all([
+        compositeBackCanvas(tilemapData, catalog, tmWidth, tmHeight),
+        compositeFrontCanvas(tilemapData, catalog, tmWidth, tmHeight),
+      ]);
+      return { roomCfg, bgImg: backCanvas as any, fgImg: frontCanvas as any, tilemap: tilemapData, isTilemap: true, tmWidth, tmHeight };
+    }
+
     const bgSrc = assets.background || toHttpAssetPath('office/rooms/room1/map/office_bg_32.webp');
     const fgSrc = assets.foreground || toHttpAssetPath('office/rooms/room1/map/office_fg_32.webp');
     const [bgImg, fgImg] = await Promise.all([
       loadOfficeImage(cacheBustSrc(bgSrc, ts)),
       loadOfficeImage(cacheBustSrc(fgSrc, ts)),
     ]);
-    return { roomCfg, bgImg, fgImg };
+    return { roomCfg, bgImg, fgImg, tilemap: null, isTilemap: false, tmWidth: 0, tmHeight: 0 };
   }));
 
   let cursorX = 0;
   let maxBottom = 0;
 
   for (let i = 0; i < loadResults.length; i++) {
-    const { roomCfg, bgImg, fgImg } = loadResults[i];
-    const width = Math.round((bgImg.naturalWidth || 800) * scale);
-    const height = Math.round((bgImg.naturalHeight || 800) * scale);
+    const { roomCfg, bgImg, fgImg, tilemap: tilemapData, isTilemap, tmWidth, tmHeight } = loadResults[i];
+    const width = isTilemap ? tmWidth : Math.round((bgImg.naturalWidth || 800) * scale);
+    const height = isTilemap ? tmHeight : Math.round((bgImg.naturalHeight || 800) * scale);
     const originX = Number.isFinite(roomCfg.originX) ? roomCfg.originX : cursorX;
     const originY = Number.isFinite(roomCfg.originY) ? roomCfg.originY : 0;
 
@@ -167,6 +188,7 @@ export async function buildOfficeLayers(roomFilter?: string[]) {
       seatMap: roomCfg.seatMap || {},
       idleSeatMap: roomCfg.idleSeatMap || {},
       laptopSeatMap: roomCfg.laptopSeatMap || {},
+      tilemap: tilemapData || null,
     };
     officeRooms[roomCfg.id] = roomState;
     officeRoomOrder.push(roomCfg.id);

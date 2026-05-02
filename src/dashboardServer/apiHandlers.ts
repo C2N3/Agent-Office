@@ -3,7 +3,7 @@ import path from 'path';
 import { URL } from 'url';
 import { adaptAgentToDashboard } from '../dashboardAdapter';
 import { loadOfficeLayoutManifest, resolveOfficeLayoutAssetPath } from '../officeLayout';
-import { ASSET_ROOT, MIME_TYPES } from './constants';
+import { APP_ROOT, ASSET_ROOT, MIME_TYPES } from './constants';
 import { getClients, getRefs } from './context';
 import { calculateStats } from './stats';
 import { handleAgentApiRoute } from './agentHandlers';
@@ -149,6 +149,132 @@ function handleGetAvatars(_req: RequestLike, res: ResponseLike): void {
 function handleGetOfficeLayout(_req: RequestLike, res: ResponseLike): void {
   res.writeHead(200, jsonHeader);
   res.end(JSON.stringify(loadOfficeLayoutManifest()));
+}
+
+function tilemapPaths(tilemapId: string) {
+  const srcPath = path.join(APP_ROOT, 'assets', 'office', 'tilemaps', tilemapId + '.json');
+  const distPath = path.join(ASSET_ROOT, 'office', 'tilemaps', tilemapId + '.json');
+  return { srcPath, distPath };
+}
+
+export function handleGetOfficeTilemap(_req: any, res: ResponseLike, url: URL): void {
+  const match = url.pathname.match(/^\/api\/office-tilemap\/([^/]+)$/);
+  if (!match) {
+    res.writeHead(400, jsonHeader);
+    res.end(JSON.stringify({ error: 'Missing tilemapId' }));
+    return;
+  }
+  const tilemapId = decodeURIComponent(match[1]);
+  const { srcPath, distPath } = tilemapPaths(tilemapId);
+
+  // Try dist first (runtime), then source
+  const filePath = fs.existsSync(distPath) ? distPath : srcPath;
+  if (!fs.existsSync(filePath)) {
+    res.writeHead(404, jsonHeader);
+    res.end(JSON.stringify({ error: 'Tilemap not found' }));
+    return;
+  }
+  fs.readFile(filePath, 'utf8', (err, data) => {
+    if (err) {
+      res.writeHead(500, jsonHeader);
+      res.end(JSON.stringify({ error: 'Failed to read tilemap' }));
+      return;
+    }
+    res.writeHead(200, jsonHeader);
+    res.end(data);
+  });
+}
+
+export function handlePutOfficeTilemap(req: any, res: ResponseLike, url: URL): void {
+  const match = url.pathname.match(/^\/api\/office-tilemap\/([^/]+)$/);
+  if (!match) {
+    res.writeHead(400, jsonHeader);
+    res.end(JSON.stringify({ error: 'Missing tilemapId' }));
+    return;
+  }
+  const tilemapId = decodeURIComponent(match[1]);
+
+  let body = '';
+  req.on('data', (chunk: any) => { body += chunk; });
+  req.on('end', () => {
+    let tilemap: any;
+    try {
+      tilemap = JSON.parse(body);
+    } catch {
+      res.writeHead(400, jsonHeader);
+      res.end(JSON.stringify({ error: 'Invalid JSON' }));
+      return;
+    }
+
+    const { srcPath, distPath } = tilemapPaths(tilemapId);
+    fs.mkdirSync(path.dirname(srcPath), { recursive: true });
+    fs.mkdirSync(path.dirname(distPath), { recursive: true });
+
+    const jsonStr = JSON.stringify(tilemap, null, 2);
+
+    fs.writeFile(srcPath, jsonStr, 'utf8', (err) => {
+      if (err) {
+        res.writeHead(500, jsonHeader);
+        res.end(JSON.stringify({ error: 'Failed to write tilemap: ' + err.message }));
+        return;
+      }
+      fs.writeFile(distPath, jsonStr, 'utf8', () => {});
+      res.writeHead(200, jsonHeader);
+      res.end(JSON.stringify({ ok: true }));
+    });
+  });
+}
+
+/** Create a new empty tilemap. POST /api/office-tilemap/:tilemapId */
+export function handleCreateOfficeTilemap(req: any, res: ResponseLike, url: URL): void {
+  const match = url.pathname.match(/^\/api\/office-tilemap\/([^/]+)$/);
+  if (!match) {
+    res.writeHead(400, jsonHeader);
+    res.end(JSON.stringify({ error: 'Missing tilemapId' }));
+    return;
+  }
+  const tilemapId = decodeURIComponent(match[1]);
+  const { srcPath, distPath } = tilemapPaths(tilemapId);
+
+  // Don't overwrite existing
+  if (fs.existsSync(srcPath) || fs.existsSync(distPath)) {
+    res.writeHead(409, jsonHeader);
+    res.end(JSON.stringify({ error: 'Tilemap already exists' }));
+    return;
+  }
+
+  let body = '';
+  req.on('data', (chunk: any) => { body += chunk; });
+  req.on('end', () => {
+    // Allow optional body to set grid size, otherwise use defaults
+    let opts: any = {};
+    if (body) { try { opts = JSON.parse(body); } catch {} }
+
+    const tilemap = {
+      version: 1,
+      name: opts.name || tilemapId,
+      gridWidth: opts.gridWidth || 14,
+      gridHeight: opts.gridHeight || 14,
+      tileSize: opts.tileSize || 70,
+      floorType: opts.floorType || 'wood',
+      objects: [],
+    };
+
+    fs.mkdirSync(path.dirname(srcPath), { recursive: true });
+    fs.mkdirSync(path.dirname(distPath), { recursive: true });
+
+    const jsonStr = JSON.stringify(tilemap, null, 2);
+    fs.writeFile(srcPath, jsonStr, 'utf8', (err) => {
+      if (err) {
+        res.writeHead(500, jsonHeader);
+        res.end(JSON.stringify({ error: 'Failed to create tilemap: ' + err.message }));
+        return;
+      }
+      fs.writeFile(distPath, jsonStr, 'utf8', () => {});
+      res.writeHead(201, jsonHeader);
+      res.end(JSON.stringify({ ok: true, tilemap }));
+    });
+  });
 }
 
 export function handleGetOfficeLayoutAsset(_req: RequestLike, res: ResponseLike, url: URL): void {

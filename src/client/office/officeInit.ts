@@ -7,6 +7,7 @@
 /* eslint-disable no-unused-vars */
 
 import { loadAvatarFiles, loadOfficeLayout, loadSpriteFrames } from './officeConfig';
+import { editorState } from './editor/editorState';
 import { officeCharacters } from './character/index';
 import { officeRenderer } from './officeRenderer';
 import { floorManager } from './floorManager';
@@ -63,7 +64,8 @@ export async function initOffice() {
     // Init renderer with current floor's room only
     const currentFloor = floorManager.getCurrentFloor();
     const roomFilter = currentFloor ? [currentFloor.roomId] : undefined;
-    await officeRenderer.initWithFloor(canvas, roomFilter);
+    const tilemapId = currentFloor ? (currentFloor.tilemapId || null) : null;
+    await officeRenderer.initWithFloor(canvas, roomFilter, tilemapId);
   } catch (e) {
     console.error('[Office] Init failed:', e);
     if (loadingEl) loadingEl.textContent = 'Failed to load office view';
@@ -109,6 +111,10 @@ export async function initOffice() {
 
   // Remove loading indicator
   if (loadingEl) loadingEl.remove();
+
+  // Add Map Editor toggle button (only visible when floor has a tilemap)
+  _createEditorToggleButton(container);
+  _updateEditorButtonVisibility();
 
   officeInitialized = true;
 }
@@ -178,7 +184,10 @@ export async function switchOfficeFloor(floorId: string) {
   }
 
   // Rebuild renderer for the new floor's room
-  await officeRenderer.switchToFloor([floor.roomId]);
+  await officeRenderer.switchToFloor([floor.roomId], floor.tilemapId || null);
+
+  // Update editor button visibility for new floor
+  _updateEditorButtonVisibility();
 
   // Re-add agents that belong to this floor
   try {
@@ -213,4 +222,67 @@ export function updateOfficeRuntime() {
 
 export function teardownOfficeRuntime() {
   stopOffice();
+}
+
+/** Toggle the map editor overlay. */
+export function toggleOfficeEditor() {
+  if (!officeInitialized) return;
+  const floor = floorManager.getCurrentFloor();
+  const tilemapId = floor && floor.tilemapId ? floor.tilemapId : undefined;
+  officeRenderer.toggleEditor(tilemapId);
+}
+
+// Expose globally for UI access
+(globalThis as any).toggleOfficeEditor = toggleOfficeEditor;
+
+let _editorToggleBtn: HTMLButtonElement | null = null;
+
+function _createEditorToggleButton(container: HTMLElement) {
+  if (_editorToggleBtn) return;
+
+  const btn = document.createElement('button');
+  btn.className = 'office-editor-toggle-btn';
+  btn.textContent = 'Map Editor';
+  btn.style.cssText = [
+    'position:absolute',
+    'bottom:12px',
+    'right:12px',
+    'z-index:25',
+    'padding:6px 14px',
+    'border:1px solid rgba(255,255,255,0.2)',
+    'border-radius:6px',
+    'background:rgba(30,30,40,0.85)',
+    'color:#e2e8f0',
+    'font-size:12px',
+    'cursor:pointer',
+    'user-select:none',
+    'backdrop-filter:blur(4px)',
+    'transition:background 0.15s,border-color 0.15s',
+  ].join(';') + ';';
+
+  btn.addEventListener('mouseenter', function () {
+    btn.style.background = 'rgba(59,130,246,0.3)';
+    btn.style.borderColor = '#3b82f6';
+  });
+  btn.addEventListener('mouseleave', function () {
+    btn.style.background = editorState.active ? 'rgba(59,130,246,0.25)' : 'rgba(30,30,40,0.85)';
+    btn.style.borderColor = editorState.active ? '#3b82f6' : 'rgba(255,255,255,0.2)';
+  });
+  btn.addEventListener('click', function () {
+    toggleOfficeEditor();
+    const active = editorState.active;
+    btn.textContent = active ? 'Close Editor' : 'Map Editor';
+    btn.style.background = active ? 'rgba(59,130,246,0.25)' : 'rgba(30,30,40,0.85)';
+    btn.style.borderColor = active ? '#3b82f6' : 'rgba(255,255,255,0.2)';
+  });
+
+  container.appendChild(btn);
+  _editorToggleBtn = btn;
+}
+
+function _updateEditorButtonVisibility() {
+  if (!_editorToggleBtn) return;
+  const floor = floorManager.getCurrentFloor();
+  const hasTilemap = floor && floor.tilemapId;
+  _editorToggleBtn.style.display = hasTilemap ? '' : 'none';
 }
