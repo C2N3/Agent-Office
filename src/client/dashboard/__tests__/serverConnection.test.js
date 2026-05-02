@@ -1,0 +1,141 @@
+describe('central server connection adapter', () => {
+  let eventSources;
+
+  class MockEventSource {
+    constructor(url) {
+      this.url = url;
+      this.closed = false;
+      this.listeners = new Map();
+      this.onopen = null;
+      this.onerror = null;
+      eventSources.push(this);
+    }
+
+    addEventListener(eventName, listener) {
+      const listeners = this.listeners.get(eventName) || [];
+      listeners.push(listener);
+      this.listeners.set(eventName, listeners);
+    }
+
+    close() {
+      this.closed = true;
+    }
+
+    emit(eventName) {
+      for (const listener of this.listeners.get(eventName) || []) {
+        listener();
+      }
+    }
+  }
+
+  beforeEach(() => {
+    jest.resetModules();
+    jest.useFakeTimers();
+    eventSources = [];
+    global.EventSource = MockEventSource;
+    global.fetch = jest.fn(async () => ({
+      ok: true,
+      json: async () => ({ remoteMode: 'host' }),
+    }));
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+    delete global.EventSource;
+    delete global.fetch;
+  });
+
+  test('notifies subscribers when the SSE connection changes', async () => {
+    const {
+      startCentralServerConnection,
+      stopCentralServerConnection,
+      subscribeCentralServerConnection,
+    } = require('../serverConnection.ts');
+    const listener = jest.fn();
+
+    subscribeCentralServerConnection(listener);
+    await startCentralServerConnection();
+
+    expect(eventSources).toHaveLength(1);
+    expect(eventSources[0].url).toBe('/api/server/events');
+
+    eventSources[0].onopen();
+    jest.advanceTimersByTime(249);
+    expect(listener).not.toHaveBeenCalled();
+    jest.advanceTimersByTime(1);
+    expect(listener).toHaveBeenCalledTimes(1);
+
+    eventSources[0].emit('worker.heartbeat');
+    jest.advanceTimersByTime(250);
+    expect(listener).toHaveBeenCalledTimes(2);
+
+    stopCentralServerConnection();
+    expect(eventSources[0].closed).toBe(true);
+  });
+
+  test('guest mode avoids opening an SSE connection and still requests a refresh', async () => {
+    global.fetch = jest.fn(async () => ({
+      ok: true,
+      json: async () => ({ remoteMode: 'guest' }),
+    }));
+    const {
+      startCentralServerConnection,
+      subscribeCentralServerConnection,
+    } = require('../serverConnection.ts');
+    const listener = jest.fn();
+
+    subscribeCentralServerConnection(listener);
+    await startCentralServerConnection();
+
+    expect(eventSources).toHaveLength(0);
+    jest.advanceTimersByTime(250);
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+
+  test('treats timed out config requests as unavailable', async () => {
+    global.fetch = jest.fn((_url, init = {}) => new Promise((_resolve, reject) => {
+      const abortError = new Error('aborted');
+      abortError.name = 'AbortError';
+      init.signal.addEventListener('abort', () => reject(abortError), { once: true });
+    }));
+
+    const { fetchCentralServerConfig } = require('../serverConnection.ts');
+    const { CENTRAL_SERVER_REQUEST_TIMEOUT_MS } = require('../fetchWithTimeout.ts');
+    const pending = fetchCentralServerConfig();
+
+    jest.advanceTimersByTime(CENTRAL_SERVER_REQUEST_TIMEOUT_MS);
+
+    await expect(pending).resolves.toBeNull();
+  });
+
+  test('formats proxy timeout errors with the upstream target URL', async () => {
+    global.fetch = jest.fn(async (url) => {
+      if (String(url) === '/api/server/config') {
+        return {
+          ok: true,
+          json: async () => ({
+            remoteMode: 'guest',
+            baseUrl: 'https://central.example.test',
+            healthPath: '/api/server/health',
+            workersPath: '/api/server/workers',
+          }),
+        };
+      }
+
+      return {
+        ok: false,
+        text: async () => JSON.stringify({
+          error: {
+            message: 'Central server request timed out after 15000ms',
+            targetUrl: 'https://central.example.test',
+          },
+        }),
+      };
+    });
+
+    const { fetchCentralServerSnapshot } = require('../serverConnection.ts');
+    const snapshot = await fetchCentralServerSnapshot();
+
+    expect(snapshot.error).toBe('Central server request timed out after 15000ms (target: https://central.example.test)');
+  });
+});

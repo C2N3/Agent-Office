@@ -3,8 +3,8 @@
  * Eliminates code duplication across modules
  */
 
-const os = require('os');
-const path = require('path');
+import os from 'os';
+import path from 'path';
 
 /**
  * Format slug to display name
@@ -164,10 +164,10 @@ function getWindowSizeForAgents(agentsOrCount) {
   return { width, height };
 }
 
-module.exports = {
+export {
   formatSlugToDisplayName,
   formatTime,
   sanitizeProjectPath,
   resolveProjectPathForPlatform,
-  getWindowSizeForAgents
+  getWindowSizeForAgents,
 };

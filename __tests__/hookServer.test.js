@@ -17,7 +17,7 @@ jest.mock('http', () => {
 });
 
 const http = require('http');
-const { startHookServer } = require('../src/main/hookServer');
+import { startHookServer } from '../src/main/hookServer';
 
 // Helper: simulate HTTP request
 function simulateRequest(handler, method, url, body = '') {
@@ -206,5 +206,62 @@ describe('hookServer', () => {
     const mockServer = http.__mockServer;
     mockServer.emit('error', new Error('EADDRINUSE'));
     expect(debugLog).toHaveBeenCalledWith(expect.stringContaining('EADDRINUSE'));
+  });
+});
+
+describe('hookServer — session allowlist gate', () => {
+  let processHookEvent;
+  let debugLog;
+  let errorHandler;
+  let sessionAllowlist;
+  let handler;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    processHookEvent = jest.fn();
+    debugLog = jest.fn();
+    errorHandler = { capture: jest.fn() };
+    sessionAllowlist = { accepts: jest.fn() };
+
+    startHookServer({
+      processHookEvent,
+      debugLog,
+      HOOK_SERVER_PORT: 47821,
+      errorHandler,
+      sessionAllowlist,
+    });
+
+    handler = http.createServer.mock.calls[http.createServer.mock.calls.length - 1][0];
+  });
+
+  test('drops event when allowlist rejects cwd/pid', () => {
+    sessionAllowlist.accepts.mockReturnValue(false);
+
+    simulateRequest(handler, 'POST', '/hook', JSON.stringify({
+      hook_event_name: 'SessionStart',
+      session_id: 'sess-1',
+      cwd: '/unknown/path',
+      _pid: 99999,
+    }));
+
+    expect(sessionAllowlist.accepts).toHaveBeenCalledWith({ cwd: '/unknown/path', pid: 99999 });
+    expect(processHookEvent).not.toHaveBeenCalled();
+    expect(debugLog).toHaveBeenCalledWith(expect.stringContaining('Dropped non-task'));
+  });
+
+  test('forwards event when allowlist accepts', () => {
+    sessionAllowlist.accepts.mockReturnValue(true);
+
+    const data = {
+      hook_event_name: 'PreToolUse',
+      session_id: 'sess-ok',
+      cwd: '/repo/task-workspace',
+      _pid: 12345,
+      tool_name: 'Bash',
+    };
+    simulateRequest(handler, 'POST', '/hook', JSON.stringify(data));
+
+    expect(sessionAllowlist.accepts).toHaveBeenCalledWith({ cwd: '/repo/task-workspace', pid: 12345 });
+    expect(processHookEvent).toHaveBeenCalledWith(data);
   });
 });

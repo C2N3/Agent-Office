@@ -1,9 +1,10 @@
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
-const { sanitizeProjectPath } = require('../../utils');
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
+import { sanitizeProjectPath } from '../../utils';
 
-const GLOBAL_WORKTREE_DIR = path.join(os.homedir(), '.agent-office', 'worktrees');
+export const GLOBAL_WORKTREE_DIR = path.join(os.homedir(), '.agent-office', 'worktrees');
+const DEPENDENCY_SYMLINK_CANDIDATES = ['node_modules'];
 
 type BranchSuggestionOptions = {
   name?: string;
@@ -14,13 +15,13 @@ type WorkspaceInspectionOptions = BranchSuggestionOptions & {
   branchName?: string;
 };
 
-function buildSuggestedBranchName({ name, provider }: BranchSuggestionOptions = {}) {
+export function buildSuggestedBranchName({ name, provider }: BranchSuggestionOptions = {}) {
   const normalizedProvider = String(provider || 'general').trim().toLowerCase() || 'general';
   const slug = slugifyBranchName(name || 'agent').replace(/\//g, '-');
   return slugifyBranchName(`workspace/${normalizedProvider}/${slug}`);
 }
 
-function slugifyBranchName(input) {
+export function slugifyBranchName(input) {
   const normalized = String(input || '')
     .trim()
     .toLowerCase()
@@ -34,7 +35,7 @@ function slugifyBranchName(input) {
   return fallback.slice(0, 80).replace(/^-+|-+$/g, '') || 'agent-workspace';
 }
 
-function normalizePathList(value) {
+export function normalizePathList(value) {
   const rawList = Array.isArray(value)
     ? value
     : String(value || '').split(/\r?\n|,/);
@@ -44,7 +45,30 @@ function normalizePathList(value) {
     .filter(Boolean);
 }
 
-function formatCommandError(error) {
+export function mergePathLists(...lists) {
+  const merged = [];
+  const seen = new Set();
+  for (const entry of lists.flat()) {
+    const normalized = sanitizeProjectPath(entry);
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    merged.push(normalized);
+  }
+  return merged;
+}
+
+export function detectDependencySymlinkPaths(repoRoot) {
+  return DEPENDENCY_SYMLINK_CANDIDATES.filter((entry) => {
+    const sourcePath = path.join(repoRoot, entry);
+    try {
+      return fs.existsSync(sourcePath) && fs.lstatSync(sourcePath).isDirectory();
+    } catch {
+      return false;
+    }
+  });
+}
+
+export function formatCommandError(error) {
   const stderr = error?.stderr?.toString?.().trim?.();
   const stdout = error?.stdout?.toString?.().trim?.();
   return stderr || stdout || error.message || 'Command failed';
@@ -65,7 +89,7 @@ function ensureMissingDestination(destinationPath, sourceLabel) {
   }
 }
 
-function inspectWorkspacePath(workspaceManager, inputPath, options: WorkspaceInspectionOptions = {}) {
+export function inspectWorkspacePath(workspaceManager, inputPath, options: WorkspaceInspectionOptions = {}) {
   const normalizedPath = sanitizeProjectPath(inputPath);
   if (!normalizedPath) {
     throw new Error('Workspace path is required');
@@ -97,6 +121,7 @@ function inspectWorkspacePath(workspaceManager, inputPath, options: WorkspaceIns
         baseBranch,
         startPoint: baseBranch,
         workspaceParent: defaultParent,
+        symlinkPaths: detectDependencySymlinkPaths(repository.repositoryPath),
       },
     };
   } catch (error) {
@@ -113,13 +138,14 @@ function inspectWorkspacePath(workspaceManager, inputPath, options: WorkspaceIns
         baseBranch: null,
         startPoint: null,
         workspaceParent: null,
+        symlinkPaths: [],
       },
       error: error.message,
     };
   }
 }
 
-function copyIntoWorkspace(repoRoot, workspacePath, relativePath) {
+export function copyIntoWorkspace(repoRoot, workspacePath, relativePath) {
   const sourcePath = ensureSafeRelativePath(repoRoot, relativePath);
   if (!fs.existsSync(sourcePath)) {
     throw new Error(`Copy source does not exist: ${relativePath}`);
@@ -131,7 +157,7 @@ function copyIntoWorkspace(repoRoot, workspacePath, relativePath) {
   fs.cpSync(sourcePath, destinationPath, { recursive: true, errorOnExist: true });
 }
 
-function symlinkIntoWorkspace(repoRoot, workspacePath, relativePath) {
+export function symlinkIntoWorkspace(repoRoot, workspacePath, relativePath) {
   const sourcePath = ensureSafeRelativePath(repoRoot, relativePath);
   if (!fs.existsSync(sourcePath)) {
     throw new Error(`Symlink source does not exist: ${relativePath}`);
@@ -148,14 +174,3 @@ function symlinkIntoWorkspace(repoRoot, workspacePath, relativePath) {
 
   fs.symlinkSync(sourcePath, destinationPath, linkType);
 }
-
-module.exports = {
-  GLOBAL_WORKTREE_DIR,
-  buildSuggestedBranchName,
-  slugifyBranchName,
-  normalizePathList,
-  formatCommandError,
-  inspectWorkspacePath,
-  copyIntoWorkspace,
-  symlinkIntoWorkspace,
-};

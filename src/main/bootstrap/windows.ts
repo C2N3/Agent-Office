@@ -1,8 +1,11 @@
+import { savePersistedState } from '../sessionPersistence';
+import {
+  loadDashboardRemoteAuthModule,
+  loadDashboardServerModule,
+} from '../dashboardRuntimeLoader';
+import { createWindowManager } from '../windowing/index';
 
-const { createWindowManager } = require('../windowing');
-const { savePersistedState } = require('../sessionPersistence');
-
-function createApplicationWindowManager({
+export function createApplicationWindowManager({
   agentManager,
   agentRegistry,
   sessionScanner,
@@ -24,12 +27,20 @@ function createApplicationWindowManager({
   });
 }
 
-function startDashboardRuntime({ windowManager, orchestrator, workspaceManager, terminalManager, teamCoordinator, debugLog }) {
-  windowManager.startDashboardServer();
+export async function startDashboardRuntime({
+  windowManager,
+  orchestrator,
+  workspaceManager,
+  terminalManager,
+  sessionPids,
+  debugLog,
+  isDev,
+}) {
+  await windowManager.startDashboardServer();
 
   // Initialize remote access token and print info
   try {
-    const { loadOrCreateToken } = require('../../dashboardServer/remoteAuth.js');
+    const { loadOrCreateToken } = await loadDashboardRemoteAuthModule();
     const token = loadOrCreateToken();
     const port = 3000;
     debugLog(`[Remote] Token: ${token}`);
@@ -50,17 +61,18 @@ function startDashboardRuntime({ windowManager, orchestrator, workspaceManager, 
   }
 
   try {
-    const serverModule = require('../../dashboardServer/index.js');
+    const serverModule = await loadDashboardServerModule();
+    serverModule.setAppMeta({ isDev: !!isDev });
     serverModule.setOrchestrator(orchestrator);
     if (workspaceManager) serverModule.setWorkspaceManager(workspaceManager);
     if (terminalManager) serverModule.setTerminalManager(terminalManager);
-    if (teamCoordinator) serverModule.setTeamCoordinator(teamCoordinator);
+    if (sessionPids) serverModule.setSessionPids(sessionPids);
   } catch (error) {
     debugLog(`[Main] Failed to wire orchestrator to dashboard: ${error.message}`);
   }
 }
 
-function attachAgentBroadcasts({
+export function attachAgentBroadcasts({
   agentManager,
   windowManager,
   sessionPids,
@@ -101,9 +113,3 @@ function attachAgentBroadcasts({
 
   return agentListeners;
 }
-
-module.exports = {
-  attachAgentBroadcasts,
-  createApplicationWindowManager,
-  startDashboardRuntime,
-};

@@ -3,11 +3,11 @@
  * Receives JSON from stdin and forwards to the local HTTP hook server.
  * PID detection is performed via PowerShell in main.js (process.ppid is inaccurate as it returns the shell PID).
  */
-const http = require('http');
+import http from 'http';
 const PORT = 47821;
 
-const chunks = [];
-process.stdin.on('data', d => chunks.push(d));
+const chunks: Buffer[] = [];
+process.stdin.on('data', (d: Buffer | string) => chunks.push(Buffer.isBuffer(d) ? d : Buffer.from(d)));
 process.stdin.on('end', () => {
     try {
         const data = JSON.parse(Buffer.concat(chunks).toString());

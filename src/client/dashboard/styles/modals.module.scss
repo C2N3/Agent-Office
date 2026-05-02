@@ -1,0 +1,35 @@
+.providerSelect {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.providerButton {
+  flex: 1 1 0;
+  min-width: 0;
+  transition: transform 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.providerButton:hover {
+  transform: translateY(-1px);
+}
+
+.radioGroup {
+  margin-top: 4px;
+}
+
+.radioOption {
+  min-height: 32px;
+  transition: border-color 0.12s ease, color 0.12s ease, background 0.12s ease;
+}
+
+.radioOption:focus-within {
+  border-color: var(--color-primary);
+}
+
+.radioLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

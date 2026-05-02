@@ -1,7 +1,7 @@
-const { execFileSync } = require('child_process');
+import { execFileSync } from 'child_process';
 
-class ClaudeAdapter {
-  get provider() {
+export class ClaudeAdapter {
+  get provider(): 'claude' {
     return 'claude';
   }
 
@@ -77,5 +77,3 @@ class ClaudeAdapter {
     return prompt + '\n';
   }
 }
-
-module.exports = { ClaudeAdapter };

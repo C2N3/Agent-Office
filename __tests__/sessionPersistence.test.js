@@ -21,7 +21,7 @@ jest.mock('child_process', () => ({
 
 const fs = require('fs');
 const { execFileSync } = require('child_process');
-const { savePersistedState, recoverExistingSessions } = require('../src/main/sessionPersistence');
+import { savePersistedState, recoverExistingSessions } from '../src/main/sessionPersistence';
 
 describe('sessionPersistence', () => {
   let debugLog;

@@ -4,13 +4,13 @@
  * (Done, Help, Error) — visible even when the dashboard window is closed.
  */
 
-const { Notification, nativeImage, app } = require('electron');
+import { Notification } from 'electron';
 
 /** States that trigger a desktop notification */
 const NOTIFY_STATES = new Set(['Done', 'Help', 'Error']);
 
 /** Human-readable labels & urgency per state */
-const STATE_INFO: Record<string, { title: string; urgency: string }> = {
+const STATE_INFO: Record<string, { title: string; urgency: 'critical' | 'low' | 'normal' }> = {
   Done:  { title: '작업 완료', urgency: 'normal' },
   Help:  { title: '도움 요청', urgency: 'critical' },
   Error: { title: '오류 발생', urgency: 'critical' },
@@ -19,7 +19,7 @@ const STATE_INFO: Record<string, { title: string; urgency: string }> = {
 /** Throttle window per agent (ms) — avoid notification spam */
 const THROTTLE_MS = 5_000;
 
-class NotificationManager {
+export class NotificationManager {
   private _lastNotify: Map<string, number> = new Map();
   private _enabled: boolean = true;
   private _debugLog: (msg: string) => void;
@@ -96,5 +96,3 @@ class NotificationManager {
     this._lastNotify.clear();
   }
 }
-
-module.exports = { NotificationManager };

@@ -48,6 +48,7 @@ export const dashboardIpcChannels = {
   registryToggle: 'registry:toggle',
   registryArchive: 'registry:archive',
   registryDelete: 'registry:delete',
+  agentTerminateSession: 'agent:terminate-session',
   agentsClearInactiveUnregistered: 'agents:clear-inactive-unregistered',
   registrySessionHistory: 'registry:session-history',
   registryConversation: 'registry:conversation',
@@ -73,4 +74,9 @@ export const dashboardIpcChannels = {
   orchestratorGetTask: 'orchestrator:get-task',
   orchestratorListTasks: 'orchestrator:list-tasks',
   orchestratorDeleteTask: 'orchestrator:delete-task',
+  taskChatOpen: 'task-chat:open',
+  taskChatClose: 'task-chat:close',
+  taskChatHistory: 'task-chat:history',
+  taskChatAppend: 'task-chat:append',
+  taskChatClearHistory: 'task-chat:clear-history',
 } as const;

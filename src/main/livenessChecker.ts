@@ -3,11 +3,14 @@
  * PID detection, session-file re-verification, 2-second interval process liveness check
  */
 
-const path = require('path');
-const os = require('os');
-const fs = require('fs');
-const { hasActiveOrchestratorTask, removeOrOffline } = require('./liveness/agents');
-const { getProviderDefinition, normalizeProvider } = require('./providers/registry');
+import { execFile } from 'child_process';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import { hasActiveOrchestratorTask, removeOrOffline } from './liveness/agents';
+import { sharedSessionAllowlist } from './orchestrator/sessionAllowlist';
+import { getProviderDefinition, normalizeProvider } from './providers/registry';
+import { resolveFromModule } from '../runtime/module';
 
 const sessionPids = new Map(); // sessionId → actual CLI process PID
 
@@ -26,7 +29,6 @@ async function checkLivenessTier1(agentId, pid) {
  * Windows: Restart Manager API (find-file-owner.ps1)
  */
 function detectProviderPidBySessionFile(provider, jsonlPath, callback) {
-  const { execFile } = require('child_process');
   const resolvedProvider = normalizeProvider(provider, null);
   if (!resolvedProvider) {
     callback(null);
@@ -43,7 +45,7 @@ function detectProviderPidBySessionFile(provider, jsonlPath, callback) {
     : jsonlPath;
 
   if (process.platform === 'win32') {
-    const scriptPath = path.join(__dirname, '..', 'find-file-owner.ps1');
+    const scriptPath = resolveFromModule(import.meta.url, '..', 'find-file-owner.ps1');
     execFile('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', scriptPath, '-FilePath', resolved],
       { timeout: 5000 }, (err, stdout) => {
       if (!err && stdout) {
@@ -68,9 +70,20 @@ function detectProviderPidBySessionFile(provider, jsonlPath, callback) {
 }
 
 function detectProviderPidsFallback(provider, callback) {
-  const { execFile } = require('child_process');
   const definition = getProviderDefinition(provider);
   const providerPattern = definition.processPattern;
+
+  // Task-only gate: when the orchestrator has registered any task session,
+  // only return PIDs that belong to those tasks. This keeps Gemini (and any
+  // other provider lacking a session-file or hook channel) from attaching
+  // to an unrelated process the user happened to be running.
+  const filterPids = (pids) => {
+    if (!Array.isArray(pids) || pids.length === 0) return null;
+    if (sharedSessionAllowlist.size() === 0) return pids;
+    const filtered = pids.filter((p) => sharedSessionAllowlist.hasPid(p));
+    return filtered.length > 0 ? filtered : null;
+  };
+
   if (process.platform === 'win32') {
     const psCmd = definition.windowsNodeProcessOnly
       ? `Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.Name -eq 'node.exe' -and $_.CommandLine -like '*${providerPattern}*' } | Select-Object -ExpandProperty ProcessId`
@@ -78,14 +91,14 @@ function detectProviderPidsFallback(provider, callback) {
     execFile('powershell.exe', ['-NoProfile', '-Command', psCmd], { timeout: 6000 }, (err, stdout) => {
       if (err || !stdout) return callback(null);
       const pids = stdout.trim().split('\n').map(p => parseInt(p.trim(), 10)).filter(p => !isNaN(p) && p > 0);
-      callback(pids.length > 0 ? pids : null);
+      callback(filterPids(pids));
     });
   } else {
     const pattern = definition.unixProcessPattern;
     execFile('pgrep', ['-f', pattern], { timeout: 3000 }, (err, stdout) => {
       if (err || !stdout) return callback(null);
       const pids = stdout.trim().split('\n').map(p => parseInt(p.trim(), 10)).filter(p => !isNaN(p) && p > 0);
-      callback(pids.length > 0 ? pids : null);
+      callback(filterPids(pids));
     });
   }
 }
@@ -125,7 +138,6 @@ function retryPidDetection(sessionId, provider, agentManager, debugLog) {
  * Count running provider CLI processes.
  */
 function countProviderProcesses(provider, callback) {
-  const { execFile } = require('child_process');
   const definition = getProviderDefinition(provider);
   const providerPattern = definition.processPattern;
   if (process.platform === 'win32') {
@@ -305,7 +317,7 @@ function startLivenessChecker({ agentManager, agentRegistry, taskStore, terminal
   return { zombieSweepId, livenessCheckId };
 }
 
-module.exports = {
+export {
   sessionPids,
   startLivenessChecker,
   detectClaudePidByTranscript,

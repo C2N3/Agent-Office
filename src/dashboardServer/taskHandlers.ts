@@ -1,12 +1,6 @@
 import fs from 'fs';
 import { URL } from 'url';
-import { getRefs } from './context.js';
-const { cleanTerminalOutput } = require('../main/orchestrator/cleanOutput.js') as {
-  cleanTerminalOutput: (input: string) => string;
-};
-const { buildTaskConversationReport } = require('../main/orchestrator/taskReport.js') as {
-  buildTaskConversationReport: (task: any, agentRegistry: any, agentManager: any) => string;
-};
+import { getRefs } from './context';
 
 interface ResponseLike {
   writeHead(statusCode: number, headers?: Record<string, string>): void;
@@ -135,63 +129,6 @@ function handleDeleteTask(_req: RequestLike, res: ResponseLike, taskId: string):
   }
 }
 
-async function handleTaskReport(_req: RequestLike, res: ResponseLike, taskId: string): Promise<void> {
-  const { orchestrator, workspaceManager, agentRegistryRef, agentManager } = getRefs();
-  if (!orchestrator) { res.writeHead(503, jsonHeader); res.end(JSON.stringify({ error: 'Orchestrator not available' })); return; }
-  const task = orchestrator.getTask(taskId);
-  if (!task) { res.writeHead(404, jsonHeader); res.end(JSON.stringify({ error: 'Task not found' })); return; }
-
-  let output = '';
-  try {
-    output = buildTaskConversationReport(task, agentRegistryRef, agentManager) || '';
-  } catch {}
-
-  if (!output) {
-    let raw = task.lastOutput || '';
-    if (task.outputPath) {
-      try { raw = fs.readFileSync(task.outputPath, 'utf-8'); } catch {}
-    }
-    output = cleanTerminalOutput(raw);
-  }
-
-  let diff = '';
-  let diffSummary = '';
-  if (task.workspacePath && workspaceManager) {
-    try {
-      // Compare only the agent's own commits: diff from the branch point (merge-base)
-      // to the current worktree HEAD, so unrelated master commits don't appear.
-      const branchName = task.branchName || `task/${taskId.slice(0, 8)}`;
-      const baseBranch = workspaceManager.resolveBaseBranch(task.workspacePath, task.baseBranch);
-      const mergeBase = workspaceManager.runGit(task.workspacePath, ['merge-base', baseBranch, 'HEAD']).trim();
-      diffSummary = workspaceManager.runGit(task.workspacePath, ['diff', '--stat', mergeBase]).trim();
-      diff = workspaceManager.runGit(task.workspacePath, ['diff', mergeBase]).trim();
-    } catch {
-      try {
-        // Fallback: compare staged + unstaged changes in worktree
-        diffSummary = workspaceManager.runGit(task.workspacePath, ['diff', '--stat', 'HEAD']).trim();
-        diff = workspaceManager.runGit(task.workspacePath, ['diff', 'HEAD']).trim();
-      } catch {}
-    }
-  }
-
-  res.writeHead(200, jsonHeader);
-  res.end(JSON.stringify({
-    taskId: task.id,
-    title: task.title,
-    status: task.status,
-    output,
-    diffSummary,
-    diff,
-    agentRegistryId: task.agentRegistryId,
-    workspacePath: task.workspacePath,
-    branchName: task.branchName,
-    repositoryPath: task.repositoryPath,
-    provider: task.currentProvider || task.provider || null,
-    executionEnvironment: task.executionEnvironment || 'auto',
-    model: task.model || null,
-  }));
-}
-
 async function withTaskWorkspaceAction(taskId: string, action: 'merge' | 'reject', res: ResponseLike): Promise<void> {
   const { orchestrator, workspaceManager, agentRegistryRef, terminalManager } = getRefs();
   if (!orchestrator || !workspaceManager) { res.writeHead(503, jsonHeader); res.end(JSON.stringify({ error: 'Not available' })); return; }
@@ -240,7 +177,6 @@ export function handleTaskApiRoute(req: RequestLike, res: ResponseLike, url: URL
   const taskId = parts[0];
   const action = parts[1];
 
-  if (req.method === 'GET' && action === 'report') { handleTaskReport(req, res, taskId); return true; }
   if (req.method === 'POST' && action === 'merge') { handleTaskMerge(req, res, taskId); return true; }
   if (req.method === 'POST' && action === 'reject') { handleTaskReject(req, res, taskId); return true; }
   if (req.method === 'GET' && !action) { handleGetTask(req, res, taskId); return true; }

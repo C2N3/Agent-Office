@@ -6,8 +6,8 @@
  *   codex exec --json "summarize the repo" | node dist/src/codex-forward.js
  */
 
-const http = require('http');
-const readline = require('readline');
+import http from 'http';
+import readline from 'readline';
 
 const DEFAULT_HOST = '127.0.0.1';
 const DEFAULT_PORT = Number(process.env.PIXEL_AGENT_CODEX_PORT || 47822);

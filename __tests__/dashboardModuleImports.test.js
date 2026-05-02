@@ -13,9 +13,15 @@ describe('dashboard module imports', () => {
     delete global.document;
   });
 
-  test('avatar picker resolves the shared office module', () => {
-    const { setupAvatarPicker } = require('../public/dashboard/modals/avatarPicker.ts');
+  test('avatar picker modal resolves the shared office module', () => {
+    const { AvatarPickerModal } = require('../src/client/dashboard/react/avatarPickerModal.tsx');
 
-    expect(typeof setupAvatarPicker).toBe('function');
+    expect(typeof AvatarPickerModal).toBe('function');
+  });
+
+  test('create agent modal resolves', () => {
+    const { CreateAgentModal } = require('../src/client/dashboard/react/createAgentModal/index.tsx');
+
+    expect(typeof CreateAgentModal).toBe('function');
   });
 });

@@ -1,7 +1,8 @@
+import { BrowserWindow, screen, shell } from 'electron';
+import { resolveFromModule } from '../../../runtime/module';
+import { saveUiState } from '../../uiState';
 
-const { BrowserWindow, screen, shell } = require('electron');
-const path = require('path');
-const { saveUiState } = require('../../uiState');
+const moduleUrl = import.meta.url;
 
 function createSecondaryWindowControls(options) {
   const {
@@ -63,7 +64,7 @@ function createSecondaryWindowControls(options) {
         nodeIntegration: false,
         contextIsolation: true,
         sandbox: false,
-        preload: path.join(__dirname, '..', '..', '..', 'overlayPreload.js'),
+        preload: resolveFromModule(moduleUrl, '..', '..', '..', 'overlayPreload.mjs'),
       },
     });
 
@@ -115,7 +116,7 @@ function createSecondaryWindowControls(options) {
           nodeIntegration: false,
           contextIsolation: true,
           sandbox: false,
-          preload: path.join(__dirname, '..', '..', '..', 'dashboardPreload.js'),
+          preload: resolveFromModule(moduleUrl, '..', '..', '..', 'dashboardPreload.js'),
         },
       });
 
@@ -176,7 +177,7 @@ function createSecondaryWindowControls(options) {
         nodeIntegration: false,
         contextIsolation: true,
         sandbox: false,
-        preload: path.join(__dirname, '..', '..', '..', 'pipPreload.js'),
+        preload: resolveFromModule(moduleUrl, '..', '..', '..', 'pipPreload.js'),
       },
     });
 
@@ -207,6 +208,85 @@ function createSecondaryWindowControls(options) {
     else createOverlayWindow();
   }
 
+  function openTaskChatWindow({ agentRegistryId, agentName, avatarFile }) {
+    if (!agentRegistryId) return { success: false, error: 'agentRegistryId required' };
+    if (!refs.taskChatWindows) refs.taskChatWindows = new Map();
+    const existing = refs.taskChatWindows.get(agentRegistryId);
+    if (existing && !existing.isDestroyed()) {
+      if (existing.isMinimized()) existing.restore();
+      existing.focus();
+      return { success: true, alreadyOpen: true };
+    }
+
+    const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+    const winWidth = 420;
+    const winHeight = 560;
+    const existingCount = Array.from(refs.taskChatWindows.values()).filter((win: any) => win && !win.isDestroyed()).length;
+    const xOffset = 28 * existingCount;
+    const yOffset = 28 * existingCount;
+    const x = Math.max(20, width - winWidth - 24 - xOffset);
+    const y = Math.max(20, height - winHeight - 24 - yOffset);
+
+    const win = new BrowserWindow({
+      width: winWidth,
+      height: winHeight,
+      x,
+      y,
+      minWidth: 320,
+      minHeight: 360,
+      title: agentName || 'Agent Chat',
+      backgroundColor: '#0b0d0f',
+      autoHideMenuBar: true,
+      show: false,
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        sandbox: false,
+        preload: resolveFromModule(moduleUrl, '..', '..', '..', 'taskChatPreload.js'),
+        additionalArguments: [`--task-chat-agent=${agentRegistryId}`],
+      },
+    });
+
+    const params = new URLSearchParams({
+      agentRegistryId: String(agentRegistryId),
+      agentName: String(agentName || 'Agent'),
+      avatarFile: String(avatarFile || ''),
+    });
+    win.loadURL(`${dashboardRootUrl}/task-chat?${params.toString()}`);
+    win.once('ready-to-show', () => {
+      if (!win || win.isDestroyed()) return;
+      win.show();
+    });
+    win.webContents.on('did-fail-load', (_event, errorCode, errorDescription) => {
+      debugLog(`[TaskChat] Failed to load: ${errorCode} - ${errorDescription}`);
+      if (win && !win.isDestroyed()) win.destroy();
+      refs.taskChatWindows.delete(agentRegistryId);
+    });
+    win.on('closed', () => {
+      refs.taskChatWindows.delete(agentRegistryId);
+      debugLog(`[TaskChat] Window closed: ${agentRegistryId}`);
+    });
+
+    refs.taskChatWindows.set(agentRegistryId, win);
+    debugLog(`[TaskChat] Window created: ${agentRegistryId}`);
+    return { success: true };
+  }
+
+  function closeTaskChatWindow(agentRegistryId) {
+    if (!refs.taskChatWindows) return;
+    const win = refs.taskChatWindows.get(agentRegistryId);
+    if (win && !win.isDestroyed()) win.close();
+    refs.taskChatWindows.delete(agentRegistryId);
+  }
+
+  function closeAllTaskChatWindows() {
+    if (!refs.taskChatWindows) return;
+    for (const win of refs.taskChatWindows.values()) {
+      if (win && !win.isDestroyed()) win.close();
+    }
+    refs.taskChatWindows.clear();
+  }
+
   function resizeOverlayWindow(width, height) {
     if (refs.overlayWindow && !refs.overlayWindow.isDestroyed()) {
       refs.overlayWindow.setSize(Math.round(width), Math.round(height));
@@ -230,16 +310,19 @@ function createSecondaryWindowControls(options) {
   }
 
   return {
+    closeAllTaskChatWindows,
     closeDashboardWindow,
     closeOverlayWindow,
     closePipWindow,
+    closeTaskChatWindow,
     createDashboardWindow,
     createOverlayWindow,
     createPipWindow,
     focusDashboardWindow,
+    openTaskChatWindow,
     resizeOverlayWindow,
     toggleOverlayWindow,
   };
 }
 
-module.exports = { createSecondaryWindowControls };
+export { createSecondaryWindowControls };

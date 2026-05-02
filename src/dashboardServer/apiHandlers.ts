@@ -1,36 +1,15 @@
 import fs from 'fs';
 import path from 'path';
 import { URL } from 'url';
-const { adaptAgentToDashboard } = require('../dashboardAdapter.js') as {
-  adaptAgentToDashboard: (agent: any) => any;
-};
-const { loadOfficeLayoutManifest, resolveOfficeLayoutAssetPath } = require('../officeLayout.js') as {
-  loadOfficeLayoutManifest: () => any;
-  resolveOfficeLayoutAssetPath: (assetPath: string) => string | null;
-};
-const { getConversationSummary, parseConversation } = require('../main/conversationParser.js') as {
-  getConversationSummary: (transcriptPath: string) => any;
-  parseConversation: (transcriptPath: string, options?: { limit?: number; offset?: number }) => any;
-};
-import { MIME_TYPES, PROJECT_ROOT } from './constants.js';
-import { getClients, getRefs } from './context.js';
-import { calculateStats } from './stats.js';
-import {
-  handleCreateTask,
-  handleListTasks,
-  handleTaskApiRoute,
-} from './taskHandlers.js';
-import {
-  handleCreateTeam,
-  handleListTeams,
-  handleGetTeam,
-  handleTeamReport,
-  handleTeamMerge,
-  handleTeamReject,
-  handleTeamCancel,
-} from './teamHandlers.js';
+import { adaptAgentToDashboard } from '../dashboardAdapter';
+import { loadOfficeLayoutManifest, resolveOfficeLayoutAssetPath } from '../officeLayout';
+import { ASSET_ROOT, MIME_TYPES } from './constants';
+import { getClients, getRefs } from './context';
+import { calculateStats } from './stats';
+import { handleAgentApiRoute } from './agentHandlers';
+import { handleCreateTask, handleListTasks, handleTaskApiRoute } from './taskHandlers';
 
-export { handleTaskApiRoute };
+export { handleAgentApiRoute, handleTaskApiRoute };
 
 interface ResponseLike {
   writeHead(statusCode: number, headers?: Record<string, string>): void;
@@ -76,25 +55,6 @@ function handleGetAgents(_req: RequestLike, res: ResponseLike): void {
   res.end(JSON.stringify(agentManager.getAllAgents().map(adaptAgentToDashboard)));
 }
 
-function handleGetAgentById(_req: RequestLike, res: ResponseLike, url: URL): void {
-  const { agentManager, sessionScanner } = getRefs();
-  if (!agentManager) {
-    res.writeHead(503, jsonHeader);
-    res.end(JSON.stringify({ error: 'Agent manager not available' }));
-    return;
-  }
-  const agentId = url.pathname.split('/').pop();
-  const agent = agentManager.getAgent(agentId);
-  if (!agent) {
-    res.writeHead(404, jsonHeader);
-    res.end(JSON.stringify({ error: 'Agent not found' }));
-    return;
-  }
-  const sessionStats = sessionScanner ? sessionScanner.getSessionStats(agentId) : null;
-  res.writeHead(200, jsonHeader);
-  res.end(JSON.stringify({ ...agent, sessionStats }));
-}
-
 function handleGetStats(_req: RequestLike, res: ResponseLike): void {
   const { agentManager } = getRefs();
   res.writeHead(200, jsonHeader);
@@ -138,17 +98,29 @@ function handleGetHealth(_req: RequestLike, res: ResponseLike): void {
   const { agentManager } = getRefs();
   const { sseClients, wsClients } = getClients();
   res.writeHead(200, jsonHeader);
-  res.end(JSON.stringify({
-    status: 'ok',
-    timestamp: Date.now(),
-    agents: agentManager ? agentManager.getAgentCount() : 0,
-    sseClients: sseClients.size,
-    wsClients: wsClients.size,
-  }));
+  res.end(
+    JSON.stringify({
+      status: 'ok',
+      timestamp: Date.now(),
+      agents: agentManager ? agentManager.getAgentCount() : 0,
+      sseClients: sseClients.size,
+      wsClients: wsClients.size,
+    })
+  );
+}
+
+function handleGetAppMeta(_req: RequestLike, res: ResponseLike): void {
+  const { appMeta } = getRefs();
+  res.writeHead(200, jsonHeader);
+  res.end(
+    JSON.stringify({
+      isDev: !!appMeta?.isDev,
+    })
+  );
 }
 
 function handleGetAvatars(_req: RequestLike, res: ResponseLike): void {
-  const charDir = path.join(PROJECT_ROOT, 'public', 'characters');
+  const charDir = path.join(ASSET_ROOT, 'characters');
   const imgRegex = /\.(webp|png|jpg|jpeg|gif)$/i;
   try {
     const entries = fs.readdirSync(charDir, { withFileTypes: true });
@@ -156,7 +128,8 @@ function handleGetAvatars(_req: RequestLike, res: ResponseLike): void {
     const allFiles: string[] = [];
     for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
       if (!entry.isDirectory()) continue;
-      const folderFiles = fs.readdirSync(path.join(charDir, entry.name))
+      const folderFiles = fs
+        .readdirSync(path.join(charDir, entry.name))
         .filter((f) => imgRegex.test(f))
         .sort();
       const prefixed = folderFiles.map((f) => `${entry.name}/${f}`);
@@ -199,93 +172,6 @@ export function handleGetOfficeLayoutAsset(_req: RequestLike, res: ResponseLike,
   });
 }
 
-function handleGetSessionHistory(_req: RequestLike, res: ResponseLike, registryId: string): void {
-  const { agentRegistryRef } = getRefs();
-  if (!agentRegistryRef) {
-    res.writeHead(503, jsonHeader);
-    res.end(JSON.stringify({ error: 'Agent registry not available' }));
-    return;
-  }
-  const enriched = agentRegistryRef.getSessionHistory(registryId).map((entry: any) => ({
-    ...entry,
-    summary: entry.transcriptPath ? getConversationSummary(entry.transcriptPath) : null,
-  }));
-  res.writeHead(200, jsonHeader);
-  res.end(JSON.stringify(enriched));
-}
-
-function handleGetConversation(_req: RequestLike, res: ResponseLike, registryId: string, sessionId: string, url: URL): void {
-  const { agentRegistryRef, agentManager } = getRefs();
-  if (!agentRegistryRef) {
-    res.writeHead(503, jsonHeader);
-    res.end(JSON.stringify({ error: 'Agent registry not available' }));
-    return;
-  }
-  const entry = agentRegistryRef.findSessionHistoryEntry(registryId, sessionId);
-  let transcriptPath = entry ? entry.transcriptPath : null;
-  if (!transcriptPath && agentManager) {
-    const agent = agentManager.getAgent(registryId);
-    if (agent && (agent.sessionId === sessionId || agent.runtimeSessionId === sessionId || agent.resumeSessionId === sessionId) && agent.jsonlPath) {
-      transcriptPath = agent.jsonlPath;
-    }
-  }
-
-  if (!transcriptPath) {
-    res.writeHead(404, jsonHeader);
-    res.end(JSON.stringify({ error: 'Transcript not found for this session' }));
-    return;
-  }
-
-  const limit = parseInt(url.searchParams.get('limit') || '0', 10);
-  const offset = parseInt(url.searchParams.get('offset') || '0', 10);
-  const result = parseConversation(transcriptPath, { limit: limit || undefined, offset: offset || undefined });
-  if (!result) {
-    res.writeHead(404, jsonHeader);
-    res.end(JSON.stringify({ error: 'Could not parse transcript file' }));
-    return;
-  }
-
-  res.writeHead(200, jsonHeader);
-  res.end(JSON.stringify(result));
-}
-
-export function handleAgentApiRoute(req: RequestLike, res: ResponseLike, url: URL): boolean {
-  if (!(url.pathname.startsWith('/api/agents/') && req.method === 'GET')) return false;
-  const parts = url.pathname.replace('/api/agents/', '').split('/');
-  if (parts.length === 2 && parts[1] === 'history') {
-    handleGetSessionHistory(req, res, parts[0]);
-    return true;
-  }
-  if (parts.length === 3 && parts[1] === 'conversation') {
-    handleGetConversation(req, res, parts[0], parts[2], url);
-    return true;
-  }
-  handleGetAgentById(req, res, url);
-  return true;
-}
-
-export function handleTeamApiRoute(req: RequestLike, res: ResponseLike, url: URL): boolean {
-  if (!url.pathname.startsWith('/api/teams')) return false;
-
-  if (url.pathname === '/api/teams' || url.pathname === '/api/teams/') {
-    if (req.method === 'GET') { handleListTeams(req as any, res as any); return true; }
-    if (req.method === 'POST') { handleCreateTeam(req as any, res as any); return true; }
-    return false;
-  }
-
-  const parts = url.pathname.replace('/api/teams/', '').split('/').filter(Boolean);
-  const teamId = parts[0];
-  const action = parts[1];
-
-  if (req.method === 'GET' && !action) { handleGetTeam(req as any, res as any, teamId); return true; }
-  if (req.method === 'GET' && action === 'report') { handleTeamReport(req as any, res as any, teamId); return true; }
-  if (req.method === 'POST' && action === 'merge') { handleTeamMerge(req as any, res as any, teamId); return true; }
-  if (req.method === 'POST' && action === 'reject') { handleTeamReject(req as any, res as any, teamId); return true; }
-  if (req.method === 'POST' && action === 'cancel') { handleTeamCancel(req as any, res as any, teamId); return true; }
-
-  return false;
-}
-
 export const apiRoutes = {
   'GET /api/events': handleSSE,
   'GET /api/agents': handleGetAgents,
@@ -295,6 +181,7 @@ export const apiRoutes = {
   'GET /api/archived-workspaces': handleGetArchivedAgents,
   'GET /api/heatmap': handleGetHeatmap,
   'GET /api/health': handleGetHealth,
+  'GET /api/app-meta': handleGetAppMeta,
   'GET /api/office-layout': handleGetOfficeLayout,
   'GET /api/avatars': handleGetAvatars,
   'GET /api/tasks': handleListTasks,

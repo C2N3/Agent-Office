@@ -12,7 +12,7 @@ jest.mock('child_process', () => ({
 
 const fs = require('fs');
 const { execFileSync } = require('child_process');
-const { TerminalProfileService } = require('../src/main/terminalProfileService');
+import { TerminalProfileService } from '../src/main/terminalProfileService';
 
 describe('TerminalProfileService', () => {
   const originalPlatform = process.platform;

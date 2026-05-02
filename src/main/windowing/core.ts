@@ -1,8 +1,11 @@
-const { BrowserWindow, screen } = require('electron');
-const path = require('path');
-const { createSecondaryWindowControls } = require('./secondary/windows');
+import { BrowserWindow, screen } from 'electron';
+import { resolveFromModule } from '../../runtime/module';
+import { loadDashboardServerModule } from '../dashboardRuntimeLoader';
+import { createSecondaryWindowControls } from './secondary/windows';
 
-function createWindowManagerCore(context) {
+const moduleUrl = import.meta.url;
+
+export function createWindowManagerCore(context) {
   const {
     agentManager,
     agentRegistry,
@@ -19,9 +22,12 @@ function createWindowManagerCore(context) {
   let pipWindow = null;
   let overlayWindow = null;
   let keepAliveInterval = null;
-  let dashboardServer = null;
-  const dashboardClientUrl = process.env.DASHBOARD_DEV_SERVER_URL || 'http://localhost:3000';
-  const dashboardRootUrl = process.argv.includes('--dev') ? dashboardClientUrl : 'http://localhost:3000';
+  let dashboardServer: any = null;
+  let dashboardServerStartPromise: Promise<any> | null = null;
+  const browserDevServerUrl = process.env.DASHBOARD_DEV_SERVER_URL || 'http://127.0.0.1:3001';
+  const dashboardPort = process.env.AO_DASHBOARD_PORT || 3000;
+  const dashboardRootUrl = process.argv.includes('--dev') ? browserDevServerUrl : `http://localhost:${dashboardPort}`;
+  const taskChatWindows = new Map();
   const refs = {
     get dashboardWindow() { return dashboardWindow; },
     set dashboardWindow(value) { dashboardWindow = value; },
@@ -29,15 +35,19 @@ function createWindowManagerCore(context) {
     set pipWindow(value) { pipWindow = value; },
     get overlayWindow() { return overlayWindow; },
     set overlayWindow(value) { overlayWindow = value; },
+    taskChatWindows,
   };
   const {
+    closeAllTaskChatWindows,
     closeDashboardWindow,
     closeOverlayWindow,
     closePipWindow,
+    closeTaskChatWindow,
     createDashboardWindow,
     createOverlayWindow,
     createPipWindow,
     focusDashboardWindow,
+    openTaskChatWindow,
     resizeOverlayWindow,
     toggleOverlayWindow,
   } = createSecondaryWindowControls({
@@ -47,6 +57,10 @@ function createWindowManagerCore(context) {
     adaptAgentToDashboard,
     debugLog,
   });
+
+  function resolveBrowserDevUrl(targetPath) {
+    return new URL(targetPath, `${browserDevServerUrl}/`).toString();
+  }
 
   function resizeWindowForAgents(agentsOrCount) {
     if (!mainWindow || mainWindow.isDestroyed()) return;
@@ -100,13 +114,17 @@ function createWindowManagerCore(context) {
       focusable: false,
       show: false,
       webPreferences: {
-        preload: path.join(__dirname, '..', '..', 'preload.js'),
+        preload: resolveFromModule(moduleUrl, '..', '..', 'preload.js'),
         nodeIntegration: false,
         contextIsolation: true,
       },
     });
 
-    mainWindow.loadFile(path.join(__dirname, '..', '..', 'index.html'));
+    if (process.argv.includes('--dev')) {
+      mainWindow.loadURL(resolveBrowserDevUrl('/index.html'));
+    } else {
+      mainWindow.loadFile(resolveFromModule(moduleUrl, '..', '..', 'index.html'));
+    }
     errorHandler.setMainWindow(mainWindow);
 
     let constraining = false;
@@ -138,24 +156,59 @@ function createWindowManagerCore(context) {
     startKeepAlive();
   }
 
-  function startDashboardServer() {
+  function waitForServerListening(server: any): Promise<any> {
+    if (!server || typeof server.once !== 'function' || typeof server.off !== 'function') {
+      return Promise.resolve(server);
+    }
+    if (server.listening) {
+      return Promise.resolve(server);
+    }
+    return new Promise((resolve, reject) => {
+      const handleListening = () => {
+        cleanup();
+        resolve(server);
+      };
+      const handleError = (error: any) => {
+        cleanup();
+        reject(error);
+      };
+      const cleanup = () => {
+        server.off('listening', handleListening);
+        server.off('error', handleError);
+      };
+      server.once('listening', handleListening);
+      server.once('error', handleError);
+    });
+  }
+
+  async function startDashboardServer() {
     if (dashboardServer) {
       debugLog('[Dashboard] Server is already running.');
-      return;
+      return dashboardServer;
+    }
+    if (dashboardServerStartPromise) {
+      return dashboardServerStartPromise;
     }
 
     debugLog('[Dashboard] Starting server...');
-    try {
-      const serverModule = require('../../dashboardServer/index.js');
+    dashboardServerStartPromise = (async () => {
+      const serverModule = await loadDashboardServerModule();
       if (agentManager) serverModule.setAgentManager(agentManager);
       if (sessionScanner) serverModule.setSessionScanner(sessionScanner);
       if (heatmapScanner) serverModule.setHeatmapScanner(heatmapScanner);
       if (agentRegistry) serverModule.setAgentRegistry(agentRegistry);
-      dashboardServer = serverModule.startServer();
+      const startedServer = serverModule.startServer();
+      dashboardServer = await waitForServerListening(startedServer);
       debugLog('[Dashboard] Server started (port 3000)');
-    } catch (error) {
+      return dashboardServer;
+    })().catch((error) => {
+      dashboardServer = null;
       debugLog(`[Dashboard] Failed to start: ${error.message}`);
-    }
+      throw error;
+    }).finally(() => {
+      dashboardServerStartPromise = null;
+    });
+    return dashboardServerStartPromise;
   }
 
   function stopDashboardServer() {
@@ -189,10 +242,11 @@ function createWindowManagerCore(context) {
     toggleOverlayWindow,
     resizeOverlayWindow,
     focusDashboardWindow,
+    openTaskChatWindow,
+    closeTaskChatWindow,
+    closeAllTaskChatWindows,
     startDashboardServer,
     stopDashboardServer,
     resizeWindowForAgents,
   };
 }
-
-module.exports = { createWindowManagerCore };

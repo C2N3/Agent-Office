@@ -1,4 +1,4 @@
-const { getCodexSessionRoots } = require('../src/main/providers/codex/paths');
+import { getCodexSessionRoots } from '../src/main/providers/codex/paths';
 
 describe('codexPaths', () => {
   test('returns an explicit session root when configured', () => {

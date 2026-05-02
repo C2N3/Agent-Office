@@ -1,9 +1,10 @@
-const path = require('path');
-const os = require('os');
-const fs = require('fs');
-const crypto = require('crypto');
-const { sanitizeProjectPath } = require('../../utils');
-const {
+import path from 'path';
+import os from 'os';
+import fs from 'fs';
+import crypto from 'crypto';
+import EventEmitter from 'events';
+import { sanitizeProjectPath } from '../../utils';
+import {
   normalizePath,
   sanitizeWorkspace,
   buildSessionHistoryEntry,
@@ -14,17 +15,18 @@ const {
   getAgentSessionHistory,
   findAgentSessionHistoryEntry,
   findAgentByProjectPath,
-} = require('./shared');
-import type { PersistentAgent } from './types.js';
+} from './shared';
+import type { PersistentAgent } from './types';
 
 const PERSIST_DIR = path.join(os.homedir(), '.agent-office');
 const PERSIST_FILE = path.join(PERSIST_DIR, 'agent-registry.json');
 
-class AgentRegistry {
+export class AgentRegistry extends EventEmitter {
   declare debugLog: (message: string) => void;
   declare agents: Map<string, PersistentAgent>;
 
   constructor(debugLog) {
+    super();
     this.debugLog = debugLog || (() => {});
     /** @type {Map<string, object>} registryId → PersistentAgent */
     this.agents = new Map();
@@ -124,6 +126,7 @@ class AgentRegistry {
     this.agents.set(id, agent);
     this._save();
     this.debugLog(`[Registry] Created: ${id.slice(0, 8)} "${agent.name}" path=${agent.projectPath}`);
+    this.emit('agent-created', agent);
     return agent;
   }
 
@@ -189,6 +192,7 @@ class AgentRegistry {
     this.agents.set(registryId, agent);
     this._save();
     this.debugLog(`[Registry] Updated: ${registryId.slice(0, 8)}`);
+    this.emit('agent-updated', agent);
     return agent;
   }
 
@@ -203,6 +207,7 @@ class AgentRegistry {
     agent.currentResumeSessionId = null;
     this._save();
     this.debugLog(`[Registry] Archived: ${registryId.slice(0, 8)}`);
+    this.emit('agent-archived', agent);
     return true;
   }
 
@@ -212,6 +217,7 @@ class AgentRegistry {
     this.agents.delete(registryId);
     this._save();
     this.debugLog(`[Registry] Deleted: ${registryId.slice(0, 8)}`);
+    this.emit('agent-deleted', agent);
     return true;
   }
 
@@ -289,7 +295,8 @@ class AgentRegistry {
     }
     this._save();
     this.debugLog(`[Registry] ${enabled ? 'Enabled' : 'Disabled'}: ${registryId.slice(0, 8)}`);
+    this.emit('agent-enabled-changed', agent);
   }
 }
 
-module.exports = { AgentRegistry, normalizePath };
+export { normalizePath };

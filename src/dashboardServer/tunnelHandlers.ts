@@ -1,9 +1,10 @@
-import { getRemoteToken } from './remoteAuth.js';
+import { getRemoteToken } from './remoteAuth';
+import { loadMainTunnelManager } from './tunnelManagerLookup';
 
 // tunnelManager is a singleton in the main process
 function getTunnelManager(): any {
   try {
-    return require('../main/tunnelManager.js').tunnelManager;
+    return loadMainTunnelManager();
   } catch {
     return null;
   }

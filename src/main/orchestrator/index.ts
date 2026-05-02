@@ -1,6 +1,6 @@
-const EventEmitter = require('events');
-const { transitionTask } = require('./taskStateMachine');
-const {
+import { EventEmitter } from 'events';
+import { transitionTask } from './taskStateMachine';
+import {
   cleanupTaskRuntime,
   cleanupTaskWorktree,
   dispatchTask,
@@ -11,15 +11,30 @@ const {
   handleTaskOutput,
   handleTaskSuccess,
   resetIdleTimer,
-  saveTaskOutput,
   withRepoLock,
-} = require('./runtime');
+} from './runtime';
 
 const TICK_INTERVAL_MS = 2000;
 const MAX_CONCURRENT_TASKS = 5;
-const MAX_CONCURRENT_TEAM_TASKS = 5; // Separate pool for team subtasks
 
-class Orchestrator extends EventEmitter {
+export class Orchestrator extends EventEmitter {
+  declare taskStore: any;
+  declare terminalManager: any;
+  declare processManager: any;
+  declare workspaceManager: any;
+  declare agentRegistry: any;
+  declare agentManager: any;
+  declare debugLog: (message: string) => void;
+  declare maxConcurrentTasks: number;
+  declare broadcastTaskOutput: any;
+  declare outputParsers: Map<string, any>;
+  declare cleanupFns: Map<string, Array<() => void>>;
+  declare repoLocks: Map<string, Promise<any>>;
+  declare idleTimers: Map<string, NodeJS.Timeout>;
+  declare taskOutputBytes: Map<string, number>;
+  declare tickInterval: NodeJS.Timeout | null;
+  declare _exitSent?: Set<string>;
+
   constructor(options) {
     super();
     this.taskStore = options.taskStore;
@@ -40,7 +55,6 @@ class Orchestrator extends EventEmitter {
     this.taskOutputBytes = new Map(); // taskId -> total bytes received
 
     this.tickInterval = null;
-    this.teamCoordinator = null; // Set after TeamCoordinator is created
   }
 
   // === Lifecycle ===
@@ -134,6 +148,9 @@ class Orchestrator extends EventEmitter {
       errorMessage: null,
       lastOutput: null,
       completedAt: null,
+      workspacePath: null,
+      terminalId: null,
+      outputPath: null,
     });
     this.taskStore.updateTask(taskId, updated);
     this.emit('task:updated', updated);
@@ -214,30 +231,12 @@ class Orchestrator extends EventEmitter {
   }
 
   _dispatchReadyTasks() {
-    const allRunning = this.taskStore.getRunningTasks()
-      .concat(this.taskStore.getTasksByStatus('provisioning'));
-
-    // Split into team vs regular tasks using separate concurrency pools
-    const teamRunning = allRunning.filter(t => t.parentTaskId).length;
-    const regularRunning = allRunning.filter(t => !t.parentTaskId).length;
+    const running = this.taskStore.getRunningTasks()
+      .concat(this.taskStore.getTasksByStatus('provisioning')).length;
 
     const ready = this.taskStore.getReadyTasks();
-    const teamReady = ready.filter(t => t.parentTaskId);
-    const regularReady = ready.filter(t => !t.parentTaskId);
-
-    const dispatchBatch = [];
-
-    // Regular tasks: own pool
-    const regularAvailable = this.maxConcurrentTasks - regularRunning;
-    if (regularAvailable > 0) {
-      dispatchBatch.push(...regularReady.slice(0, regularAvailable));
-    }
-
-    // Team tasks: separate pool
-    const teamAvailable = MAX_CONCURRENT_TEAM_TASKS - teamRunning;
-    if (teamAvailable > 0) {
-      dispatchBatch.push(...teamReady.slice(0, teamAvailable));
-    }
+    const available = this.maxConcurrentTasks - running;
+    const dispatchBatch = available > 0 ? ready.slice(0, available) : [];
 
     for (const task of dispatchBatch) {
       this._dispatchTask(task).catch((e) => {
@@ -362,12 +361,6 @@ class Orchestrator extends EventEmitter {
     return handleRetry(this, taskId, errorMessage);
   }
 
-  // === Output Capture ===
-
-  _saveTaskOutput(taskId) {
-    return saveTaskOutput(this, taskId);
-  }
-
   // === Cleanup ===
 
   _cleanupTaskRuntime(taskId) {
@@ -389,5 +382,3 @@ class Orchestrator extends EventEmitter {
     return withRepoLock(this, repoPath, fn);
   }
 }
-
-module.exports = { Orchestrator };

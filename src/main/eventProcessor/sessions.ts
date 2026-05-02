@@ -1,5 +1,6 @@
-import * as path from 'node:path';
-import type { PendingSessionStart } from './sessionState.js';
+import path from 'node:path';
+import { normalizePath } from '../registry/index';
+import type { PendingSessionStart } from './sessionState';
 
 export function createSessionLifecycleHandlers(options: any) {
   const {
@@ -183,9 +184,6 @@ export function createSessionLifecycleHandlers(options: any) {
     if (!agentManager || !agentRegistry || !registryAgent || !registryAgent.id) return null;
     if (!canBindRegistryAgent(registryAgent)) return null;
 
-    const { normalizePath } = require('../registry') as {
-      normalizePath: (value: string | null | undefined) => string;
-    };
     const targetPath = normalizePath(registryAgent.projectPath);
     if (!targetPath) return null;
 

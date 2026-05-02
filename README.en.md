@@ -1,0 +1,283 @@
+# Agent-Office
+
+[![CI](https://github.com/C2N3/Agent-Office/actions/workflows/test.yml/badge.svg)](https://github.com/C2N3/Agent-Office/actions/workflows/test.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Electron](https://img.shields.io/badge/Electron-32+-47848F?logo=electron&logoColor=white)](https://www.electronjs.org/)
+
+> Standalone Electron app that visualizes Claude Code and Codex CLI sessions as animated pixel avatars in real time, with Gemini available for launched tasks.
+
+Korean README: [README.ko.md](README.ko.md)
+
+## Features
+
+- **Pixel avatars** for each agent session with state-based animation
+- **Virtual office** with animated characters moving across a 2D pixel-art workspace
+- **Agent desk dashboard** at `http://localhost:3000` for live monitoring and controls
+- **Activity heatmap** with GitHub-style daily session history
+- **Transcript-based token and cost statistics** for Claude and Codex sessions
+- **Terminal focus** to bring the matching terminal window to the front
+- **Managed Workspaces** with `git worktree` creation, copy/symlink setup, and cleanup actions
+- **Force session termination** for stopping a stuck or mis-prompted agent session from the dashboard
+- **PiP mode** so the office can stay visible while you work
+- **Automatic recovery** after app restarts
+- **Provider catalog** for Claude, Codex, and Gemini task/runtime selection
+- **Codex session support** through both `exec --json` forwarding and `~/.codex/sessions` scanning
+- **Claude sub-agent and team support**
+
+## Requirements
+
+- **Node.js** 24+
+- **Claude Code CLI** with hooks enabled, **Codex CLI** with session files / `exec --json`, or **Gemini CLI** for task execution
+- **OS:** Windows, macOS, or Linux
+
+## Quick Start
+
+```bash
+git clone https://github.com/C2N3/Agent-Office.git
+cd Agent-Office
+npm install
+npm start
+```
+
+Agent characters react only to CLI sessions launched from Agent-Office tasks. External `claude`/`codex`/`gemini` runs in other terminals are not shown in the office. `npm install` migrates any previously-registered Agent-Office hook out of `~/.claude/settings.json` — Claude, Codex, and Gemini are detected through the orchestrator's own spawn path.
+
+## Runtime Model
+
+- Production runtime output lives in `dist/`
+- `npm start` and `npm run dashboard` automatically run `npm run build:dist` first
+- `npm run dev` starts Vite for `index`/`dashboard`/`pip`/`overlay`, watches `src/`, `assets/`, browser shell HTML/CSS, and tsconfig files, rebuilds `dist/` for non-browser changes, and restarts Electron when needed
+- If you run a `node dist/...` entrypoint directly, build once first with `npm run build:dist`
+- TypeScript uses the TypeScript 7 preview toolchain through `tsgo`, not plain `tsc`
+- `src/browser/` contains browser shell HTML/CSS, while `src/client/` and `src/renderer/` contain authored browser code; Electron main-process code, the dashboard server, and preload code stay on the `dist/` + `tsgo` runtime path
+
+## Providers
+
+Agent-Office uses a provider registry for runtime behavior and a dashboard provider catalog for UI behavior. Keep those in sync when adding or changing providers:
+
+- `src/main/providers/registry.ts` for CLI commands, resume commands, liveness, transcript support, and recovery capabilities
+- `src/client/dashboard/providerCatalog.ts` for dashboard labels, model options, and terminal boot commands
+
+Enable providers with `PIXEL_AGENT_PROVIDERS`:
+
+```bash
+PIXEL_AGENT_PROVIDERS=all npm start
+PIXEL_AGENT_PROVIDERS=claude,codex,gemini npm start
+```
+
+The default runtime always enables Claude. Codex is also enabled automatically when Codex session roots are detected.
+
+## Codex
+
+Enable the Codex adapter explicitly:
+
+```bash
+PIXEL_AGENT_PROVIDERS=claude,codex npm start
+```
+
+Forward `codex exec --json` output into the app:
+
+```bash
+codex exec --json "summarize this repo" | node dist/src/codex-forward.js
+```
+
+Notes:
+
+- Codex supports recovery, session scanning, heatmaps, and conversation history paths
+- Claude-only hook metadata such as some sub-agent and team events still comes from the Claude hook path
+- Gemini supports launched task provider selection, but does not currently provide transcript statistics
+- The Codex forwarder posts to `http://127.0.0.1:47822/codex-event` by default
+- Override the Codex event port with `PIXEL_AGENT_CODEX_PORT`
+
+## Scripts
+
+Run these from the client project directory.
+
+| Script                      | Underlying command                                                                                        | Description                                                                    |
+| --------------------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `npm run postinstall`       | `node src/install.js`                                                                                     | Register the Claude hook; runs automatically after `npm install`               |
+| `npm run rebuild`           | `electron-rebuild -f -w node-pty`                                                                         | Rebuild the native `node-pty` module for Electron                              |
+| `npm run build:dist`        | `node scripts/build-types.js`                                                                             | Build the TypeScript runtime into `dist/`                                      |
+| `npm run build:dist:watch`  | `node scripts/build-types.js --watch`                                                                     | Watch source, assets, browser shell HTML/CSS, and tsconfig files and rebuild `dist/` |
+| `npm run build:types`       | `npm run build:dist`                                                                                      | Alias for the `dist/` TypeScript build                                         |
+| `npm run prestart`          | `npm run build:dist`                                                                                      | Build `dist/`; runs automatically before `npm start`                           |
+| `npm start`                 | `node scripts/run-electron.js`                                                                            | Launch the Electron app after `prestart` builds `dist/`                        |
+| `npm run dev`               | `node scripts/dev-runtime.js`                                                                             | Run Vite for index, dashboard, pip, and overlay; rebuild `dist/` for non-browser changes; restart Electron when needed |
+| `npm run typecheck`         | `node node_modules/@typescript/native-preview/bin/tsgo.js -p tsconfig.json --noEmit && node node_modules/@typescript/native-preview/bin/tsgo.js -p tsconfig.client.json --noEmit` | Run no-emit TypeScript checks for the runtime and Vite client configs          |
+| `npm test`                  | `jest`                                                                                                    | Run Jest tests against source TypeScript                                       |
+| `npm run test:coverage`     | `jest --coverage`                                                                                         | Run Jest with coverage output                                                  |
+| `npm run test:watch`        | `jest --watch`                                                                                            | Run Jest in watch mode                                                         |
+| `npm run predashboard`      | `npm run build:dist`                                                                                      | Build `dist/`; runs automatically before `npm run dashboard`                   |
+| `npm run dashboard`         | `node dist/src/dashboardServer/index.js`                                                                  | Run the dashboard server directly after `predashboard` builds `dist/`          |
+| `npm run lint`              | `eslint src/`                                                                                             | Lint source files                                                              |
+| `npm run lint:fix`          | `eslint src/ --fix`                                                                                       | Lint source files and apply automatic fixes                                    |
+| `npm run format`            | `prettier --write "src/**/*.{js,ts}" "__tests__/**/*.js" "scripts/**/*.js" "*.js"`                        | Format source, tests, scripts, and root JavaScript files                       |
+| `npm run format:check`      | `prettier --check "src/**/*.{js,ts}" "__tests__/**/*.js" "scripts/**/*.js" "*.js"`                        | Check formatting without writing changes                                       |
+| `npm run dist`              | `electron-builder`                                                                                        | Package the app with Electron Builder                                          |
+| `npm run dist:win`          | `npm run build:dist && electron-builder --win --publish never`                                            | Build `dist/` and create a Windows package without publishing                  |
+| `npm run dist:mac`          | `npm run build:dist && electron-builder --mac --publish never`                                            | Build `dist/` and create a macOS package without publishing                    |
+| `npm run dist:mac:unsigned` | `npm run build:dist && electron-builder --mac --publish never -c.mac.identity=null -c.mac.notarize=false` | Build `dist/` and create an unsigned, non-notarized macOS package              |
+| `npm run dist:mac:signed`   | `node scripts/dist-mac-signed.js`                                                                         | Rebuild, verify, sign, notarize, and create a macOS DMG when credentials exist |
+| `npm run dist:linux`        | `npm run build:dist && electron-builder --linux --publish never`                                          | Build `dist/` and create a Linux package without publishing                    |
+
+## Managed Workspaces
+
+The dashboard `+ New` flow now starts from a single `Workspace Path` input and auto-decides how to register it.
+
+- non-git folders are registered directly
+- git folders are also registered directly when no other active agent is using the same repository
+- if the same repository is already in use, Agent-Office creates a managed `git worktree` instead
+
+Advanced options let you override the strategy and configure worktree-specific settings when needed:
+
+- branch name, base branch, and start point
+- custom worktree parent directory
+- copied setup files such as `.env.local`
+- symlinked large directories such as `node_modules`; existing dependency folders are detected and linked by default
+- bootstrap commands such as `npm install`
+
+Workspace agents also expose lifecycle actions in the dashboard:
+
+- `Stop` force-terminates the active session/process and returns the agent to offline state
+- `Merge` merges back to the base branch, removes the worktree and branch, then archives the agent
+- `Remove` deletes the worktree and branch without merging, then archives the agent
+
+Safety rules:
+
+- active sessions block merge/remove
+- dirty worktrees block merge/remove
+- failed merges attempt `git merge --abort` automatically
+
+## Remote Access
+
+The dashboard Remote tab has three modes:
+
+- `Local Only` keeps the central server URL on disk, but leaves the worker bridge and character sync off.
+- `Host` shares this office from the configured host server and creates guest invite links.
+- `Guest` joins an existing host from an invite link.
+
+Picking a mode pill only changes the draft selection. The mode changes when you press that sheet's primary action: `Switch to Local Only`, `Start Hosting`, or `Join Host`.
+
+In Host mode, `Host server` is the only server-address control. Enter a full URL or just a port such as `47824`; ports expand to `http://127.0.0.1:47824`. Use `Start Hosting` for the first setup, and `Update Server` only when moving this host to another server.
+
+Guest sharing is managed from the `Guest invite` section:
+
+- `Create Invite Link` starts accepting guests and generates the first invite.
+- `New Invite Link` invalidates the previous guest link and creates a replacement.
+- `Stop Sharing` stops accepting guests while keeping Host mode and the server address configured.
+
+`Create Invite Link` and `New Invite Link` require the current owner secret for that host server. If the server was already claimed and this device no longer has owner access, the Remote tab shows a recovery error instead of an empty invite state. In that case, reopen Agent Office on the host machine or restore the owner secret before creating another invite. Host mode without a stored owner secret or worker token now keeps the worker bridge and character sync off until access is restored.
+
+The saved server URL is stored in `~/.agent-office/central-server-url.txt`. `AO_CENTRAL_SERVER_URL` is still supported as the startup fallback when no saved value exists. The selected mode is stored in `~/.agent-office/central-remote-mode.txt`, and room secrets are stored in `~/.agent-office/central-room-secret.txt`.
+
+When Guest mode is active without a stored room secret, the worker bridge and character sync stay off until an invite is joined. When Guest mode is active with a stored secret, the worker bridge uses that room secret instead of the worker token. Opening an invite link on a machine that already has Agent-Office running at `http://localhost:3000` can join automatically from the URL fragment.
+
+The sidebar also exposes a separate `Cloudflare` tab. That tab keeps the quick-tunnel controls available without mixing them into the Host/Guest product UI.
+
+### Connecting to a Host Server
+
+Remote Host/Guest mode needs a host server URL that guests can actually reach. Use these values in Dashboard > `Remote` > `Host` > `Host server` depending on the connection type:
+
+| Scenario | Host server value |
+| --- | --- |
+| Testing on the same computer only | `http://127.0.0.1:47823` |
+| Friend on the same Wi-Fi/LAN | `http://<host-local-ip>:47823` |
+| Friend over the internet | the public HTTPS URL from a tunnel tool |
+
+For LAN access, use the host computer's local IP address. For example, on macOS Wi-Fi:
+
+```bash
+ipconfig getifaddr en0
+```
+
+If the IP is `192.168.0.23`, guests on the same network should use:
+
+```text
+http://192.168.0.23:47823
+```
+
+Do not put `0.0.0.0` into the client. `0.0.0.0` is only for the server listen address. Clients should use `127.0.0.1`, a LAN IP address, or a public tunnel URL.
+
+For internet access, use the public HTTPS URL from a tunnel tool such as Cloudflare Tunnel, ngrok, or localtunnel. If the tunnel runs on the same computer as the host server, it can target `http://127.0.0.1:47823`. If it runs on a different computer, it should target the host computer's LAN address, such as `http://192.168.0.23:47823`.
+
+After the reachable server URL is ready, use it in the client:
+
+1. Open Dashboard > `Remote`.
+2. Select `Host`.
+3. Enter the URL in `Host server`.
+4. Click `Start Hosting`.
+5. Click `Create Invite Link`.
+6. Send that invite link to the guest.
+
+Create the invite only after `Host server` contains an address the guest can actually reach. An invite created with `127.0.0.1` tells the guest client to connect to the guest computer's own localhost, so it will fail from another machine.
+
+Guests can join from Dashboard > `Remote` > `Guest` by pasting the invite link and clicking `Join Host`. If the dashboard is already running at `http://localhost:3000`, opening the invite link can also join automatically.
+
+Invite links include both the central server URL and the guest secret:
+
+```text
+http://localhost:3000/#aoGuestSecret=...&aoBaseUrl=...
+```
+
+`aoBaseUrl` is the Agent Office Server URL. `aoGuestSecret` is the secret that allows the guest into the room. `Create Invite Link` enables guest access and creates the current guest secret. `New Invite Link` rotates the guest secret and invalidates the previous invite, so only share invite links with people who should be able to join.
+
+## macOS Release
+
+This repository includes a signed macOS release path.
+
+```bash
+npm install
+npm run dist:mac:signed
+```
+
+`npm run dist:mac:signed` must be run on macOS and executes:
+
+- `npm run rebuild`
+- `npm run build:dist`
+- `npm run typecheck`
+- `npm test -- --runInBand`
+- notarized macOS DMG packaging into `release/`
+
+For notarization, provide one of these credential sets:
+
+- App Store Connect API key
+  - `APPLE_API_KEY` or `APPLE_API_KEY_BASE64`
+  - `APPLE_API_KEY_ID`
+  - `APPLE_API_ISSUER`
+- Apple ID fallback
+  - `APPLE_ID`
+  - `APPLE_APP_SPECIFIC_PASSWORD`
+  - `APPLE_TEAM_ID`
+
+For code signing, provide one of:
+
+- `CSC_LINK` and `CSC_KEY_PASSWORD`
+- `CSC_NAME` if the Developer ID Application certificate is already installed in the macOS keychain
+
+GitHub Actions tag releases currently build Windows artifacts and an unsigned macOS DMG. Use `npm run dist:mac:signed` locally when signing and notarization are required.
+
+## Troubleshooting
+
+**No avatars appear**
+
+- Agent characters only appear for tasks launched from Agent-Office. CLI sessions started in an external terminal (or the app's built-in terminal tab) are intentionally ignored.
+- To see a character, submit a task from the dashboard (Assign Task / Team Formation) or provision an agent from the Agent Panel.
+- Confirm the provider CLI is installed and on `PATH` for the task you're launching, then enable it with `PIXEL_AGENT_PROVIDERS=all` or `PIXEL_AGENT_PROVIDERS=claude,codex,gemini`.
+- A `404` response from `curl http://localhost:47821/hook` is normal and confirms the hook server is listening.
+
+**Ghost avatars remain**
+
+- This is usually a temporary PID-detection or session-file cleanup delay, especially on Windows
+- Restarting the app resets in-memory session state
+
+**Dashboard does not open**
+
+- Confirm port `3000` is available
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## License
+
+- **Source code:** [MIT License](LICENSE)
+- **Art assets** (`assets/characters/`, `assets/office/`): [Custom restrictive license](LICENSE-ASSETS)

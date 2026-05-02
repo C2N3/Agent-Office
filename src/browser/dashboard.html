@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agent-Office</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="/lib/xterm.css" vite-ignore>
+</head>
+
+<body>
+  <div id="dashboardRoot"></div>
+
+  <!-- Terminal: ensure UMD scripts export to window, not CommonJS -->
+  <script>if(typeof module!=='undefined'){window.__module=module;delete window.module;}</script>
+  <script src="/lib/xterm.js" vite-ignore></script>
+  <script src="/lib/xterm-addon-fit.js" vite-ignore></script>
+  <script src="/lib/xterm-addon-web-links.js" vite-ignore></script>
+  <script>if(typeof window.__module!=='undefined'){window.module=window.__module;delete window.__module;}</script>
+  <script src="/lib/marked.umd.js" vite-ignore></script>
+
+  <!-- Application Logic -->
+  <script type="module" src="../client/dashboard.ts"></script>
+</body>
+
+</html>

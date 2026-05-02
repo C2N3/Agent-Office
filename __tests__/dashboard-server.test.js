@@ -6,13 +6,22 @@
 // Mock dependencies before requiring the module
 jest.mock('fs', () => ({
   readFile: jest.fn(),
+  existsSync: jest.fn(() => false),
+  readFileSync: jest.fn(),
+  mkdirSync: jest.fn(),
+  writeFileSync: jest.fn(),
+  unlinkSync: jest.fn(),
 }));
 
 jest.mock('http', () => {
   const EventEmitter = require('events');
   const mockServer = new EventEmitter();
-  mockServer.listen = jest.fn((port, cb) => { if (cb) cb(); });
-  mockServer.close = jest.fn((cb) => { if (cb) cb(); });
+  mockServer.listen = jest.fn((port, cb) => {
+    if (cb) cb();
+  });
+  mockServer.close = jest.fn((cb) => {
+    if (cb) cb();
+  });
   return {
     createServer: jest.fn(() => mockServer),
     __mockServer: mockServer,
@@ -33,7 +42,7 @@ const EventEmitter = require('events');
 const http = require('http');
 
 // Load module ONCE and capture request handler
-const dashboardServer = require('../src/dashboardServer');
+import * as dashboardServer from '../src/dashboardServer';
 const handler = http.createServer.mock.calls[0][0];
 
 // Helper: create mock request/response pair
@@ -45,12 +54,13 @@ function createMockReqRes(method, urlPath, headers = {}) {
     headers: { host: 'localhost:3000', ...headers },
   });
 
-  const res = {
+  const resEmitter = new EventEmitter();
+  const res = Object.assign(resEmitter, {
     writeHead: jest.fn(),
     setHeader: jest.fn(),
     end: jest.fn(),
     write: jest.fn(),
-  };
+  });
 
   return { req, res };
 }
@@ -61,7 +71,7 @@ function createMockAgentManager() {
   const agents = [];
   return Object.assign(emitter, {
     getAllAgents: jest.fn(() => agents),
-    getAgent: jest.fn((id) => agents.find(a => a.id === id) || null),
+    getAgent: jest.fn((id) => agents.find((a) => a.id === id) || null),
     getAgentCount: jest.fn(() => agents.length),
     _agents: agents,
   });
@@ -86,7 +96,7 @@ describe('dashboard-server', () => {
         { id: '3', state: 'Done', projectPath: '/p/lib', tokenUsage: null },
         { id: '4', state: 'Waiting', projectPath: '/p/lib', tokenUsage: null },
         { id: '5', state: 'Help', projectPath: '/p/app', tokenUsage: null },
-        { id: '6', state: 'Error', projectPath: '/p/app', tokenUsage: null },
+        { id: '6', state: 'Error', projectPath: '/p/app', tokenUsage: null }
       );
 
       dashboardServer.setAgentManager(mgr);
@@ -108,7 +118,7 @@ describe('dashboard-server', () => {
       mgr._agents.push(
         { id: '1', state: 'Working', projectPath: '/projects/alpha', tokenUsage: null },
         { id: '2', state: 'Done', projectPath: '/projects/alpha', tokenUsage: null },
-        { id: '3', state: 'Thinking', projectPath: '/projects/beta', tokenUsage: null },
+        { id: '3', state: 'Thinking', projectPath: '/projects/beta', tokenUsage: null }
       );
 
       dashboardServer.setAgentManager(mgr);
@@ -120,9 +130,7 @@ describe('dashboard-server', () => {
 
     test('uses "Default" for agents without projectPath', () => {
       const mgr = createMockAgentManager();
-      mgr._agents.push(
-        { id: '1', state: 'Working', projectPath: null, tokenUsage: null },
-      );
+      mgr._agents.push({ id: '1', state: 'Working', projectPath: null, tokenUsage: null });
 
       dashboardServer.setAgentManager(mgr);
       const stats = dashboardServer.calculateStats();
@@ -135,7 +143,7 @@ describe('dashboard-server', () => {
       mgr._agents.push(
         { id: '1', state: 'Working', isSubagent: false, isTeammate: false, tokenUsage: null },
         { id: '2', state: 'Working', isSubagent: true, isTeammate: false, tokenUsage: null },
-        { id: '3', state: 'Working', isSubagent: false, isTeammate: true, tokenUsage: null },
+        { id: '3', state: 'Working', isSubagent: false, isTeammate: true, tokenUsage: null }
       );
 
       dashboardServer.setAgentManager(mgr);
@@ -149,7 +157,7 @@ describe('dashboard-server', () => {
       mgr._agents.push(
         { id: '1', state: 'Working', tokenUsage: { inputTokens: 1000, outputTokens: 200, estimatedCost: 0.005 } },
         { id: '2', state: 'Done', tokenUsage: { inputTokens: 3000, outputTokens: 500, estimatedCost: 0.015 } },
-        { id: '3', state: 'Waiting', tokenUsage: null },
+        { id: '3', state: 'Waiting', tokenUsage: null }
       );
 
       dashboardServer.setAgentManager(mgr);
@@ -182,9 +190,14 @@ describe('dashboard-server', () => {
 
     beforeEach(() => {
       mgr = createMockAgentManager();
-      mgr._agents.push(
-        { id: 'agent-1', sessionId: 'agent-1', state: 'Working', displayName: 'Test', projectPath: '/p/app', tokenUsage: null },
-      );
+      mgr._agents.push({
+        id: 'agent-1',
+        sessionId: 'agent-1',
+        state: 'Working',
+        displayName: 'Test',
+        projectPath: '/p/app',
+        tokenUsage: null,
+      });
       dashboardServer.setAgentManager(mgr);
       dashboardServer.setSessionScanner(null);
       dashboardServer.setHeatmapScanner(null);
@@ -258,6 +271,168 @@ describe('dashboard-server', () => {
       expect(body.agents).toBe(1);
     });
 
+    test('GET /api/app-meta returns runtime flags', () => {
+      const { req, res } = createMockReqRes('GET', '/api/app-meta');
+      handler(req, res);
+
+      expect(res.writeHead).toHaveBeenCalledWith(200, { 'Content-Type': 'application/json' });
+      const body = JSON.parse(res.end.mock.calls[0][0]);
+      expect(body.isDev).toBe(false);
+    });
+
+    test('GET /api/server/config returns central server proxy config', () => {
+      const { req, res } = createMockReqRes('GET', '/api/server/config');
+      handler(req, res);
+
+      expect(res.writeHead).toHaveBeenCalledWith(200, { 'Content-Type': 'application/json' });
+      const body = JSON.parse(res.end.mock.calls[0][0]);
+      expect(body.baseUrl).toBe('http://127.0.0.1:47823');
+      expect(body.healthPath).toBe('/api/server/health');
+      expect(body.workersPath).toBe('/api/server/workers');
+      expect(body.eventsPath).toBe('/api/server/events');
+      expect(body.agentsPath).toBe('/api/server/agents');
+      expect(body.remoteMode).toBe('local');
+      expect(body.roomSecretConfigured).toBe(false);
+      expect(body.agentSyncEnabled).toBe(false);
+    });
+
+    test('POST /api/server/config updates central server proxy config', async () => {
+      const { req, res } = createMockReqRes('POST', '/api/server/config');
+      handler(req, res);
+      req.emit(
+        'data',
+        JSON.stringify({
+          baseUrl: '47824',
+          remoteMode: 'guest',
+          roomSecret: 'guest-secret',
+        })
+      );
+      req.emit('end');
+      await new Promise(setImmediate);
+
+      expect(res.writeHead).toHaveBeenCalledWith(200, { 'Content-Type': 'application/json' });
+      const body = JSON.parse(res.end.mock.calls[0][0]);
+      expect(body.baseUrl).toBe('http://127.0.0.1:47824');
+      expect(body.healthPath).toBe('/api/server/health');
+      expect(body.agentsPath).toBe('/api/server/agents');
+      expect(body.remoteMode).toBe('guest');
+      expect(body.roomSecretConfigured).toBe(true);
+      expect(body.agentSyncEnabled).toBe(true);
+      expect(body.workerEnabled).toBe(true);
+    });
+
+    test('POST /api/server/config preserves baseUrl when only remoteMode changes', async () => {
+      const { req: firstReq, res: firstRes } = createMockReqRes('POST', '/api/server/config');
+      handler(firstReq, firstRes);
+      firstReq.emit('data', JSON.stringify({ baseUrl: '47824' }));
+      firstReq.emit('end');
+      await new Promise(setImmediate);
+
+      const { req, res } = createMockReqRes('POST', '/api/server/config');
+      handler(req, res);
+      req.emit('data', JSON.stringify({ remoteMode: 'host' }));
+      req.emit('end');
+      await new Promise(setImmediate);
+
+      expect(res.writeHead).toHaveBeenCalledWith(200, { 'Content-Type': 'application/json' });
+      const body = JSON.parse(res.end.mock.calls[0][0]);
+      expect(body.baseUrl).toBe('http://127.0.0.1:47824');
+      expect(body.remoteMode).toBe('host');
+      expect(body.workerEnabled).toBe(false);
+      expect(body.agentSyncEnabled).toBe(false);
+    });
+
+    test('POST /api/server/config keeps host bridge enabled when a legacy worker token exists', async () => {
+      const { req, res } = createMockReqRes('POST', '/api/server/config');
+      handler(req, res);
+      req.emit('data', JSON.stringify({ remoteMode: 'host', workerToken: 'legacy-worker-token' }));
+      req.emit('end');
+      await new Promise(setImmediate);
+
+      expect(res.writeHead).toHaveBeenCalledWith(200, { 'Content-Type': 'application/json' });
+      const body = JSON.parse(res.end.mock.calls[0][0]);
+      expect(body.remoteMode).toBe('host');
+      expect(body.workerEnabled).toBe(true);
+      expect(body.agentSyncEnabled).toBe(true);
+    });
+
+    test('proxied central requests attach X-AO-Room-Secret when configured', async () => {
+      global.fetch = jest.fn(async () => ({
+        ok: true,
+        status: 200,
+        headers: { get: () => 'application/json' },
+        text: async () => JSON.stringify({ ok: true }),
+      }));
+
+      const { req: configReq, res: configRes } = createMockReqRes('POST', '/api/server/config');
+      handler(configReq, configRes);
+      configReq.emit('data', JSON.stringify({ roomSecret: 'guest-secret', remoteMode: 'guest' }));
+      configReq.emit('end');
+      await new Promise(setImmediate);
+
+      const { req, res } = createMockReqRes('GET', '/api/server/room-access');
+      handler(req, res);
+      await new Promise(setImmediate);
+
+      expect(global.fetch).toHaveBeenLastCalledWith(
+        expect.stringContaining('/api/room-access'),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Accept: 'application/json',
+            'X-AO-Room-Secret': 'guest-secret',
+          }),
+        })
+      );
+    });
+
+    test('POST /api/server/room-access/invite forwards to the central invite endpoint', async () => {
+      global.fetch = jest.fn(async () => ({
+        ok: true,
+        status: 200,
+        headers: { get: () => 'application/json' },
+        text: async () => JSON.stringify({ guestSecret: 'guest-secret' }),
+      }));
+
+      const { req, res } = createMockReqRes('POST', '/api/server/room-access/invite');
+      handler(req, res);
+      req.emit('data', JSON.stringify({}));
+      req.emit('end');
+      await new Promise(setImmediate);
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/room-access/invite'),
+        expect.objectContaining({
+          method: 'POST',
+        })
+      );
+      expect(res.writeHead).toHaveBeenCalledWith(200, expect.objectContaining({
+        'Content-Type': 'application/json',
+      }));
+    });
+
+    test('proxied central requests do not abort on a normal request close event', async () => {
+      let fetchSignal;
+      global.fetch = jest.fn(async (_url, init) => {
+        fetchSignal = init.signal;
+        return {
+          ok: true,
+          status: 200,
+          headers: { get: () => 'application/json' },
+          text: async () => JSON.stringify({ workers: [] }),
+        };
+      });
+
+      const { req, res } = createMockReqRes('GET', '/api/server/workers');
+      handler(req, res);
+      req.emit('close');
+      await new Promise(setImmediate);
+
+      expect(fetchSignal.aborted).toBe(false);
+      expect(res.writeHead).toHaveBeenCalledWith(200, expect.objectContaining({
+        'Content-Type': 'application/json',
+      }));
+    });
+
     test('GET /api/heatmap returns 503 when no heatmap scanner', () => {
       const { req, res } = createMockReqRes('GET', '/api/heatmap');
       handler(req, res);
@@ -308,7 +483,7 @@ describe('dashboard-server', () => {
       handler(req, res);
 
       expect(res.setHeader).toHaveBeenCalledWith('Access-Control-Allow-Origin', '*');
-      expect(res.setHeader).toHaveBeenCalledWith('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+      expect(res.setHeader).toHaveBeenCalledWith('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
       expect(res.writeHead).toHaveBeenCalledWith(200);
     });
   });
@@ -336,16 +511,19 @@ describe('dashboard-server', () => {
       expect(res.writeHead).toHaveBeenCalledWith(500, { 'Content-Type': 'text/plain' });
     });
 
-    test('/public/* serves static files with correct MIME types', () => {
+    test('/assets/* serves static files with correct MIME types', () => {
       const fs = require('fs');
       fs.readFile.mockImplementation((_path, cb) => cb(null, Buffer.from('data')));
 
-      const { req, res } = createMockReqRes('GET', '/public/characters/agent.png');
+      const { req, res } = createMockReqRes('GET', '/assets/characters/agent.png');
       handler(req, res);
 
-      expect(res.writeHead).toHaveBeenCalledWith(200, expect.objectContaining({
-        'Content-Type': 'image/png',
-      }));
+      expect(res.writeHead).toHaveBeenCalledWith(
+        200,
+        expect.objectContaining({
+          'Content-Type': 'image/png',
+        })
+      );
     });
 
     test('/lib/* serves bundled xterm source maps', () => {
@@ -355,15 +533,18 @@ describe('dashboard-server', () => {
       const { req, res } = createMockReqRes('GET', '/lib/xterm.js.map');
       handler(req, res);
 
-      expect(res.writeHead).toHaveBeenCalledWith(200, expect.objectContaining({
-        'Content-Type': 'application/octet-stream',
-      }));
+      expect(res.writeHead).toHaveBeenCalledWith(
+        200,
+        expect.objectContaining({
+          'Content-Type': 'application/octet-stream',
+        })
+      );
     });
 
     test('path traversal via ../ is prevented by URL normalization', () => {
-      // URL class normalizes /public/../../etc/passwd → /etc/passwd
-      // which doesn't start with /public/, so falls through to general 404
-      const { req, res } = createMockReqRes('GET', '/public/../../etc/passwd');
+      // URL class normalizes /assets/../../etc/passwd → /etc/passwd
+      // which doesn't start with /assets/, so falls through to general 404
+      const { req, res } = createMockReqRes('GET', '/assets/../../etc/passwd');
       handler(req, res);
 
       expect(res.writeHead).toHaveBeenCalledWith(404, { 'Content-Type': 'text/plain' });
@@ -373,7 +554,7 @@ describe('dashboard-server', () => {
       const fs = require('fs');
       fs.readFile.mockImplementation((_path, cb) => cb(new Error('ENOENT')));
 
-      const { req, res } = createMockReqRes('GET', '/public/nonexistent.js');
+      const { req, res } = createMockReqRes('GET', '/assets/nonexistent.js');
       handler(req, res);
 
       expect(res.writeHead).toHaveBeenCalledWith(404, { 'Content-Type': 'text/plain' });
@@ -408,7 +589,7 @@ describe('dashboard-server', () => {
       expect(res.writeHead).toHaveBeenCalledWith(200, {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
+        Connection: 'keep-alive',
       });
 
       // Should have written connected event
@@ -443,7 +624,7 @@ describe('dashboard-server', () => {
       // Broadcast
       dashboardServer.broadcastSSE('agent.updated', { id: 'test' });
 
-      const sseCalls = res.write.mock.calls.filter(c => c[0].includes('agent.updated'));
+      const sseCalls = res.write.mock.calls.filter((c) => c[0].includes('agent.updated'));
       expect(sseCalls).toHaveLength(1);
       expect(sseCalls[0][0]).toContain('event: agent.updated');
       expect(sseCalls[0][0]).toContain('"id":"test"');
@@ -544,7 +725,7 @@ describe('dashboard-server', () => {
 
       mgr.emit('agent-added', { id: 'new-1', sessionId: 'new-1', state: 'Waiting', displayName: 'Test' });
 
-      const addedCalls = res.write.mock.calls.filter(c => c[0].includes('agent.created'));
+      const addedCalls = res.write.mock.calls.filter((c) => c[0].includes('agent.created'));
       expect(addedCalls).toHaveLength(1);
 
       req.emit('close');
@@ -561,7 +742,7 @@ describe('dashboard-server', () => {
 
       mgr.emit('agent-updated', { id: 'u-1', state: 'Working' });
 
-      const updatedCalls = res.write.mock.calls.filter(c => c[0].includes('agent.updated'));
+      const updatedCalls = res.write.mock.calls.filter((c) => c[0].includes('agent.updated'));
       expect(updatedCalls).toHaveLength(1);
 
       req.emit('close');
@@ -578,7 +759,7 @@ describe('dashboard-server', () => {
 
       mgr.emit('agent-removed', { id: 'r-1', reason: 'session_end' });
 
-      const removedCalls = res.write.mock.calls.filter(c => c[0].includes('agent.removed'));
+      const removedCalls = res.write.mock.calls.filter((c) => c[0].includes('agent.removed'));
       expect(removedCalls).toHaveLength(1);
 
       req.emit('close');

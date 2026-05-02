@@ -1,6 +1,8 @@
 /**
  * hookRegistration.js Tests
- * HOOK_EVENTS list, isHookRegistered (all-or-nothing), registerClaudeHooks (idempotent)
+ * Agent-Office no longer registers a global Claude hook. The module now
+ * strips any previously-registered Agent-Office hook entries from
+ * ~/.claude/settings.json as a migration step.
  */
 
 jest.mock('fs', () => ({
@@ -14,38 +16,20 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-// Reload fresh module for each test to avoid state leakage
 function loadModule() {
   const modulePath = require.resolve('../src/main/hookRegistration');
   delete require.cache[modulePath];
   return require('../src/main/hookRegistration');
 }
 
-const EXPECTED_EVENTS = [
-  'SessionStart', 'SessionEnd', 'UserPromptSubmit',
-  'PreToolUse', 'PostToolUse', 'PostToolUseFailure',
-  'Stop', 'TaskCompleted', 'PermissionRequest', 'Notification',
-  'SubagentStart', 'SubagentStop', 'TeammateIdle',
-  'ConfigChange', 'WorktreeCreate', 'WorktreeRemove',
-  'PreCompact',
-];
 const HOOK_URL = 'http://localhost:47821/hook';
+const HOOK_URL_127 = 'http://127.0.0.1:47821/hook';
 const CONFIG_PATH = path.join(os.homedir(), '.claude', 'settings.json');
 
-/** Build a config where all EXPECTED_EVENTS have our hook registered */
-function buildFullConfig() {
-  const hooks = {};
-  for (const event of EXPECTED_EVENTS) {
-    hooks[event] = [{ matcher: '*', hooks: [{ type: 'http', url: HOOK_URL }] }];
-  }
-  return { hooks };
-}
-
-/** Build a config with only a subset of events registered */
-function buildPartialConfig(events) {
+function buildConfigWithOurHook(events, url = HOOK_URL) {
   const hooks = {};
   for (const event of events) {
-    hooks[event] = [{ matcher: '*', hooks: [{ type: 'http', url: HOOK_URL }] }];
+    hooks[event] = [{ matcher: '*', hooks: [{ type: 'http', url }] }];
   }
   return { hooks };
 }
@@ -58,90 +42,70 @@ describe('hookRegistration', () => {
     debugLog = jest.fn();
   });
 
-  // ── Exports ──
-
   describe('exports', () => {
     test('HOOK_SERVER_PORT is 47821', () => {
       const { HOOK_SERVER_PORT } = loadModule();
       expect(HOOK_SERVER_PORT).toBe(47821);
     });
 
-    test('registerClaudeHooks is a function', () => {
-      const { registerClaudeHooks } = loadModule();
-      expect(typeof registerClaudeHooks).toBe('function');
+    test('unregisterClaudeHooks is a function', () => {
+      const { unregisterClaudeHooks } = loadModule();
+      expect(typeof unregisterClaudeHooks).toBe('function');
     });
   });
 
-  // ── isHookRegistered (tested via registerClaudeHooks behavior) ──
-
-  describe('isHookRegistered — all events must be present', () => {
-    test('returns false (triggers registration) when no config file exists', () => {
-      const { registerClaudeHooks } = loadModule();
+  describe('unregisterClaudeHooks — no-op paths', () => {
+    test('returns false when no config file exists', () => {
+      const { unregisterClaudeHooks } = loadModule();
       fs.existsSync.mockReturnValue(false);
-      fs.writeFileSync.mockImplementation(() => {});
-      fs.mkdirSync.mockImplementation(() => {});
 
-      registerClaudeHooks(debugLog);
+      const result = unregisterClaudeHooks(debugLog);
 
-      expect(fs.writeFileSync).toHaveBeenCalled();
+      expect(result).toBe(false);
+      expect(fs.writeFileSync).not.toHaveBeenCalled();
     });
 
-    test('returns false (triggers registration) when config has no hooks key', () => {
-      const { registerClaudeHooks } = loadModule();
+    test('returns false when config has no hooks key', () => {
+      const { unregisterClaudeHooks } = loadModule();
       fs.existsSync.mockReturnValue(true);
       fs.readFileSync.mockReturnValue(JSON.stringify({ someOtherKey: true }));
-      fs.writeFileSync.mockImplementation(() => {});
-      fs.mkdirSync.mockImplementation(() => {});
 
-      registerClaudeHooks(debugLog);
+      const result = unregisterClaudeHooks(debugLog);
 
-      expect(fs.writeFileSync).toHaveBeenCalled();
-    });
-
-    test('skips registration when all events are already registered', () => {
-      const { registerClaudeHooks } = loadModule();
-      fs.existsSync.mockReturnValue(true);
-      fs.readFileSync.mockReturnValue(JSON.stringify(buildFullConfig()));
-
-      const result = registerClaudeHooks(debugLog);
-
-      expect(result).toBe(true);
+      expect(result).toBe(false);
       expect(fs.writeFileSync).not.toHaveBeenCalled();
-      expect(debugLog).toHaveBeenCalledWith(expect.stringContaining('already registered'));
     });
 
-    test('triggers registration when only old 3-event subset is registered (upgrade scenario)', () => {
-      const { registerClaudeHooks } = loadModule();
-      // Simulate a user who had the old version (only 3 events registered)
+    test('returns false when config contains only non-Agent-Office hooks', () => {
+      const { unregisterClaudeHooks } = loadModule();
+      const userHook = { matcher: '*', hooks: [{ type: 'http', url: 'http://localhost:9999/hook' }] };
       fs.existsSync.mockReturnValue(true);
-      fs.readFileSync.mockReturnValue(
-        JSON.stringify(buildPartialConfig(['SessionStart', 'PreToolUse', 'PostToolUse']))
-      );
-      fs.writeFileSync.mockImplementation(() => {});
-      fs.mkdirSync.mockImplementation(() => {});
+      fs.readFileSync.mockReturnValue(JSON.stringify({ hooks: { SessionStart: [userHook] } }));
 
-      registerClaudeHooks(debugLog);
+      const result = unregisterClaudeHooks(debugLog);
 
-      expect(fs.writeFileSync).toHaveBeenCalled();
+      expect(result).toBe(false);
+      expect(fs.writeFileSync).not.toHaveBeenCalled();
     });
 
-    test('triggers registration when any single event is missing', () => {
-      const { registerClaudeHooks } = loadModule();
-      const missingOne = EXPECTED_EVENTS.filter(e => e !== 'PreCompact');
+    test('handles malformed JSON gracefully', () => {
+      const { unregisterClaudeHooks } = loadModule();
       fs.existsSync.mockReturnValue(true);
-      fs.readFileSync.mockReturnValue(JSON.stringify(buildPartialConfig(missingOne)));
-      fs.writeFileSync.mockImplementation(() => {});
-      fs.mkdirSync.mockImplementation(() => {});
+      fs.readFileSync.mockReturnValue('{ invalid json }');
 
-      registerClaudeHooks(debugLog);
+      expect(() => unregisterClaudeHooks(debugLog)).not.toThrow();
+    });
 
-      expect(fs.writeFileSync).toHaveBeenCalled();
+    test('handles readFileSync errors gracefully', () => {
+      const { unregisterClaudeHooks } = loadModule();
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockImplementation(() => { throw new Error('Read error'); });
+
+      expect(() => unregisterClaudeHooks(debugLog)).not.toThrow();
     });
   });
 
-  // ── registerClaudeHooks — written config content ──
-
-  describe('registerClaudeHooks — written config', () => {
+  describe('unregisterClaudeHooks — strip paths', () => {
     function captureWrittenConfig() {
       let written = null;
       fs.writeFileSync.mockImplementation((filePath, content) => {
@@ -150,136 +114,83 @@ describe('hookRegistration', () => {
       return () => written;
     }
 
-    test('registers all expected events on fresh install', () => {
-      const { registerClaudeHooks } = loadModule();
-      fs.existsSync.mockReturnValue(false);
-      fs.mkdirSync.mockImplementation(() => {});
-      const getWritten = captureWrittenConfig();
-
-      registerClaudeHooks(debugLog);
-
-      const config = getWritten();
-      expect(config).not.toBeNull();
-      for (const event of EXPECTED_EVENTS) {
-        expect(config.hooks[event]).toBeDefined();
-        expect(
-          config.hooks[event].some(
-            entry => entry.hooks && entry.hooks.some(h => h.type === 'http' && h.url === HOOK_URL)
-          )
-        ).toBe(true);
-      }
-    });
-
-    test('adds missing events without duplicating already-registered ones (idempotent)', () => {
-      const { registerClaudeHooks } = loadModule();
-      const partial = buildPartialConfig(['SessionStart', 'PreToolUse', 'PostToolUse']);
+    test('removes our hook entries and returns true', () => {
+      const { unregisterClaudeHooks } = loadModule();
       fs.existsSync.mockReturnValue(true);
-      fs.readFileSync.mockReturnValue(JSON.stringify(partial));
-      fs.mkdirSync.mockImplementation(() => {});
+      fs.readFileSync.mockReturnValue(JSON.stringify(buildConfigWithOurHook(['SessionStart', 'PreToolUse'])));
       const getWritten = captureWrittenConfig();
 
-      registerClaudeHooks(debugLog);
+      const result = unregisterClaudeHooks(debugLog);
 
+      expect(result).toBe(true);
       const config = getWritten();
-      // SessionStart already had one entry — should still have exactly one
-      expect(config.hooks['SessionStart']).toHaveLength(1);
-      // SubagentStart was missing — should now be registered
-      expect(
-        config.hooks['SubagentStart'].some(
-          entry => entry.hooks && entry.hooks.some(h => h.url === HOOK_URL)
-        )
-      ).toBe(true);
+      expect(config.hooks).toBeUndefined();
     });
 
-    test('preserves existing user hooks alongside ours', () => {
-      const { registerClaudeHooks } = loadModule();
-      // User has their own hook on SessionStart, none of ours
+    test('also removes 127.0.0.1 variant of our hook URL', () => {
+      const { unregisterClaudeHooks } = loadModule();
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue(JSON.stringify(buildConfigWithOurHook(['SessionStart'], HOOK_URL_127)));
+      const getWritten = captureWrittenConfig();
+
+      const result = unregisterClaudeHooks(debugLog);
+
+      expect(result).toBe(true);
+      const config = getWritten();
+      expect(config.hooks).toBeUndefined();
+    });
+
+    test('preserves unrelated user hooks', () => {
+      const { unregisterClaudeHooks } = loadModule();
       const userHook = { matcher: '*', hooks: [{ type: 'http', url: 'http://localhost:9999/hook' }] };
+      const ourHook = { matcher: '*', hooks: [{ type: 'http', url: HOOK_URL }] };
       fs.existsSync.mockReturnValue(true);
-      fs.readFileSync.mockReturnValue(JSON.stringify({ hooks: { SessionStart: [userHook] } }));
-      fs.mkdirSync.mockImplementation(() => {});
+      fs.readFileSync.mockReturnValue(JSON.stringify({
+        hooks: { SessionStart: [userHook, ourHook], PreToolUse: [ourHook] },
+      }));
       const getWritten = captureWrittenConfig();
 
-      registerClaudeHooks(debugLog);
+      const result = unregisterClaudeHooks(debugLog);
 
+      expect(result).toBe(true);
       const config = getWritten();
-      const sessionStartEntries = config.hooks['SessionStart'];
-      // Both user hook and ours should be present
-      expect(sessionStartEntries.some(e => e.hooks.some(h => h.url === 'http://localhost:9999/hook'))).toBe(true);
-      expect(sessionStartEntries.some(e => e.hooks.some(h => h.url === HOOK_URL))).toBe(true);
+      expect(config.hooks.SessionStart).toHaveLength(1);
+      expect(config.hooks.SessionStart[0].hooks[0].url).toBe('http://localhost:9999/hook');
+      expect(config.hooks.PreToolUse).toBeUndefined();
     });
 
-    test('creates config directory if it does not exist', () => {
-      const { registerClaudeHooks } = loadModule();
-      fs.existsSync.mockImplementation((p) => {
-        // Config file doesn't exist, dir doesn't exist
-        return false;
-      });
-      fs.mkdirSync.mockImplementation(() => {});
-      fs.writeFileSync.mockImplementation(() => {});
+    test('drops only our hook when an entry has both our hook and others', () => {
+      const { unregisterClaudeHooks } = loadModule();
+      const mixedEntry = {
+        matcher: '*',
+        hooks: [
+          { type: 'http', url: HOOK_URL },
+          { type: 'http', url: 'http://localhost:9999/hook' },
+        ],
+      };
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue(JSON.stringify({ hooks: { SessionStart: [mixedEntry] } }));
+      const getWritten = captureWrittenConfig();
 
-      registerClaudeHooks(debugLog);
+      const result = unregisterClaudeHooks(debugLog);
 
-      expect(fs.mkdirSync).toHaveBeenCalledWith(
-        path.dirname(CONFIG_PATH),
-        { recursive: true }
-      );
+      expect(result).toBe(true);
+      const config = getWritten();
+      expect(config.hooks.SessionStart).toHaveLength(1);
+      expect(config.hooks.SessionStart[0].hooks).toHaveLength(1);
+      expect(config.hooks.SessionStart[0].hooks[0].url).toBe('http://localhost:9999/hook');
     });
 
-    test('returns false and logs error when writeFileSync throws', () => {
-      const { registerClaudeHooks } = loadModule();
-      fs.existsSync.mockReturnValue(false);
-      fs.mkdirSync.mockImplementation(() => {});
+    test('returns false and swallows error when writeFileSync throws', () => {
+      const { unregisterClaudeHooks } = loadModule();
+      fs.existsSync.mockReturnValue(true);
+      fs.readFileSync.mockReturnValue(JSON.stringify(buildConfigWithOurHook(['SessionStart'])));
       fs.writeFileSync.mockImplementation(() => { throw new Error('Permission denied'); });
 
-      const result = registerClaudeHooks(debugLog);
+      const result = unregisterClaudeHooks(debugLog);
 
       expect(result).toBe(false);
-      expect(debugLog).toHaveBeenCalledWith(expect.stringContaining('failed'));
-    });
-
-    test('returns false and logs error when readFileSync throws', () => {
-      const { registerClaudeHooks } = loadModule();
-      fs.existsSync.mockReturnValue(true);
-      fs.readFileSync.mockImplementation(() => { throw new Error('Read error'); });
-      fs.mkdirSync.mockImplementation(() => {});
-      fs.writeFileSync.mockImplementation(() => {});
-
-      // Should not throw — error is caught internally
-      expect(() => registerClaudeHooks(debugLog)).not.toThrow();
-    });
-
-    test('handles malformed JSON in config file gracefully', () => {
-      const { registerClaudeHooks } = loadModule();
-      fs.existsSync.mockReturnValue(true);
-      fs.readFileSync.mockReturnValue('{ invalid json }');
-      fs.mkdirSync.mockImplementation(() => {});
-      fs.writeFileSync.mockImplementation(() => {});
-
-      expect(() => registerClaudeHooks(debugLog)).not.toThrow();
-    });
-  });
-
-  // ── HOOK_EVENTS coverage ──
-
-  describe('HOOK_EVENTS completeness', () => {
-    test('registers exactly the expected set of events', () => {
-      const { registerClaudeHooks } = loadModule();
-      fs.existsSync.mockReturnValue(false);
-      fs.mkdirSync.mockImplementation(() => {});
-
-      let written = null;
-      fs.writeFileSync.mockImplementation((filePath, content) => {
-        if (filePath === CONFIG_PATH) written = JSON.parse(content);
-      });
-
-      registerClaudeHooks(debugLog);
-
-      const registeredEvents = Object.keys(written.hooks);
-      for (const event of EXPECTED_EVENTS) {
-        expect(registeredEvents).toContain(event);
-      }
-      expect(registeredEvents).toHaveLength(EXPECTED_EVENTS.length);
+      expect(debugLog).toHaveBeenCalledWith(expect.stringMatching(/failed/i));
     });
   });
 });

@@ -16,7 +16,7 @@ describe('dashboard character card tooltips', () => {
   });
 
   test('renders action buttons with app tooltip text and accessible labels', () => {
-    const { buildAgentCardHtml } = require('../public/dashboard/agentCard/markup.ts');
+    const { buildAgentCardHtml } = require('../src/client/dashboard/agentCard/markup.ts');
 
     const html = buildAgentCardHtml({
       id: 'agent-1',
@@ -45,5 +45,26 @@ describe('dashboard character card tooltips', () => {
     expect(html).toContain('data-tooltip="Remove workspace and delete branch without merge"');
     expect(html).not.toContain('title="Assign Task"');
     expect(html).not.toContain('title="Form Team"');
+  });
+
+  test('renders central agent ownership badges in the legacy card helper', () => {
+    const { buildAgentCardHtml } = require('../src/client/dashboard/agentCard/markup.ts');
+
+    const html = buildAgentCardHtml({
+      id: 'agent-central',
+      name: 'Shared Agent',
+      status: 'offline',
+      isRegistered: true,
+      metadata: {
+        source: 'central',
+        centralCreatedByParticipantId: 'owner',
+        centralOwnerLabel: 'Host',
+        centralOwnership: 'host',
+      },
+    });
+
+    expect(html).toContain('Host');
+    expect(html).toContain('Owner participant: owner');
+    expect(html).toContain('owner-host');
   });
 });

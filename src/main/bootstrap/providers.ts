@@ -1,18 +1,21 @@
+import { HOOK_SERVER_PORT, unregisterClaudeHooks } from '../hookRegistration';
+import { startHookServer } from '../hookServer';
+import { CODEX_EVENT_SERVER_PORT, startCodexEventServer } from '../providers/codex/eventServer';
+import { createHookProcessor } from '../hookProcessor';
+import { createCodexProcessor } from '../providers/codex/processor';
+import { createCodexSessionMonitor } from '../providers/codex/sessionMonitor';
+import { sharedSessionAllowlist } from '../orchestrator/sessionAllowlist';
 
-const { HOOK_SERVER_PORT, registerClaudeHooks } = require('../hookRegistration');
-const { startHookServer } = require('../hookServer');
-const { CODEX_EVENT_SERVER_PORT, startCodexEventServer } = require('../providers/codex/eventServer');
-const { createHookProcessor } = require('../hookProcessor');
-const { createCodexProcessor } = require('../providers/codex/processor');
-const { createCodexSessionMonitor } = require('../providers/codex/sessionMonitor');
-
-function autoRegisterProviders({ enabledProviders, debugLog }) {
+export function autoRegisterProviders({ enabledProviders, debugLog }) {
+  // Agent-Office no longer registers a global Claude hook. Migrate any
+  // previously-installed entries out of ~/.claude/settings.json so upgrades
+  // leave the user's config clean and stray hook events stop firing.
   if (enabledProviders.includes('claude')) {
-    registerClaudeHooks(debugLog);
+    unregisterClaudeHooks(debugLog);
   }
 }
 
-function createProviderProcessors({
+export function createProviderProcessors({
   enabledProviders,
   agentManager,
   agentRegistry,
@@ -47,13 +50,15 @@ function createProviderProcessors({
       codexProcessor,
       agentManager,
       debugLog,
+      sessionAllowlist: sharedSessionAllowlist,
+      detectPidByTranscript: (jsonlPath, callback) => detectProviderPidBySessionFile('codex', jsonlPath, callback),
     });
   }
 
   return { hookProcessor, codexProcessor, codexSessionMonitor };
 }
 
-function startProviderServices({ hookProcessor, codexProcessor, codexSessionMonitor, debugLog, errorHandler }) {
+export function startProviderServices({ hookProcessor, codexProcessor, codexSessionMonitor, debugLog, errorHandler }) {
   let hookServer = null;
   let codexEventServer = null;
 
@@ -63,6 +68,7 @@ function startProviderServices({ hookProcessor, codexProcessor, codexSessionMoni
       debugLog,
       HOOK_SERVER_PORT,
       errorHandler,
+      sessionAllowlist: sharedSessionAllowlist,
     });
   }
 
@@ -72,6 +78,7 @@ function startProviderServices({ hookProcessor, codexProcessor, codexSessionMoni
       debugLog,
       errorHandler,
       port: CODEX_EVENT_SERVER_PORT,
+      sessionAllowlist: sharedSessionAllowlist,
     });
   }
 
@@ -81,9 +88,3 @@ function startProviderServices({ hookProcessor, codexProcessor, codexSessionMoni
 
   return { hookServer, codexEventServer };
 }
-
-module.exports = {
-  autoRegisterProviders,
-  createProviderProcessors,
-  startProviderServices,
-};

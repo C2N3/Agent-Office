@@ -1,8 +1,7 @@
+import { cleanupTaskRuntime, cleanupTaskWorktree } from './cleanup';
+import { autoCommitTaskChanges } from './output';
 
-const { cleanupTaskRuntime, cleanupTaskWorktree } = require('./cleanup');
-const { autoCommitTaskChanges } = require('./output');
-
-function handleTaskSuccess(orchestrator, taskId) {
+export function handleTaskSuccess(orchestrator, taskId) {
   const task = orchestrator.taskStore.getTask(taskId);
   if (!task) return;
 
@@ -32,15 +31,11 @@ function handleTaskSuccess(orchestrator, taskId) {
     const originalPath = regAgent?.workspace?.repositoryPath || task.repositoryPath;
     orchestrator.agentRegistry.updateAgent(task.agentRegistryId, { projectPath: originalPath });
 
-    // Regular task: show done + report bubble (team tasks are handled by TeamCoordinator directly)
-    {
-      orchestrator.agentManager.updateAgent({
-        registryId: task.agentRegistryId,
-        state: 'done',
-        projectPath: originalPath,
-        reportTaskId: task.id,
-      }, 'orchestrator');
-    }
+    orchestrator.agentManager.updateAgent({
+      registryId: task.agentRegistryId,
+      state: 'done',
+      projectPath: originalPath,
+    }, 'orchestrator');
   }
 
   for (const candidate of orchestrator.taskStore.getAllTasks()) {
@@ -62,7 +57,7 @@ function handleTaskSuccess(orchestrator, taskId) {
   orchestrator.debugLog(`[Orchestrator] Task succeeded: ${taskId}`);
 }
 
-function handleTaskFailure(orchestrator, taskId, errorMessage) {
+export function handleTaskFailure(orchestrator, taskId, errorMessage) {
   const task = orchestrator.taskStore.getTask(taskId);
   if (!task) return;
 
@@ -98,7 +93,7 @@ function handleTaskFailure(orchestrator, taskId, errorMessage) {
   orchestrator.debugLog(`[Orchestrator] Task failed: ${taskId} — ${errorMessage}`);
 }
 
-function handleContextExhaustion(orchestrator, taskId) {
+export function handleContextExhaustion(orchestrator, taskId) {
   const task = orchestrator.taskStore.getTask(taskId);
   if (!task || task.status !== 'running') return;
 
@@ -124,7 +119,7 @@ function handleContextExhaustion(orchestrator, taskId) {
   orchestrator.taskStore.updateTask(taskId, { status: 'ready', updatedAt: Date.now() });
 }
 
-function handleRetry(orchestrator, taskId, errorMessage) {
+export function handleRetry(orchestrator, taskId, errorMessage) {
   const task = orchestrator.taskStore.getTask(taskId);
   if (!task) return;
 
@@ -144,10 +139,3 @@ function handleRetry(orchestrator, taskId, errorMessage) {
   orchestrator.debugLog(`[Orchestrator] Retrying task ${taskId} (attempt ${nextAttempt}) with ${nextProvider}`);
   orchestrator.taskStore.updateTask(taskId, { status: 'ready', updatedAt: Date.now() });
 }
-
-module.exports = {
-  handleContextExhaustion,
-  handleRetry,
-  handleTaskFailure,
-  handleTaskSuccess,
-};

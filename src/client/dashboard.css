@@ -1,0 +1,10 @@
+@import url("./dashboard/styles/base.css");
+@import url("./dashboard/styles/layout-panels.css");
+@import url("./dashboard/styles/agent-cards.css");
+@import url("./dashboard/styles/analytics.css");
+@import url("./dashboard/styles/terminal.css");
+@import url("./dashboard/styles/agent-create-modal.css");
+@import url("./dashboard/styles/modal-radio.css");
+@import url("./dashboard/styles/agent-archive-avatar.css");
+@import url("./dashboard/styles/remote.css");
+@import url("./dashboard/styles/floor-tabs.css");

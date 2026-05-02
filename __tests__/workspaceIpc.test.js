@@ -8,8 +8,8 @@ jest.mock('electron', () => ({
 }));
 
 const { ipcMain } = require('electron');
-const { dashboardIpcChannels } = require('../src/shared/contracts/ipc');
-const { registerWorkspaceHandlers } = require('../src/main/ipc/workspace');
+import { dashboardIpcChannels } from '../src/shared/contracts/ipc';
+import { registerWorkspaceHandlers } from '../src/main/ipc/workspace';
 
 describe('workspace IPC handlers', () => {
   let handlers;

@@ -2,13 +2,13 @@
  * Central Error Handler
  * Captures, classifies, logs, and forwards all errors to the UI
  */
-const { app } = require('electron');
-const path = require('path');
-const fs = require('fs');
+import { app } from 'electron';
+import path from 'path';
+import fs from 'fs';
 import type { BrowserWindow } from 'electron';
 
-const { ErrorSeverity, ErrorCategory } = require('./errorConstants');
-const { getMessageByErrorCode } = require('./errorMessages');
+import { ErrorSeverity, ErrorCategory } from './errorConstants';
+import { getMessageByErrorCode } from './errorMessages';
 
 class ErrorHandler {
   declare mainWindow: BrowserWindow | null;
@@ -228,7 +228,6 @@ class ErrorHandler {
   }
 }
 
-// Singleton instance
 const errorHandler = new ErrorHandler();
 
-module.exports = errorHandler;
+export default errorHandler;

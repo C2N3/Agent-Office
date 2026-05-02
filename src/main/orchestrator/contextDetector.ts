@@ -19,13 +19,13 @@ const GEMINI_PATTERNS = [
   /input.*too.*long/i,
 ];
 
-const PATTERNS_BY_PROVIDER = {
+export const PATTERNS_BY_PROVIDER = {
   claude: CLAUDE_PATTERNS,
   codex: CODEX_PATTERNS,
   gemini: GEMINI_PATTERNS,
 };
 
-function detectContextExhaustion(buffer, provider) {
+export function detectContextExhaustion(buffer, provider) {
   const patterns = PATTERNS_BY_PROVIDER[provider] || [];
 
   for (const pattern of patterns) {
@@ -47,5 +47,3 @@ function detectContextExhaustion(buffer, provider) {
     provider,
   };
 }
-
-module.exports = { detectContextExhaustion, PATTERNS_BY_PROVIDER };

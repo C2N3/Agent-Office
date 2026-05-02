@@ -3,13 +3,13 @@
  * State mapping, project extraction, agent type, timing, full adaptation
  */
 
-const {
+import {
   adaptAgentToDashboard,
   mapPixelStateToDashboardState,
   extractProjectName,
   STATE_MAP,
   DEFAULT_STATE,
-} = require('../src/dashboardAdapter');
+} from '../src/dashboardAdapter';
 
 describe('dashboardAdapter', () => {
   describe('mapPixelStateToDashboardState', () => {

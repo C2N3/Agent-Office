@@ -6,8 +6,11 @@ export interface DashboardRefs {
   orchestrator: any;
   workspaceManager: any;
   terminalManager: any;
-  teamCoordinator: any;
+  sessionPids: Map<string, number> | null;
   missionControlWindow: any;
+  appMeta: {
+    isDev: boolean;
+  };
 }
 
 export interface DashboardClients {
@@ -23,8 +26,11 @@ export const refs: DashboardRefs = {
   orchestrator: null,
   workspaceManager: null,
   terminalManager: null,
-  teamCoordinator: null,
+  sessionPids: null,
   missionControlWindow: null,
+  appMeta: {
+    isDev: false,
+  },
 };
 
 export const clients: DashboardClients = {
@@ -60,12 +66,18 @@ export function setTerminalManager(tm: any): void {
   refs.terminalManager = tm;
 }
 
-export function setTeamCoordinator(tc: any): void {
-  refs.teamCoordinator = tc;
+export function setSessionPids(sessionPids: Map<string, number>): void {
+  refs.sessionPids = sessionPids;
 }
 
 export function setDashboardWindow(window: any): void {
   refs.missionControlWindow = window;
+}
+
+export function setAppMeta(appMeta: { isDev?: boolean } | null | undefined): void {
+  refs.appMeta = {
+    isDev: !!appMeta?.isDev,
+  };
 }
 
 export function getRefs(): DashboardRefs {

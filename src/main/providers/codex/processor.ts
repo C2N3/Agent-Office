@@ -1,11 +1,11 @@
 /**
  * Codex exec --json event adapter.
  */
+import { createEventProcessor } from '../../eventProcessor';
+import { createIgnoredSessionTracker } from './ignoredSessions';
+import { getCodexSubagentInfo, getCodexWorkspacePath, normalizeCodexEvent } from './events';
 
-const { createEventProcessor } = require('../../eventProcessor');
-const { getCodexSubagentInfo, getCodexWorkspacePath, normalizeCodexEvent } = require('./events');
-
-function createCodexProcessor({ agentManager, agentRegistry, sessionPids, debugLog, detectPidByTranscript = null }) {
+export function createCodexProcessor({ agentManager, agentRegistry, sessionPids, debugLog, detectPidByTranscript = null }) {
   let taskCompletionHandler = null;
   const processor = createEventProcessor({
     agentManager,
@@ -20,19 +20,48 @@ function createCodexProcessor({ agentManager, agentRegistry, sessionPids, debugL
   });
   const pendingFunctionCalls = new Map(); // callId -> { sessionId, name, args }
   const latestTokenUsageBySession = new Map();
+  const ignoredSessions = createIgnoredSessionTracker({
+    debugLog,
+    logPrefix: 'Codex',
+    resolveSessionId: (sessionId) => resolveCodexSessionId(sessionId),
+  });
 
   function resolveCodexSessionId(sessionId) {
     return processor.resolveSessionId ? processor.resolveSessionId(sessionId) : sessionId;
+  }
+
+  function resolveCodexAgent(sessionId) {
+    const canonicalSessionId = agentManager ? resolveCodexSessionId(sessionId) : null;
+    if (!canonicalSessionId || !agentManager) return null;
+    const agentKey = processor.resolveAgentId
+      ? processor.resolveAgentId(canonicalSessionId)
+      : canonicalSessionId;
+    return agentKey ? agentManager.getAgent(agentKey) : null;
+  }
+
+  function dispatchEvent(event) {
+    const sessionId = resolveCodexSessionId(event.sessionId || null);
+    if (!sessionId || ignoredSessions.shouldSuppress(sessionId, event.type)) return;
+    processor.processEvent(event);
+    if (event.type === 'session.end') {
+      ignoredSessions.clear(sessionId);
+      return;
+    }
+    if (resolveCodexAgent(sessionId)) {
+      ignoredSessions.clear(sessionId);
+      return;
+    }
+
+    ignoredSessions.mark(sessionId, event.type === 'session.start'
+      ? 'session start was rejected'
+      : `session auto-create was rejected after ${event.rawType || event.type}`);
   }
 
   function adoptCanonicalSessionId(previousSessionId, nextSessionId) {
     const canonicalSessionId = processor.adoptSessionIdentity
       ? processor.adoptSessionIdentity(previousSessionId, nextSessionId)
       : nextSessionId;
-
-    if (!previousSessionId || !canonicalSessionId || previousSessionId === canonicalSessionId) {
-      return canonicalSessionId;
-    }
+    if (!previousSessionId || !canonicalSessionId || previousSessionId === canonicalSessionId) return canonicalSessionId;
 
     const previousCanonical = resolveCodexSessionId(previousSessionId);
     if (latestTokenUsageBySession.has(previousCanonical) && !latestTokenUsageBySession.has(canonicalSessionId)) {
@@ -40,6 +69,7 @@ function createCodexProcessor({ agentManager, agentRegistry, sessionPids, debugL
     }
     latestTokenUsageBySession.delete(previousSessionId);
     latestTokenUsageBySession.delete(previousCanonical);
+    ignoredSessions.adopt(previousSessionId, canonicalSessionId);
 
     for (const info of pendingFunctionCalls.values()) {
       if (info.sessionId === previousSessionId || info.sessionId === previousCanonical) {
@@ -51,10 +81,7 @@ function createCodexProcessor({ agentManager, agentRegistry, sessionPids, debugL
   }
 
   function processCodexEvent(data) {
-    const events = normalizeCodexEvent(data);
-    for (const event of events) {
-      processor.processEvent(event);
-    }
+    for (const event of normalizeCodexEvent(data)) dispatchEvent(event);
   }
 
   function processSessionEntry(entry, context: { sessionId?: string | null; runtimeSessionId?: string | null; transcriptPath?: string | null } = {}) {
@@ -71,7 +98,7 @@ function createCodexProcessor({ agentManager, agentRegistry, sessionPids, debugL
         const parentId = subagentInfo.parentId
           ? (resolveCodexSessionId(subagentInfo.parentId) || subagentInfo.parentId)
           : null;
-        processor.processEvent({
+        dispatchEvent({
           type: 'session.start',
           rawType: 'session_meta',
           raw: entry,
@@ -97,14 +124,12 @@ function createCodexProcessor({ agentManager, agentRegistry, sessionPids, debugL
         const aliasSessionId = payload.thread_id || null;
         const sessionId = canonicalFromPayload || resolveCodexSessionId(aliasSessionId) || null;
 
-        if (aliasSessionId && sessionId && aliasSessionId !== sessionId) {
-          adoptCanonicalSessionId(aliasSessionId, sessionId);
-        }
+        if (aliasSessionId && sessionId && aliasSessionId !== sessionId) adoptCanonicalSessionId(aliasSessionId, sessionId);
 
         switch (payload.type) {
           case 'task_started':
             if (sessionId) {
-              processor.processEvent({
+              dispatchEvent({
                 type: 'prompt.submit',
                 rawType: 'task_started',
                 raw: entry,
@@ -120,7 +145,7 @@ function createCodexProcessor({ agentManager, agentRegistry, sessionPids, debugL
           case 'agent_message': {
             const inferredSessionId = sessionId || findMostRecentSessionId();
             if (inferredSessionId) {
-              processor.processEvent({
+              dispatchEvent({
                 type: 'message',
                 rawType: 'agent_message',
                 raw: entry,
@@ -146,7 +171,7 @@ function createCodexProcessor({ agentManager, agentRegistry, sessionPids, debugL
           case 'task_complete': {
             const inferredSessionId = sessionId || findMostRecentSessionId();
             if (inferredSessionId) {
-              processor.processEvent({
+              dispatchEvent({
                 type: 'turn.complete',
                 rawType: 'task_complete',
                 raw: entry,
@@ -175,7 +200,7 @@ function createCodexProcessor({ agentManager, agentRegistry, sessionPids, debugL
         if (payload.type === 'function_call') {
           const parsedArgs = parseJsonMaybe(payload.arguments);
           pendingFunctionCalls.set(payload.call_id, { sessionId, name: payload.name || 'tool', args: parsedArgs });
-          processor.processEvent({
+          dispatchEvent({
             type: 'tool.start',
             rawType: 'function_call',
             raw: entry,
@@ -191,7 +216,7 @@ function createCodexProcessor({ agentManager, agentRegistry, sessionPids, debugL
         if (payload.type === 'function_call_output') {
           const info = pendingFunctionCalls.get(payload.call_id) || { sessionId, name: 'tool', args: null };
           pendingFunctionCalls.delete(payload.call_id);
-          processor.processEvent({
+          dispatchEvent({
             type: 'tool.end',
             rawType: 'function_call_output',
             raw: entry,
@@ -209,7 +234,7 @@ function createCodexProcessor({ agentManager, agentRegistry, sessionPids, debugL
             ? payload.content.find((item) => item.type === 'output_text')?.text || ''
             : '';
           if (outputText) {
-            processor.processEvent({
+            dispatchEvent({
               type: 'message',
               rawType: 'message',
               raw: entry,
@@ -232,11 +257,7 @@ function createCodexProcessor({ agentManager, agentRegistry, sessionPids, debugL
 
   function parseJsonMaybe(value) {
     if (!value || typeof value !== 'string') return value || null;
-    try {
-      return JSON.parse(value);
-    } catch {
-      return { raw: value };
-    }
+    try { return JSON.parse(value); } catch { return { raw: value }; }
   }
 
   function findMostRecentSessionId() {
@@ -247,7 +268,8 @@ function createCodexProcessor({ agentManager, agentRegistry, sessionPids, debugL
   }
 
   function endSession(sessionId, reason = 'ended') {
-    processor.processEvent({
+    ignoredSessions.clear(sessionId);
+    dispatchEvent({
       type: 'session.end',
       rawType: 'session.end',
       raw: { reason },
@@ -257,11 +279,17 @@ function createCodexProcessor({ agentManager, agentRegistry, sessionPids, debugL
     });
   }
 
+  function attachRegisteredAgent(registryAgent) {
+    const sessionId = processor.attachRegisteredAgent ? processor.attachRegisteredAgent(registryAgent) : null;
+    if (sessionId) ignoredSessions.clear(sessionId);
+    return sessionId;
+  }
+
   return {
     processCodexEvent,
     processSessionEntry,
     endSession,
-    attachRegisteredAgent: processor.attachRegisteredAgent,
+    attachRegisteredAgent,
     flushPendingStarts: processor.flushPendingStarts,
     cleanup: processor.cleanup,
     setTaskCompletionHandler(fn) { taskCompletionHandler = typeof fn === 'function' ? fn : null; },
@@ -269,4 +297,4 @@ function createCodexProcessor({ agentManager, agentRegistry, sessionPids, debugL
   };
 }
 
-module.exports = { createCodexProcessor, normalizeCodexEvent };
+export { normalizeCodexEvent };

@@ -1,8 +1,8 @@
-const {
+import {
   findLatestResumableSession,
   getDirectResumeSessionId,
   shouldAutoResumeRegisteredAgent,
-} = require('../public/dashboardResume');
+} from '../src/client/dashboardResume';
 
 describe('dashboardResume utils', () => {
   describe('findLatestResumableSession', () => {

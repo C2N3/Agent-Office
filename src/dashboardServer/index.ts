@@ -1,24 +1,43 @@
 import http from 'http';
-import { PORT } from './constants.js';
-import { attachAgentManagerBroadcasts, attachOrchestratorBroadcasts, attachTeamCoordinatorBroadcasts, broadcastSSE, broadcastUpdate } from './broadcast.js';
+import { isDirectEntrypoint } from '../runtime/module';
+import { PORT } from './constants';
 import {
+  attachAgentManagerBroadcasts,
+  attachOrchestratorBroadcasts,
+  broadcastSSE,
+  broadcastUpdate,
+} from './broadcast';
+import {
+  getClients,
   getRefs,
   setAgentManager as setAgentManagerRef,
   setAgentRegistry as setAgentRegistryRef,
   setOrchestrator as setOrchestratorRef,
   setWorkspaceManager as setWorkspaceManagerRef,
   setTerminalManager as setTerminalManagerRef,
-  setTeamCoordinator as setTeamCoordinatorRef,
+  setSessionPids as setSessionPidsRef,
   setDashboardWindow as setDashboardWindowRef,
   setHeatmapScanner as setHeatmapScannerRef,
   setSessionScanner as setSessionScannerRef,
-} from './context.js';
-import { handleRequest } from './routes.js';
-import { attachWebSocketUpgrade } from './websocket.js';
-import { calculateStats as calculateStatsImpl } from './stats.js';
+  setAppMeta as setAppMetaRef,
+} from './context';
+import { handleRequest } from './routes';
+import { attachWebSocketUpgrade } from './websocket';
+import { calculateStats as calculateStatsImpl } from './stats';
 
 const server = http.createServer(handleRequest as any);
 attachWebSocketUpgrade(server as any);
+
+function logServerError(err: any): void {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`[Dashboard Server] ❌ Port ${PORT} already in use!`);
+    console.error('[Dashboard Server] 💡 Another server is already running on this port.');
+    return;
+  }
+  console.error('[Dashboard Server] ❌ Server error:', err);
+}
+
+server.on('error', logServerError);
 
 export function setAgentManager(manager: any): void {
   setAgentManagerRef(manager);
@@ -50,34 +69,30 @@ export function setTerminalManager(tm: any): void {
   setTerminalManagerRef(tm);
 }
 
-export function setTeamCoordinator(tc: any): void {
-  setTeamCoordinatorRef(tc);
-  attachTeamCoordinatorBroadcasts(tc);
+export function setSessionPids(sessionPids: Map<string, number>): void {
+  setSessionPidsRef(sessionPids);
 }
 
 export function setDashboardWindow(window: any): void {
   setDashboardWindowRef(window);
 }
 
-export function startServer(): any {
-  server.listen(PORT, () => {
-    // Startup logging is handled elsewhere.
-  });
+export function setAppMeta(appMeta: { isDev?: boolean } | null | undefined): void {
+  setAppMetaRef(appMeta);
+}
 
-  server.on('error', (err: any) => {
-    if (err.code === 'EADDRINUSE') {
-      console.error(`[Dashboard Server] ❌ Port ${PORT} already in use!`);
-      console.error('[Dashboard Server] 💡 Another server is already running on this port.');
-    } else {
-      console.error('[Dashboard Server] ❌ Server error:', err);
-    }
-  });
+export function startServer(): any {
+  if (!server.listening) {
+    server.listen(PORT, () => {
+      // Startup logging is handled elsewhere.
+    });
+  }
 
   return server;
 }
 
 process.on('SIGINT', () => {
-  const { wsClients } = require('./context.js').getClients();
+  const { wsClients } = getClients();
   wsClients.forEach((client: any) => {
     try {
       client.close();
@@ -92,17 +107,12 @@ process.on('SIGINT', () => {
   });
 });
 
-export {
-  PORT,
-  broadcastSSE,
-  broadcastUpdate,
-  getRefs,
-};
+export { PORT, broadcastSSE, broadcastUpdate, getRefs };
 
 export function calculateStats() {
   return calculateStatsImpl(getRefs().agentManager);
 }
 
-if (require.main === module) {
+if (isDirectEntrypoint(import.meta.url)) {
   startServer();
 }

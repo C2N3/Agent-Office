@@ -1,7 +1,7 @@
 
-const fs = require('fs');
-const path = require('path');
-const { applyUsage, normalizeTokenUsage } = require('../usage');
+import fs from 'fs';
+import path from 'path';
+import { applyUsage, normalizeTokenUsage } from '../usage';
 
 function parseJsonLines(content) {
   return content
@@ -97,7 +97,7 @@ function getClaudeProjectName(filePath) {
   return parts.length <= 1 ? encoded : (parts[parts.length - 1] || encoded);
 }
 
-function scanFile(scanner, filePath) {
+export function scanFile(scanner, filePath) {
   let stat;
   try {
     stat = fs.statSync(filePath);
@@ -257,5 +257,3 @@ function applyCodexResponseItem(day, payload, turnState) {
     turnState.assistantSeen = true;
   }
 }
-
-module.exports = { scanFile };

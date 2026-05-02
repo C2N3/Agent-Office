@@ -1,7 +1,7 @@
 const { ipcMain } = require('electron');
 const childProcess = require('child_process');
 
-const { registerIpcHandlers } = require('../src/main/ipcHandlers');
+import { registerIpcHandlers } from '../src/main/ipcHandlers';
 
 const ORIGINAL_PLATFORM = Object.getOwnPropertyDescriptor(process, 'platform');
 

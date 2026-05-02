@@ -1,5 +1,5 @@
-import type { JsonObject } from './base.js';
-import type { TerminalAddonLike, TerminalLike } from './office.js';
+import type { JsonObject } from './base';
+import type { TerminalAddonLike, TerminalLike } from './office';
 
 export type AgentStatus =
   | 'working'
@@ -42,6 +42,14 @@ export type DashboardAgentMetadata = {
   runtimeSessionId?: string | null;
   resumeSessionId?: string | null;
   source?: string | null;
+  canRename?: boolean;
+  centralCreatedByParticipantId?: string | null;
+  centralOwnerLabel?: string | null;
+  centralOwnership?: 'mine' | 'host' | 'guest' | 'unknown' | string | null;
+  centralProjectId?: string | null;
+  centralRoomId?: string | null;
+  centralUpdatedByParticipantId?: string | null;
+  centralWorkerId?: string | null;
 };
 
 export type DashboardAgent = {
@@ -117,7 +125,9 @@ export type DashboardTerminalEntry = {
   xterm: TerminalLike;
   fitAddon: TerminalAddonLike | null;
   element: HTMLDivElement;
-  tab: HTMLDivElement;
+  label: string;
+  tab?: HTMLDivElement | null;
+  exited?: boolean;
 };
 
 export type DashboardOpenOptions = {
@@ -156,6 +166,7 @@ export type DashboardAgentRecord = {
   name?: string | null;
   role?: string | null;
   provider?: string | null;
+  model?: string | null;
   projectPath?: string | null;
   avatarIndex?: number | null;
   workspace?: DashboardWorkspace | null;
@@ -196,6 +207,7 @@ export type DashboardRegistrationPreview = {
     baseBranch?: string | null;
     startPoint?: string | null;
     workspaceParent?: string | null;
+    symlinkPaths?: string[];
   } | null;
 };
 
@@ -296,4 +308,4 @@ export type DashboardResumeUtils = {
   getDirectResumeSessionId?: (agent: DashboardAgent | undefined, openOptions?: DashboardOpenOptions) => string | null;
   shouldAutoResumeRegisteredAgent?: (agent: DashboardAgent | undefined, openOptions?: DashboardOpenOptions) => boolean;
 };
-export type { DashboardAPI } from './dashboard/api.js';
+export type { DashboardAPI } from './dashboard/api';

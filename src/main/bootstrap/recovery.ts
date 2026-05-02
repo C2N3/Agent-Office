@@ -1,7 +1,6 @@
+import { recoverExistingSessions } from '../sessionPersistence';
 
-const { recoverExistingSessions } = require('../sessionPersistence');
-
-function recoverProviderSessions({
+export function recoverProviderSessions({
   enabledProviders,
   agentManager,
   sessionPids,
@@ -24,7 +23,7 @@ function recoverProviderSessions({
   });
 }
 
-function restoreRegisteredAgents({ agentRegistry, agentManager, debugLog }) {
+export function restoreRegisteredAgents({ agentRegistry, agentManager, debugLog }) {
   for (const regAgent of agentRegistry.getActiveAgents()) {
     const existing = agentManager.getAgent(regAgent.id);
     const hasLiveAttachedSession = existing && existing.isRegistered && existing.state !== 'Offline';
@@ -49,8 +48,3 @@ function restoreRegisteredAgents({ agentRegistry, agentManager, debugLog }) {
 
   debugLog(`[Main] ${agentRegistry.getActiveAgents().length} registered agent(s) loaded`);
 }
-
-module.exports = {
-  recoverProviderSessions,
-  restoreRegisteredAgents,
-};

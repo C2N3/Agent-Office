@@ -3,8 +3,14 @@
  */
 
 // Single source of truth
-import AVATAR_FILES_DATA from '../../public/shared/avatars.json' with { type: 'json' };
-import SPRITE_DATA from '../../public/shared/sprite-frames.json' with { type: 'json' };
+import AVATAR_FILES_JSON from '../../assets/shared/avatars.json?raw';
+import SPRITE_JSON from '../../assets/shared/sprite-frames.json?raw';
+
+const AVATAR_FILES_DATA = JSON.parse(AVATAR_FILES_JSON) as { allFiles?: string[] } | string[];
+const SPRITE_DATA = JSON.parse(SPRITE_JSON) as {
+  sheet: { cols: number; rows: number; frameWidth: number; frameHeight: number };
+  frames: Record<string, number[]>;
+};
 
 // --- Sprite sheet settings ---
 // srcWidth/srcHeight = actual pixel size in the image file (from JSON)
@@ -45,8 +51,10 @@ export const lastAgents = [];
 export const agentStates = new Map();
 
 // --- Avatar management ---
-// Loaded from public/shared/avatars.json (single source of truth)
-export const AVATAR_FILES = (AVATAR_FILES_DATA.allFiles || AVATAR_FILES_DATA) as string[];
+// Loaded from assets/shared/avatars.json (single source of truth)
+export const AVATAR_FILES = Array.isArray(AVATAR_FILES_DATA)
+  ? AVATAR_FILES_DATA
+  : (AVATAR_FILES_DATA.allFiles || []);
 export const agentAvatars = new Map();
 
 /** Agent ID -> deterministic avatar filename (produces same result as office view) */

@@ -1,8 +1,10 @@
 
-import { stateConfig, lastAgents, agentStates, agentAvatars } from '../config.js';
-import { animationManager, playAnimation } from '../animationManager.js';
-import { createMiniAvatar } from '../agentCard.js';
-import { requestDynamicResize } from '../agentGridResize.js';
+import { stateConfig, lastAgents, agentStates, agentAvatars } from '../config';
+import { animationManager, playAnimation } from '../animationManager';
+import { createMiniAvatar, unmountAgentCard } from '../agentCard';
+import { requestDynamicResize } from '../agentGridResize';
+import { getAgentGridCardElements, removeAgentGridCard } from './cardList';
+import { findAgentCardElement } from './elements';
 
 const MINI_AVATAR_SCALE = 0.5;
 
@@ -12,7 +14,7 @@ export function isSatelliteCandidate(agent) {
 
 export function findParentCard(agent) {
   if (!agent || !agent.parentId) return null;
-  return document.querySelector(`[data-agent-id="${agent.parentId}"]`);
+  return findAgentCardElement(agent.parentId);
 }
 
 export function cleanupAgentState(agentId, clearAvatar = false) {
@@ -74,7 +76,7 @@ export function removeSatelliteAvatar(parentCard, agentId) {
 }
 
 export function migrateSatellites(agentGrid, parentCard, parentId) {
-  const cards = Array.from(agentGrid.querySelectorAll('.agent-card')) as HTMLElement[];
+  const cards = getAgentGridCardElements(agentGrid);
   let migrated = false;
 
   cards.forEach(card => {
@@ -86,7 +88,7 @@ export function migrateSatellites(agentGrid, parentCard, parentId) {
     if (!isSatelliteCandidate(agentData)) return;
 
     cleanupAgentState(childId);
-    card.remove();
+    removeAgentGridCard(card, unmountAgentCard);
     addSatelliteAvatar(parentCard, agentData);
     migrated = true;
   });

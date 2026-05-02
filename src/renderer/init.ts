@@ -2,12 +2,14 @@
  * Renderer Init — initialization, visibility handling
  */
 
-import { AVATAR_FILES, lastAgents, agentStates } from './config.js';
-import { playAnimation } from './animationManager.js';
-import { addAgent, updateAgent, removeAgent, cleanupAgents, updateGridLayout, showIdleAvatar } from './agentGrid.js';
-import { createWebDashboardButton, setupKeyboardShortcuts, setupContextMenu } from './uiComponents.js';
-import { createErrorUI } from './errorUI.js';
-import { installHoverTooltips } from '../../public/uiTooltip.js';
+import { createElement } from 'react';
+import { createRoot } from 'react-dom/client';
+import { AVATAR_FILES, lastAgents, agentStates } from './config';
+import { playAnimation } from './animationManager';
+import { addAgent, updateAgent, removeAgent, cleanupAgents, updateGridLayout, showIdleAvatar } from './agentGrid';
+import { createErrorUI } from './errorUI';
+import { OverlayShell } from './overlayShell';
+import { installHoverTooltips } from '../shared/uiTooltip';
 
 let availableAvatars = [];
 let idleAvatar = 'avatar_0.webp';
@@ -18,8 +20,11 @@ async function init() {
     return;
   }
 
-  setupKeyboardShortcuts();
-  setupContextMenu();
+  const mount = document.getElementById('renderer-root');
+  if (mount) {
+    createRoot(mount).render(createElement(OverlayShell));
+  }
+
   installHoverTooltips({
     selector: '.agent-card [data-tooltip], .agent-card [title], #web-dashboard-btn[title]',
   });
@@ -43,12 +48,6 @@ async function init() {
 
   // Display idle avatar
   showIdleAvatar(idleAvatar);
-
-  // Dashboard button — floating overlay at bottom-right corner
-  const toolbar = document.createElement('div');
-  toolbar.className = 'avatar-toolbar';
-  toolbar.appendChild(createWebDashboardButton());
-  document.body.appendChild(toolbar);
 
   // Register event listeners
   window.electronAPI.onAgentAdded(addAgent);

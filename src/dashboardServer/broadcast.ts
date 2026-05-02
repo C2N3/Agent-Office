@@ -1,7 +1,5 @@
-const { adaptAgentToDashboard } = require('../dashboardAdapter.js') as {
-  adaptAgentToDashboard: (agent: any) => any;
-};
-import { getClients, getRefs } from './context.js';
+import { adaptAgentToDashboard } from '../dashboardAdapter';
+import { getClients, getRefs } from './context';
 
 type SerializableValue =
   | string
@@ -74,19 +72,6 @@ export function attachOrchestratorBroadcasts(orchestrator: any): void {
 
   // Inject task output broadcaster for headless process streaming
   orchestrator.broadcastTaskOutput = broadcastTaskOutput;
-}
-
-export function attachTeamCoordinatorBroadcasts(teamCoordinator: any): void {
-  if (!teamCoordinator) return;
-
-  const events = ['team:created', 'team:updated', 'team:working', 'team:completed', 'team:failed', 'team:cancelled'];
-  for (const event of events) {
-    const sseType = event.replace(':', '.');
-    teamCoordinator.on(event, (team: any) => {
-      broadcastSSE(sseType, team);
-      broadcastUpdate(event, team);
-    });
-  }
 }
 
 export function broadcastTaskOutput(taskId: string, text: string, stream: 'stdout' | 'stderr'): void {

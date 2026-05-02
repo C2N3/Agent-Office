@@ -1,5 +1,5 @@
-const { CodexAdapter } = require('../src/main/orchestrator/adapters/codexAdapter');
-const { OutputParser } = require('../src/main/orchestrator/outputParser');
+import { CodexAdapter } from '../src/main/orchestrator/adapters/codexAdapter';
+import { OutputParser } from '../src/main/orchestrator/outputParser';
 
 describe('Codex task output', () => {
   test('runs Codex exec in JSON mode for structured task chat output', () => {
@@ -13,6 +13,18 @@ describe('Codex task output', () => {
 
     expect(config.args).toEqual(expect.arrayContaining(['exec', '--json', '--full-auto']));
     expect(config.outputFormat).toBe('codex-json');
+  });
+
+  test('pins a current Codex model when no task model is selected', () => {
+    const adapter = new CodexAdapter();
+    const config = adapter.buildSpawnConfig({
+      cwd: '/workspace/app',
+      prompt: 'summarize',
+      model: null,
+      maxTurns: 30,
+    });
+
+    expect(config.args).toEqual(expect.arrayContaining(['--model', 'gpt-5.4']));
   });
 
   test('emits only assistant messages from Codex JSON task output', () => {

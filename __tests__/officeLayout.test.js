@@ -2,12 +2,12 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const {
+import {
   DEFAULT_LAYOUT,
   loadOfficeLayoutManifest,
   resolveOfficeLayoutAssetPath,
   toClientAssetUrl,
-} = require('../src/officeLayout');
+} from '../src/officeLayout';
 
 describe('officeLayout', () => {
   const originalDir = process.env.AGENT_OFFICE_LAYOUT_DIR;
@@ -121,8 +121,8 @@ describe('officeLayout', () => {
     expect(resolveOfficeLayoutAssetPath('../secret.txt')).toBeNull();
   });
 
-  test('passes through public and remote asset URLs unchanged', () => {
-    expect(toClientAssetUrl('/public/office/map/office_bg_32.webp')).toBe('/public/office/map/office_bg_32.webp');
+  test('passes through assets and remote asset URLs unchanged', () => {
+    expect(toClientAssetUrl('/assets/office/map/office_bg_32.webp')).toBe('/assets/office/map/office_bg_32.webp');
     expect(toClientAssetUrl('https://example.com/office.webp')).toBe('https://example.com/office.webp');
   });
 });

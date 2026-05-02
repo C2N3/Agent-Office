@@ -1,5 +1,5 @@
 
-function removeOrOffline(agentManager, agentRegistry, agent, debugLog) {
+export function removeOrOffline(agentManager, agentRegistry, agent, debugLog) {
   if (agent.isRegistered) {
     const registryId = agent.registryId || agent.id;
     agentRegistry?.unlinkSession?.(registryId);
@@ -10,7 +10,7 @@ function removeOrOffline(agentManager, agentRegistry, agent, debugLog) {
   }
 }
 
-function hasActiveOrchestratorTask(taskStore, agent) {
+export function hasActiveOrchestratorTask(taskStore, agent) {
   if (!taskStore) return false;
   const registryId = agent.registryId || agent.id;
   const activeTasks = taskStore.getAllTasks
@@ -29,5 +29,3 @@ function hasActiveOrchestratorTask(taskStore, agent) {
 
   return false;
 }
-
-module.exports = { hasActiveOrchestratorTask, removeOrOffline };

@@ -1,21 +1,21 @@
-const { createCLIAdapter } = require('./cliAdapter');
-const { OutputParser } = require('./outputParser');
-const { isTerminalStatus } = require('./taskStateMachine');
-const { cleanupTaskRuntime, cleanupTaskWorktree, withRepoLock } = require('./cleanup');
-const { saveTaskOutput } = require('./output');
-const {
+import { createCLIAdapter } from './cliAdapter';
+import { OutputParser } from './outputParser';
+import { isTerminalStatus } from './taskStateMachine';
+import { cleanupTaskRuntime, cleanupTaskWorktree, withRepoLock } from './cleanup';
+import {
   handleContextExhaustion,
   handleRetry,
   handleTaskFailure,
   handleTaskSuccess,
-} = require('./completion');
+} from './completion';
+import { sharedSessionAllowlist } from './sessionAllowlist';
 
-async function dispatchTask(orchestrator, task) {
+export async function dispatchTask(orchestrator, task) {
   orchestrator.taskStore.updateTask(task.id, { status: 'provisioning', updatedAt: Date.now() });
   orchestrator.emit('task:updated', orchestrator.taskStore.getTask(task.id));
 
   const provider = task.currentProvider || task.provider;
-  const adapter = createCLIAdapter(provider);
+  const adapter: any = createCLIAdapter(provider);
 
   let workspacePath = task.workspacePath;
   let workspaceMetadata = null;
@@ -112,6 +112,15 @@ async function dispatchTask(orchestrator, task) {
     },
   );
 
+  // Register with the session allowlist so provider gates (hook server,
+  // codex session monitor, liveness) only accept events from this task.
+  sharedSessionAllowlist.register({
+    taskId: task.id,
+    pid,
+    cwd: taskCwd,
+    provider,
+  });
+
   // Deliver prompt via stdin pipe immediately (no TUI ready-marker detection needed)
   if (adapter.buildStdinPrompt) {
     stdin.write(adapter.buildStdinPrompt(task.prompt));
@@ -171,7 +180,7 @@ async function dispatchTask(orchestrator, task) {
   orchestrator.debugLog(`[Orchestrator] Task running: ${task.id} provider=${provider} pid=${pid}`);
 }
 
-function handleTaskOutput(orchestrator, taskId, events, outputParser) {
+export function handleTaskOutput(orchestrator, taskId, events, outputParser) {
   const task = orchestrator.taskStore.getTask(taskId);
   if (!task || task.status !== 'running') return;
 
@@ -191,13 +200,12 @@ function handleTaskOutput(orchestrator, taskId, events, outputParser) {
 
 // No-op kept for backward compatibility with any external callers; idle-based
 // auto-exit was removed in favor of provider completion events.
-function resetIdleTimer(_orchestrator, _taskId) {}
+export function resetIdleTimer(_orchestrator, _taskId) {}
 
-function handleTaskExit(orchestrator, taskId, exitCode) {
+export function handleTaskExit(orchestrator, taskId, exitCode) {
   const task = orchestrator.taskStore.getTask(taskId);
   if (!task || isTerminalStatus(task.status)) return;
 
-  saveTaskOutput(orchestrator, taskId);
   cleanupTaskRuntime(orchestrator, taskId);
   orchestrator.taskStore.updateTask(taskId, { exitCode });
 
@@ -214,17 +222,12 @@ function handleTaskExit(orchestrator, taskId, exitCode) {
   }
 }
 
-module.exports = {
+export {
   cleanupTaskRuntime,
   cleanupTaskWorktree,
-  dispatchTask,
   handleContextExhaustion,
   handleRetry,
-  handleTaskExit,
   handleTaskFailure,
-  handleTaskOutput,
   handleTaskSuccess,
-  resetIdleTimer,
-  saveTaskOutput,
   withRepoLock,
 };

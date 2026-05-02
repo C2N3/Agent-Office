@@ -2,13 +2,13 @@
  * pricing.js Tests — getContextWindowSize
  */
 
-const {
+import {
   normalizeModelName,
   getContextWindowSize,
   MODEL_CONTEXT_WINDOWS,
   DEFAULT_CONTEXT_WINDOW,
   MODEL_PRICING,
-} = require('../src/pricing');
+} from '../src/pricing';
 
 describe('getContextWindowSize', () => {
   test('returns correct size for known models', () => {

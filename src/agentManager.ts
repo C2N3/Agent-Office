@@ -4,15 +4,21 @@
  * - Display name improvement: use cwd basename when slug is absent
  */
 
-const EventEmitter = require('events');
-const {
+import EventEmitter from 'events';
+import {
   assignAvatarIndex,
   formatDisplayName,
   getAgentWithEffectiveState,
   getStats,
   releaseAvatarIndex,
-} = require('./agentManager/helpers');
-const { rekeyAgent, transitionAgentToOffline } = require('./agentManager/identity');
+} from './agentManager/helpers';
+import { rekeyAgent, transitionAgentToOffline } from './agentManager/identity';
+
+// Sources that represent a provider CLI event pipeline (external signal).
+// New agents arriving from these sources without orchestrator context
+// (registryId, parentId for subagents, or teamId) are rejected — only
+// task-launched sessions should produce agent characters.
+const PROVIDER_SOURCES = new Set(['hook', 'http', 'codex']);
 
 /**
  * Merge a field: entry value wins if defined, then existing, then default.
@@ -22,7 +28,16 @@ function mergeField(entry, existing, key, defaultVal = null) {
   return existing ? existing[key] : defaultVal;
 }
 
-class AgentManager extends EventEmitter {
+export class AgentManager extends EventEmitter {
+  declare agents: Map<string, any>;
+  declare _pendingEmit: Map<string, { timer: NodeJS.Timeout; state: string }>;
+  declare _usedAvatarIndices: Set<number>;
+  declare _nicknameStore: any;
+  declare config: {
+    softLimitWarning: number;
+    stateDebounceMs: number;
+  };
+
   constructor() {
     super();
     this.agents = new Map();
@@ -64,6 +79,20 @@ class AgentManager extends EventEmitter {
     const agentId = entry.registryId || entry.sessionId || entry.agentId || entry.uuid || 'unknown';
     const now = Date.now();
     const existingAgent = this.agents.get(agentId);
+
+    // Task-only gate (defense in depth): reject NEW agents arriving from a
+    // provider event pipeline unless they are tied to orchestrator context
+    // (registryId) or are a subagent/teammate of an existing task agent.
+    // Provider-level gates (hook server, codex monitor, liveness) already
+    // filter non-task sessions — this is the final backstop at the agent
+    // model boundary so characters only appear for Task-launched sessions.
+    if (!existingAgent && PROVIDER_SOURCES.has(source)) {
+      const hasOrchestratorContext = !!entry.registryId || !!entry.parentId || !!entry.teamId;
+      if (!hasOrchestratorContext) {
+        console.log(`[AgentManager] Rejected non-task ${source} agent (no registryId/parentId/teamId): ${agentId}`);
+        return null;
+      }
+    }
 
     // Soft warning: only warn if agent count is high (does not block registration)
     if (!existingAgent && this.agents.size >= this.config.softLimitWarning) {
@@ -234,11 +263,11 @@ class AgentManager extends EventEmitter {
     return transitionAgentToOffline(this, agentId);
   }
 
-  getAllAgents() {
+  getAllAgents(): any[] {
     return Array.from(this.agents.keys()).map(id => this.getAgentWithEffectiveState(id));
   }
 
-  getAgentWithEffectiveState(agentId) {
+  getAgentWithEffectiveState(agentId): any {
     return getAgentWithEffectiveState(this.agents, agentId);
   }
 
@@ -248,7 +277,7 @@ class AgentManager extends EventEmitter {
     // Force emit parent state update event so the renderer recognizes it as Working
     this.emit('agent-updated', this.getAgentWithEffectiveState(parentId));
   }
-  getAgent(agentId) { return this.agents.get(agentId) || null; }
+  getAgent(agentId): any { return this.agents.get(agentId) || null; }
   getAgentCount() { return this.agents.size; }
   getAgentsByActivity() {
     return this.getAllAgents().sort((a, b) => b.lastActivity - a.lastActivity);
@@ -282,5 +311,3 @@ class AgentManager extends EventEmitter {
     return getStats(this.getAllAgents());
   }
 }
-
-module.exports = AgentManager;

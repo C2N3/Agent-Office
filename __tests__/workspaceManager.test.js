@@ -7,11 +7,11 @@ jest.mock('child_process', () => ({
 }));
 
 const { execFileSync } = require('child_process');
-const {
+import {
   WorkspaceManager,
   buildSuggestedBranchName,
   slugifyBranchName,
-} = require('../src/main/workspace');
+} from '../src/main/workspace';
 
 describe('WorkspaceManager', () => {
   let tempRoot;
@@ -141,6 +141,19 @@ describe('WorkspaceManager', () => {
     expect(fs.realpathSync(linkedModules)).toBe(fs.realpathSync(path.join(repoRoot, 'node_modules')));
   });
 
+  test('auto-symlinks existing dependency folders for new worktrees', () => {
+    const result = manager.createWorkspace({
+      name: 'Dependency Agent',
+      repoPath: repoRoot,
+      workspaceParent: path.join(tempRoot, 'managed-worktrees'),
+    });
+
+    const linkedModules = path.join(result.workspacePath, 'node_modules');
+    expect(result.workspace.symlinkPaths).toEqual(['node_modules']);
+    expect(fs.lstatSync(linkedModules).isSymbolicLink()).toBe(true);
+    expect(fs.realpathSync(linkedModules)).toBe(fs.realpathSync(path.join(repoRoot, 'node_modules')));
+  });
+
   test('inspects a repository and lists local branches', () => {
     mockGit({
       currentBranch: 'develop',
@@ -174,6 +187,7 @@ describe('WorkspaceManager', () => {
         branchName: 'workspace/codex/feature-agent',
         baseBranch: 'main',
         startPoint: 'main',
+        symlinkPaths: ['node_modules'],
       }),
     }));
   });
@@ -206,6 +220,7 @@ describe('WorkspaceManager', () => {
       repoPath: repoRoot,
       baseBranch: 'release/2026.04',
       branchName: 'workspace/claude/feature-agent',
+      workspaceParent: path.join(tempRoot, 'managed-worktrees'),
     });
 
     expect(result.workspace.baseBranch).toBe('release/2026.04');
@@ -230,6 +245,7 @@ describe('WorkspaceManager', () => {
       name: 'existing branch',
       repoPath: repoRoot,
       branchName: 'feature/existing',
+      workspaceParent: path.join(tempRoot, 'managed-worktrees'),
     });
 
     const worktreeAddCall = execFileSync.mock.calls.find(([, args]) => args.includes('worktree') && args.includes('add'));

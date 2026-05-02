@@ -1,9 +1,11 @@
-const fs = require('fs');
-const path = require('path');
-const { ipcMain, screen } = require('electron');
-const { electronIpcChannels, dashboardIpcChannels } = require('../../shared/contracts/ipc');
+import fs from 'fs';
+import path from 'path';
+import { ipcMain, screen } from 'electron';
+import { electronIpcChannels, dashboardIpcChannels } from '../../shared/contracts/ipc';
+import { appendChatMessage, clearChatHistory, loadChatHistory } from '../taskChatStore';
+import { resolveFromModule } from '../../runtime/module';
 
-function registerWindowHandlers({
+export function registerWindowHandlers({
   agentManager,
   windowManager,
   debugLog,
@@ -28,28 +30,19 @@ function registerWindowHandlers({
   });
 
   ipcMain.on(electronIpcChannels.getAvatars, (event) => {
-    const imgRegex = /\.(webp|png|jpg|jpeg|gif)$/i;
     try {
-      const charsDir = path.join(__dirname, '..', '..', '..', 'public', 'characters');
-      if (fs.existsSync(charsDir)) {
-        const entries = fs.readdirSync(charsDir, { withFileTypes: true });
-        const categories = [];
-        const allFiles = [];
-        for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
-          if (!entry.isDirectory()) continue;
-          const folderFiles = fs.readdirSync(path.join(charsDir, entry.name))
-            .filter(f => imgRegex.test(f))
-            .sort();
-          const prefixed = folderFiles.map(f => `${entry.name}/${f}`);
-          if (prefixed.length > 0) {
-            categories.push({ name: entry.name, files: prefixed });
-            allFiles.push(...prefixed);
-          }
-        }
-        event.reply(electronIpcChannels.avatarsResponse, { categories, allFiles });
-      } else {
-        event.reply(electronIpcChannels.avatarsResponse, { categories: [], allFiles: [] });
-      }
+      const avatarCatalogPath = resolveFromModule(
+        import.meta.url,
+        '..',
+        '..',
+        '..',
+        'assets',
+        'shared',
+        'avatars.json',
+      );
+      const catalog = JSON.parse(fs.readFileSync(avatarCatalogPath, 'utf8'));
+      const allFiles = Array.isArray(catalog) ? catalog : (catalog?.allFiles || []);
+      event.reply(electronIpcChannels.avatarsResponse, allFiles);
     } catch (error) {
       errorHandler.capture(error, {
         code: 'E003',
@@ -57,7 +50,7 @@ function registerWindowHandlers({
         severity: 'WARNING',
       });
       debugLog(`[Main] get-avatars error: ${error.message}`);
-      event.reply(electronIpcChannels.avatarsResponse, { categories: [], allFiles: [] });
+      event.reply(electronIpcChannels.avatarsResponse, []);
     }
   });
 
@@ -159,8 +152,42 @@ function registerWindowHandlers({
   ipcMain.on(dashboardIpcChannels.overlayResize, (_event, { width, height }) => {
     windowManager.resizeOverlayWindow(width, height);
   });
-}
 
-module.exports = {
-  registerWindowHandlers,
-};
+  ipcMain.handle(dashboardIpcChannels.taskChatOpen, async (_event, params) => {
+    try {
+      return windowManager.openTaskChatWindow(params || {});
+    } catch (error) {
+      debugLog(`[TaskChat] Error opening window: ${error.message}`);
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.on(dashboardIpcChannels.taskChatClose, (_event, agentRegistryId) => {
+    windowManager.closeTaskChatWindow(agentRegistryId);
+  });
+
+  ipcMain.handle(dashboardIpcChannels.taskChatHistory, async (_event, agentRegistryId) => {
+    if (!agentRegistryId) return [];
+    return loadChatHistory(agentRegistryId);
+  });
+
+  ipcMain.handle(dashboardIpcChannels.taskChatAppend, async (_event, agentRegistryId, message) => {
+    if (!agentRegistryId || !message || typeof message.text !== 'string') {
+      return { success: false, error: 'invalid message' };
+    }
+    const saved = appendChatMessage(agentRegistryId, {
+      id: String(message.id || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
+      kind: message.kind || 'assistant-text',
+      text: message.text,
+      timestamp: message.timestamp || Date.now(),
+      taskId: message.taskId || null,
+    });
+    return { success: true, message: saved };
+  });
+
+  ipcMain.handle(dashboardIpcChannels.taskChatClearHistory, async (_event, agentRegistryId) => {
+    if (!agentRegistryId) return { success: false };
+    clearChatHistory(agentRegistryId);
+    return { success: true };
+  });
+}

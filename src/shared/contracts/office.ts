@@ -1,4 +1,4 @@
-import type { JsonObject } from './base.js';
+import type { JsonObject } from './base';
 
 export type DashboardOfficeConfig = {
   FRAME_W?: number;

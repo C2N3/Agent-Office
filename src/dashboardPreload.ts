@@ -5,8 +5,8 @@ import type {
   DashboardAgentRecord,
   DashboardAgentRemoval,
   DashboardOpenOptions,
-} from './shared/contracts/index.js';
-import { dashboardIpcChannels } from './shared/contracts/index.js';
+} from './shared/contracts/index';
+import { dashboardIpcChannels } from './shared/contracts/index';
 
 type Cleanup = () => void;
 type DashboardTupleArg = string | number;
@@ -66,6 +66,7 @@ const dashboardAPI: DashboardAPI = {
   toggleRegisteredAgent: (id: string, enabled: boolean) => ipcRenderer.invoke(dashboardIpcChannels.registryToggle, id, enabled),
   archiveRegisteredAgent: (id: string) => ipcRenderer.invoke(dashboardIpcChannels.registryArchive, id),
   deleteRegisteredAgent: (id: string) => ipcRenderer.invoke(dashboardIpcChannels.registryDelete, id),
+  terminateAgentSession: (agentId: string) => ipcRenderer.invoke(dashboardIpcChannels.agentTerminateSession, agentId),
   clearInactiveUnregisteredAgents: () => ipcRenderer.invoke(dashboardIpcChannels.agentsClearInactiveUnregistered),
   getSessionHistory: (registryId: string) => ipcRenderer.invoke(dashboardIpcChannels.registrySessionHistory, registryId),
   getConversation: (registryId: string, sessionId: string, options?: { limit?: number; offset?: number }) =>
@@ -93,6 +94,8 @@ const dashboardAPI: DashboardAPI = {
     return () => ipcRenderer.removeListener(dashboardIpcChannels.powershellPolicyBlocked, listener);
   },
   openPsPolicyTerminal: () => ipcRenderer.invoke(dashboardIpcChannels.powershellOpenPolicyTerminal),
+  openTaskChatWindow: (params) => ipcRenderer.invoke(dashboardIpcChannels.taskChatOpen, params),
+  closeTaskChatWindow: (taskId: string) => ipcRenderer.send(dashboardIpcChannels.taskChatClose, taskId),
 };
 
 contextBridge.exposeInMainWorld('dashboardAPI', dashboardAPI);

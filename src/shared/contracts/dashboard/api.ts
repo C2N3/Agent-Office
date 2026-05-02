@@ -1,4 +1,4 @@
-import type { CleanupFn } from '../base.js';
+import type { CleanupFn } from '../base';
 import type {
   DashboardActionResult,
   DashboardAgent,
@@ -20,7 +20,7 @@ import type {
   DashboardWindowActionResult,
   DashboardWorkspaceActionResult,
   DashboardPathRegistrationStrategy,
-} from '../dashboard.js';
+} from '../dashboard';
 
 export type DashboardAPI = {
   platform?: NodeJS.Platform;
@@ -67,6 +67,7 @@ export type DashboardAPI = {
   toggleRegisteredAgent?: (id: string, enabled: boolean) => Promise<DashboardActionResult | undefined>;
   archiveRegisteredAgent?: (id: string) => Promise<DashboardActionResult | undefined>;
   deleteRegisteredAgent?: (id: string) => Promise<DashboardActionResult | undefined>;
+  terminateAgentSession?: (agentId: string) => Promise<DashboardActionResult | undefined>;
   clearInactiveUnregisteredAgents?: () => Promise<DashboardClearInactiveResult | undefined>;
   getSessionHistory?: (registryId: string) => Promise<DashboardSessionHistoryEntry[] | undefined>;
   getConversation?: (registryId: string, sessionId: string, options?: { limit?: number; offset?: number }) => Promise<DashboardConversationResponse | undefined>;
@@ -93,4 +94,10 @@ export type DashboardAPI = {
   onTerminalExit?: (callback: (agentId: string, exitCode: number) => void) => CleanupFn | void;
   onPsPolicyBlocked?: (callback: () => void) => CleanupFn | void;
   openPsPolicyTerminal?: () => Promise<DashboardActionResult> | void;
+  openTaskChatWindow?: (params: {
+    agentRegistryId: string;
+    agentName?: string | null;
+    avatarFile?: string | null;
+  }) => Promise<(DashboardActionResult & { alreadyOpen?: boolean }) | undefined>;
+  closeTaskChatWindow?: (agentRegistryId: string) => void;
 };

@@ -1,7 +1,9 @@
-const { execFileSync } = require('child_process');
+import { execFileSync } from 'child_process';
 
-class CodexAdapter {
-  get provider() {
+const DEFAULT_CODEX_TASK_MODEL = 'gpt-5.4';
+
+export class CodexAdapter {
+  get provider(): 'codex' {
     return 'codex';
   }
 
@@ -21,8 +23,9 @@ class CodexAdapter {
     // Prompt delivered via stdin pipe instead of trailing argument to avoid
     // Windows command-line length limits and shell escaping issues.
     const args = ['exec', '--json', '--full-auto'];
-    if (options.model) {
-      args.push('--model', options.model);
+    const model = options.model || process.env.PIXEL_AGENT_CODEX_MODEL || DEFAULT_CODEX_TASK_MODEL;
+    if (model) {
+      args.push('--model', model);
     }
     return {
       command: 'codex',
@@ -66,5 +69,3 @@ class CodexAdapter {
       || /maximum.*context/i.test(buffer);
   }
 }
-
-module.exports = { CodexAdapter };

@@ -1,66 +1,85 @@
-const fs = require('node:fs');
-const path = require('node:path');
+import fs from 'node:fs';
+import path from 'node:path';
+import { resolveFromModule } from './runtime/module';
 
 const DEFAULT_MAP_SCALE = 2.1875;
 const DEFAULT_TILE_SIZE = 70;
 const DEFAULT_ROOM_GAP = 0;
 
 const DEFAULT_SEAT_MAP = {
-  10: { dir: 'right', animType: 'sit' },
-  12: { dir: 'right', animType: 'sit' },
-  18: { dir: 'right', animType: 'sit' },
-  28: { dir: 'right', animType: 'sit' },
-  11: { dir: 'left', animType: 'sit' },
-  13: { dir: 'left', animType: 'sit' },
-  19: { dir: 'left', animType: 'sit' },
-  29: { dir: 'left', animType: 'sit' },
-  24: { dir: 'up', animType: 'stand' },
-  4: { dir: 'up', animType: 'sit' },
+  0: { dir: 'down', animType: 'sit' },
+  1: { dir: 'down', animType: 'sit' },
+  2: { dir: 'down', animType: 'sit' },
+  3: { dir: 'left', animType: 'sit' },
+  4: { dir: 'right', animType: 'sit' },
   5: { dir: 'up', animType: 'sit' },
   6: { dir: 'up', animType: 'sit' },
   7: { dir: 'up', animType: 'sit' },
+  8: { dir: 'down', animType: 'sit' },
+  9: { dir: 'down', animType: 'sit' },
+  10: { dir: 'down', animType: 'sit' },
+  11: { dir: 'down', animType: 'sit' },
+  12: { dir: 'up', animType: 'sit' },
+  13: { dir: 'up', animType: 'sit' },
   14: { dir: 'up', animType: 'sit' },
   15: { dir: 'up', animType: 'sit' },
+  16: { dir: 'down', animType: 'sit' },
+  17: { dir: 'down', animType: 'sit' },
+  18: { dir: 'right', animType: 'sit' },
+  19: { dir: 'left', animType: 'sit' },
+  20: { dir: 'right', animType: 'sit' },
+  21: { dir: 'left', animType: 'sit' },
+  22: { dir: 'left', animType: 'sit' },
+  23: { dir: 'up', animType: 'sit' },
+  24: { dir: 'up', animType: 'sit' },
 };
 
 const DEFAULT_IDLE_SEAT_MAP = {
+  16: 'down',
+  17: 'down',
   18: 'right',
-  28: 'right',
-  24: 'dance',
   19: 'left',
-  29: 'left',
+  20: 'right',
+  21: 'left',
+  22: 'left',
+  23: 'up',
+  24: 'up',
 };
 
 const DEFAULT_LAPTOP_SEAT_MAP = {
-  0: 10, 1: 8, 2: 9, 3: 11,
-  4: 0, 5: 1, 6: 2, 7: 3,
-  8: 12, 9: 14, 10: 15, 11: 13,
-  12: 4, 13: 5, 14: 6, 15: 7,
+  0: 0,
+  1: 1,
+  2: 2,
+  3: 4,
+  4: 3,
+  5: 5,
+  6: 6,
+  7: 7,
 };
 
 function buildRoomTemplateAssets(roomDir) {
   return {
-    background: `/public/office/${roomDir}/map/office_bg_32.webp`,
-    foreground: `/public/office/${roomDir}/map/office_fg_32.webp`,
-    coordinates: `/public/office/${roomDir}/map/office_xy.webp`,
-    collision: `/public/office/${roomDir}/map/office_collision.webp`,
-    laptopSpots: `/public/office/${roomDir}/ojects/office_laptop.webp`,
+    background: `/assets/office/${roomDir}/map/office_bg_32.webp`,
+    foreground: `/assets/office/${roomDir}/map/office_fg_32.webp`,
+    coordinates: `/assets/office/${roomDir}/map/office_xy.webp`,
+    collision: `/assets/office/${roomDir}/map/office_collision.webp`,
+    laptopSpots: `/assets/office/${roomDir}/objects/office_laptop.webp`,
     laptopStates: {
       down: {
-        closed: `/public/office/${roomDir}/ojects/office_laptop_front_close.webp`,
-        open: `/public/office/${roomDir}/ojects/office_laptop_front_open.webp`,
+        closed: `/assets/office/${roomDir}/objects/office_laptop_front_close.webp`,
+        open: `/assets/office/${roomDir}/objects/office_laptop_front_open.webp`,
       },
       up: {
-        closed: `/public/office/${roomDir}/ojects/office_laptop_back_close.webp`,
-        open: `/public/office/${roomDir}/ojects/office_laptop_back_open.webp`,
+        closed: `/assets/office/${roomDir}/objects/office_laptop_back_close.webp`,
+        open: `/assets/office/${roomDir}/objects/office_laptop_back_open.webp`,
       },
       left: {
-        closed: `/public/office/${roomDir}/ojects/office_laptop_left_close.webp`,
-        open: `/public/office/${roomDir}/ojects/office_laptop_left_open.webp`,
+        closed: `/assets/office/${roomDir}/objects/office_laptop_left_close.webp`,
+        open: `/assets/office/${roomDir}/objects/office_laptop_left_open.webp`,
       },
       right: {
-        closed: `/public/office/${roomDir}/ojects/office_laptop_right_close.webp`,
-        open: `/public/office/${roomDir}/ojects/office_laptop_right_open.webp`,
+        closed: `/assets/office/${roomDir}/objects/office_laptop_right_close.webp`,
+        open: `/assets/office/${roomDir}/objects/office_laptop_right_open.webp`,
       },
     },
   };
@@ -95,7 +114,7 @@ const VALID_IDLE_VALUES = new Set(['up', 'down', 'left', 'right', 'dance']);
 const VALID_DECOR_LAYERS = new Set(['bg', 'fg']);
 
 type PlainObject = Record<string, any>;
-const DEFAULT_LAYOUT_FOLDER = path.resolve(__dirname, '..', 'office-layout');
+const DEFAULT_LAYOUT_FOLDER = resolveFromModule(import.meta.url, '..', 'office-layout');
 
 function cloneDefaultLayout() {
   return JSON.parse(JSON.stringify(DEFAULT_LAYOUT));
@@ -300,7 +319,7 @@ function resolveOfficeLayoutAssetPath(assetPath) {
   return resolved;
 }
 
-module.exports = {
+export {
   DEFAULT_LAYOUT,
   loadOfficeLayoutManifest,
   normalizeLayout,

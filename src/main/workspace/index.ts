@@ -1,18 +1,23 @@
-const fs = require('fs');
-const path = require('path');
-const { execFileSync } = require('child_process');
-const { sanitizeProjectPath } = require('../../utils');
-const {
+import fs from 'fs';
+import path from 'path';
+import { execFileSync } from 'child_process';
+import { sanitizeProjectPath } from '../../utils';
+import {
+  mergeWorkspace as mergeWorkspaceLifecycle,
+  removeWorkspace as removeWorkspaceLifecycle,
+} from './lifecycle';
+import {
   GLOBAL_WORKTREE_DIR,
   buildSuggestedBranchName,
   slugifyBranchName,
   normalizePathList,
+  mergePathLists,
+  detectDependencySymlinkPaths,
   formatCommandError,
   inspectWorkspacePath,
   copyIntoWorkspace,
   symlinkIntoWorkspace,
-} = require('./helpers');
-import type { DashboardWorkspace } from '../../shared/contracts/index.js';
+} from './helpers';
 
 type WorkspaceManagerOptions = {
   debugLog?: (message: string) => void;
@@ -29,10 +34,11 @@ type WorkspaceCreateOptions = {
   workspacePath?: string;
   copyPaths?: string[];
   symlinkPaths?: string[];
+  autoDependencySymlinks?: boolean;
   bootstrapCommand?: string;
 };
 
-class WorkspaceManager {
+export class WorkspaceManager {
   declare debugLog: (message: string) => void;
 
   constructor({ debugLog }: WorkspaceManagerOptions = {}) {
@@ -200,7 +206,13 @@ class WorkspaceManager {
     const workspaceParent = path.resolve(sanitizeProjectPath(options.workspaceParent) || defaultParent);
     const workspacePath = path.resolve(sanitizeProjectPath(options.workspacePath) || path.join(workspaceParent, branchName));
     const copyPaths = normalizePathList(options.copyPaths);
-    const symlinkPaths = normalizePathList(options.symlinkPaths);
+    const dependencySymlinkPaths = options.autoDependencySymlinks === false
+      ? []
+      : detectDependencySymlinkPaths(repoRoot).filter((entry) => !copyPaths.includes(entry));
+    const symlinkPaths = mergePathLists(
+      normalizePathList(options.symlinkPaths),
+      dependencySymlinkPaths,
+    );
     const bootstrapCommand = String(options.bootstrapCommand || '').trim();
 
     if (fs.existsSync(workspacePath)) {
@@ -268,101 +280,18 @@ class WorkspaceManager {
     }
   }
 
-  mergeWorkspace(workspace: DashboardWorkspace) {
-    if (!workspace || typeof workspace !== 'object') {
-      throw new Error('Workspace metadata is required');
-    }
-
-    const repoRoot = this.resolveRepositoryRoot(workspace.repositoryPath || workspace.worktreePath);
-    const worktreePath = path.resolve(sanitizeProjectPath(workspace.worktreePath || ''));
-    const branchName = String(workspace.branch || '').trim();
-    const targetBranch = this.resolveBaseBranch(repoRoot, workspace.baseBranch);
-
-    if (!worktreePath || !branchName) {
-      throw new Error('Workspace branch metadata is incomplete');
-    }
-    if (!fs.existsSync(worktreePath)) {
-      throw new Error(`Workspace path does not exist: ${worktreePath}`);
-    }
-
-    this.ensureClean(worktreePath, 'Workspace');
-    this.ensureClean(repoRoot, 'Repository');
-
-    const originalBranch = this.getCurrentBranch(repoRoot);
-    const shouldRestore = originalBranch && originalBranch !== 'HEAD' && originalBranch !== targetBranch;
-    let targetCheckedOut = false;
-
-    try {
-      if (originalBranch !== targetBranch) {
-        this.runGit(repoRoot, ['checkout', targetBranch]);
-        targetCheckedOut = true;
-      }
-
-      this.runGit(repoRoot, ['merge', '--no-edit', branchName]);
-      this.runGit(repoRoot, ['worktree', 'remove', worktreePath]);
-      this.runGit(repoRoot, ['branch', '-D', branchName]);
-
-      if (shouldRestore) {
-        this.runGit(repoRoot, ['checkout', originalBranch]);
-      }
-
-      this.debugLog(`[Workspace] Merged ${branchName} into ${targetBranch} and removed ${worktreePath}`);
-      return {
-        repositoryPath: repoRoot,
-        targetBranch,
-        mergedBranch: branchName,
-        worktreePath,
-      };
-    } catch (error) {
-      try {
-        this.runGit(repoRoot, ['merge', '--abort']);
-      } catch {}
-
-      if (shouldRestore && targetCheckedOut) {
-        try {
-          this.runGit(repoRoot, ['checkout', originalBranch]);
-        } catch {}
-      }
-
-      throw error;
-    }
+  mergeWorkspace(workspace) {
+    return mergeWorkspaceLifecycle(this, workspace);
   }
 
-  removeWorkspace(workspace: DashboardWorkspace, options: { deleteBranch?: boolean } = {}) {
-    if (!workspace || typeof workspace !== 'object') {
-      throw new Error('Workspace metadata is required');
-    }
-
-    const repoRoot = this.resolveRepositoryRoot(workspace.repositoryPath || workspace.worktreePath);
-    const worktreePath = path.resolve(sanitizeProjectPath(workspace.worktreePath || ''));
-    const branchName = String(workspace.branch || '').trim();
-    const deleteBranch = options.deleteBranch !== false;
-
-    if (!worktreePath || !branchName) {
-      throw new Error('Workspace branch metadata is incomplete');
-    }
-    if (!fs.existsSync(worktreePath)) {
-      throw new Error(`Workspace path does not exist: ${worktreePath}`);
-    }
-
-    this.ensureClean(worktreePath, 'Workspace');
-    this.runGit(repoRoot, ['worktree', 'remove', worktreePath]);
-    if (deleteBranch) {
-      this.runGit(repoRoot, ['branch', '-D', branchName]);
-    }
-
-    this.debugLog(`[Workspace] Removed ${worktreePath} (${branchName})`);
-    return {
-      repositoryPath: repoRoot,
-      removedBranch: deleteBranch ? branchName : null,
-      worktreePath,
-    };
+  removeWorkspace(workspace, options: { deleteBranch?: boolean } = {}) {
+    return removeWorkspaceLifecycle(this, workspace, options);
   }
 }
 
-module.exports = {
-  WorkspaceManager,
+export {
   slugifyBranchName,
   buildSuggestedBranchName,
   normalizePathList,
+  detectDependencySymlinkPaths,
 };

@@ -9,7 +9,7 @@ jest.mock('fs', () => ({
   readFileSync: jest.fn(),
 }));
 
-const { getConversationSummary, parseConversation } = require('../src/main/conversationParser');
+import { getConversationSummary, parseConversation } from '../src/main/conversationParser';
 
 function buildJsonl(entries) {
   return entries.map((entry) => JSON.stringify(entry)).join('\n');

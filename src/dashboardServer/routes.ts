@@ -1,16 +1,16 @@
 import fs from 'fs';
 import path from 'path';
 import { URL } from 'url';
-import { APP_ROOT, HTML_FILE, MIME_TYPES, OVERLAY_FILE, PIP_FILE, PROJECT_ROOT } from './constants.js';
+import { APP_ROOT, ASSET_ROOT, HTML_FILE, MIME_TYPES, OVERLAY_FILE, PIP_FILE, REMOTE_FILE, TASK_CHAT_FILE } from './constants';
 import {
   apiRoutes,
   handleAgentApiRoute,
   handleGetOfficeLayoutAsset,
   handleTaskApiRoute,
-  handleTeamApiRoute,
-} from './apiHandlers.js';
-import { extractToken, isValidToken } from './remoteAuth.js';
-import { handleGetTunnel, handleStartTunnel, handleStopTunnel } from './tunnelHandlers.js';
+} from './apiHandlers';
+import { handleCentralServerRoute } from './centralServerProxy';
+import { extractToken, isValidToken } from './remoteAuth';
+import { handleGetTunnel, handleStartTunnel, handleStopTunnel } from './tunnelHandlers';
 
 interface ResponseLike {
   writeHead(statusCode: number, headers?: Record<string, string>): void;
@@ -45,6 +45,16 @@ function serveFile(
   });
 }
 
+function resolveStaticAssetPath(pathname: string): string | null {
+  const relativeAssetPath = decodeURIComponent(pathname.slice('/assets/'.length));
+  const resolved = path.resolve(ASSET_ROOT, relativeAssetPath);
+  const rel = path.relative(ASSET_ROOT, resolved);
+  if (rel.startsWith('..') || path.isAbsolute(rel)) {
+    return null;
+  }
+  return resolved;
+}
+
 function handleRequest(req: RequestLike, res: ResponseLike): void {
   const url = new URL(req.url || '/', `http://${req.headers.host}`);
   const pathname = url.pathname;
@@ -65,8 +75,7 @@ function handleRequest(req: RequestLike, res: ResponseLike): void {
     return;
   }
   if (pathname === '/remote') {
-    const remoteFile = path.join(PROJECT_ROOT, 'remote.html');
-    serveFile(res, remoteFile, 'text/html; charset=utf-8', undefined, 500);
+    serveFile(res, REMOTE_FILE, 'text/html; charset=utf-8', undefined, 500);
     return;
   }
   if (pathname === '/pip') {
@@ -75,6 +84,10 @@ function handleRequest(req: RequestLike, res: ResponseLike): void {
   }
   if (pathname === '/overlay') {
     serveFile(res, OVERLAY_FILE, 'text/html; charset=utf-8', undefined, 500);
+    return;
+  }
+  if (pathname === '/task-chat') {
+    serveFile(res, TASK_CHAT_FILE, 'text/html; charset=utf-8', undefined, 500);
     return;
   }
 
@@ -97,15 +110,14 @@ function handleRequest(req: RequestLike, res: ResponseLike): void {
     }
   }
 
-  if (pathname.startsWith('/public/')) {
-    const resolved = path.resolve(PROJECT_ROOT, decodeURIComponent(pathname).slice(1));
-    const rel = path.relative(PROJECT_ROOT, resolved);
-    if (rel.startsWith('..') || path.isAbsolute(rel)) {
+  if (pathname.startsWith('/assets/')) {
+    const assetPath = resolveStaticAssetPath(pathname);
+    if (!assetPath) {
       res.writeHead(403, { 'Content-Type': 'text/plain' });
       res.end('Forbidden');
       return;
     }
-    serveFile(res, resolved, MIME_TYPES[path.extname(resolved)] || 'application/octet-stream', 'no-cache');
+    serveFile(res, assetPath, MIME_TYPES[path.extname(assetPath)] || 'application/octet-stream', 'no-cache');
     return;
   }
 
@@ -117,7 +129,7 @@ const WRITE_METHODS = new Set(['POST', 'DELETE', 'PATCH', 'PUT']);
 
 function handleAPIRequest(req: RequestLike, res: ResponseLike, url: URL): void {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Remote-Token');
 
   if (req.method === 'OPTIONS') {
@@ -140,6 +152,8 @@ function handleAPIRequest(req: RequestLike, res: ResponseLike, url: URL): void {
   }
 
   const routeKey = `${req.method} ${url.pathname}`;
+  if (handleCentralServerRoute(req as any, res as any, url)) return;
+
   const handler = apiRoutes[routeKey as keyof typeof apiRoutes];
   if (handler) {
     handler(req as any, res as any, url);
@@ -150,7 +164,6 @@ function handleAPIRequest(req: RequestLike, res: ResponseLike, url: URL): void {
     return;
   }
   if (handleTaskApiRoute(req as any, res as any, url)) return;
-  if (handleTeamApiRoute(req as any, res as any, url)) return;
   if (handleAgentApiRoute(req as any, res as any, url)) return;
 
   if (url.pathname === '/api/tunnel' && req.method === 'GET') { handleGetTunnel(req, res); return; }

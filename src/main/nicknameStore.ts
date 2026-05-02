@@ -3,14 +3,14 @@
  * Persists agent nicknames to ~/.agent-office/nicknames.json
  */
 
-const path = require('path');
-const os = require('os');
-const fs = require('fs');
+import path from 'path';
+import os from 'os';
+import fs from 'fs';
 
 const PERSIST_DIR = path.join(os.homedir(), '.agent-office');
 const PERSIST_FILE = path.join(PERSIST_DIR, 'nicknames.json');
 
-class NicknameStore {
+export class NicknameStore {
   declare debugLog: (message: string) => void;
   declare nicknames: Map<string, string>;
 
@@ -93,5 +93,3 @@ class NicknameStore {
     return nickname;
   }
 }
-
-module.exports = { NicknameStore };

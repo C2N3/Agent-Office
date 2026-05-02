@@ -1,9 +1,12 @@
-
-const fs = require('fs');
-const path = require('path');
+import { execSync } from 'child_process';
+import fs from 'fs';
+import path from 'path';
+import { resolveFromModule } from '../../runtime/module';
 
 function installStartupLogging({ app, processRef = process, consoleRef = console }) {
-  const logDir = app.isPackaged ? app.getPath('userData') : path.join(__dirname, '..', '..');
+  const logDir = app.isPackaged
+    ? app.getPath('userData')
+    : resolveFromModule(import.meta.url, '..', '..');
   const errorLogPath = path.join(logDir, 'startup-error.log');
   const originalConsoleError = consoleRef.error;
 
@@ -54,7 +57,6 @@ function installStartupLogging({ app, processRef = process, consoleRef = console
 function configureRuntime({ app, processRef = process }) {
   if (processRef.platform === 'win32') {
     try {
-      const { execSync } = require('child_process');
       execSync('chcp 65001', { stdio: 'ignore' });
     } catch {}
   }
@@ -93,7 +95,7 @@ function configureApplicationMenu({ Menu, isDev }) {
   Menu.setApplicationMenu(Menu.buildFromTemplate(menuTemplate));
 }
 
-module.exports = {
+export {
   configureApplicationMenu,
   configureRuntime,
   installStartupLogging,

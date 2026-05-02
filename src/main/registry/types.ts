@@ -2,7 +2,7 @@ import type {
   DashboardAgentRecord,
   DashboardSessionHistoryEntry,
   DashboardWorkspace,
-} from '../../shared/contracts/index.js';
+} from '../../shared/contracts/index';
 
 export type PersistentSessionHistoryEntry = DashboardSessionHistoryEntry & {
   runtimeSessionId?: string | null;

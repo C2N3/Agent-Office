@@ -1,5 +1,6 @@
+import { sharedSessionAllowlist } from './sessionAllowlist';
 
-function cleanupTaskRuntime(orchestrator, taskId) {
+export function cleanupTaskRuntime(orchestrator, taskId) {
   const idleTimer = orchestrator.idleTimers.get(taskId);
   if (idleTimer) {
     clearTimeout(idleTimer);
@@ -21,9 +22,11 @@ function cleanupTaskRuntime(orchestrator, taskId) {
   if (orchestrator.processManager?.isRunning(taskId)) {
     orchestrator.processManager.kill(taskId).catch(() => {});
   }
+
+  sharedSessionAllowlist.unregister(taskId);
 }
 
-function cleanupTaskWorktree(orchestrator, taskId) {
+export function cleanupTaskWorktree(orchestrator, taskId) {
   const task = orchestrator.taskStore.getTask(taskId);
   if (!task || !task.workspacePath) return;
 
@@ -66,11 +69,9 @@ function cleanupTaskWorktree(orchestrator, taskId) {
   setTimeout(() => attemptRemove(0), process.platform === 'win32' ? 3000 : 500);
 }
 
-async function withRepoLock(orchestrator, repoPath, fn) {
+export async function withRepoLock(orchestrator, repoPath, fn) {
   const existing = orchestrator.repoLocks.get(repoPath) || Promise.resolve();
   const next = existing.then(fn, fn);
   orchestrator.repoLocks.set(repoPath, next);
   await next;
 }
-
-module.exports = { cleanupTaskRuntime, cleanupTaskWorktree, withRepoLock };

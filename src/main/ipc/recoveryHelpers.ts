@@ -1,7 +1,8 @@
 
-function focusTerminalByPid(pid, label, debugLog) {
-  const { execFile } = require('child_process');
+import { exec, execFile } from 'child_process';
+import { buildProviderResumeCommand } from '../providers/registry';
 
+export function focusTerminalByPid(pid, label, debugLog) {
   if (process.platform === 'win32') {
     const psScript = `
 $memberDef = '[DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);' +
@@ -55,19 +56,16 @@ if ($hwnd -ne [IntPtr]::Zero) {
     return;
   }
 
-  const { exec } = require('child_process');
   exec(`wmctrl -i -a $(wmctrl -lp | awk '$3 == ${pid} {print $1; exit}') 2>/dev/null || xdotool search --pid ${pid} --onlyvisible windowactivate 2>/dev/null`, { timeout: 5000 }, (err) => {
     if (err) debugLog(`[${label}] Focus error (install wmctrl or xdotool): ${err.message}`);
   });
 }
 
-const { buildProviderResumeCommand } = require('../providers/registry');
-
-function buildResumeCommand(provider, sessionId) {
+export function buildResumeCommand(provider, sessionId) {
   return buildProviderResumeCommand(provider, sessionId);
 }
 
-function isPidAlive(pid) {
+export function isPidAlive(pid) {
   if (!pid || !Number.isFinite(pid)) return false;
   try {
     process.kill(pid, 0);
@@ -82,7 +80,7 @@ function toTimestamp(value) {
   return Number.isFinite(numeric) ? numeric : 0;
 }
 
-function findLatestResumableSessionEntry(history = []) {
+export function findLatestResumableSessionEntry(history = []) {
   if (!Array.isArray(history) || history.length === 0) return null;
 
   let latest = null;
@@ -103,10 +101,3 @@ function findLatestResumableSessionEntry(history = []) {
 
   return latest;
 }
-
-module.exports = {
-  buildResumeCommand,
-  findLatestResumableSessionEntry,
-  focusTerminalByPid,
-  isPidAlive,
-};

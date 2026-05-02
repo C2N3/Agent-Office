@@ -8,7 +8,7 @@ jest.mock('node-pty', () => ({
   spawn: mockSpawn,
 }), { virtual: true });
 
-const { TerminalManager } = require('../src/main/terminalManager');
+import { TerminalManager } from '../src/main/terminalManager';
 
 describe('TerminalManager', () => {
   const originalPlatform = process.platform;

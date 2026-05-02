@@ -1,6 +1,6 @@
-const path = require('path');
-const { sanitizeProjectPath } = require('../../utils');
-import type { AgentRegistryLike, PersistentAgent, PersistentSessionHistoryEntry } from './types.js';
+import path from 'path';
+import { sanitizeProjectPath } from '../../utils';
+import type { AgentRegistryLike, PersistentAgent, PersistentSessionHistoryEntry } from './types';
 
 function convertWslPathToWindowsDrivePath(rawPath) {
   if (typeof rawPath !== 'string' || !rawPath) return rawPath;
@@ -21,7 +21,7 @@ function convertWslPathToWindowsDrivePath(rawPath) {
   return rawPath;
 }
 
-function normalizePath(p) {
+export function normalizePath(p) {
   const sanitizedPath = sanitizeProjectPath(p);
   if (!sanitizedPath) return '';
 
@@ -46,7 +46,7 @@ function sanitizePathList(list) {
     .filter(Boolean);
 }
 
-function sanitizeWorkspace(workspace, fallbackProjectPath = '') {
+export function sanitizeWorkspace(workspace, fallbackProjectPath = '') {
   if (!workspace || typeof workspace !== 'object') return null;
 
   const repositoryPath = sanitizeProjectPath(workspace.repositoryPath);
@@ -76,7 +76,7 @@ function sanitizeWorkspace(workspace, fallbackProjectPath = '') {
   };
 }
 
-function buildSessionHistoryEntry(entry: Partial<PersistentSessionHistoryEntry> = {}) {
+export function buildSessionHistoryEntry(entry: Partial<PersistentSessionHistoryEntry> = {}) {
   const runtimeSessionId = entry.runtimeSessionId || entry.sessionId || null;
   const resumeSessionId = entry.resumeSessionId || entry.sessionId || null;
   const sessionId = entry.sessionId || resumeSessionId || runtimeSessionId || null;
@@ -91,14 +91,14 @@ function buildSessionHistoryEntry(entry: Partial<PersistentSessionHistoryEntry> 
   };
 }
 
-function sessionEntryMatches(entry, sessionId) {
+export function sessionEntryMatches(entry, sessionId) {
   if (!entry || !sessionId) return false;
   return entry.sessionId === sessionId
     || entry.runtimeSessionId === sessionId
     || entry.resumeSessionId === sessionId;
 }
 
-function linkAgentSession(
+export function linkAgentSession(
   registry: AgentRegistryLike,
   agent: PersistentAgent | null | undefined,
   registryId: string,
@@ -143,7 +143,7 @@ function linkAgentSession(
   registry.debugLog(`[Registry] Linked session: ${registryId.slice(0, 8)} ← ${(resolvedSessionId || '').slice(0, 8)}`);
 }
 
-function unlinkAgentSession(registry, agent, registryId) {
+export function unlinkAgentSession(registry, agent, registryId) {
   if (!agent) return;
 
   if (agent.currentSessionId && Array.isArray(agent.sessionHistory)) {
@@ -163,7 +163,7 @@ function unlinkAgentSession(registry, agent, registryId) {
   registry.debugLog(`[Registry] Unlinked session: ${registryId.slice(0, 8)}`);
 }
 
-function updateAgentTranscriptPath(registry, agent, sessionId, transcriptPath) {
+export function updateAgentTranscriptPath(registry, agent, sessionId, transcriptPath) {
   if (!agent || !Array.isArray(agent.sessionHistory)) return;
   const entry = agent.sessionHistory.find((item) => sessionEntryMatches(item, sessionId));
   if (entry && !entry.transcriptPath && transcriptPath) {
@@ -172,7 +172,7 @@ function updateAgentTranscriptPath(registry, agent, sessionId, transcriptPath) {
   }
 }
 
-function replaceAgentSessionId(
+export function replaceAgentSessionId(
   registry: AgentRegistryLike,
   agent: PersistentAgent | null | undefined,
   registryId: string,
@@ -242,20 +242,20 @@ function replaceAgentSessionId(
   return true;
 }
 
-function getAgentSessionHistory(agent) {
+export function getAgentSessionHistory(agent) {
   if (!agent) return [];
   return Array.isArray(agent.sessionHistory)
     ? agent.sessionHistory.map((entry) => buildSessionHistoryEntry(entry))
     : [];
 }
 
-function findAgentSessionHistoryEntry(agent, sessionId) {
+export function findAgentSessionHistoryEntry(agent, sessionId) {
   if (!agent || !Array.isArray(agent.sessionHistory) || !sessionId) return null;
   const entry = agent.sessionHistory.find((item) => sessionEntryMatches(item, sessionId));
   return entry ? buildSessionHistoryEntry(entry) : null;
 }
 
-function findAgentByProjectPath(
+export function findAgentByProjectPath(
   agents: Iterable<PersistentAgent>,
   rawPath: string | null | undefined,
   options: { includeArchived?: boolean; requireEnabled?: boolean; requireIdle?: boolean } = {},
@@ -271,17 +271,3 @@ function findAgentByProjectPath(
   }
   return null;
 }
-
-module.exports = {
-  normalizePath,
-  sanitizeWorkspace,
-  buildSessionHistoryEntry,
-  sessionEntryMatches,
-  linkAgentSession,
-  unlinkAgentSession,
-  updateAgentTranscriptPath,
-  replaceAgentSessionId,
-  getAgentSessionHistory,
-  findAgentSessionHistoryEntry,
-  findAgentByProjectPath,
-};
